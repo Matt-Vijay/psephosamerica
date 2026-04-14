@@ -1,0 +1,43 @@
+rule_id: conflict_of_interest_risk.sector_holdings_overlap.v1
+dimension: conflict_of_interest_risk
+version: 1
+
+inputs:
+  - name: committee_memberships
+    required: true
+    description: Effective-dated committee service records for the member.
+  - name: financial_holdings
+    required: true
+    description: Disclosed holdings with normalized issuer or sector classification.
+  - name: committee_sector_map
+    required: true
+    description: Versioned committee-to-sector mapping artifact.
+
+conditions:
+  missing_data_policy: no_fire
+  all_of:
+    - fact: committee_sector
+      operator: is_not_null
+    - fact: holding_sector
+      operator: is_not_null
+    - fact: holding_value_usd
+      operator: gte
+      value_ref: parameters.minimum_holding_value_usd
+    - fact: overlap_days
+      operator: gte
+      value_ref: parameters.minimum_overlap_days
+
+parameters:
+  minimum_holding_value_usd: 1000
+  minimum_overlap_days: 1
+
+severity: medium
+
+source_types_required:
+  - committee_membership
+  - financial_disclosure
+  - committee_sector_map
+
+explanation_template: >-
+  Member held a disclosed position in {sector_name} while serving on
+  {committee_name}; active overlap lasted {overlap_days} day(s).

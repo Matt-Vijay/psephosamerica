@@ -1,0 +1,42 @@
+rule_id: conflict_of_interest_risk.committee_sector_trade.v1
+dimension: conflict_of_interest_risk
+version: 1
+
+inputs:
+  - name: committee_memberships
+    required: true
+    description: Effective-dated committee service records for the member.
+  - name: financial_holdings
+    required: true
+    description: Disclosed holdings with normalized issuer or sector classification.
+  - name: committee_sector_map
+    required: true
+    description: Versioned committee-to-sector mapping artifact.
+
+conditions:
+  missing_data_policy: no_fire
+  all_of:
+    - fact: committee_sector
+      operator: is_not_null
+    - fact: holding_sector
+      operator: is_not_null
+    - fact: committee_service_overlap_days
+      operator: gte
+      value_ref: parameters.minimum_overlap_days
+    - fact: holding_overlap_days
+      operator: gte
+      value_ref: parameters.minimum_overlap_days
+
+parameters:
+  minimum_overlap_days: 1
+
+severity: medium
+
+source_types_required:
+  - committee_membership
+  - financial_disclosure
+  - committee_sector_map
+
+explanation_template: >-
+  Member served on {committee_name} while disclosing a holding
+  in {sector_name}; the overlap ran from {overlap_start} to {overlap_end}.

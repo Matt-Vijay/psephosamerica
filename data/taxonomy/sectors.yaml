@@ -1,0 +1,121 @@
+version: 1
+locked: true
+taxonomy_name: open_pact_15_sector
+sectors:
+  - sector_id: agriculture_food
+    label: Agriculture and Food
+    description: Farm production, inputs, commodity markets, food processing, and nutrition.
+    aliases:
+      - agriculture
+      - agribusiness
+      - food
+
+  - sector_id: communications_technology
+    label: Communications and Technology
+    description: Telecom, broadband, electronics, software, and digital infrastructure.
+    aliases:
+      - communications
+      - telecom
+      - technology
+
+  - sector_id: construction_real_estate
+    label: Construction and Real Estate
+    description: Building, housing development, commercial real estate, and related finance.
+    aliases:
+      - construction
+      - real_estate
+      - housing
+
+  - sector_id: defense_national_security
+    label: Defense and National Security
+    description: Armed services, procurement, defense industrial base, and homeland security.
+    aliases:
+      - defense
+      - national_security
+      - homeland_security
+
+  - sector_id: education_workforce
+    label: Education and Workforce
+    description: K-12, higher education, training, labor force development, and workforce policy.
+    aliases:
+      - education
+      - workforce
+      - training
+
+  - sector_id: energy_utilities
+    label: Energy and Utilities
+    description: Electricity, gas, oil, power markets, grid infrastructure, and utility regulation.
+    aliases:
+      - energy
+      - utilities
+      - oil_and_gas
+
+  - sector_id: financial_services
+    label: Financial Services
+    description: Banking, capital markets, asset management, payments, and financial regulation.
+    aliases:
+      - finance
+      - banking
+      - securities
+
+  - sector_id: health
+    label: Health
+    description: Health care delivery, pharmaceuticals, devices, public health, and health policy.
+    aliases:
+      - healthcare
+      - medicine
+      - pharma
+
+  - sector_id: insurance
+    label: Insurance
+    description: Property, casualty, life, health, reinsurance, and insurance regulation.
+    aliases:
+      - insurers
+      - insurance
+
+  - sector_id: labor
+    label: Labor
+    description: Organized labor, collective bargaining, worker representation, and labor standards.
+    aliases:
+      - unions
+      - organized_labor
+
+  - sector_id: legal_judiciary
+    label: Legal and Judiciary
+    description: Courts, legal services, civil and criminal justice, and constitutional issues.
+    aliases:
+      - law
+      - lawyers
+      - judiciary
+
+  - sector_id: manufacturing_industry
+    label: Manufacturing and Industry
+    description: Industrial production, equipment, supply chains, and general business manufacturing.
+    aliases:
+      - manufacturing
+      - industry
+      - industrials
+
+  - sector_id: natural_resources_environment
+    label: Natural Resources and Environment
+    description: Land, water, conservation, environment, mining, forestry, and wildlife policy.
+    aliases:
+      - environment
+      - natural_resources
+      - conservation
+
+  - sector_id: transportation_infrastructure
+    label: Transportation and Infrastructure
+    description: Surface transportation, aviation, ports, freight, public works, and infrastructure.
+    aliases:
+      - transportation
+      - infrastructure
+      - transit
+
+  - sector_id: trade_international
+    label: Trade and International
+    description: Trade policy, customs, tariffs, foreign commerce, and international economic policy.
+    aliases:
+      - trade
+      - international
+      - tariffs

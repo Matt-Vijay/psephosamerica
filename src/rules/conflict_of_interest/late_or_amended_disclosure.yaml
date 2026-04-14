@@ -1,0 +1,44 @@
+rule_id: conflict_of_interest_risk.late_or_amended_disclosure.v1
+dimension: conflict_of_interest_risk
+version: 1
+
+# v1 decision: amended disclosures create fresh immutable rule fires.
+# No imputation on missing data.
+
+inputs:
+  - name: financial_disclosure_filings
+    required: true
+    description: Disclosure filing metadata, including submission time and amendment status.
+  - name: filing_deadlines
+    required: true
+    description: Official filing due dates for the current term.
+
+conditions:
+  missing_data_policy: no_fire
+  any_of:
+    - all_of:
+        - fact: days_late
+          operator: gt
+          value_ref: parameters.late_threshold_days
+        - fact: filing_kind
+          operator: equals
+          value: original
+    - all_of:
+        - fact: filing_is_amendment
+          operator: equals
+          value: true
+        - fact: superseded_filing_id
+          operator: is_not_null
+
+parameters:
+  late_threshold_days: 0
+  amendment_recording: append_only_new_fire
+
+severity: low
+
+source_types_required:
+  - financial_disclosure
+
+explanation_template: >-
+  Disclosure {filing_id} was filed {days_late} day(s) after the deadline{amendment_clause};
+  amended filings are recorded as new immutable fires.
