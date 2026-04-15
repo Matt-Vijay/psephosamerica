@@ -1,14 +1,6 @@
 """Load reporting models and helpers for batch write summaries.
 
 Pure in-memory types — no database calls.
-
-Provides:
-  TableWriteResult      — counts for one table's write pass
-  WarnErrorSummary      — collected warnings and errors across a load
-  LoadSummary           — aggregated report across all tables in a run
-  merge_table_results() — combine a sequence of TableWriteResults
-  build_load_summary()  — construct a LoadSummary from raw results + warnings
-  status_dict()         — compact dict for the /status endpoint
 """
 
 from __future__ import annotations
@@ -101,7 +93,6 @@ class LoadSummary:
 
     @property
     def ok(self) -> bool:
-        """True when there are no errors."""
         return not self.warn_error.has_errors
 
 
@@ -130,7 +121,6 @@ def build_load_summary(
     warn_error: WarnErrorSummary | None = None,
     run_id: int | None = None,
 ) -> LoadSummary:
-    """Construct a LoadSummary from a sequence of per-table results."""
     if warn_error is None:
         warn_error = WarnErrorSummary()
 

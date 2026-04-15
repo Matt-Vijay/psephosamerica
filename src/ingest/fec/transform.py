@@ -1,14 +1,11 @@
-"""FEC ingest-record → canonical row-payload transform.
+"""Canonical row payloads from FEC ingest records.
 
-All functions are pure: no I/O, no DB, no network.  They accept typed
-ingest records from models.py, apply only the deterministic helpers in
-normalize.py, and return dicts whose keys match the canonical schema
-columns in db/schema.sql.
+Pure, no I/O. Accepts typed records from models.py, applies normalize.py
+helpers, returns dicts whose keys match db/schema.sql columns.
 
-FK columns that require a DB identity (e.g. recipient_fec_committee_id
-bigint) are carried as their raw FEC string counterparts
-(recipient_fec_committee_id_raw) so that the write layer can resolve them
-without coupling the transform layer to DB state.
+FK columns that require a DB identity are returned as raw FEC string
+variants (e.g. recipient_fec_committee_id_raw) so the write layer can
+resolve them without coupling this layer to DB state.
 """
 
 from __future__ import annotations
@@ -23,11 +20,7 @@ from .normalize import (
     normalize_occupation,
 )
 
-# ---------------------------------------------------------------------------
-# Internal helpers
-# ---------------------------------------------------------------------------
-
-# FEC transaction-type codes that map to each canonical contribution_type.
+# FEC transaction-type codes → canonical contribution_type.
 # Source: FEC bulk data format documentation.
 _REFUND_CODES: frozenset[str] = frozenset(
     {"24A", "24N", "28L", "28G", "29"}
@@ -38,23 +31,20 @@ _TRANSFER_CODES: frozenset[str] = frozenset(
 _IN_KIND_CODES: frozenset[str] = frozenset(
     {"19Y", "21Y", "22Y"}
 )
-# Codes that are unambiguously direct contributions (positive receipts).
 _CONTRIBUTION_CODES: frozenset[str] = frozenset(
     {"10", "11", "12", "13", "20", "22", "30", "31", "32", "40", "41", "42"}
 )
 
-# FEC entity-type codes → canonical donor_type values.
 _ENTITY_TYPE_MAP: dict[str, str] = {
     "IND": "individual",
     "COM": "committee",
     "ORG": "organization",
-    "CCM": "committee",  # candidate committee
-    "PAC": "committee",  # sometimes used in derived files
+    "CCM": "committee",
+    "PAC": "committee",
 }
 
 
 def _map_contribution_type(transaction_type: str | None) -> str:
-    """Map a raw FEC transaction-type code to a canonical contribution_type."""
     if not transaction_type:
         return "other"
     code = transaction_type.strip().upper()
@@ -70,31 +60,21 @@ def _map_contribution_type(transaction_type: str | None) -> str:
 
 
 def _map_donor_type(entity_type: str | None) -> str:
-    """Map a raw FEC entity-type code to a canonical donor_type."""
     if not entity_type:
         return "other"
     return _ENTITY_TYPE_MAP.get(entity_type.strip().upper(), "other")
 
 
 def _clean_state(raw: str | None) -> str | None:
-    """Return a 2-char upper-cased state code or None."""
     if not raw:
         return None
     s = raw.strip().upper()
     return s if len(s) == 2 else None
 
 
-# ---------------------------------------------------------------------------
-# Public transform functions
-# ---------------------------------------------------------------------------
-
-
 def committee_to_row(record: CommitteeRecord) -> dict[str, Any]:
-    """Convert a CommitteeRecord into a fec_committee insert payload.
-
-    Keys match fec_committee columns in db/schema.sql.  Provenance fields
-    (source_artifact_id, source_record_id) are omitted here; the write
-    layer injects them.
+    """Raises ValueError for invalid fec_committee_id.
+    Provenance fields (source_artifact_id, source_record_id) are injected by the write layer.
     """
     fec_id = normalize_committee_id(record.fec_committee_id)
     if not fec_id:
@@ -113,19 +93,14 @@ def committee_to_row(record: CommitteeRecord) -> dict[str, Any]:
 
 
 def contribution_to_row(record: ContributionRecord) -> dict[str, Any]:
-    """Convert a ContributionRecord into a contribution insert payload.
+    """Raises ValueError if contribution_date is None or fec_committee_id is invalid.
 
-    Keys match contribution columns in db/schema.sql except that FK columns
-    that require a resolved DB id are returned as their raw string variants:
+    recipient_fec_committee_id_raw carries the normalized FEC string;
+    the write layer resolves it to the bigint FK.
 
-    - ``recipient_fec_committee_id_raw``  (= normalized fec_committee_id)
-      The write layer resolves this to the bigint FK.
-
-    The schema requires contribution_date NOT NULL, so records with a None
-    date raise ValueError.  The schema also requires amount > 0, which is
-    not enforced here because the write layer enforces the DB constraint;
-    negative amounts from refund records are allowed through so the caller
-    can decide how to handle them.
+    Underscore-prefixed keys (_donor_city, _donor_state, _donor_zip,
+    _donor_employer_raw, _donor_occupation_raw) are passed for downstream
+    employer/occupation clustering; stripped by the write layer if unused.
     """
     if record.contribution_date is None:
         raise ValueError(
@@ -139,20 +114,14 @@ def contribution_to_row(record: ContributionRecord) -> dict[str, Any]:
         )
 
     return {
-        # FK resolved by write layer
         "recipient_fec_committee_id_raw": raw_cid,
-        # Provenance
         "source_record_id": record.sub_id,
-        # Donor identity
         "donor_name": normalize_donor_name(record.donor_name),
         "donor_type": _map_donor_type(record.entity_type),
-        # Contribution details
         "contribution_type": _map_contribution_type(record.transaction_type),
         "contribution_date": record.contribution_date,
         "amount": record.amount,
         "memo": record.memo_text,
-        # Supplemental donor fields (not in schema but useful at write time
-        # for downstream employer/occupation clustering; stripped if unused)
         "_donor_city": record.city,
         "_donor_state": _clean_state(record.state),
         "_donor_zip": record.zip_code,
@@ -162,13 +131,7 @@ def contribution_to_row(record: ContributionRecord) -> dict[str, Any]:
 
 
 def linkage_to_row(record: CandidateCommitteeLinkage) -> dict[str, Any]:
-    """Convert a CandidateCommitteeLinkage into a structured payload dict.
-
-    This does NOT perform member resolution (bioguide_id lookup) — that is
-    the responsibility of the entity-resolution layer.  The payload carries
-    only the official FEC identifiers and linkage metadata needed to join
-    candidate and committee context at write time.
-    """
+    """Member resolution (bioguide_id lookup) is NOT performed here — that is the entity-resolution layer."""
     fec_cid = normalize_committee_id(record.fec_committee_id)
     if not fec_cid:
         raise ValueError(

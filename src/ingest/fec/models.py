@@ -1,7 +1,6 @@
-"""Typed ingest records for FEC bulk data.
+"""Ingest-boundary records for FEC bulk data.
 
-These represent parsed rows from FEC bulk files before they are written
-to the canonical database.  They are plain dataclasses, not ORM models.
+Parsed rows from FEC bulk files; before any DB writes.
 """
 
 from __future__ import annotations

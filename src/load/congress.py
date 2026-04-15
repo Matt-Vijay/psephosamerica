@@ -1,26 +1,16 @@
 """Congress canonical load-plan layer.
 
-Pure helpers that produce ordered table-batch operation plans for:
-  - member
-  - member_term
-  - committee
-  - committee_membership
-  - bill
-  - bill_sponsor
-  - vote_event
-  - vote_cast
+Produces ordered table-batch operation plan dicts; no DB writes.
 
-Each operation dict has:
-  - table:            str           canonical table name
-  - rows:             list[dict]    transform output rows ready for the write layer
-  - conflict_columns: list[str]     columns that define ON CONFLICT identity
-  - mode:             str           "upsert"
+Each plan dict has:
+  table:            str           canonical table name
+  rows:             list[dict]    transform-output rows for the write layer
+  conflict_columns: list[str]     ON CONFLICT identity columns
+  mode:             str           "upsert"
 
-FK columns (member_id, committee_id, bill_id, vote_event_id) are left None in
-the rows; the write layer resolves them via the underscore-prefixed hint keys
-(_bioguide_id, _committee_code, _bill_key, _vote_event_key) carried in each row.
-
-No DB writes are performed here.
+FK columns (member_id, committee_id, bill_id, vote_event_id) are None in
+the rows; the write layer resolves them via underscore-prefixed hint keys
+(_bioguide_id, _committee_code, _bill_key, _vote_event_key).
 """
 
 from __future__ import annotations
@@ -48,11 +38,6 @@ from src.ingest.congress.transform import (
     vote_cast_row,
     vote_event_row,
 )
-
-# ---------------------------------------------------------------------------
-# Spec types — bundles typed records with the extra context that the transform
-# functions require beyond what the model carries.
-# ---------------------------------------------------------------------------
 
 
 @dataclass(frozen=True, slots=True)
@@ -89,16 +74,7 @@ class PrimarySponsorSpec:
     bioguide_id: str
 
 
-# ---------------------------------------------------------------------------
-# Individual plan builders
-# ---------------------------------------------------------------------------
-
-
 def plan_members(records: Iterable[MemberRecord]) -> dict[str, Any]:
-    """Return a batch operation plan for the member table.
-
-    Conflict identity is bioguide_id (the canonical Congress.gov member key).
-    """
     return {
         "table": "member",
         "rows": [member_row(r) for r in records],
@@ -108,12 +84,7 @@ def plan_members(records: Iterable[MemberRecord]) -> dict[str, Any]:
 
 
 def plan_member_terms(specs: Iterable[MemberTermSpec]) -> dict[str, Any]:
-    """Return a batch operation plan for the member_term table.
-
-    Conflict identity follows the UNIQUE constraint on
-    (member_id, congress, chamber, start_date).  member_id is None in the
-    rows at plan time; the write layer resolves it via _bioguide_id.
-    """
+    """Conflict identity: (member_id, congress, chamber, start_date). member_id resolved via _bioguide_id."""
     rows = [
         member_term_row(
             s.record,
@@ -134,11 +105,7 @@ def plan_member_terms(specs: Iterable[MemberTermSpec]) -> dict[str, Any]:
 
 
 def plan_committees(records: Iterable[CommitteeRecord]) -> dict[str, Any]:
-    """Return a batch operation plan for the committee table.
-
-    Conflict identity is (congress, committee_code).  Parent-committee
-    self-references (_parent_committee_code) are resolved by the write layer.
-    """
+    """Conflict identity: (congress, committee_code). Parent self-refs resolved by write layer."""
     return {
         "table": "committee",
         "rows": [committee_row(r) for r in records],
@@ -148,12 +115,7 @@ def plan_committees(records: Iterable[CommitteeRecord]) -> dict[str, Any]:
 
 
 def plan_committee_memberships(specs: Iterable[CommitteeMembershipSpec]) -> dict[str, Any]:
-    """Return a batch operation plan for the committee_membership table.
-
-    Conflict identity follows the UNIQUE constraint on
-    (committee_id, member_id, start_date).  Both FKs are None at plan time;
-    the write layer resolves them via _committee_code / _congress / _bioguide_id.
-    """
+    """Conflict identity: (committee_id, member_id, start_date). Both FKs resolved by write layer."""
     rows = [
         committee_membership_row(
             s.bioguide_id,
@@ -176,10 +138,6 @@ def plan_committee_memberships(specs: Iterable[CommitteeMembershipSpec]) -> dict
 
 
 def plan_bills(records: Iterable[BillRecord]) -> dict[str, Any]:
-    """Return a batch operation plan for the bill table.
-
-    Conflict identity is (congress, bill_type, bill_number).
-    """
     return {
         "table": "bill",
         "rows": [bill_row(r) for r in records],
@@ -192,13 +150,8 @@ def plan_bill_sponsors(
     primary_specs: Iterable[PrimarySponsorSpec],
     cosponsors: Iterable[CosponsorRecord],
 ) -> dict[str, Any]:
-    """Return a batch operation plan for the bill_sponsor table.
-
-    Combines primary sponsors and cosponsors into one batch.  Primary sponsors
-    come first so upserts do not downgrade an existing primary row.
-
-    Conflict identity is (bill_id, member_id); both FKs are None at plan time
-    and resolved by the write layer via _bill_key and _bioguide_id.
+    """Primary sponsors first so upserts don't downgrade an existing primary row.
+    Conflict identity: (bill_id, member_id). Both FKs resolved via _bill_key and _bioguide_id.
     """
     rows = [bill_sponsor_row(s.record, s.bioguide_id) for s in primary_specs]
     rows += [cosponsor_row(c) for c in cosponsors]
@@ -211,10 +164,6 @@ def plan_bill_sponsors(
 
 
 def plan_vote_events(records: Iterable[VoteEventRecord]) -> dict[str, Any]:
-    """Return a batch operation plan for the vote_event table.
-
-    Conflict identity is (chamber, congress, session_number, roll_call_number).
-    """
     return {
         "table": "vote_event",
         "rows": [vote_event_row(r) for r in records],
@@ -224,23 +173,13 @@ def plan_vote_events(records: Iterable[VoteEventRecord]) -> dict[str, Any]:
 
 
 def plan_vote_casts(records: Iterable[VoteCastRecord]) -> dict[str, Any]:
-    """Return a batch operation plan for the vote_cast table.
-
-    Conflict identity is (vote_event_id, member_id); both FKs are None at
-    plan time and resolved by the write layer via _vote_event_key and
-    _bioguide_id / _lis_member_id.
-    """
+    """Conflict identity: (vote_event_id, member_id). Both FKs resolved via _vote_event_key / _bioguide_id / _lis_member_id."""
     return {
         "table": "vote_cast",
         "rows": [vote_cast_row(r) for r in records],
         "conflict_columns": ["vote_event_id", "member_id"],
         "mode": "upsert",
     }
-
-
-# ---------------------------------------------------------------------------
-# Ordered full-batch plan
-# ---------------------------------------------------------------------------
 
 
 def congress_load_plan(
@@ -254,10 +193,9 @@ def congress_load_plan(
     vote_events: Iterable[VoteEventRecord],
     vote_casts: Iterable[VoteCastRecord],
 ) -> list[dict[str, Any]]:
-    """Return an ordered list of operation plan dicts for a full Congress load.
+    """Ordered operation plan for a full Congress load.
 
-    Order respects FK dependency so callers can execute batches in list order:
-
+    Execute batches in list order to respect FK dependencies:
       1. member               — no core FK deps
       2. committee            — no core FK deps (self-ref resolved by write layer)
       3. member_term          — FK → member
@@ -266,10 +204,7 @@ def congress_load_plan(
       6. bill_sponsor         — FK → bill, member
       7. vote_event           — no core FK deps
       8. vote_cast            — FK → vote_event, member
-
-    No DB writes are performed here.
     """
-    # Materialise iterables once so callers can pass generators safely.
     return [
         plan_members(members),
         plan_committees(committees),

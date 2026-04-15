@@ -1,8 +1,4 @@
-"""Pure builder functions that assemble public payloads from canonical data.
-
-Every function takes plain dicts (row-shaped, as returned by a DB query)
-and returns a validated Pydantic model.  No I/O happens here.
-"""
+"""Pure builders: dict rows → validated Pydantic models.  No I/O."""
 
 from __future__ import annotations
 
@@ -35,7 +31,6 @@ def build_evidence_card(
     source_rows: list[dict[str, Any]],
     snapshot_date: date,
 ) -> EvidenceCardPayload:
-    """Build an evidence card payload from a rule fire and its sources."""
     blocks = [
         EvidenceBlock(section=EvidenceSection(b["section"]), text=b["text"])
         for b in rule_fire["blocks"]
@@ -78,7 +73,6 @@ def build_member_profile(
     total_evidence_cards: int,
     snapshot_date: date,
 ) -> MemberProfilePayload:
-    """Build a member profile payload from canonical query results."""
     scores = [
         ScoreSummary(
             dimension=s["dimension"],
@@ -130,7 +124,6 @@ def build_zip_feed(
     member_rows: list[dict[str, Any]],
     snapshot_date: date,
 ) -> ZipFeedPayload:
-    """Build a ZIP feed payload for a given 5-digit ZIP."""
     members = [
         ZipMemberSummary(
             bioguide_id=m["bioguide_id"],
@@ -163,19 +156,13 @@ def build_zip_feed(
 
 
 def sha256_hex(data: bytes) -> str:
-    """Return the SHA-256 hex digest of *data*."""
     return hashlib.sha256(data).hexdigest()
 
 
 def build_manifest(
     snapshot_id: str,
-    file_entries: list[dict[str, Any]],
+    file_entries: list[dict[str, Any]],  # each must have: path, sha256, size_bytes
 ) -> SnapshotManifest:
-    """Build a snapshot manifest from a list of file metadata dicts.
-
-    Each dict in *file_entries* must have keys: ``path``, ``sha256``,
-    ``size_bytes``.
-    """
     entries = [
         ManifestEntry(
             path=f["path"],

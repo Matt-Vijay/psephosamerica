@@ -30,8 +30,6 @@ REQUIRED_CRP_CROSSWALK_COLUMNS = {
 
 
 class ValidationError:
-    """A single validation failure."""
-
     def __init__(self, artifact: str, message: str) -> None:
         self.artifact = artifact
         self.message = message
@@ -54,7 +52,6 @@ def _load_csv_rows(path: Path) -> tuple[list[str], list[dict[str, str]]]:
 
 
 def validate_sectors_yaml(path: Path) -> tuple[set[str], list[ValidationError]]:
-    """Validate sectors.yaml and return (sector_ids, errors)."""
     errors: list[ValidationError] = []
     sector_ids: set[str] = set()
     name = "sectors.yaml"
@@ -96,7 +93,6 @@ def validate_sectors_yaml(path: Path) -> tuple[set[str], list[ValidationError]]:
 def validate_committee_sector_map(
     path: Path, valid_sector_ids: set[str]
 ) -> list[ValidationError]:
-    """Validate committee_sector_map.csv against the canonical sector set."""
     errors: list[ValidationError] = []
     name = "committee_sector_map.csv"
 
@@ -125,7 +121,6 @@ def validate_committee_sector_map(
 def validate_crp_crosswalk(
     path: Path, valid_sector_ids: set[str]
 ) -> list[ValidationError]:
-    """Validate crp_to_sector.csv against the canonical sector set."""
     errors: list[ValidationError] = []
     name = "crp_to_sector.csv"
 

@@ -1,0 +1,477 @@
+"""Tests for src/pipeline/recompute_run.py.
+
+No live DB — all fetch/query/write boundaries are mocked.
+"""
+
+from __future__ import annotations
+
+import contextlib
+import datetime as dt
+from typing import Any
+from unittest.mock import MagicMock, patch
+
+from src.db.load_report import LoadSummary, WarnErrorSummary, build_load_summary
+from src.pipeline.conflict_recompute import RecomputeResult
+from src.pipeline.recompute_run import (
+    RecomputeRunResult,
+    _build_committee_sector_resolver,
+    _build_recompute_resolvers,
+    _delta_rows_by_member_id,
+    run_recompute,
+)
+
+# ---------------------------------------------------------------------------
+# Constants / shared fixtures
+# ---------------------------------------------------------------------------
+
+_SNAPSHOT_DATE = dt.date(2024, 6, 1)
+_RUN_ID = 42
+
+_MEMBER = {
+    "id": 101,
+    "bioguide_id": "A000001",
+    "slug": "rep-a",
+    "full_name": "Rep A",
+    "first_name": "Rep",
+    "last_name": "A",
+    "party": "D",
+    "state": "CA",
+    "chamber": "house",
+    "current_term_start": dt.date(2023, 1, 3),
+    "current_term_end": None,
+}
+
+
+def _empty_load_summary() -> LoadSummary:
+    return build_load_summary([], warn_error=WarnErrorSummary(), run_id=_RUN_ID)
+
+
+def _empty_recompute_result() -> RecomputeResult:
+    return RecomputeResult(rule_fires=[], evidence_cards=[], by_member={})
+
+
+def _make_taxonomy(sector_id: str | None = None) -> Any:
+    taxonomy = MagicMock()
+    if sector_id is None:
+        taxonomy.committee_sector.return_value = None
+    else:
+        mapping = MagicMock()
+        mapping.sector_id = sector_id
+        taxonomy.committee_sector.return_value = mapping
+    return taxonomy
+
+
+def _null_issuer_resolver(issuer_name: str, issuer_ticker: str | None) -> str | None:
+    return None
+
+
+# ---------------------------------------------------------------------------
+# Context-manager helper to patch all six DB boundaries in run_recompute
+# ---------------------------------------------------------------------------
+
+_MODULE = "src.pipeline.recompute_run"
+
+
+def _all_fetch_patches(
+    members: list[dict] | None = None,
+    snapshot_rows: list[dict] | None = None,
+    late_rows: list[dict] | None = None,
+    membership_rows: list[dict] | None = None,
+    holding_rows: list[dict] | None = None,
+    transaction_rows: list[dict] | None = None,
+    recompute_result: RecomputeResult | None = None,
+    load_summary: LoadSummary | None = None,
+    bioguide_map: dict | None = None,
+) -> list:
+    bundle = MagicMock()
+    bundle.bioguide_map = bioguide_map if bioguide_map is not None else {"A000001": 101}
+    return [
+        patch(f"{_MODULE}.fetch_recompute_members", return_value=members if members is not None else [_MEMBER]),
+        patch(f"{_MODULE}.fetch_previous_score_snapshot_rows", return_value=snapshot_rows or []),
+        patch(f"{_MODULE}.fetch_late_or_amended_rows", return_value=late_rows or []),
+        patch(f"{_MODULE}.fetch_committee_membership_rows", return_value=membership_rows or []),
+        patch(f"{_MODULE}.fetch_holding_rows", return_value=holding_rows or []),
+        patch(f"{_MODULE}.fetch_transaction_rows", return_value=transaction_rows or []),
+        patch(f"{_MODULE}.recompute_conflicts", return_value=recompute_result or _empty_recompute_result()),
+        patch(f"{_MODULE}.load_lookup_bundle", return_value=bundle),
+        patch(f"{_MODULE}.execute_load_plan", return_value=load_summary or _empty_load_summary()),
+    ]
+
+
+def _run_with_patches(conn, taxonomy=None, issuer_resolver=None, **patch_kwargs):
+    """Run run_recompute with all boundaries patched; return (result, mocks_dict)."""
+    taxonomy = taxonomy or _make_taxonomy()
+    issuer_resolver = issuer_resolver or _null_issuer_resolver
+    patches = _all_fetch_patches(**patch_kwargs)
+    mocks = {}
+    with contextlib.ExitStack() as stack:
+        for p in patches:
+            m = stack.enter_context(p)
+            mocks[p.attribute] = m
+        result = run_recompute(
+            conn,
+            recompute_run_id=_RUN_ID,
+            snapshot_date=_SNAPSHOT_DATE,
+            taxonomy=taxonomy,
+            issuer_sector_resolver=issuer_resolver,
+        )
+    return result, mocks
+
+
+# ---------------------------------------------------------------------------
+# _build_committee_sector_resolver — pure helper tests
+# ---------------------------------------------------------------------------
+
+
+class TestBuildCommitteeSectorResolver:
+    def test_empty_membership_rows_returns_none_for_any_code(self) -> None:
+        taxonomy = _make_taxonomy()
+        resolve = _build_committee_sector_resolver([], taxonomy)
+        assert resolve("HFSC", 119) is None
+
+    def test_known_committee_resolves_to_sector(self) -> None:
+        rows = [
+            {
+                "committee_code": "HFSC",
+                "congress": 119,
+                "committee_name": "House Financial Services Committee",
+            }
+        ]
+        taxonomy = _make_taxonomy(sector_id="finance")
+        resolve = _build_committee_sector_resolver(rows, taxonomy)
+        assert resolve("HFSC", 119) == "finance"
+
+    def test_unknown_committee_returns_none(self) -> None:
+        rows = [
+            {
+                "committee_code": "HFSC",
+                "congress": 119,
+                "committee_name": "House Financial Services Committee",
+            }
+        ]
+        taxonomy = _make_taxonomy(sector_id="finance")
+        resolve = _build_committee_sector_resolver(rows, taxonomy)
+        assert resolve("UNKN", 119) is None
+
+    def test_taxonomy_called_once_per_unique_code_congress(self) -> None:
+        rows = [
+            {"committee_code": "HFSC", "congress": 119, "committee_name": "Committee A"},
+            {"committee_code": "HFSC", "congress": 119, "committee_name": "Committee A"},
+        ]
+        taxonomy = _make_taxonomy()
+        _build_committee_sector_resolver(rows, taxonomy)
+        assert taxonomy.committee_sector.call_count == 1
+
+    def test_different_congress_resolved_separately(self) -> None:
+        rows = [
+            {"committee_code": "HFSC", "congress": 118, "committee_name": "Committee A"},
+            {"committee_code": "HFSC", "congress": 119, "committee_name": "Committee A"},
+        ]
+        taxonomy = _make_taxonomy()
+        _build_committee_sector_resolver(rows, taxonomy)
+        assert taxonomy.committee_sector.call_count == 2
+
+
+# ---------------------------------------------------------------------------
+# _build_recompute_resolvers — pure helper tests
+# ---------------------------------------------------------------------------
+
+
+class TestBuildRecomputeResolvers:
+    def test_bioguide_id_resolves_to_member_id(self) -> None:
+        resolvers = _build_recompute_resolvers({"A000001": 101})
+        _, fn = resolvers["_bioguide_id"]
+        assert fn({"_bioguide_id": "A000001"}) == 101
+
+    def test_missing_bioguide_returns_none(self) -> None:
+        resolvers = _build_recompute_resolvers({"A000001": 101})
+        _, fn = resolvers["_bioguide_id"]
+        assert fn({"_bioguide_id": "Z999999"}) is None
+
+    def test_target_column_is_member_id(self) -> None:
+        resolvers = _build_recompute_resolvers({})
+        col, _ = resolvers["_bioguide_id"]
+        assert col == "member_id"
+
+
+# ---------------------------------------------------------------------------
+# _delta_rows_by_member_id — pure helper tests
+# ---------------------------------------------------------------------------
+
+
+class TestDeltaRowsByMemberId:
+    def _card(self, bioguide: str, dimension: str, delta: float) -> Any:
+        card = MagicMock()
+        card.member_bioguide_id = bioguide
+        card.dimension = dimension
+        card.score_delta = delta
+        return card
+
+    def test_empty_cards_returns_empty_dict(self) -> None:
+        assert _delta_rows_by_member_id([], {}) == {}
+
+    def test_card_not_in_map_is_skipped(self) -> None:
+        card = self._card("Z999", "conflict_of_interest_risk", 2.0)
+        result = _delta_rows_by_member_id([card], {"A000001": 101})
+        assert result == {}
+
+    def test_card_grouped_by_member_id(self) -> None:
+        card = self._card("A000001", "conflict_of_interest_risk", 2.0)
+        result = _delta_rows_by_member_id([card], {"A000001": 101})
+        assert 101 in result
+        assert len(result[101]) == 1
+        assert result[101][0]["score_delta"] == 2.0
+        assert result[101][0]["dimension"] == "conflict_of_interest_risk"
+
+    def test_multiple_cards_same_member_accumulate(self) -> None:
+        cards = [
+            self._card("A000001", "conflict_of_interest_risk", 2.0),
+            self._card("A000001", "conflict_of_interest_risk", 4.0),
+        ]
+        result = _delta_rows_by_member_id(cards, {"A000001": 101})
+        assert len(result[101]) == 2
+
+
+# ---------------------------------------------------------------------------
+# run_recompute — orchestration tests
+# ---------------------------------------------------------------------------
+
+
+class TestRunRecomputeEmptyMembers:
+    def test_no_members_returns_empty_result_without_any_db_writes(self) -> None:
+        conn = MagicMock()
+        with patch(f"{_MODULE}.fetch_recompute_members", return_value=[]):
+            result = run_recompute(
+                conn,
+                recompute_run_id=_RUN_ID,
+                snapshot_date=_SNAPSHOT_DATE,
+                taxonomy=_make_taxonomy(),
+                issuer_sector_resolver=_null_issuer_resolver,
+            )
+        assert result.rule_fires == []
+        assert result.evidence_cards == []
+        assert result.load_summary is None
+
+    def test_no_members_skips_all_downstream_queries(self) -> None:
+        conn = MagicMock()
+        with (
+            patch(f"{_MODULE}.fetch_recompute_members", return_value=[]),
+            patch(f"{_MODULE}.fetch_committee_membership_rows") as mock_memberships,
+        ):
+            run_recompute(
+                conn,
+                recompute_run_id=_RUN_ID,
+                snapshot_date=_SNAPSHOT_DATE,
+                taxonomy=_make_taxonomy(),
+                issuer_sector_resolver=_null_issuer_resolver,
+            )
+        mock_memberships.assert_not_called()
+
+
+class TestRunRecomputeResult:
+    def test_result_is_recompute_run_result_instance(self) -> None:
+        result, _ = _run_with_patches(MagicMock())
+        assert isinstance(result, RecomputeRunResult)
+
+    def test_rule_fires_and_evidence_cards_forwarded_from_conflict_result(self) -> None:
+        fire = MagicMock()
+        card = MagicMock()
+        card.member_bioguide_id = "A000001"
+        card.dimension = "conflict_of_interest_risk"
+        card.score_delta = 2.0
+        recompute_result = RecomputeResult(rule_fires=[fire], evidence_cards=[card], by_member={})
+        result, _ = _run_with_patches(MagicMock(), recompute_result=recompute_result)
+        assert result.rule_fires == [fire]
+        assert result.evidence_cards == [card]
+
+    def test_load_summary_returned_from_execute_load_plan(self) -> None:
+        expected = _empty_load_summary()
+        result, _ = _run_with_patches(MagicMock(), load_summary=expected)
+        assert result.load_summary is expected
+
+
+class TestRunRecomputeFetchBoundaries:
+    def test_previous_snapshots_fetched_with_member_ids(self) -> None:
+        conn = MagicMock()
+        spy = MagicMock(return_value=[])
+        patches = _all_fetch_patches()
+        with contextlib.ExitStack() as stack:
+            for p in patches:
+                stack.enter_context(p)
+            stack.enter_context(
+                patch(f"{_MODULE}.fetch_previous_score_snapshot_rows", spy)
+            )
+            run_recompute(
+                conn,
+                recompute_run_id=_RUN_ID,
+                snapshot_date=_SNAPSHOT_DATE,
+                taxonomy=_make_taxonomy(),
+                issuer_sector_resolver=_null_issuer_resolver,
+            )
+        spy.assert_called_once()
+        _, kwargs = spy.call_args
+        assert kwargs["member_ids"] == [101]
+
+    def test_conflict_inputs_fetched_with_bioguide_ids(self) -> None:
+        conn = MagicMock()
+        late_spy = MagicMock(return_value=[])
+        patches = _all_fetch_patches()
+        with contextlib.ExitStack() as stack:
+            for p in patches:
+                stack.enter_context(p)
+            stack.enter_context(
+                patch(f"{_MODULE}.fetch_late_or_amended_rows", late_spy)
+            )
+            run_recompute(
+                conn,
+                recompute_run_id=_RUN_ID,
+                snapshot_date=_SNAPSHOT_DATE,
+                taxonomy=_make_taxonomy(),
+                issuer_sector_resolver=_null_issuer_resolver,
+            )
+        late_spy.assert_called_once()
+        _, kwargs = late_spy.call_args
+        assert "A000001" in kwargs["bioguide_ids"]
+        assert kwargs["filing_year"] == _SNAPSHOT_DATE.year
+
+    def test_filing_year_derived_from_snapshot_date(self) -> None:
+        conn = MagicMock()
+        holding_spy = MagicMock(return_value=[])
+        snap = dt.date(2025, 3, 15)
+        patches = _all_fetch_patches()
+        with contextlib.ExitStack() as stack:
+            for p in patches:
+                stack.enter_context(p)
+            stack.enter_context(
+                patch(f"{_MODULE}.fetch_holding_rows", holding_spy)
+            )
+            run_recompute(
+                conn,
+                recompute_run_id=_RUN_ID,
+                snapshot_date=snap,
+                taxonomy=_make_taxonomy(),
+                issuer_sector_resolver=_null_issuer_resolver,
+            )
+        _, kwargs = holding_spy.call_args
+        assert kwargs["filing_year"] == 2025
+
+
+class TestRunRecomputeConflictWiring:
+    def test_recompute_conflicts_called_with_snapshot_date(self) -> None:
+        conn = MagicMock()
+        conflict_spy = MagicMock(return_value=_empty_recompute_result())
+        patches = _all_fetch_patches()
+        with contextlib.ExitStack() as stack:
+            for p in patches:
+                stack.enter_context(p)
+            stack.enter_context(
+                patch(f"{_MODULE}.recompute_conflicts", conflict_spy)
+            )
+            run_recompute(
+                conn,
+                recompute_run_id=_RUN_ID,
+                snapshot_date=_SNAPSHOT_DATE,
+                taxonomy=_make_taxonomy(),
+                issuer_sector_resolver=_null_issuer_resolver,
+            )
+        conflict_spy.assert_called_once()
+        _, kwargs = conflict_spy.call_args
+        assert kwargs["snapshot_date"] == _SNAPSHOT_DATE
+
+    def test_recompute_run_id_passed_as_string_to_conflict_engine(self) -> None:
+        conn = MagicMock()
+        conflict_spy = MagicMock(return_value=_empty_recompute_result())
+        patches = _all_fetch_patches()
+        with contextlib.ExitStack() as stack:
+            for p in patches:
+                stack.enter_context(p)
+            stack.enter_context(
+                patch(f"{_MODULE}.recompute_conflicts", conflict_spy)
+            )
+            run_recompute(
+                conn,
+                recompute_run_id=99,
+                snapshot_date=_SNAPSHOT_DATE,
+                taxonomy=_make_taxonomy(),
+                issuer_sector_resolver=_null_issuer_resolver,
+            )
+        _, kwargs = conflict_spy.call_args
+        assert kwargs["recompute_run_id"] == "99"
+
+    def test_four_families_passed_to_conflict_engine(self) -> None:
+        conn = MagicMock()
+        conflict_spy = MagicMock(return_value=_empty_recompute_result())
+        patches = _all_fetch_patches()
+        with contextlib.ExitStack() as stack:
+            for p in patches:
+                stack.enter_context(p)
+            stack.enter_context(
+                patch(f"{_MODULE}.recompute_conflicts", conflict_spy)
+            )
+            run_recompute(
+                conn,
+                recompute_run_id=_RUN_ID,
+                snapshot_date=_SNAPSHOT_DATE,
+                taxonomy=_make_taxonomy(),
+                issuer_sector_resolver=_null_issuer_resolver,
+            )
+        _, kwargs = conflict_spy.call_args
+        families = set(kwargs["rows_by_family"].keys())
+        assert families == {
+            "late_or_amended_disclosure",
+            "committee_sector_trade",
+            "repeated_committee_linked_trading",
+            "sector_holdings_overlap",
+        }
+
+
+class TestRunRecomputePersistPhase:
+    def test_execute_load_plan_called_with_run_id(self) -> None:
+        conn = MagicMock()
+        exec_spy = MagicMock(return_value=_empty_load_summary())
+        patches = _all_fetch_patches()
+        with contextlib.ExitStack() as stack:
+            for p in patches:
+                stack.enter_context(p)
+            stack.enter_context(
+                patch(f"{_MODULE}.execute_load_plan", exec_spy)
+            )
+            run_recompute(
+                conn,
+                recompute_run_id=_RUN_ID,
+                snapshot_date=_SNAPSHOT_DATE,
+                taxonomy=_make_taxonomy(),
+                issuer_sector_resolver=_null_issuer_resolver,
+            )
+        exec_spy.assert_called_once()
+        _, kwargs = exec_spy.call_args
+        assert kwargs["run_id"] == _RUN_ID
+
+    def test_load_lookup_bundle_called_before_execute(self) -> None:
+        conn = MagicMock()
+        call_order: list[str] = []
+
+        def tracking_lookup(c):
+            call_order.append("lookup")
+            b = MagicMock()
+            b.bioguide_map = {}
+            return b
+
+        def tracking_exec(c, ops, *, resolvers, run_id):
+            call_order.append("execute")
+            return _empty_load_summary()
+
+        patches = _all_fetch_patches()
+        with contextlib.ExitStack() as stack:
+            for p in patches:
+                stack.enter_context(p)
+            stack.enter_context(patch(f"{_MODULE}.load_lookup_bundle", tracking_lookup))
+            stack.enter_context(patch(f"{_MODULE}.execute_load_plan", tracking_exec))
+            run_recompute(
+                conn,
+                recompute_run_id=_RUN_ID,
+                snapshot_date=_SNAPSHOT_DATE,
+                taxonomy=_make_taxonomy(),
+                issuer_sector_resolver=_null_issuer_resolver,
+            )
+        assert call_order == ["lookup", "execute"]

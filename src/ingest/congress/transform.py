@@ -1,20 +1,16 @@
-"""Convert Congress ingest-boundary records into canonical row payloads.
+"""Canonical row payloads from Congress ingest records.
 
-All functions here are pure and deterministic.  They accept typed records
-from ``models.py`` and return plain dicts shaped for INSERT into the
-corresponding canonical table (db/schema.sql).
+Pure, deterministic. Accepts typed records from models.py; returns dicts
+shaped for INSERT into db/schema.sql tables. No DB writes.
 
-FK columns that require a DB-assigned ``id`` (e.g. ``member_id``,
-``committee_id``, ``vote_event_id``) are left as ``None`` in the returned
-dict.  Callers that resolve FKs before writing should fill those keys in.
-
-The one exception is fields where the lookup key is carried alongside:
-  - ``_bioguide_id`` is included in ``member_term``, ``committee_membership``,
-    ``bill_sponsor``, and ``vote_cast`` rows so callers can resolve
-    ``member_id`` without re-reading the record.
-  - ``_committee_code`` is included in ``committee_membership`` and
-    ``committee`` rows to allow parent/membership resolution.
-  - ``_vote_event_key`` (tuple) is included in ``vote_cast`` rows.
+FK columns that require a DB-assigned id (member_id, committee_id, etc.)
+are left None. Each row carries underscore-prefixed hint keys so the write
+layer can resolve FKs without re-reading the record:
+  _bioguide_id        → member_id
+  _committee_code     → committee_id (with _congress for uniqueness)
+  _bill_key           → bill_id (congress, bill_type, bill_number)
+  _vote_event_key     → vote_event_id (chamber, congress, session, roll_call)
+  _lis_member_id      → member_id for Senate records before crosswalk resolution
 
 These underscore-prefixed keys are transform hints, not DB columns.
 """
@@ -34,30 +30,17 @@ from .models import (
     VoteEventRecord,
 )
 
-# ---------------------------------------------------------------------------
-# Internal helpers
-# ---------------------------------------------------------------------------
-
 _SLUG_NON_ALNUM = re.compile(r"[^a-z0-9]+")
 
 
 def _to_slug(bioguide_id: str) -> str:
-    """Deterministic URL slug: lower-cased bioguide_id with no whitespace."""
     normalized = unicodedata.normalize("NFKD", bioguide_id)
     lower = normalized.lower().strip()
     return _SLUG_NON_ALNUM.sub("-", lower).strip("-")
 
 
-# ---------------------------------------------------------------------------
-# member
-# ---------------------------------------------------------------------------
-
 def member_row(record: MemberRecord) -> dict[str, Any]:
-    """Map a ``MemberRecord`` to a ``member`` table payload.
-
-    ``source_artifact_id`` is left ``None``; the caller supplies it after
-    storing the raw artifact.
-    """
+    """source_artifact_id is left None; caller supplies it after storing the raw artifact."""
     return {
         "bioguide_id": record.bioguide_id,
         "lis_member_id": record.lis_member_id,
@@ -78,31 +61,19 @@ def member_row(record: MemberRecord) -> dict[str, Any]:
     }
 
 
-# ---------------------------------------------------------------------------
-# member_term
-# ---------------------------------------------------------------------------
-
 def member_term_row(
     record: MemberRecord,
     *,
     congress: int,
-    start_date: Any,               # datetime.date
-    end_date: Any = None,          # datetime.date | None
+    start_date: Any,
+    end_date: Any = None,
     district: int | None = None,
     is_current: bool = False,
 ) -> dict[str, Any]:
-    """Map a ``MemberRecord`` + term metadata to a ``member_term`` payload.
-
-    ``district`` must be ``None`` for senators; it is required (>0) only for
-    House members.  Callers are responsible for passing the correct value.
-
-    ``member_id`` is left ``None``; callers resolve it via ``bioguide_id``.
-    The ``_bioguide_id`` hint key is included for that resolution.
-    """
-    # Senators must not carry a district value.
+    """district is forced None for senators even if caller passes a value."""
     effective_district = None if record.chamber == "senate" else district
     return {
-        "_bioguide_id": record.bioguide_id,   # FK resolution hint
+        "_bioguide_id": record.bioguide_id,
         "member_id": None,
         "congress": congress,
         "chamber": record.chamber,
@@ -116,20 +87,12 @@ def member_term_row(
     }
 
 
-# ---------------------------------------------------------------------------
-# committee
-# ---------------------------------------------------------------------------
-
 def committee_row(record: CommitteeRecord) -> dict[str, Any]:
-    """Map a ``CommitteeRecord`` to a ``committee`` table payload.
-
-    ``parent_committee_id`` is always ``None`` here; callers resolve it from
-    ``_parent_committee_code``.  ``jurisdiction_basis`` and ``review_tier``
-    are mapping-layer concerns populated after sector assignment; defaults are
-    provided so the row is insertable.
+    """parent_committee_id is always None; write layer resolves via _parent_committee_code.
+    jurisdiction_basis and review_tier are populated by the mapping layer after sector assignment.
     """
     return {
-        "_parent_committee_code": record.parent_committee_code,   # FK hint
+        "_parent_committee_code": record.parent_committee_code,
         "committee_code": record.committee_code,
         "congress": record.congress,
         "chamber": record.chamber,
@@ -144,30 +107,20 @@ def committee_row(record: CommitteeRecord) -> dict[str, Any]:
     }
 
 
-# ---------------------------------------------------------------------------
-# committee_membership
-# ---------------------------------------------------------------------------
-
 def committee_membership_row(
     bioguide_id: str,
     committee_code: str,
     congress: int,
     *,
     role: str,
-    start_date: Any,               # datetime.date
+    start_date: Any,
     end_date: Any = None,
     is_current: bool = False,
     source_url: str | None = None,
 ) -> dict[str, Any]:
-    """Build a ``committee_membership`` payload.
-
-    Both ``member_id`` and ``committee_id`` require DB-level resolution.
-    Hint keys ``_bioguide_id``, ``_committee_code``, and ``_congress`` are
-    included to support that lookup.
-    """
     return {
-        "_bioguide_id": bioguide_id,         # FK resolution hint → member_id
-        "_committee_code": committee_code,   # FK resolution hint → committee_id
+        "_bioguide_id": bioguide_id,
+        "_committee_code": committee_code,
         "_congress": congress,
         "committee_id": None,
         "member_id": None,
@@ -180,12 +133,7 @@ def committee_membership_row(
     }
 
 
-# ---------------------------------------------------------------------------
-# bill
-# ---------------------------------------------------------------------------
-
 def bill_row(record: BillRecord) -> dict[str, Any]:
-    """Map a ``BillRecord`` to a ``bill`` table payload."""
     return {
         "congress": record.congress,
         "bill_type": record.bill_type,
@@ -200,17 +148,7 @@ def bill_row(record: BillRecord) -> dict[str, Any]:
     }
 
 
-# ---------------------------------------------------------------------------
-# bill_sponsor
-# ---------------------------------------------------------------------------
-
 def bill_sponsor_row(record: BillRecord, bioguide_id: str) -> dict[str, Any]:
-    """Build a primary-sponsor ``bill_sponsor`` payload.
-
-    ``bill_id`` and ``member_id`` require DB resolution.
-    Hint keys ``_bill_key`` (congress, type, number) and ``_bioguide_id``
-    are included for that lookup.
-    """
     return {
         "_bill_key": (record.congress, record.bill_type, record.bill_number),
         "_bioguide_id": bioguide_id,
@@ -225,11 +163,6 @@ def bill_sponsor_row(record: BillRecord, bioguide_id: str) -> dict[str, Any]:
 
 
 def cosponsor_row(record: CosponsorRecord) -> dict[str, Any]:
-    """Map a ``CosponsorRecord`` to a ``bill_sponsor`` payload.
-
-    ``sponsor_role`` is ``'original_cosponsor'`` when ``is_original`` is
-    True, otherwise ``'cosponsor'``.
-    """
     role = "original_cosponsor" if record.is_original else "cosponsor"
     return {
         "_bill_key": (record.congress, record.bill_type, record.bill_number),
@@ -244,16 +177,8 @@ def cosponsor_row(record: CosponsorRecord) -> dict[str, Any]:
     }
 
 
-# ---------------------------------------------------------------------------
-# vote_event
-# ---------------------------------------------------------------------------
-
 def vote_event_row(record: VoteEventRecord) -> dict[str, Any]:
-    """Map a ``VoteEventRecord`` to a ``vote_event`` table payload.
-
-    The natural uniqueness key is (chamber, congress, session_number,
-    roll_call_number), which matches the UNIQUE constraint in schema.sql.
-    """
+    """Natural uniqueness key: (chamber, congress, session_number, roll_call_number)."""
     return {
         "chamber": record.chamber,
         "congress": record.congress,
@@ -267,25 +192,9 @@ def vote_event_row(record: VoteEventRecord) -> dict[str, Any]:
     }
 
 
-# ---------------------------------------------------------------------------
-# vote_cast
-# ---------------------------------------------------------------------------
-
 def vote_cast_row(record: VoteCastRecord) -> dict[str, Any]:
-    """Map a ``VoteCastRecord`` to a ``vote_cast`` table payload.
-
-    The uniqueness key is (vote_event_id, member_id).  Because neither FK
-    is known at transform time, both are ``None``.
-
-    Hint keys:
-    - ``_vote_event_key``: (chamber, congress, session_number, roll_call_number)
-      to look up ``vote_event_id``.
-    - ``_bioguide_id``: set when known (House votes); ``None`` for raw Senate
-      records where only ``_lis_member_id`` is available.
-    - ``_lis_member_id``: set for Senate votes before crosswalk resolution.
-
-    After crosswalk resolution the caller fills ``_bioguide_id`` and
-    ultimately ``member_id``.
+    """_bioguide_id is set for House records; _lis_member_id for Senate records before crosswalk.
+    Caller fills _bioguide_id and member_id after crosswalk resolution.
     """
     return {
         "_vote_event_key": (

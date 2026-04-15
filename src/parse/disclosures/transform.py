@@ -1,13 +1,4 @@
-"""Transform disclosure parser outputs into canonical row payloads.
-
-Converts Filing / Holding / Transaction / OutsidePosition models into
-row-shaped dicts ready for DB insertion (no DB writes here).
-
-Review-queue payloads are emitted alongside canonical rows when
-classification or normalization flags require human review.
-
-No network calls. No DB access. All functions are pure given their inputs.
-"""
+"""Transform parsed disclosures into canonical row payloads.  No DB writes, no network."""
 
 from __future__ import annotations
 
@@ -101,8 +92,6 @@ class HoldingPayload:
 
 @dataclass(frozen=True)
 class TransactionPayload:
-    """Row-shaped payload for the ``transaction`` table."""
-
     line_number: int
     owner_type: str
     issuer_name: str
@@ -118,15 +107,7 @@ class TransactionPayload:
 
 @dataclass(frozen=True)
 class OutsidePositionSidecar:
-    """Structured sidecar payload for outside positions.
-
-    Outside positions have no canonical table in the v1 schema.
-    # TODO: promote to a first-class ``outside_position`` table in v2
-    #       once the schema is extended in db/schema.sql.
-
-    These are emitted alongside canonical payloads so callers can store
-    them in the ``review_queue.payload`` column or archive them for later.
-    """
+    """No canonical table in v1; stored in review_queue.payload or archived."""
 
     line_number: int
     owner_type: str
@@ -235,13 +216,11 @@ def _transform_holding(
     ctx: ParseContext,
     review_items: list[ReviewQueuePayload],
 ) -> HoldingPayload:
-    """Convert a Holding model into a HoldingPayload, emitting review items as needed."""
     value_min = h.value_min
     value_max = h.value_max
     income_min = h.income_min
     income_max = h.income_max
 
-    # If Decimal fields are absent but label is present, attempt normalization.
     if value_min is None and value_max is None and h.value_label:
         pair = normalize_amount_range(h.value_label)
         if pair is not None:
@@ -278,7 +257,6 @@ def _transform_holding(
                 )
             )
 
-    # Flag unknown owner types.
     owner_str = h.owner_type.value
     if owner_str == "other":
         review_items.append(
@@ -294,7 +272,6 @@ def _transform_holding(
             )
         )
 
-    # Flag trust holdings for unresolved options/trusts review.
     if owner_str == "trust":
         review_items.append(
             _review(
@@ -336,7 +313,6 @@ def _transform_transaction(
     ctx: ParseContext,
     review_items: list[ReviewQueuePayload],
 ) -> TransactionPayload:
-    """Convert a Transaction model into a TransactionPayload, emitting review items as needed."""
     amount_min = t.amount_min
     amount_max = t.amount_max
 
@@ -408,12 +384,6 @@ def _transform_outside_position(
     ctx: ParseContext,
     review_items: list[ReviewQueuePayload],
 ) -> OutsidePositionSidecar:
-    """Convert an OutsidePosition into a sidecar and emit a review item.
-
-    Outside positions have no canonical table in v1 (see OutsidePositionSidecar
-    docstring).  They are always routed to the review queue so an operator can
-    decide whether/how to persist them.
-    """
     sidecar = OutsidePositionSidecar(
         line_number=op.line_number,
         owner_type=op.owner_type.value,
@@ -450,19 +420,6 @@ def transform_filing(
     outside_positions: list[OutsidePosition],
     ctx: ParseContext,
 ) -> DisclosureTransformResult:
-    """Transform a parsed filing and its line items into canonical row payloads.
-
-    Args:
-        filing: The top-level filing metadata.
-        holdings: Holding line items from the filing.
-        transactions: Transaction line items (PTR or annual Schedule B).
-        outside_positions: Outside position line items (annual only).
-        ctx: Parse provenance references for review-queue rows.
-
-    Returns:
-        A DisclosureTransformResult containing all canonical payloads and any
-        review-queue items that must be routed for human attention.
-    """
     review_items: list[ReviewQueuePayload] = []
 
     # --- Financial disclosure payload ---

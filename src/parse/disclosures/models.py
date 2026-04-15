@@ -41,9 +41,6 @@ class TransactionType(str, Enum):
     OTHER = "other"
 
 
-# --- Records ---
-
-
 @dataclass(frozen=True)
 class Filing:
     """Maps to the `financial_disclosure` table."""
@@ -101,11 +98,7 @@ class Transaction:
 
 @dataclass(frozen=True)
 class OutsidePosition:
-    """Outside positions reported in annual disclosures.
-
-    Not a separate canonical table in v1 but parsed from filings
-    and stored as holding-adjacent metadata.
-    """
+    """No canonical table in v1; parsed and stored as holding-adjacent metadata."""
 
     line_number: int
     owner_type: OwnerType

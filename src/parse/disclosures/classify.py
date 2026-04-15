@@ -1,9 +1,4 @@
-"""Heuristic classification for disclosure PDFs.
-
-Determines whether a PDF is text-based or image-based and whether it
-should be routed to the review queue. No OCR or network calls here --
-callers provide pre-extracted heuristic inputs.
-"""
+"""Heuristic PDF classification.  No OCR or network calls; callers supply pre-extracted inputs."""
 
 from __future__ import annotations
 
@@ -34,16 +29,11 @@ class ReviewTrigger(str, Enum):
 
 # --- Thresholds ---
 
-# Fraction of pages with extractable text to be considered text-based.
 _TEXT_PAGE_RATIO_THRESHOLD = 0.80
-
-# Minimum average characters per text-page to count as truly text-based.
 _MIN_CHARS_PER_TEXT_PAGE = 200
-
 # House filings use a stricter text ratio because they are more often scanned.
 _HOUSE_TEXT_PAGE_RATIO_THRESHOLD = 0.90
 
-# Expected section headers for annual filings (lowercase).
 _ANNUAL_SECTION_HEADERS = frozenset({
     "schedule a",
     "schedule b",
@@ -60,7 +50,6 @@ _ANNUAL_SECTION_HEADERS = frozenset({
     "part ix",
 })
 
-# Minimal expected headers for PTRs.
 _PTR_SECTION_HEADERS = frozenset({
     "transaction",
     "owner",
@@ -72,12 +61,6 @@ _PTR_SECTION_HEADERS = frozenset({
 
 @dataclass(frozen=True)
 class PdfHeuristicInput:
-    """Pre-extracted heuristic signals from a disclosure PDF.
-
-    These are computed by the caller (e.g. a lightweight PDF reader)
-    and fed into classify_pdf.
-    """
-
     total_pages: int
     text_pages: int
     avg_chars_per_text_page: float
@@ -94,8 +77,6 @@ class PdfHeuristicInput:
 
 @dataclass(frozen=True)
 class ClassifyResult:
-    """Output of PDF classification."""
-
     pdf_kind: PdfKind
     review_triggers: tuple[ReviewTrigger, ...]
     needs_ocr: bool
@@ -103,7 +84,6 @@ class ClassifyResult:
 
 
 def classify_pdf(inp: PdfHeuristicInput) -> ClassifyResult:
-    """Classify a disclosure PDF and decide review routing."""
     triggers: list[ReviewTrigger] = []
 
     # --- PDF kind ---

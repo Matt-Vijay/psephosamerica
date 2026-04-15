@@ -37,9 +37,8 @@ _CACHE_MAX_AGE = 3600  # 1 hour — matches weekly recompute cadence
 
 def make_batch_meta(
     snapshot_date: date,
-    published_at: datetime | None = None,
+    published_at: datetime | None = None,  # defaults to now (UTC)
 ) -> BatchMeta:
-    """Return a :class:`BatchMeta`, defaulting *published_at* to now (UTC)."""
     return BatchMeta(
         snapshot_date=snapshot_date,
         published_at=published_at if published_at is not None else datetime.now(UTC),
@@ -50,22 +49,18 @@ def make_batch_meta(
 
 
 def wrap_zip(payload: ZipFeedPayload, meta: BatchMeta) -> ZipResponse:
-    """Wrap a ZIP feed payload in the standard API envelope."""
     return ApiEnvelope[ZipFeedPayload](meta=meta, data=payload)
 
 
 def wrap_member(payload: MemberProfilePayload, meta: BatchMeta) -> MemberResponse:
-    """Wrap a member profile payload in the standard API envelope."""
     return ApiEnvelope[MemberProfilePayload](meta=meta, data=payload)
 
 
 def wrap_evidence(payload: EvidenceCardPayload, meta: BatchMeta) -> EvidenceResponse:
-    """Wrap an evidence card payload in the standard API envelope."""
     return ApiEnvelope[EvidenceCardPayload](meta=meta, data=payload)
 
 
 def wrap_last_updated(snapshot_date: date, published_at: datetime) -> LastUpdatedResponse:
-    """Build the ``/api/v1/meta/last-updated`` response."""
     meta = make_batch_meta(snapshot_date, published_at)
     return ApiEnvelope[LastUpdatedPayload](
         meta=meta,
@@ -80,11 +75,7 @@ def make_headers(
     snapshot_date: date,
     etag: str | None = None,
 ) -> dict[str, str]:
-    """Return a stable headers dict for a read-API response.
-
-    Always returns a fresh copy; callers may mutate it freely.
-    ETags that are not already quoted are wrapped in double-quotes per RFC 7232.
-    """
+    # Always returns a fresh copy.  Unquoted ETags are wrapped per RFC 7232.
     headers: dict[str, str] = {
         "Content-Type": "application/json; charset=utf-8",
         "Cache-Control": f"public, max-age={_CACHE_MAX_AGE}",
@@ -99,7 +90,6 @@ def make_headers(
 
 
 def not_found(resource_type: str, identifier: str) -> NotFoundBody:
-    """Return a consistent not-found response body for any endpoint."""
     return NotFoundBody(
         resource_type=resource_type,
         identifier=identifier,

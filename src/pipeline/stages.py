@@ -1,9 +1,6 @@
-"""Generic recompute pipeline stage runner.
+"""Generic pipeline stage runner — typed structures and pure orchestration.
 
-Typed structures and pure orchestration helpers only.
-No DB, no network, no I/O.  Provenance event emission is supported via the
-ProvenanceEmitter protocol so callers can hook in without creating a dependency
-on any I/O layer here.
+No DB, no network, no I/O.  Inject a ProvenanceEmitter for lifecycle hooks.
 """
 
 from __future__ import annotations
@@ -21,9 +18,9 @@ from typing import Any, Callable, Optional, Protocol, runtime_checkable
 class StageDefinition:
     """Immutable description of one pipeline stage.
 
-    ``fn`` receives ``(context, logs)`` where *context* is a shared mutable
-    dict and *logs* is a ``list[str]`` that the function may append to.
-    It should return any output value on success, or raise on failure.
+    ``fn(context, logs)`` — *context* is the shared mutable dict; *logs* is a
+    fresh ``list[str]`` the function may append to.  Return a value on success
+    or raise on failure.
     """
 
     name: str
@@ -51,7 +48,6 @@ class StageResult:
         return self.status == "failed"
 
     def summary(self) -> dict[str, Any]:
-        """Serialisable status summary for logging and provenance."""
         return {
             "stage": self.stage_name,
             "status": self.status,
@@ -82,7 +78,6 @@ class PipelineResult:
         return self.status == "failed"
 
     def summary(self) -> dict[str, Any]:
-        """Serialisable summary of all stage outcomes."""
         return {
             "status": self.status,
             "stage_count": len(self.stage_results),
@@ -93,7 +88,7 @@ class PipelineResult:
         }
 
     def logs_for(self, stage_name: str) -> list[str]:
-        """Return the log lines accumulated by the named stage, or [] if absent."""
+        """Log lines accumulated by the named stage, or [] if absent."""
         for r in self.stage_results:
             if r.stage_name == stage_name:
                 return r.logs
@@ -106,19 +101,13 @@ class PipelineResult:
 
 @runtime_checkable
 class ProvenanceEmitter(Protocol):
-    """Protocol for objects that receive pipeline lifecycle events.
-
-    Implementations may write to a DB, append to a list, or do nothing.
-    The runner calls these synchronously but holds no reference to any I/O
-    implementation — callers inject one, or omit it for the NullEmitter default.
-    """
+    """Receives pipeline lifecycle events.  Inject one or omit for NullEmitter."""
 
     def on_stage_start(self, stage_name: str) -> None: ...  # noqa: E704
     def on_stage_end(self, result: StageResult) -> None: ...  # noqa: E704
 
 
 class NullEmitter:
-    """Default no-op emitter used when no emitter is provided."""
 
     def on_stage_start(self, stage_name: str) -> None:
         pass
@@ -136,12 +125,7 @@ def run_stage(
     context: dict[str, Any],
     emitter: Optional[ProvenanceEmitter] = None,
 ) -> StageResult:
-    """Run a single stage and return its StageResult.
-
-    The stage function is called as ``stage.fn(context, logs)`` where *logs*
-    is a fresh ``list[str]``.  Any exception is captured in the result;
-    nothing is re-raised.
-    """
+    """Run one stage.  Exceptions are captured in the result; nothing is re-raised."""
     _emitter: ProvenanceEmitter = emitter or NullEmitter()
     _emitter.on_stage_start(stage.name)
 
@@ -183,11 +167,8 @@ def run_pipeline(
     *,
     stop_on_failure: bool = True,
 ) -> PipelineResult:
-    """Run an ordered sequence of stages and return the aggregate PipelineResult.
-
-    When ``stop_on_failure`` is ``True`` (the default), the first failed stage
-    causes all subsequent stages to be recorded as ``"skipped"`` without calling
-    the emitter for them.
+    """Run stages in order.  On failure with stop_on_failure=True, remaining stages
+    are recorded as ``"skipped"`` and the emitter is not called for them.
     """
     pipeline_result = PipelineResult()
     halted = False

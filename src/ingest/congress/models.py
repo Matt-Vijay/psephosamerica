@@ -1,8 +1,6 @@
-"""Typed ingest-boundary records for congressional data sources.
+"""Ingest-boundary records for congressional source data.
 
-These models represent normalized payloads at the ingest boundary — after
-fetching and light parsing, before any DB writes.  Field names align with
-the canonical schema in db/schema.sql.
+After fetching and light parsing; before any DB writes.
 """
 
 from __future__ import annotations
@@ -12,14 +10,8 @@ from dataclasses import dataclass
 from typing import Literal
 
 
-# ---------------------------------------------------------------------------
-# Member
-# ---------------------------------------------------------------------------
-
 @dataclass(frozen=True, slots=True)
 class MemberRecord:
-    """A single member as returned by the Congress.gov /member endpoint."""
-
     bioguide_id: str
     first_name: str
     last_name: str
@@ -35,14 +27,8 @@ class MemberRecord:
     source_url: str | None = None
 
 
-# ---------------------------------------------------------------------------
-# Committee
-# ---------------------------------------------------------------------------
-
 @dataclass(frozen=True, slots=True)
 class CommitteeRecord:
-    """A committee record from the Congress.gov /committee endpoint."""
-
     committee_code: str
     congress: int
     chamber: Literal["house", "senate", "joint"]
@@ -52,14 +38,8 @@ class CommitteeRecord:
     source_url: str | None = None
 
 
-# ---------------------------------------------------------------------------
-# Bill
-# ---------------------------------------------------------------------------
-
 @dataclass(frozen=True, slots=True)
 class BillRecord:
-    """A bill summary from the Congress.gov /bill endpoint."""
-
     congress: int
     bill_type: Literal["hr", "s", "hjres", "sjres", "hconres", "sconres", "hres", "sres"]
     bill_number: int
@@ -73,8 +53,6 @@ class BillRecord:
 
 @dataclass(frozen=True, slots=True)
 class CosponsorRecord:
-    """A cosponsor link from the Congress.gov /bill/{}/cosponsors endpoint."""
-
     congress: int
     bill_type: str
     bill_number: int
@@ -84,14 +62,8 @@ class CosponsorRecord:
     source_url: str | None = None
 
 
-# ---------------------------------------------------------------------------
-# Vote event + vote cast
-# ---------------------------------------------------------------------------
-
 @dataclass(frozen=True, slots=True)
 class VoteEventRecord:
-    """A single roll-call vote event (House or Senate)."""
-
     chamber: Literal["house", "senate"]
     congress: int
     session_number: int
@@ -104,11 +76,8 @@ class VoteEventRecord:
 
 @dataclass(frozen=True, slots=True)
 class VoteCastRecord:
-    """A single member's vote within a roll-call event.
-
-    For House votes the identifier is ``bioguide_id``.
-    For Senate votes the raw identifier is ``lis_member_id``; downstream
-    resolution maps it to ``bioguide_id``.
+    """House votes use bioguide_id; Senate votes arrive with lis_member_id only.
+    Downstream crosswalk resolution fills bioguide_id for Senate records.
     """
 
     chamber: Literal["house", "senate"]

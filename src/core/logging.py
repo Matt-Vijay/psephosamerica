@@ -23,7 +23,6 @@ class _JSONFormatter(logging.Formatter):
 
 
 def get_logger(name: str, *, level: int = logging.INFO) -> logging.Logger:
-    """Return a structured JSON logger writing to stderr."""
     logger = logging.getLogger(name)
     if not logger.handlers:
         handler = logging.StreamHandler(sys.stderr)

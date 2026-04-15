@@ -104,8 +104,6 @@ class ResolutionSummary:
 
 @dataclass
 class ResolutionResult:
-    """Output of :func:`resolve_foreign_keys`."""
-
     rows: list[dict[str, Any]]
     summary: ResolutionSummary
 
@@ -114,10 +112,10 @@ class ResolutionResult:
 # Suffix / key constants
 # ---------------------------------------------------------------------------
 
-_BIOGUIDE_SUFFIX = "_bioguide_id"          # len 12
-_LIS_SUFFIX = "_lis_member_id"             # len 14
-_COMMITTEE_CODE_SUFFIX = "_committee_code" # len 15
-_RAW_SUFFIX = "_raw"                       # len 4
+_BIOGUIDE_SUFFIX = "_bioguide_id"
+_LIS_SUFFIX = "_lis_member_id"
+_COMMITTEE_CODE_SUFFIX = "_committee_code"
+_RAW_SUFFIX = "_raw"
 _DISCLOSURE_NK_KEY = "_financial_disclosure_natural_key"
 
 
@@ -150,7 +148,6 @@ def _derive_fk_col(hint_key: str, suffix: str, fallback: str) -> str:
 
 
 def _is_hint_key(key: str) -> bool:
-    """Return True when *key* matches any known hint-key pattern."""
     return (
         key.endswith(_BIOGUIDE_SUFFIX)
         or key.endswith(_LIS_SUFFIX)
@@ -166,11 +163,7 @@ def _resolve_row(
     maps: dict[str, Any],
     failures: list[ResolutionFailure],
 ) -> dict[str, Any]:
-    """Resolve all hint keys in one row.
-
-    Returns a new dict; the original *row* is not mutated.  Hint keys are
-    consumed (not copied into the output).  Regular keys pass through as-is.
-    """
+    """Resolve all hint keys in one row; returns a new dict (original not mutated)."""
     out: dict[str, Any] = {}
 
     for key, value in row.items():
@@ -194,8 +187,6 @@ def _resolve_row(
 
         # ----------------------------------------------------------------
         # 2. lis_member_id  →  member_id (or *_id)
-        # NOTE: checked before _bioguide_id won't overlap, but after to be
-        #       explicit about priority.
         # ----------------------------------------------------------------
         elif key.endswith(_LIS_SUFFIX):
             fk_col = _derive_fk_col(key, _LIS_SUFFIX, "member_id")
@@ -287,9 +278,6 @@ def _resolve_row(
                     else:
                         out["financial_disclosure_id"] = nk_map[nk_tuple]
 
-        # ----------------------------------------------------------------
-        # Regular column — pass through unchanged
-        # ----------------------------------------------------------------
         else:
             out[key] = value
 
@@ -297,7 +285,6 @@ def _resolve_row(
 
 
 def _count_hint_keys(row: dict[str, Any]) -> int:
-    """Return the number of hint keys present in *row*."""
     return sum(1 for k in row if _is_hint_key(k))
 
 
@@ -339,16 +326,6 @@ def resolve_foreign_keys(
             filing_year, filing_type, amendment_number) →
             financial_disclosure.id
 
-    Returns
-    -------
-    ResolutionResult
-        ``rows`` — resolved row dicts (hint keys consumed; FKs injected where
-        resolvable).  Rows with failures are included but lack the unresolved
-        FK column.
-
-        ``summary`` — counts and a list of :class:`ResolutionFailure` objects
-        describing every failure.  Inspect ``summary.ok`` for a quick pass/
-        fail gate.
     """
     if maps is None:
         maps = {}

@@ -1,5 +1,3 @@
-"""Tests for src/export/filesystem.py — local filesystem publisher."""
-
 from __future__ import annotations
 
 import json

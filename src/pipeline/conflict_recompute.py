@@ -1,14 +1,7 @@
 """Conflict-of-interest recompute orchestrator over pre-joined inputs.
 
-Pure orchestration only.  No DB, no filesystem, no network calls.
-
-Accepts joined row-shaped inputs per rule family and emits:
-  - rule fires (``RuleFire`` objects)
-  - evidence card payloads (``EvidenceCardPayload`` objects)
-  - per-member grouped results (``MemberRecomputeResult`` mapping)
-
-Evidence card ID generation is injectable via ``EvidenceCardIdGenerator``
-so this module stays side-effect-free and fully testable.
+Pure orchestration only — no DB, no filesystem, no network calls.
+Evidence card ID generation is injectable so this module stays fully testable.
 """
 
 from __future__ import annotations
@@ -36,12 +29,10 @@ from src.rules.models import RuleDefinition, RuleFire, Severity
 # Public types
 # ---------------------------------------------------------------------------
 
-#: Callable that receives a RuleFire and returns a stable public ID string.
 EvidenceCardIdGenerator = Callable[[RuleFire], str]
 
 
 def _default_id_generator(fire: RuleFire) -> str:
-    """Return the canonical deterministic public evidence-card ID."""
     return build_evidence_card_id(
         bioguide_id=fire.member_bioguide_id,
         rule_id=fire.rule_id,
@@ -52,8 +43,6 @@ def _default_id_generator(fire: RuleFire) -> str:
 
 @dataclass
 class MemberRecomputeResult:
-    """Rule fires and evidence cards aggregated for a single member."""
-
     member_bioguide_id: str
     rule_fires: list[RuleFire] = field(default_factory=list)
     evidence_cards: list[EvidenceCardPayload] = field(default_factory=list)
@@ -61,8 +50,6 @@ class MemberRecomputeResult:
 
 @dataclass
 class RecomputeResult:
-    """Full output of one conflict recompute pass."""
-
     rule_fires: list[RuleFire] = field(default_factory=list)
     evidence_cards: list[EvidenceCardPayload] = field(default_factory=list)
     by_member: dict[str, MemberRecomputeResult] = field(default_factory=dict)
@@ -98,11 +85,7 @@ def _assemble_bundles(
     family: str,
     rows: list[dict[str, Any]],
 ) -> list[ConflictBundle]:
-    """Assemble ConflictBundles from raw pre-joined rows for *family*.
-
-    Unknown families return an empty list so callers can pass extra families
-    without errors.
-    """
+    """Unknown families silently return [] so callers can pass extra families."""
     assembler = _FAMILY_ASSEMBLERS.get(family)
     if assembler is None:
         return []
@@ -116,7 +99,6 @@ def _build_card_from_fire(
     snapshot_date: dt.date,
     id_generator: EvidenceCardIdGenerator,
 ) -> EvidenceCardPayload:
-    """Assemble one EvidenceCardPayload from a fire and its originating bundle."""
     card_id = id_generator(fire)
     score_delta = _SEVERITY_SCORE.get(fire.severity, 1.0)
     fact_texts = [fire.explanation] if fire.explanation else []
@@ -140,17 +122,10 @@ def _fires_for_bundle(
     family_rules: list[RuleDefinition],
     recompute_run_id: str,
 ) -> list[RuleFire]:
-    """Evaluate all *family_rules* against a single bundle's context.
-
-    Rule parameters are injected into the facts dict using dotted keys
-    (``parameters.<name>``) so that ``value_ref`` conditions in the YAML
-    rule definitions resolve correctly.  Evaluating one bundle at a time
-    gives exact fire-to-bundle pairing without post-hoc reconstruction.
-    """
+    # Rule parameters are injected as ``parameters.<name>`` so that
+    # ``value_ref`` conditions in the YAML rule definitions resolve correctly.
     fires: list[RuleFire] = []
     for rule in family_rules:
-        # Merge rule parameters into a copy of the context so the evaluator
-        # can resolve ``value_ref: parameters.<name>`` conditions.
         enriched = dict(bundle.context)
         for param_name, param_val in rule.parameters.items():
             enriched[f"parameters.{param_name}"] = param_val
@@ -183,22 +158,8 @@ def recompute_conflicts(
 ) -> RecomputeResult:
     """Orchestrate conflict-of-interest recomputation over pre-joined rows.
 
-    Args:
-        rows_by_family: Mapping of rule family name → list of pre-joined row
-            dicts.  Each row must satisfy the key contract of the matching
-            ``assemble_*_bundle`` helper in ``src.query.conflict``.
-        members_by_bioguide: Mapping of ``bioguide_id`` → member dict with at
-            least ``bioguide_id``, ``full_name`` (or ``name``), and ``slug``.
-        recompute_run_id: Provenance ID for the current recompute run.
-        snapshot_date: Calendar date of this recompute snapshot.
-        rules: Pre-loaded rule list.  Pass an explicit list in tests or when
-            the caller controls rule loading.  When ``None``, canonical rules
-            are loaded from disk (normal production path).
-        id_generator: Maps a RuleFire to a stable public evidence card ID.
-
-    Returns:
-        A ``RecomputeResult`` with flat ``rule_fires`` / ``evidence_cards``
-        lists plus a ``by_member`` dict keyed by ``bioguide_id``.
+    Pass ``rules`` explicitly in tests; ``None`` loads canonical rules from disk.
+    ``id_generator`` maps each RuleFire to a stable public evidence-card ID.
     """
     if rules is None:
         rules = load_canonical_rules()
@@ -251,18 +212,7 @@ def group_by_member(
     fires: list[RuleFire],
     cards: list[EvidenceCardPayload],
 ) -> dict[str, MemberRecomputeResult]:
-    """Group pre-computed fires and cards into per-member buckets.
-
-    Useful when callers already hold flat lists and need the grouped view
-    without re-running orchestration.
-
-    Args:
-        fires: Flat list of RuleFire objects.
-        cards: Flat list of EvidenceCardPayload objects (parallel to fires).
-
-    Returns:
-        Dict mapping ``bioguide_id`` → MemberRecomputeResult.
-    """
+    """Group flat fires and cards into per-member buckets without re-running orchestration."""
     buckets: dict[str, MemberRecomputeResult] = {}
 
     for fire in fires:

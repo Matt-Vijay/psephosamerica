@@ -114,19 +114,8 @@ def write_table_batch(
 ) -> TableWriteResult:
     """Write one batch of rows to *table* and return a TableWriteResult.
 
-    Args:
-        conn:             Open psycopg connection (or compatible).
-        table:            Unquoted canonical table name.
-        rows:             List of row dicts; all rows should share the same keys.
-        conflict_columns: Columns forming the conflict/unique target.
-                          Required for 'upsert'; optional for 'ignore'.
-        mode:             One of 'insert', 'upsert', 'ignore'.
-
-    Returns:
-        TableWriteResult with counts populated.
-        For 'insert'/'upsert' modes, written rows are counted as *inserted*.
-        For 'ignore' mode, all rows are counted as *skipped* because we cannot
-        distinguish accepted vs conflicting rows without per-row cursor inspection.
+    For 'ignore' mode all rows are counted as *skipped*: psycopg execute_many
+    does not distinguish accepted vs conflicting rows without per-row inspection.
     """
     if mode not in _VALID_MODES:
         raise ValueError(f"mode must be one of {sorted(_VALID_MODES)}, got {mode!r}")
@@ -156,22 +145,10 @@ def write_table_batches(
     """Write many table batches in order and return an aggregated LoadSummary.
 
     Each element of *batches* is a plain dict with keys:
-        table            (str)       — required
+        table            (str)        — required
         rows             (list[dict]) — required
-        conflict_columns (list[str]) — optional, default []
-        mode             (str)       — optional, default 'insert'
-
-    Batches with empty ``rows`` are skipped cleanly (no DB call is made).
-
-    Args:
-        conn:       Open psycopg connection (or compatible).
-        batches:    Ordered sequence of batch specification dicts.
-        run_id:     Optional ingestion run id to embed in the LoadSummary.
-        warn_error: Optional WarnErrorSummary to embed; a fresh one is created
-                    if not supplied.
-
-    Returns:
-        LoadSummary aggregating results across all batches.
+        conflict_columns (list[str])  — optional, default []
+        mode             (str)        — optional, default 'insert'
     """
     results: list[TableWriteResult] = []
 

@@ -1,13 +1,8 @@
-"""ZIP-to-federal-representatives resolution layer.
+"""ZIP-to-federal-representatives resolution.
 
-Pure helpers only.  No I/O, no network calls, no geocoder.
-
-Callers supply precomputed row-shaped data; this module selects the
-plurality House district, emits an ambiguity note when a ZIP crosses
-district boundaries, and assembles the canonical 3-member federal bundle
-(1 House member + 2 senators).
-
-Congress only.  No state or local officials.
+Pure helpers — no I/O, no network calls, no geocoder.  Callers supply
+precomputed row-shaped data.  Returns a canonical 3-member federal bundle
+(1 House member + 2 senators).  Federal Congress only; no state or local.
 """
 
 from __future__ import annotations
@@ -16,18 +11,12 @@ from dataclasses import dataclass
 from typing import Sequence
 
 
-# ---------------------------------------------------------------------------
-# Input row shapes  (caller-supplied; no I/O performed here)
-# ---------------------------------------------------------------------------
-
-
 @dataclass(frozen=True)
 class ZipDistrictRow:
     """One row from the Census ZIP/ZCTA-to-congressional-district crosswalk.
 
-    ``population_share`` is the fraction of the ZIP's population that falls
-    inside this district (0.0 < share <= 1.0).  Rows for the same ZIP sum
-    to approximately 1.0.
+    ``population_share``: fraction of the ZIP's population in this district
+    (0.0 < share <= 1.0).  Rows for the same ZIP sum to approximately 1.0.
     """
 
     zip5: str
@@ -38,8 +27,6 @@ class ZipDistrictRow:
 
 @dataclass(frozen=True)
 class DistrictMemberRow:
-    """Current House member for one state/district pair."""
-
     state: str
     district: int
     bioguide_id: str
@@ -50,36 +37,25 @@ class DistrictMemberRow:
 
 @dataclass(frozen=True)
 class SenatorRow:
-    """One of the two current senators for a state."""
-
     state: str
     bioguide_id: str
     full_name: str
     party: str
     slug: str
-    seat: int           # 1 or 2, distinguishes the two seats
-
-
-# ---------------------------------------------------------------------------
-# Output types
-# ---------------------------------------------------------------------------
+    seat: int  # 1 or 2
 
 
 @dataclass(frozen=True)
 class MemberRef:
-    """Lightweight member reference used inside the federal bundle."""
-
     bioguide_id: str
     full_name: str
     party: str
     slug: str
-    chamber: str        # "house" or "senate"
+    chamber: str  # "house" or "senate"
 
 
 @dataclass(frozen=True)
 class PluralityDistrict:
-    """Result of selecting the plurality district for a ZIP."""
-
     state: str
     district: int
     population_share: float
@@ -89,11 +65,10 @@ class PluralityDistrict:
 
 @dataclass(frozen=True)
 class FederalBundle:
-    """The 3-member federal bundle for one ZIP lookup.
+    """3-member federal bundle for one ZIP lookup.
 
-    ``house_member`` is None only when the plurality district has no
-    matching member row (data gap, not a logic error).
-    ``senators`` may have 0-2 entries for the same reason.
+    ``house_member`` is None only on a data gap (missing member row), not a
+    logic error.  ``senators`` may have 0-2 entries for the same reason.
     """
 
     zip5: str
@@ -102,22 +77,14 @@ class FederalBundle:
     senators: tuple[MemberRef, ...]
 
 
-# ---------------------------------------------------------------------------
-# Core helpers
-# ---------------------------------------------------------------------------
-
-
 def select_plurality_district(
     zip5: str,
     zip_district_rows: Sequence[ZipDistrictRow],
 ) -> PluralityDistrict | None:
-    """Return the district with the largest population share for *zip5*.
+    """Return the highest-population-share district for zip5, or None if unknown.
 
-    Returns ``None`` when no rows match the given ZIP.
-
-    When a ZIP maps to exactly one district, ``is_ambiguous`` is False and
-    ``ambiguity_note`` is None.  When it maps to multiple districts,
-    ``is_ambiguous`` is True and ``ambiguity_note`` describes the situation.
+    Sets is_ambiguous=True and populates ambiguity_note when the ZIP spans
+    multiple districts.
     """
     rows = [r for r in zip_district_rows if r.zip5 == zip5]
     if not rows:
@@ -129,10 +96,9 @@ def select_plurality_district(
 
     note: str | None = None
     if is_ambiguous:
-        others = rows_sorted[1:]
         other_desc = ", ".join(
             f"{r.state}-{r.district:02d} ({r.population_share:.0%})"
-            for r in others
+            for r in rows_sorted[1:]
         )
         note = (
             f"ZIP {zip5} spans multiple congressional districts. "
@@ -156,7 +122,6 @@ def find_house_member(
     district: int,
     district_member_rows: Sequence[DistrictMemberRow],
 ) -> MemberRef | None:
-    """Return the House member for a given state/district, or None if absent."""
     for row in district_member_rows:
         if row.state == state and row.district == district:
             return MemberRef(
@@ -173,7 +138,6 @@ def find_senators(
     state: str,
     senator_rows: Sequence[SenatorRow],
 ) -> tuple[MemberRef, ...]:
-    """Return the (up to two) current senators for *state*, ordered by seat."""
     matched = sorted(
         (r for r in senator_rows if r.state == state),
         key=lambda r: r.seat,
@@ -196,22 +160,14 @@ def assemble_federal_bundle(
     district_member_rows: Sequence[DistrictMemberRow],
     senator_rows: Sequence[SenatorRow],
 ) -> FederalBundle | None:
-    """Build the complete 3-member federal bundle for *zip5*.
-
-    Returns ``None`` when *zip5* has no district mapping rows at all.
-    """
+    """Build the 3-member federal bundle for zip5.  Returns None if ZIP is unknown."""
     plurality = select_plurality_district(zip5, zip_district_rows)
     if plurality is None:
         return None
 
-    house_member = find_house_member(
-        plurality.state, plurality.district, district_member_rows
-    )
-    senators = find_senators(plurality.state, senator_rows)
-
     return FederalBundle(
         zip5=zip5,
         plurality_district=plurality,
-        house_member=house_member,
-        senators=senators,
+        house_member=find_house_member(plurality.state, plurality.district, district_member_rows),
+        senators=find_senators(plurality.state, senator_rows),
     )

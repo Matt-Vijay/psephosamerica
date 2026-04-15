@@ -1,16 +1,13 @@
-"""Helpers for reading FEC bulk-data files.
+"""Typed row parsers for FEC bulk-data files.
 
-FEC distributes data as pipe-delimited text files with no header row.
-Column positions are fixed per file type and documented in the FEC bulk
-data guide.  This module provides typed row parsers for the three file
-types needed at launch:
+FEC distributes pipe-delimited text with no header row; column positions are
+fixed per file type (FEC bulk data guide). No network calls; each parser is a
+generator over an already-downloaded file path.
 
+Supported files:
   - Committee Master      (cm.txt)
   - Candidate-Committee   (ccl.txt)
-  - Individual Contribs   (indiv.txt)
-
-No network calls.  Each parser is a generator that yields typed records
-from an already-downloaded file path.
+  - Individual Contribs   (indiv.txt / itcont.txt)
 """
 
 from __future__ import annotations
@@ -23,20 +20,14 @@ from typing import Generator, TextIO, Union
 
 from .models import CandidateCommitteeLinkage, CommitteeRecord, ContributionRecord
 
-# ---------------------------------------------------------------------------
-# Internal helpers
-# ---------------------------------------------------------------------------
-
 _PIPE = "|"
 
 
 def _open_bulk(path: Union[str, Path]) -> TextIO:
-    """Open an FEC bulk file with the expected encoding."""
     return open(path, "r", encoding="latin-1", newline="")
 
 
 def _field(row: list[str], idx: int) -> str | None:
-    """Return stripped field or None if missing / empty."""
     if idx >= len(row):
         return None
     val = row[idx].strip()
@@ -44,7 +35,6 @@ def _field(row: list[str], idx: int) -> str | None:
 
 
 def _parse_fec_date(raw: str | None) -> datetime.date | None:
-    """Parse MM/DD/YYYY or MMDDYYYY date strings used in FEC files."""
     if not raw:
         return None
     raw = raw.strip()
@@ -57,7 +47,6 @@ def _parse_fec_date(raw: str | None) -> datetime.date | None:
 
 
 def _parse_amount(raw: str | None) -> Decimal:
-    """Parse a contribution amount, defaulting to zero on failure."""
     if not raw:
         return Decimal(0)
     try:
@@ -66,9 +55,7 @@ def _parse_amount(raw: str | None) -> Decimal:
         return Decimal(0)
 
 
-# ---------------------------------------------------------------------------
-# Committee Master  (cm.txt)
-# Column layout per FEC bulk-data guide
+# Committee Master (cm.txt)
 # 0  CMTE_ID
 # 1  CMTE_NM
 # 2  TRES_NM
@@ -84,10 +71,8 @@ def _parse_amount(raw: str | None) -> Decimal:
 # 12 ORG_TP
 # 13 CONNECTED_ORG_NM
 # 14 CAND_ID
-# ---------------------------------------------------------------------------
 
 def iter_committee_master(path: Union[str, Path]) -> Generator[CommitteeRecord, None, None]:
-    """Yield CommitteeRecord from a committee-master bulk file."""
     with _open_bulk(path) as fh:
         reader = csv.reader(fh, delimiter=_PIPE, quoting=csv.QUOTE_NONE)
         for row in reader:
@@ -108,8 +93,7 @@ def iter_committee_master(path: Union[str, Path]) -> Generator[CommitteeRecord, 
             )
 
 
-# ---------------------------------------------------------------------------
-# Candidate-Committee Linkage  (ccl.txt)
+# Candidate-Committee Linkage (ccl.txt)
 # 0  CAND_ID
 # 1  CAND_ELECTION_YR
 # 2  FEC_ELECTION_YR
@@ -117,12 +101,10 @@ def iter_committee_master(path: Union[str, Path]) -> Generator[CommitteeRecord, 
 # 4  CMTE_TP
 # 5  CMTE_DSGN
 # 6  LINKAGE_ID
-# ---------------------------------------------------------------------------
 
 def iter_candidate_committee_linkage(
     path: Union[str, Path],
 ) -> Generator[CandidateCommitteeLinkage, None, None]:
-    """Yield CandidateCommitteeLinkage from a ccl bulk file."""
     with _open_bulk(path) as fh:
         reader = csv.reader(fh, delimiter=_PIPE, quoting=csv.QUOTE_NONE)
         for row in reader:
@@ -145,8 +127,7 @@ def iter_candidate_committee_linkage(
             )
 
 
-# ---------------------------------------------------------------------------
-# Individual Contributions  (itcont.txt / indiv.txt)
+# Individual Contributions (itcont.txt / indiv.txt)
 # 0  CMTE_ID
 # 1  AMNDT_IND
 # 2  RPT_TP
@@ -168,12 +149,10 @@ def iter_candidate_committee_linkage(
 # 18 MEMO_CD
 # 19 MEMO_TEXT
 # 20 SUB_ID
-# ---------------------------------------------------------------------------
 
 def iter_individual_contributions(
     path: Union[str, Path],
 ) -> Generator[ContributionRecord, None, None]:
-    """Yield ContributionRecord from an individual-contributions bulk file."""
     with _open_bulk(path) as fh:
         reader = csv.reader(fh, delimiter=_PIPE, quoting=csv.QUOTE_NONE)
         for row in reader:

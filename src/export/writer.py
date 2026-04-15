@@ -1,14 +1,4 @@
-"""Local snapshot/export writer layer.
-
-Pure helpers for:
-- serialising payload models to deterministic JSON bytes
-- computing output paths for member, ZIP, evidence, and manifest artefacts
-- assembling a snapshot directory plan from existing export contracts
-
-No I/O, no R2 client.  The :class:`PlannedFile` list returned by
-:func:`plan_snapshot` can be handed to an upload layer or written to a
-local staging directory.
-"""
+"""Snapshot writer: serialize payloads, compute paths, plan files.  No I/O."""
 
 from __future__ import annotations
 
@@ -26,12 +16,7 @@ from .contracts import EvidenceCardPayload, MemberProfilePayload, ZipFeedPayload
 
 
 def serialize_payload(payload: BaseModel) -> bytes:
-    """Serialise a Pydantic model to deterministic UTF-8 JSON bytes.
-
-    Keys are sorted at every level to ensure byte-for-byte reproducibility
-    across Python versions.  Dates and datetimes are emitted as ISO-8601
-    strings via Pydantic's ``mode="json"`` round-trip.
-    """
+    # sort_keys ensures byte-for-byte reproducibility across Python versions
     raw: dict[str, Any] = payload.model_dump(mode="json")
     return json.dumps(raw, sort_keys=True, ensure_ascii=False).encode("utf-8")
 
@@ -40,22 +25,18 @@ def serialize_payload(payload: BaseModel) -> bytes:
 
 
 def member_path(slug: str) -> str:
-    """Relative output path for a member profile artifact."""
     return f"members/{slug}.json"
 
 
 def zip_path(zip_code: str) -> str:
-    """Relative output path for a ZIP feed artifact."""
     return f"zip/{zip_code}.json"
 
 
 def evidence_path(evidence_card_id: str) -> str:
-    """Relative output path for an evidence card artifact."""
     return f"evidence/{evidence_card_id}.json"
 
 
 def manifest_path(snapshot_id: str) -> str:
-    """Relative output path for the snapshot manifest."""
     return f"snapshots/{snapshot_id}/manifest.json"
 
 
@@ -77,7 +58,6 @@ class PlannedFile:
 
     @classmethod
     def from_bytes(cls, path: str, content: bytes) -> PlannedFile:
-        """Create a :class:`PlannedFile` with hash and size computed from *content*."""
         return cls(
             path=path,
             content=content,
@@ -95,20 +75,8 @@ def plan_snapshot(
     zip_feeds: list[ZipFeedPayload],
     evidence_cards: list[EvidenceCardPayload],
 ) -> list[PlannedFile]:
-    """Assemble the full set of files that make up one published snapshot.
-
-    Returns a deterministic, ordered :class:`PlannedFile` list:
-
-    1. Member profiles  (``members/<slug>.json``)
-    2. ZIP feeds        (``zip/<zip_code>.json``)
-    3. Evidence cards   (``evidence/<id>.json``)
-    4. Manifest         (``snapshots/<snapshot_id>/manifest.json``)
-
-    The manifest is always appended last so callers can stream data files
-    first.  It covers only the data files, not itself.
-
-    No I/O or network calls occur inside this function.
-    """
+    # Manifest is always last so callers can stream data files first.
+    # It covers only the data files, not itself.
     planned: list[PlannedFile] = []
 
     for profile in member_profiles:

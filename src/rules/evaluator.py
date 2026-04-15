@@ -1,13 +1,7 @@
-"""Deterministic rule evaluator.
+"""Deterministic rule evaluator: conditions against a flat fact dict → RuleFire | None.
 
-Evaluates RuleDefinition.conditions against a flat fact context and
-returns either None (no fire) or a RuleFire.
-
-Only supports the operators defined in Operator.  Missing-data handling
-follows MissingDataPolicy.no_fire: any missing fact causes the whole
-rule evaluation to return None.
-
-No cross-record joins or pipeline engine logic lives here.
+Missing-data policy is always no_fire: any absent fact returns None at the condition
+level and propagates up to prevent the rule from firing.
 """
 
 from __future__ import annotations
@@ -24,39 +18,23 @@ from src.rules.models import (
     RuleFire,
 )
 
-# Sentinel returned by internal helpers to signal a missing fact.
-_MISSING = object()
-
-
-# ---------------------------------------------------------------------------
-# Low-level: evaluate one condition
-# ---------------------------------------------------------------------------
 
 def evaluate_condition(
     condition: Condition,
     facts: dict[str, Any],
 ) -> bool | None:
-    """Evaluate a single Condition against *facts*.
-
-    Returns:
-        True  – condition satisfied
-        False – condition not satisfied
-        None  – a required fact (or value_ref) was absent (missing data)
-    """
+    """Return True/False, or None if a required fact is absent."""
     if condition.fact not in facts:
         return None
 
     fact_value = facts[condition.fact]
-
     op = condition.operator
 
-    # Nullity checks need no comparison value.
     if op is Operator.is_null:
         return fact_value is None
     if op is Operator.is_not_null:
         return fact_value is not None
 
-    # Resolve comparison value.
     if condition.value_ref is not None:
         if condition.value_ref not in facts:
             return None
@@ -79,22 +57,13 @@ def evaluate_condition(
     if op is Operator.in_set:
         return fact_value in cmp_value
 
-    # Unreachable if Operator enum is exhaustive, but be explicit.
     raise ValueError(f"Unhandled operator: {op}")  # pragma: no cover
 
-
-# ---------------------------------------------------------------------------
-# Internal recursive helper
-# ---------------------------------------------------------------------------
 
 def _eval_item(
     item: Condition | ConditionGroup,
     facts: dict[str, Any],
 ) -> bool | None:
-    """Recursively evaluate a condition or group.
-
-    Returns True/False/None (None == missing data).
-    """
     if isinstance(item, Condition):
         return evaluate_condition(item, facts)
     return _eval_group(item, facts)
@@ -104,10 +73,6 @@ def _eval_group(
     group: ConditionGroup,
     facts: dict[str, Any],
 ) -> bool | None:
-    """Core logic for a ConditionGroup.
-
-    Returns True/False/None (None == missing data).
-    """
     # Vacuously pass if neither clause is specified.
     if group.all_of is None and group.any_of is None:
         return True
@@ -119,11 +84,9 @@ def _eval_group(
             result = _eval_item(item, facts)
             if result is None:
                 has_missing = True
-                # Under no_fire, missing data means we cannot confirm True;
-                # keep scanning so we can short-circuit on a hard False.
+                # Keep scanning to allow short-circuit on a hard False.
             elif result is False:
-                return False  # Short-circuit: definitely no fire.
-        # All items were True or some were None.
+                return False
         if has_missing:
             return None
 
@@ -145,33 +108,14 @@ def _eval_group(
     return True
 
 
-# ---------------------------------------------------------------------------
-# Mid-level: evaluate a condition group (public surface)
-# ---------------------------------------------------------------------------
-
 def evaluate_condition_group(
     group: ConditionGroup,
     facts: dict[str, Any],
 ) -> bool:
-    """Evaluate a ConditionGroup against *facts*.
-
-    Respects ``missing_data_policy``:
-    - ``no_fire``: any missing fact causes the group to return False.
-
-    Returns True if conditions are satisfied, False otherwise.
-    """
+    """Evaluate a ConditionGroup; missing facts → False (no_fire policy)."""
     result = _eval_group(group, facts)
+    return False if result is None else bool(result)
 
-    if result is None:
-        # missing_data_policy is always no_fire in v1.
-        return False
-
-    return bool(result)
-
-
-# ---------------------------------------------------------------------------
-# Top-level: evaluate one rule
-# ---------------------------------------------------------------------------
 
 def evaluate_rule(
     rule: RuleDefinition,
@@ -181,23 +125,16 @@ def evaluate_rule(
     *,
     superseded_filing_id: str | None = None,
 ) -> RuleFire | None:
-    """Evaluate *rule* against the flat *facts* context.
+    """Return a RuleFire if *rule* fires against *facts*, else None.
 
-    Args:
-        rule: A validated RuleDefinition.
-        facts: Flat dict mapping fact name → value.
-        member_bioguide_id: Canonical member identifier.
-        recompute_run_id: ID of the current recompute run (provenance).
-        superseded_filing_id: Populated when the trigger is an amendment.
-
-    Returns:
-        A RuleFire if the rule fires, or None if it does not.
+    *superseded_filing_id* is forwarded onto the fire when the context
+    originates from an amendment filing.
     """
     if not evaluate_condition_group(rule.conditions, facts):
         return None
 
-    # Render explanation template safely: unknown keys pass through verbatim.
-    _safe = defaultdict(lambda: "?")
+    # Render explanation template; unknown keys pass through as "?".
+    _safe: dict[str, Any] = defaultdict(lambda: "?")
     _safe.update(facts)
     try:
         explanation = rule.explanation_template.format_map(_safe)

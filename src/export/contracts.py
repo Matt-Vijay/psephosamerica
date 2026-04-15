@@ -1,10 +1,3 @@
-"""Typed contracts for precomputed public read models.
-
-These models define the JSON shape of every exported artifact.  They are
-not sources of truth — they are generated after each recompute from
-canonical Postgres data.
-"""
-
 from __future__ import annotations
 
 from datetime import date, datetime
@@ -39,8 +32,6 @@ class EvidenceSection(str, Enum):
 
 
 class EvidenceBlock(BaseModel):
-    """One block inside an evidence card, tagged by section."""
-
     section: EvidenceSection
     text: str
 

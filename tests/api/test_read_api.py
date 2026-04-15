@@ -1,5 +1,3 @@
-"""Tests for src/api/read_api.py — pure read-API response layer."""
-
 from __future__ import annotations
 
 from datetime import UTC, date, datetime

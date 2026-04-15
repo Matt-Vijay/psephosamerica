@@ -1,9 +1,7 @@
-"""URL builders and XML parsing helpers for House roll-call votes.
+"""URL builders and XML parser for House roll-call votes.
 
 Source: https://clerk.house.gov/evs/{year}/roll{number}.xml
-
-Each XML file contains a single roll-call vote with member-level results.
-Members are identified by ``bioguide_id`` in the XML attribute ``bioguideid``.
+Members are identified by bioguide_id (XML attribute ``bioguideid``).
 """
 
 from __future__ import annotations
@@ -16,23 +14,13 @@ from .models import VoteCastRecord, VoteEventRecord
 HOUSE_VOTE_BASE = "https://clerk.house.gov/evs"
 
 
-# ---------------------------------------------------------------------------
-# URL builders
-# ---------------------------------------------------------------------------
-
 def roll_call_url(year: int, roll_call_number: int) -> str:
-    """Build the canonical URL for a House roll-call XML file."""
     return f"{HOUSE_VOTE_BASE}/{year}/roll{roll_call_number:03d}.xml"
 
 
 def roll_call_index_url(year: int) -> str:
-    """URL for the House roll-call index page for a given year."""
     return f"{HOUSE_VOTE_BASE}/{year}/index.asp"
 
-
-# ---------------------------------------------------------------------------
-# XML parsing
-# ---------------------------------------------------------------------------
 
 def _vote_option(raw: str) -> str:
     mapping = {
@@ -47,13 +35,8 @@ def _vote_option(raw: str) -> str:
 
 
 def parse_house_vote_xml(xml_text: str) -> tuple[VoteEventRecord, list[VoteCastRecord]]:
-    """Parse a House roll-call XML document into typed records.
-
-    Returns a ``(VoteEventRecord, [VoteCastRecord, ...])`` tuple.
-    """
     root = fromstring(xml_text)
 
-    # -- vote metadata -------------------------------------------------------
     vote_meta = root.find("vote-metadata")
     if vote_meta is None:
         raise ValueError("Missing <vote-metadata> element")
@@ -67,7 +50,6 @@ def parse_house_vote_xml(xml_text: str) -> tuple[VoteEventRecord, list[VoteCastR
     action_date_el = vote_meta.find("action-date")
     date_str = action_date_el.get("date", "") if action_date_el is not None else ""
     if date_str:
-        # Format: "02-Jan-2025" or ISO
         try:
             vote_date = datetime.date.fromisoformat(date_str)
         except ValueError:
@@ -88,7 +70,6 @@ def parse_house_vote_xml(xml_text: str) -> tuple[VoteEventRecord, list[VoteCastR
         source_url=source_url,
     )
 
-    # -- individual votes ----------------------------------------------------
     casts: list[VoteCastRecord] = []
     vote_data = root.find("vote-data")
     if vote_data is not None:
@@ -115,7 +96,6 @@ def parse_house_vote_xml(xml_text: str) -> tuple[VoteEventRecord, list[VoteCastR
 
 
 def extract_bioguide_ids(xml_text: str) -> list[str]:
-    """Extract all unique bioguide IDs from a House roll-call XML."""
     root = fromstring(xml_text)
     ids: set[str] = set()
     for legislator in root.iter("legislator"):

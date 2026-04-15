@@ -1,10 +1,9 @@
-"""URL builders and XML parsing helpers for Senate roll-call votes.
+"""URL builders and XML parser for Senate roll-call votes.
 
 Source: https://www.senate.gov/legislative/LIS/roll_call_votes/vote{congress}{session}/vote_{congress}_{session}_{number}.xml
 
-Senate vote XML identifies members by ``lis_member_id``, which must be
-mapped to ``bioguide_id`` downstream using the crosswalk in
-``unitedstates/congress-legislators``.
+Senate XML identifies members by lis_member_id, not bioguide_id.
+Downstream crosswalk resolution (unitedstates/congress-legislators) fills bioguide_id.
 """
 
 from __future__ import annotations
@@ -17,26 +16,16 @@ from .models import VoteCastRecord, VoteEventRecord
 SENATE_VOTE_BASE = "https://www.senate.gov/legislative/LIS/roll_call_votes"
 
 
-# ---------------------------------------------------------------------------
-# URL builders
-# ---------------------------------------------------------------------------
-
 def roll_call_url(congress: int, session: int, vote_number: int) -> str:
-    """Build the canonical URL for a Senate roll-call XML file."""
     prefix = f"vote{congress}{session}"
     filename = f"vote_{congress}_{session}_{vote_number:05d}.xml"
     return f"{SENATE_VOTE_BASE}/{prefix}/{filename}"
 
 
 def roll_call_list_url(congress: int, session: int) -> str:
-    """URL for the Senate roll-call listing for a congress/session."""
     prefix = f"vote{congress}{session}"
     return f"{SENATE_VOTE_BASE}/{prefix}/vote_summary.xml"
 
-
-# ---------------------------------------------------------------------------
-# XML parsing
-# ---------------------------------------------------------------------------
 
 def _vote_option(raw: str) -> str:
     mapping = {
@@ -53,15 +42,7 @@ def _vote_option(raw: str) -> str:
 
 
 def parse_senate_vote_xml(xml_text: str) -> tuple[VoteEventRecord, list[VoteCastRecord]]:
-    """Parse a Senate roll-call XML document into typed records.
-
-    Returns a ``(VoteEventRecord, [VoteCastRecord, ...])`` tuple.
-
-    Senate XML uses ``lis_member_id`` to identify members.  The returned
-    ``VoteCastRecord`` objects carry ``lis_member_id`` and leave
-    ``bioguide_id`` as ``None``.  Downstream crosswalk resolution fills
-    the bioguide after ingest.
-    """
+    """VoteCastRecord objects carry lis_member_id; bioguide_id is None until crosswalk resolution."""
     root = fromstring(xml_text)
 
     congress = int(root.findtext("congress", "0"))
@@ -92,7 +73,6 @@ def parse_senate_vote_xml(xml_text: str) -> tuple[VoteEventRecord, list[VoteCast
         source_url=source_url,
     )
 
-    # -- individual votes ----------------------------------------------------
     casts: list[VoteCastRecord] = []
     members_el = root.find("members")
     if members_el is not None:
@@ -116,7 +96,6 @@ def parse_senate_vote_xml(xml_text: str) -> tuple[VoteEventRecord, list[VoteCast
 
 
 def extract_lis_member_ids(xml_text: str) -> list[str]:
-    """Extract all unique LIS member IDs from a Senate roll-call XML."""
     root = fromstring(xml_text)
     ids: set[str] = set()
     for member in root.iter("member"):

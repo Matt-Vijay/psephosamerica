@@ -1,9 +1,3 @@
-"""Typed response envelopes for the Open Pact read-only JSON API.
-
-Wraps export-layer payload models with batch timestamp metadata and a
-consistent ok / error discriminator.  No web framework dependencies.
-"""
-
 from __future__ import annotations
 
 from datetime import date, datetime

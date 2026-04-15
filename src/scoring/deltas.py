@@ -1,41 +1,12 @@
 """Snapshot-to-snapshot diff helpers.
 
-Pure helpers only.  No I/O, no database access, no network calls.
-
-Input shape: row-shaped dicts from ``score_snapshot`` plus joined member
-identity fields.  A snapshot row looks like::
-
-    {
-        "member_id": 1,
-        "bioguide_id": "A000001",        # joined from member table
-        "snapshot_at": datetime.date(...),  # or ISO string
-        "score_total": 85.5,
-        "dimension_scores": {             # keyed by dimension name
-            "conflict_of_interest_risk": 85.5,
-        },
-    }
-
-Output shape: list of score-delta dicts compatible with
-``src.feed.changes.events_from_score_deltas``::
-
-    {
-        "member_bioguide_id": "A000001",
-        "dimension": "conflict_of_interest_risk",
-        "delta": -15.0,
-        "snapshot_date": datetime.date(...),
-        "explanation": "",
-    }
+Pure helpers — no I/O, no database access.
 """
 
 from __future__ import annotations
 
 import datetime as dt
 from typing import Any
-
-
-# ---------------------------------------------------------------------------
-# Internal helpers
-# ---------------------------------------------------------------------------
 
 
 def _coerce_date(value: Any) -> dt.date:
@@ -58,35 +29,18 @@ def _bioguide_id(row: dict[str, Any]) -> str:
     return str(bid)
 
 
-# ---------------------------------------------------------------------------
-# Core diff: one member
-# ---------------------------------------------------------------------------
-
-
 def diff_one_member(
     current: dict[str, Any],
     previous: dict[str, Any] | None,
     *,
     include_first_time: bool = False,
 ) -> list[dict[str, Any]]:
-    """Return per-dimension delta dicts for a single member.
+    """Return per-dimension delta dicts for one member.
 
-    Args:
-        current: Current snapshot row (must include ``bioguide_id``,
-            ``snapshot_at``, and ``dimension_scores``).
-        previous: Previous snapshot row, or ``None`` if this is the member's
-            first known snapshot.
-        include_first_time: When ``True`` and ``previous`` is ``None``,
-            treat all previous dimension values as ``0.0`` and emit deltas
-            for every dimension in ``current``.  When ``False`` (default),
-            returns an empty list if ``previous`` is ``None``.
+    Returns [] if *previous* is None and *include_first_time* is False.
+    When *include_first_time* is True, absent previous values are treated as 0.0.
 
-    Returns:
-        List of score-delta dicts, one per dimension in ``current``.
-        Dimensions present in ``previous`` but absent from ``current`` are
-        silently skipped (the score no longer exists; emit nothing).
-        Dimensions present in ``current`` but absent from ``previous`` treat
-        the previous value as ``0.0``.
+    Dimensions in *previous* but not in *current* are silently dropped.
     """
     if previous is None and not include_first_time:
         return []
@@ -96,25 +50,16 @@ def diff_one_member(
     curr_dims = _dimension_scores(current)
     prev_dims: dict[str, float] = _dimension_scores(previous) if previous is not None else {}
 
-    deltas: list[dict[str, Any]] = []
-    for dimension, curr_val in curr_dims.items():
-        prev_val = prev_dims.get(dimension, 0.0)
-        delta = curr_val - prev_val
-        deltas.append(
-            {
-                "member_bioguide_id": bioguide_id,
-                "dimension": dimension,
-                "delta": delta,
-                "snapshot_date": snapshot_date,
-                "explanation": "",
-            }
-        )
-    return deltas
-
-
-# ---------------------------------------------------------------------------
-# Batch diff: many members
-# ---------------------------------------------------------------------------
+    return [
+        {
+            "member_bioguide_id": bioguide_id,
+            "dimension": dimension,
+            "delta": curr_val - prev_dims.get(dimension, 0.0),
+            "snapshot_date": snapshot_date,
+            "explanation": "",
+        }
+        for dimension, curr_val in curr_dims.items()
+    ]
 
 
 def diff_many_members(
@@ -123,43 +68,20 @@ def diff_many_members(
     *,
     include_first_time: bool = False,
 ) -> list[dict[str, Any]]:
-    """Return per-member per-dimension delta dicts for a collection of snapshots.
-
-    Args:
-        current_rows: List of current snapshot rows.  Each must include
-            ``bioguide_id``, ``snapshot_at``, and ``dimension_scores``.
-        previous_by_bioguide: Mapping of bioguide_id → previous snapshot row.
-            Members absent from this mapping are treated as first-time
-            snapshots.
-        include_first_time: Forwarded to :func:`diff_one_member`.
-
-    Returns:
-        Flat list of score-delta dicts across all members and dimensions.
-        Order matches ``current_rows`` order, then dimension insertion order
-        within each member.
-    """
+    """Flat list of per-dimension delta dicts across all members in *current_rows*."""
     result: list[dict[str, Any]] = []
     for row in current_rows:
         bid = _bioguide_id(row)
-        previous = previous_by_bioguide.get(bid)
         result.extend(
-            diff_one_member(row, previous, include_first_time=include_first_time)
+            diff_one_member(row, previous_by_bioguide.get(bid), include_first_time=include_first_time)
         )
     return result
 
 
-# ---------------------------------------------------------------------------
-# Filter helpers
-# ---------------------------------------------------------------------------
+def filter_changed(deltas: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Return only deltas where delta != 0.0.
 
-
-def filter_changed(
-    deltas: list[dict[str, Any]],
-) -> list[dict[str, Any]]:
-    """Return only delta dicts where ``delta != 0.0``.
-
-    Comparison uses exact float equality.  Because scores are computed
-    deterministically from the same inputs this is safe; there is no
-    floating-point drift between snapshots for identical inputs.
+    Exact float equality is safe here: scores are computed deterministically
+    from the same inputs, so there is no floating-point drift across snapshots.
     """
     return [d for d in deltas if d["delta"] != 0.0]

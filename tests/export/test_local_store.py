@@ -1,5 +1,3 @@
-"""Tests for src/export/local_store.py — local artifact reader."""
-
 from __future__ import annotations
 
 import json

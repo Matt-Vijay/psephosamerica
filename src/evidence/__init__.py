@@ -1,8 +1,3 @@
-"""Evidence card construction layer.
-
-Public surface: build_evidence_card_payload and supporting helpers.
-"""
-
 from .builder import (
     assemble_blocks,
     build_evidence_block,

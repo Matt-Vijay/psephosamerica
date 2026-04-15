@@ -10,30 +10,19 @@ from __future__ import annotations
 
 
 def _columns(row: dict) -> list[str]:
-    """Return column names in insertion order."""
     return list(row.keys())
 
 
 def _placeholders(row: dict) -> list[str]:
-    """Return one '%s' placeholder per column, in insertion order."""
     return ["%s"] * len(row)
 
 
 def _values(row: dict) -> list:
-    """Return values in insertion order."""
     return list(row.values())
 
 
 def build_insert(table: str, row: dict) -> tuple[str, list]:
-    """Return (sql, params) for a plain INSERT.
-
-    Args:
-        table: unquoted table name.
-        row:   mapping of column→value; must be non-empty.
-
-    Returns:
-        A (sql_string, params_list) pair ready for psycopg execution.
-    """
+    """Return (sql, params) for a plain INSERT."""
     if not row:
         raise ValueError("row must contain at least one column")
 
@@ -53,19 +42,9 @@ def build_upsert(
 ) -> tuple[str, list]:
     """Return (sql, params) for an INSERT … ON CONFLICT DO UPDATE.
 
-    Columns listed in *conflict_columns* are used in the ON CONFLICT clause
-    and are excluded from the SET list.  The SET list preserves the key order
-    of *row* minus the conflict columns.
-
-    Args:
-        table:            unquoted table name.
-        row:              mapping of column→value; must be non-empty.
-        conflict_columns: columns that form the unique/conflict target;
-                          all must be present in *row*.
-
-    Returns:
-        A (sql_string, params_list) pair ready for psycopg execution.
-        params contains insert-values followed by update-values.
+    *conflict_columns* are used in the ON CONFLICT clause and excluded from
+    the SET list.  When no non-conflict columns remain, emits DO NOTHING.
+    params contains insert-values followed by update-values.
     """
     if not row:
         raise ValueError("row must contain at least one column")
@@ -104,17 +83,10 @@ def build_upsert(
 
 
 def derive_update_columns(row: dict, exclude: list[str]) -> list[str]:
-    """Return columns from *row* that are not in *exclude*, in insertion order.
+    """Return columns from *row* not in *exclude*, preserving insertion order.
 
-    Used to build the SET list for upserts: primary-key and conflict columns
-    are excluded so the generated statement remains valid.
-
-    Args:
-        row:     the row dict whose keys define available columns.
-        exclude: columns to omit (typically PK + conflict target columns).
-
-    Returns:
-        List of column names in the original key order of *row*.
+    Used to build the SET list for upserts, where PK and conflict columns
+    must be excluded so the generated statement remains valid.
     """
     exclude_set = set(exclude)
     return [c for c in row if c not in exclude_set]

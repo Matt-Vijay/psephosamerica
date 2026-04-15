@@ -7,11 +7,6 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    """Typed application settings for Open Pact.
-
-    Values are read from environment variables (case-insensitive, OPENPACT_ prefix).
-    """
-
     model_config = {"env_prefix": "OPENPACT_"}
 
     environment: str = Field(default="development", description="Runtime environment name")

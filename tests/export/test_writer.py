@@ -1,5 +1,3 @@
-"""Tests for src/export/writer.py — pure snapshot writer helpers."""
-
 from __future__ import annotations
 
 import json

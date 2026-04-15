@@ -1,9 +1,4 @@
-"""Source and artifact metadata helpers for House and Senate disclosure PDFs.
-
-This module does NOT perform network calls. It defines metadata structures
-and helpers that the ingestion layer uses to locate, name, and store
-disclosure artifacts.
-"""
+"""Artifact metadata for House and Senate disclosure PDFs.  No network calls."""
 
 from __future__ import annotations
 
@@ -26,16 +21,12 @@ HOUSE_DISCLOSURE_SOURCE = "house-disclosures"
 SENATE_DISCLOSURE_SOURCE = "senate-disclosures"
 
 
-# --- Portal URL templates (no fetching, just string building) ---
-
 _HOUSE_BASE = "https://disclosures.house.gov"
 _SENATE_BASE = "https://efdsearch.senate.gov"
 
 
 @dataclass(frozen=True)
 class ArtifactMeta:
-    """Metadata envelope for a disclosure artifact before storage."""
-
     source_slug: str
     chamber: Chamber
     artifact_kind: ArtifactKind
@@ -57,7 +48,6 @@ def house_artifact_meta(
     filing_year: int,
     doc_id: str,
 ) -> ArtifactMeta:
-    """Build artifact metadata for a House disclosure PDF."""
     source_url = f"{_HOUSE_BASE}/public_disc/ptr-pdfs/{filing_year}/{doc_id}.pdf"
     return ArtifactMeta(
         source_slug=HOUSE_DISCLOSURE_SOURCE,
@@ -76,7 +66,6 @@ def senate_artifact_meta(
     filing_year: int,
     doc_id: str,
 ) -> ArtifactMeta:
-    """Build artifact metadata for a Senate disclosure PDF."""
     source_url = f"{_SENATE_BASE}/search/view/paper/{doc_id}/"
     return ArtifactMeta(
         source_slug=SENATE_DISCLOSURE_SOURCE,

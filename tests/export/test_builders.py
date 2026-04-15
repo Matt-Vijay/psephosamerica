@@ -1,5 +1,3 @@
-"""Tests for src/export/builders.py — pure-function payload assembly."""
-
 from __future__ import annotations
 
 from datetime import date, datetime

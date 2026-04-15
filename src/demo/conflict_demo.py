@@ -1,7 +1,4 @@
-"""Deterministic end-to-end conflict-of-interest demo path.
-
-Produces a complete, inspectable pipeline result from synthetic data.
-No database, no network calls, no filesystem writes.
+"""Deterministic end-to-end conflict-of-interest demo — no DB, no network, no filesystem.
 
 Usage::
 
@@ -73,11 +70,6 @@ _COMMITTEES: list[dict[str, Any]] = [
 
 @dataclass(frozen=True)
 class DemoResult:
-    """All intermediate and final objects produced by a demo run.
-
-    All fields are inspectable without any I/O.
-    """
-
     member: dict[str, Any]
     contexts: list[dict[str, Any]]
     fires: list[RuleFire]
@@ -93,17 +85,9 @@ class DemoResult:
 
 
 def _build_contexts() -> list[dict[str, Any]]:
-    """Build one fact context per launch rule family from synthetic raw rows.
-
-    Each context dict is augmented with ``parameters.*`` keys so that
-    ``value_ref`` conditions in the rule YAML resolve correctly inside
-    the evaluator.
-
-    Returns:
-        Four flat fact dicts, one per launch rule family:
-        committee_sector_trade, sector_holdings_overlap,
-        repeated_committee_linked_trading, late_or_amended_disclosure.
-    """
+    # Each context is augmented with ``parameters.*`` keys so that
+    # ``value_ref`` conditions in the rule YAML resolve correctly.
+    # Returns one dict per launch rule family.
 
     # Shared holding row used by the two holdings-based rule families.
     _holdings_row: dict[str, Any] = {
@@ -117,12 +101,9 @@ def _build_contexts() -> list[dict[str, Any]]:
         "disclosure_period_end": dt.date(2023, 12, 31),
     }
 
-    # committee_sector_trade context
     cst_ctx = build_committee_sector_trade_context(_holdings_row)
-    # value_ref resolution: parameters.minimum_overlap_days must be in facts
     cst_ctx["parameters.minimum_overlap_days"] = 1
 
-    # sector_holdings_overlap context
     sho_row: dict[str, Any] = {
         **_holdings_row,
         "holding_value_min": 15_000.0,
@@ -132,7 +113,6 @@ def _build_contexts() -> list[dict[str, Any]]:
     sho_ctx["parameters.minimum_overlap_days"] = 1
     sho_ctx["parameters.minimum_holding_value_usd"] = 1_000.0
 
-    # repeated_committee_linked_trading context
     rct_row: dict[str, Any] = {
         "committee_name": "House Financial Services Committee",
         "committee_sector": "finance",
@@ -149,7 +129,7 @@ def _build_contexts() -> list[dict[str, Any]]:
     rct_ctx["parameters.minimum_distinct_trade_days"] = 2
     rct_ctx["parameters.minimum_overlap_days"] = 1
 
-    # late_or_amended_disclosure context (30 days late original filing)
+    # 30 days late original filing
     late_row: dict[str, Any] = {
         "filing_id": "fd-S000999-2023",
         "filed_at": dt.date(2023, 6, 14),
@@ -172,22 +152,12 @@ def _build_contexts() -> list[dict[str, Any]]:
 def run_conflict_demo() -> DemoResult:
     """Run a deterministic end-to-end conflict-of-interest demo.
 
-    Loads the canonical rule YAMLs from disk, evaluates all four launch rule
-    families against synthetic member/disclosure data, and assembles every
-    downstream payload (evidence card, member profile, ZIP feed, snapshot
-    manifest) — all without any I/O beyond reading the rule YAMLs.
-
-    Returns:
-        DemoResult with every intermediate and final object for inspection.
-
     Raises:
-        AssertionError: if no rules fire (indicates a test-fixture problem,
-            not a product bug).
+        AssertionError: if no rules fire (fixture problem, not a product bug).
     """
     member = _MEMBER
     contexts = _build_contexts()
 
-    # Load canonical rules from disk and evaluate against every context.
     rules = load_canonical_rules()
     fires = run_member_batch(rules, member["bioguide_id"], contexts, _RECOMPUTE_RUN_ID)
 
@@ -204,7 +174,6 @@ def run_conflict_demo() -> DemoResult:
         fired_date=first_fire.fired_at.date(),
     )
 
-    # Evidence card from the first fire.
     source_anchors = [
         build_source_anchor(
             source_type="financial_disclosure",
@@ -236,7 +205,6 @@ def run_conflict_demo() -> DemoResult:
         snapshot_date=_SNAPSHOT_DATE,
     )
 
-    # Member profile aggregating all fires.
     member_profile = build_member_profile(
         member=member,
         score_rows=[
@@ -261,7 +229,6 @@ def run_conflict_demo() -> DemoResult:
         snapshot_date=_SNAPSHOT_DATE,
     )
 
-    # ZIP feed for a synthetic constituent ZIP.
     zip_feed = build_zip_feed(
         zip_code="94107",
         district="CA-12",
@@ -286,7 +253,6 @@ def run_conflict_demo() -> DemoResult:
         snapshot_date=_SNAPSHOT_DATE,
     )
 
-    # Snapshot manifest: compute real SHA-256 of each serialized payload.
     ec_bytes = evidence_card.model_dump_json().encode()
     mp_bytes = member_profile.model_dump_json().encode()
     zf_bytes = zip_feed.model_dump_json().encode()

@@ -1,17 +1,6 @@
-"""Deterministic member ID crosswalk helpers.
+"""Deterministic member ID crosswalk: bioguide_id, lis_member_id, fec_candidate_id.
 
-Resolves and joins bioguide_id, lis_member_id, and fec_candidate_id using
-in-memory row-shaped dicts or typed records.  No file or network I/O.
-
-Public API
-----------
-CrosswalkRecord       – typed record for one crosswalk row
-CrosswalkIndex        – indexed lookup structure built from a list of records
-build_index           – construct a CrosswalkIndex from raw rows
-lookup_by_bioguide    – exact lookup, returns record or AmbiguousMatch/NotFound
-lookup_by_lis         – exact lookup by lis_member_id
-lookup_by_fec         – exact lookup by fec_candidate_id
-validate_one_to_one   – check that all non-None ID columns map 1-to-1
+No file or network I/O.
 """
 
 from __future__ import annotations
@@ -26,12 +15,6 @@ from typing import Dict, List, Literal, Optional, Sequence, Union
 
 @dataclass(frozen=True)
 class CrosswalkRecord:
-    """One row in the member crosswalk dataset.
-
-    All three ID fields are optional at the source level; downstream consumers
-    must decide whether a missing ID is an error for their context.
-    """
-
     bioguide_id: str  # canonical; must always be present
     lis_member_id: Optional[str] = None
     fec_candidate_id: Optional[str] = None
@@ -78,7 +61,6 @@ LookupResult = Union[CrosswalkRecord, NotFound, AmbiguousMatch]
 def _index_by(
     records: Sequence[CrosswalkRecord], field: LookupField
 ) -> Dict[str, List[CrosswalkRecord]]:
-    """Build a multi-map from field value -> list of records."""
     idx: Dict[str, List[CrosswalkRecord]] = {}
     for rec in records:
         value: Optional[str] = getattr(rec, field)
@@ -89,8 +71,6 @@ def _index_by(
 
 @dataclass
 class CrosswalkIndex:
-    """Pre-built lookup indexes over a crosswalk dataset."""
-
     _by_bioguide: Dict[str, List[CrosswalkRecord]]
     _by_lis: Dict[str, List[CrosswalkRecord]]
     _by_fec: Dict[str, List[CrosswalkRecord]]
@@ -131,10 +111,7 @@ def _resolve(
 
 
 def build_index(rows: Sequence[Union[CrosswalkRecord, dict]]) -> CrosswalkIndex:
-    """Build a CrosswalkIndex from a sequence of CrosswalkRecords or raw dicts.
-
-    Raw dicts are coerced to CrosswalkRecord using the same field names.
-    """
+    """Accepts CrosswalkRecords or raw dicts; dicts are coerced via same field names."""
     records: List[CrosswalkRecord] = []
     for row in rows:
         if isinstance(row, CrosswalkRecord):
@@ -179,21 +156,15 @@ def lookup_by_fec(index: CrosswalkIndex, fec_candidate_id: str) -> LookupResult:
 
 @dataclass(frozen=True)
 class MappingConflict:
-    """One detected one-to-many or many-to-one mapping violation."""
-
     field: LookupField
     value: str
     bioguide_ids: List[str]
 
 
 def validate_one_to_one(records: Sequence[CrosswalkRecord]) -> List[MappingConflict]:
-    """Return a list of conflicts where a non-None ID maps to multiple bioguide_ids.
+    """Returns conflicts where a non-None ID maps to multiple bioguide_ids.
 
-    An empty list means every non-None secondary ID maps to exactly one
-    bioguide_id (true one-to-one for lis_member_id and fec_candidate_id).
-
-    Duplicate bioguide_id rows are also detected: if the same bioguide_id
-    appears more than once, it is flagged under the 'bioguide_id' field.
+    Duplicate bioguide_id rows are flagged under the 'bioguide_id' field.
     """
     conflicts: List[MappingConflict] = []
 

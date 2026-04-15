@@ -1,9 +1,6 @@
-"""Thin client wrapper and URL builders for the Congress.gov API (v3).
+"""Congress.gov API v3 client — URL builders, response normalization, paginating iterators.
 
-Docs: https://api.congress.gov/
-
-All public helpers return typed ingest-boundary records defined in
-``models.py``.  No DB writes happen here.
+No DB writes; all public helpers return typed ingest records from models.py.
 """
 
 from __future__ import annotations
@@ -25,24 +22,18 @@ BASE_URL = "https://api.congress.gov/v3/"
 DEFAULT_LIMIT = 250
 
 
-# ---------------------------------------------------------------------------
-# URL builders
-# ---------------------------------------------------------------------------
-
 def members_url(
     congress: int | None = None,
     *,
     limit: int = DEFAULT_LIMIT,
     offset: int = 0,
 ) -> str:
-    """Build a URL for the /member list endpoint."""
     path = f"member/congress/{congress}" if congress else "member"
     params = {"limit": limit, "offset": offset, "format": "json"}
     return urljoin(BASE_URL, path) + "?" + urlencode(params)
 
 
 def member_detail_url(bioguide_id: str) -> str:
-    """Build a URL for a single member by bioguide ID."""
     return urljoin(BASE_URL, f"member/{bioguide_id}") + "?format=json"
 
 
@@ -53,7 +44,6 @@ def committees_url(
     limit: int = DEFAULT_LIMIT,
     offset: int = 0,
 ) -> str:
-    """Build a URL for the /committee list endpoint."""
     path = f"committee/congress/{congress}"
     if chamber:
         path += f"/{chamber}"
@@ -68,7 +58,6 @@ def bills_url(
     limit: int = DEFAULT_LIMIT,
     offset: int = 0,
 ) -> str:
-    """Build a URL for the /bill list endpoint."""
     path = f"bill/{congress}"
     if bill_type:
         path += f"/{bill_type}"
@@ -84,15 +73,10 @@ def cosponsors_url(
     limit: int = DEFAULT_LIMIT,
     offset: int = 0,
 ) -> str:
-    """Build a URL for the /bill/{congress}/{type}/{number}/cosponsors endpoint."""
     path = f"bill/{congress}/{bill_type}/{bill_number}/cosponsors"
     params = {"limit": limit, "offset": offset, "format": "json"}
     return urljoin(BASE_URL, path) + "?" + urlencode(params)
 
-
-# ---------------------------------------------------------------------------
-# Response normalization helpers
-# ---------------------------------------------------------------------------
 
 def _parse_date(raw: str | None) -> datetime.date | None:
     if not raw:
@@ -120,7 +104,6 @@ def _normalize_bill_type(raw: str) -> str:
 
 
 def normalize_member(data: dict[str, Any], *, source_url: str | None = None) -> MemberRecord:
-    """Convert a Congress.gov member JSON object into a ``MemberRecord``."""
     terms = data.get("terms", {}).get("item", [])
     latest_term = terms[-1] if terms else {}
     return MemberRecord(
@@ -141,7 +124,6 @@ def normalize_member(data: dict[str, Any], *, source_url: str | None = None) -> 
 
 
 def normalize_committee(data: dict[str, Any], *, congress: int, source_url: str | None = None) -> CommitteeRecord:
-    """Convert a Congress.gov committee JSON object into a ``CommitteeRecord``."""
     chamber_raw = data.get("chamber", {})
     chamber_name = chamber_raw if isinstance(chamber_raw, str) else chamber_raw.get("name", "")
     ctype = data.get("committeeTypeCode", "other").lower()
@@ -163,7 +145,6 @@ def normalize_committee(data: dict[str, Any], *, congress: int, source_url: str 
 
 
 def normalize_bill(data: dict[str, Any], *, source_url: str | None = None) -> BillRecord:
-    """Convert a Congress.gov bill JSON object into a ``BillRecord``."""
     return BillRecord(
         congress=data["congress"],
         bill_type=_normalize_bill_type(data["type"]),
@@ -185,7 +166,6 @@ def normalize_cosponsor(
     bill_number: int,
     source_url: str | None = None,
 ) -> CosponsorRecord:
-    """Convert a Congress.gov cosponsor JSON object into a ``CosponsorRecord``."""
     return CosponsorRecord(
         congress=congress,
         bill_type=_normalize_bill_type(bill_type),
@@ -197,16 +177,8 @@ def normalize_cosponsor(
     )
 
 
-# ---------------------------------------------------------------------------
-# Client wrapper
-# ---------------------------------------------------------------------------
-
 class CongressAPIClient:
-    """Lightweight wrapper around the Congress.gov API.
-
-    Requires an API key (passed explicitly or read from settings).
-    Handles pagination transparently via iterators.
-    """
+    """Wraps the Congress.gov API. Requires an API key; paginates transparently."""
 
     def __init__(self, api_key: str, *, base_url: str = BASE_URL, timeout: float = 30.0) -> None:
         self._api_key = api_key
@@ -222,8 +194,6 @@ class CongressAPIClient:
     def __exit__(self, *exc: object) -> None:
         self.close()
 
-    # -- raw request ---------------------------------------------------------
-
     def _get(self, url: str) -> dict[str, Any]:
         sep = "&" if "?" in url else "?"
         full_url = f"{url}{sep}api_key={self._api_key}"
@@ -232,7 +202,6 @@ class CongressAPIClient:
         return resp.json()
 
     def _paginate(self, url: str, items_key: str) -> Iterator[dict[str, Any]]:
-        """Yield items from a paginated Congress.gov endpoint."""
         current_url: str | None = url
         while current_url:
             body = self._get(current_url)
@@ -240,8 +209,6 @@ class CongressAPIClient:
             yield from items
             next_info = body.get("pagination", {}).get("next")
             current_url = next_info if next_info and items else None
-
-    # -- typed iterators -----------------------------------------------------
 
     def iter_members(self, congress: int | None = None) -> Iterator[MemberRecord]:
         url = members_url(congress)

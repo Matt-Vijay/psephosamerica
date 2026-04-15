@@ -1,8 +1,3 @@
-"""Scoring helpers for Open Pact.
-
-Public API re-exported from sub-modules for convenient import.
-"""
-
 from src.scoring.deltas import diff_many_members, diff_one_member, filter_changed
 from src.scoring.snapshots import (
     build_snapshot_row,

@@ -54,11 +54,7 @@ Resolvers = dict[str, tuple[str, ResolverFn]]
 
 
 def _is_hint_table(table: str) -> bool:
-    """Return True when *table* is a non-canonical hint sentinel.
-
-    Hint sentinels are used by load-plan layers (e.g. ``_fec_linkage_hint``)
-    to carry resolution metadata that has no direct canonical DB table.
-    """
+    """Return True for underscore-prefixed hint sentinels (e.g. ``_fec_linkage_hint``)."""
     return table.startswith("_")
 
 
@@ -131,10 +127,6 @@ def execute_load_plan(
         run_id:     Optional ingestion run id to embed in the returned LoadSummary.
         warn_error: Optional WarnErrorSummary to embed; a fresh one is created if omitted.
 
-    Returns:
-        LoadSummary aggregating write results across all canonical operations.
-        Operations whose table name starts with ``_`` are skipped and excluded
-        from the summary.
     """
     if warn_error is None:
         warn_error = WarnErrorSummary()

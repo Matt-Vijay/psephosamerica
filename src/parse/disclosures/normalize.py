@@ -16,7 +16,6 @@ from src.parse.disclosures.models import OwnerType, TransactionType
 # Amount range normalization
 # ---------------------------------------------------------------------------
 
-# Canonical disclosure amount ranges from House/Senate filings.
 _AMOUNT_RANGES: dict[str, tuple[Decimal, Decimal]] = {
     "$1 - $1,000": (Decimal("1"), Decimal("1000")),
     "$1,001 - $15,000": (Decimal("1001"), Decimal("15000")),
@@ -31,17 +30,13 @@ _AMOUNT_RANGES: dict[str, tuple[Decimal, Decimal]] = {
     "Over $50,000,000": (Decimal("50000001"), Decimal("50000001")),
 }
 
-# Build a lookup keyed on the whitespace/case-normalized label.
 _NORMALIZED_RANGES: dict[str, tuple[Decimal, Decimal]] = {
     re.sub(r"\s+", " ", k).strip().lower(): v for k, v in _AMOUNT_RANGES.items()
 }
 
 
 def normalize_amount_range(raw: str) -> Optional[tuple[Decimal, Decimal]]:
-    """Parse a disclosure amount-range label into (min, max) Decimals.
-
-    Returns None for unrecognized values (caller should flag for review).
-    """
+    """Returns None for unrecognized labels (caller must flag for review)."""
     key = re.sub(r"\s+", " ", raw).strip().lower()
     return _NORMALIZED_RANGES.get(key)
 
@@ -71,10 +66,6 @@ _TX_TYPE_MAP: dict[str, TransactionType] = {
 
 
 def normalize_tx_type(raw: str) -> TransactionType:
-    """Map raw transaction-type text to canonical TransactionType.
-
-    Falls back to OTHER for unrecognized values.
-    """
     key = raw.strip().lower()
     return _TX_TYPE_MAP.get(key, TransactionType.OTHER)
 
@@ -98,10 +89,6 @@ _OWNER_MAP: dict[str, OwnerType] = {
 
 
 def normalize_owner_label(raw: str) -> OwnerType:
-    """Map raw owner text to canonical OwnerType.
-
-    Falls back to OTHER for unrecognized values.
-    """
     key = raw.strip().lower()
     return _OWNER_MAP.get(key, OwnerType.OTHER)
 
@@ -110,7 +97,6 @@ def normalize_owner_label(raw: str) -> OwnerType:
 # Asset name cleanup
 # ---------------------------------------------------------------------------
 
-# Patterns to strip from asset names.
 _NOISE_PATTERNS: list[re.Pattern[str]] = [
     re.compile(r"\s*\(filing\s+id[^)]*\)", re.IGNORECASE),
     re.compile(r"\s*\[.*?\]"),
@@ -119,10 +105,6 @@ _NOISE_PATTERNS: list[re.Pattern[str]] = [
 
 
 def clean_asset_name(raw: str) -> str:
-    """Deterministic cleanup of raw asset/issuer name strings.
-
-    Strips common noise patterns, collapses whitespace, and title-cases.
-    """
     text = raw.strip()
     for pat in _NOISE_PATTERNS:
         text = pat.sub(" " if pat.pattern == r"\s+" else "", text)

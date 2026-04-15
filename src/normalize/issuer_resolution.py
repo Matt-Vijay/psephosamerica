@@ -26,15 +26,7 @@ ConfidenceLabel = Literal["HIGH", "MEDIUM", "LOW"]
 
 @dataclass(frozen=True)
 class IssuerRecord:
-    """One entry in the in-memory reference dataset.
-
-    Typically built from SEC company_tickers.json:
-      { ticker: "AAPL", cik: "0000320193", name: "Apple Inc.",
-        aliases: ["apple inc", "apple computer"] }
-
-    ``aliases`` should already be normalized (lower-cased, punctuation-stripped).
-    ``name`` is the canonical display name; normalization is applied on-the-fly.
-    """
+    """``aliases`` must already be normalized (lower-cased, punctuation-stripped)."""
 
     ticker: str
     name: str
@@ -47,8 +39,6 @@ class IssuerRecord:
 
 @dataclass
 class IssuerCandidate:
-    """Output of the resolution waterfall for a single input asset string."""
-
     ticker: str | None
     cik: str | None
     confidence_label: ConfidenceLabel
@@ -73,8 +63,6 @@ class IssuerCandidate:
 
 @dataclass
 class _RefIndex:
-    """Pre-built lookup structures over a reference dataset."""
-
     by_ticker: dict[str, IssuerRecord]           # TICKER -> record
     by_norm_name: dict[str, IssuerRecord]         # normalized_name -> record
     by_alias: dict[str, IssuerRecord]             # normalized_alias -> record
@@ -191,19 +179,7 @@ def resolve_issuer(
     fuzzy_high_threshold: float = 0.85,
     fuzzy_medium_threshold: float = 0.55,
 ) -> list[IssuerCandidate]:
-    """Run the resolution waterfall for one asset string.
-
-    Args:
-        issuer_name: Raw name from the disclosure (e.g. "Apple Inc (AAPL)").
-        issuer_ticker_hint: Optional ticker field from the disclosure row.
-        index: Pre-built _RefIndex over the reference dataset.
-        fuzzy_high_threshold: Overlap score to treat fuzzy hit as HIGH.
-        fuzzy_medium_threshold: Minimum overlap to return a MEDIUM candidate.
-
-    Returns:
-        List of IssuerCandidate objects, best first.  Empty if fully unresolved.
-        Always returns at least one candidate (possibly with method="unresolved").
-    """
+    """Always returns at least one candidate (method="unresolved" if nothing matches)."""
     candidates: list[IssuerCandidate] = []
 
     # ------------------------------------------------------------------
@@ -281,11 +257,8 @@ def resolve_issuer(
         best_rec: IssuerRecord | None = None
 
         for rec in index.all_records:
-            # Score against canonical name
-            name_score = _token_overlap_score(query_fuzzy, _normalize_for_fuzzy(rec.name))
-            s = name_score
+            s = _token_overlap_score(query_fuzzy, _normalize_for_fuzzy(rec.name))
 
-            # Score against each alias and take the max
             for alias in rec.aliases:
                 alias_score = _token_overlap_score(query_fuzzy, _normalize_for_fuzzy(alias))
                 if alias_score > s:

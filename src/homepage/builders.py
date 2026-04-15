@@ -1,17 +1,10 @@
-"""Builders for the v1 homepage/feed payload.
+"""Homepage/feed payload builders.
 
-Pure functions only.  No I/O, no database access, no network calls.
+Pure functions.  Inputs: list[FeedEvent] + member_meta dict (bioguide_id →
+{chamber, party, state}).  Output: HomepageFeedPayload.
 
-Inputs:
-  - list[FeedEvent] from src/feed/changes.py
-  - member_meta: dict[bioguide_id, dict] with at minimum
-      {chamber, party, state} alongside the fields already on FeedEvent
-
-Output:
-  - HomepageFeedPayload
-
-Sorting is always deterministic: primary key is a data field (abs_delta or
-occurred_at, descending), secondary key is a stable string (bioguide_id or
+All sorting is deterministic: primary key is a data field (abs_delta or
+occurred_at, descending); secondary key is a stable string (bioguide_id or
 feed_event_id, ascending).
 """
 
@@ -69,46 +62,31 @@ def build_top_changes(
 ) -> list[MemberMovementSummary]:
     """Aggregate events by (member, dimension) and return the top-N movers.
 
-    Aggregation sums score_delta per (bioguide_id, dimension) pair and
-    collects up to _MAX_CARD_IDS_PER_MEMBER evidence card IDs ranked by
-    abs_delta within that group.
-
-    Sorting: abs_delta descending, then bioguide_id ascending (deterministic).
-
-    Args:
-        events: Feed events to aggregate.
-        member_meta: Mapping of bioguide_id → dict with chamber/party/state.
-        n: Maximum number of summaries to return.
-        dimension: If given, restrict to events for this dimension only.
+    score_delta is summed per (bioguide_id, dimension) pair.  Up to
+    _MAX_CARD_IDS_PER_MEMBER card IDs are kept, ranked by abs_delta within
+    the group.  Sort: abs_delta desc, bioguide_id asc.
     """
     if n <= 0:
         return []
 
     pool = events if dimension is None else [e for e in events if e.dimension == dimension]
 
-    # Accumulate per (bioguide_id, dimension)
-    # key → (net_delta, event_count, [(abs_delta, card_id)])
     groups: dict[tuple[str, str], list[FeedEvent]] = {}
     for ev in pool:
-        key = (ev.member_bioguide_id, ev.dimension)
-        groups.setdefault(key, []).append(ev)
+        groups.setdefault((ev.member_bioguide_id, ev.dimension), []).append(ev)
 
     summaries: list[MemberMovementSummary] = []
     for (bioguide_id, dim), group_events in groups.items():
         meta = member_meta.get(bioguide_id, {})
         net_delta = sum(e.score_delta for e in group_events)
-        abs_delta = abs(net_delta)
 
-        # Pick top card IDs by abs_delta within this group, stable by feed_event_id
         card_events = sorted(
             [e for e in group_events if e.evidence_card_id],
             key=lambda e: (-e.abs_delta, e.feed_event_id),
         )
         top_card_ids = [e.evidence_card_id for e in card_events[:_MAX_CARD_IDS_PER_MEMBER]]
 
-        # Use the name/slug from the first event (they're stable per member)
         first = group_events[0]
-
         summaries.append(
             MemberMovementSummary(
                 bioguide_id=bioguide_id,
@@ -119,13 +97,12 @@ def build_top_changes(
                 state=_member_state(meta),
                 dimension=dim,
                 score_delta=net_delta,
-                abs_delta=abs_delta,
+                abs_delta=abs(net_delta),
                 event_count=len(group_events),
                 top_evidence_card_ids=top_card_ids,
             )
         )
 
-    # Deterministic sort: abs_delta desc, bioguide_id asc
     summaries.sort(key=lambda s: (-s.abs_delta, s.bioguide_id))
     return summaries[:n]
 
@@ -141,23 +118,11 @@ def build_recent_events(
     since: dt.date | None = None,
     n: int = _DEFAULT_RECENT_N,
 ) -> list[RecentEventSummary]:
-    """Return the N most recent feed events as RecentEventSummary objects.
-
-    Sorting: occurred_at descending, then feed_event_id ascending (deterministic).
-
-    Args:
-        events: Feed events to filter and rank.
-        since: If given, exclude events with occurred_at < since.
-        n: Maximum results to return.
-    """
+    """Return the N most recent events.  Sort: occurred_at desc, feed_event_id asc."""
     if n <= 0:
         return []
 
-    pool = events
-    if since is not None:
-        pool = [e for e in pool if e.occurred_at >= since]
-
-    # Deterministic sort: occurred_at desc (primary), feed_event_id asc (secondary)
+    pool = events if since is None else [e for e in events if e.occurred_at >= since]
     pool = sorted(pool, key=lambda e: (-e.occurred_at.toordinal(), e.feed_event_id))
 
     return [
@@ -182,10 +147,7 @@ def build_recent_events(
 
 
 def extract_recent_evidence_card_ids(recent_events: list[RecentEventSummary]) -> list[str]:
-    """Return ordered, deduplicated evidence card IDs from recent_events.
-
-    Preserves first-occurrence order so the list mirrors the recency ranking.
-    """
+    """Ordered, deduplicated card IDs from recent_events (first-occurrence order)."""
     seen: set[str] = set()
     result: list[str] = []
     for ev in recent_events:
@@ -210,41 +172,20 @@ def build_homepage_feed(
     since: dt.date | None = None,
     dimension: str | None = None,
 ) -> HomepageFeedPayload:
-    """Build the complete HomepageFeedPayload from a list of FeedEvents.
+    """Build HomepageFeedPayload from a list of FeedEvents.
 
-    Args:
-        events: All feed events for this snapshot.  May contain multiple
-            kinds (rule_fire, evidence_card, score_delta).
-        member_meta: Mapping of bioguide_id → dict with at minimum
-            ``chamber``, ``party``, ``state``.
-        snapshot_date: The recompute snapshot date for this payload.
-        top_n: Maximum members in top_changes.
-        recent_n: Maximum events in recent_events.
-        since: Lower bound (inclusive) on occurred_at for recent_events.
-            Does not affect top_changes aggregation.
-        dimension: If given, restrict both top_changes and recent_events to
-            this dimension only.
+    ``since`` filters recent_events only; top_changes aggregates the full pool.
+    ``dimension`` restricts both surfaces.
     """
-    top_changes = build_top_changes(
-        events,
-        member_meta,
-        n=top_n,
-        dimension=dimension,
-    )
+    top_changes = build_top_changes(events, member_meta, n=top_n, dimension=dimension)
 
-    recent_events = build_recent_events(
-        events,
-        since=since,
-        n=recent_n,
-    )
+    recent_events = build_recent_events(events, since=since, n=recent_n)
     if dimension is not None:
         recent_events = [e for e in recent_events if e.dimension == dimension][:recent_n]
-
-    card_ids = extract_recent_evidence_card_ids(recent_events)
 
     return HomepageFeedPayload(
         snapshot_date=snapshot_date,
         top_changes=top_changes,
         recent_events=recent_events,
-        recent_evidence_card_ids=card_ids,
+        recent_evidence_card_ids=extract_recent_evidence_card_ids(recent_events),
     )

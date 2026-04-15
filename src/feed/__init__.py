@@ -1,8 +1,3 @@
-"""Feed/event selection primitives for the homepage and ZIP feed.
-
-Pure helpers only — no I/O, no database access, no network calls.
-"""
-
 from src.feed.changes import (
     FeedEvent,
     FeedEventKind,

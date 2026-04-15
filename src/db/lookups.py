@@ -114,28 +114,9 @@ def _detect_duplicates(
 ) -> tuple[dict[Any, int], list[tuple[Any, list[dict[str, Any]]]]]:
     """Build a ``{key: pk}`` map from *rows*, detecting duplicates.
 
-    Parameters
-    ----------
-    rows:
-        Source rows, each a plain dict.
-    key_fn:
-        Callable that extracts the lookup key from one row.
-    required_fields:
-        Field names that must be present and non-``None`` in every row.
-    map_name:
-        Human-readable name used in error messages.
-
-    Returns
-    -------
-    (result_map, duplicates)
-        ``result_map`` — ``{key: id}`` for all non-duplicate rows.
-        ``duplicates`` — list of ``(key, [rows...])`` for every key that
-        appeared more than once.
-
-    Raises
-    ------
-    LookupBuildError
-        When required fields are missing from any row.
+    Returns ``(result_map, duplicates)`` where ``result_map`` contains only
+    unambiguous rows and ``duplicates`` lists every key that appeared more than
+    once.  Raises :class:`LookupBuildError` when required fields are missing.
     """
     missing: list[str] = []
     for i, row in enumerate(rows):
@@ -175,9 +156,7 @@ def build_bioguide_map(
     """Build ``bioguide_id → member.id`` from *member* table rows.
 
     Required row fields: ``id``, ``bioguide_id``.
-
-    Only rows where ``bioguide_id`` is non-``None`` are included.  If two rows
-    share the same ``bioguide_id``, :class:`LookupBuildError` is raised.
+    Rows where ``bioguide_id`` is ``None`` are skipped.
     """
     eligible = [r for r in rows if r.get("bioguide_id") is not None]
     result, duplicates = _detect_duplicates(
@@ -201,9 +180,8 @@ def build_lis_member_map(
     """Build ``lis_member_id → member.id`` from *member* table rows.
 
     Required row fields: ``id``, ``lis_member_id``.
-
-    Rows where ``lis_member_id`` is ``None`` are silently skipped (most House
-    members have no LIS ID).  Duplicate LIS IDs raise :class:`LookupBuildError`.
+    Rows where ``lis_member_id`` is ``None`` are skipped (most House members
+    have no LIS ID).
     """
     eligible = [r for r in rows if r.get("lis_member_id") is not None]
     result, duplicates = _detect_duplicates(
@@ -227,9 +205,7 @@ def build_fec_candidate_map(
     """Build ``fec_candidate_id → member.id`` from *member* table rows.
 
     Required row fields: ``id``, ``fec_candidate_id``.
-
-    Rows where ``fec_candidate_id`` is ``None`` are silently skipped.
-    Duplicate FEC candidate IDs raise :class:`LookupBuildError`.
+    Rows where ``fec_candidate_id`` is ``None`` are skipped.
     """
     eligible = [r for r in rows if r.get("fec_candidate_id") is not None]
     result, duplicates = _detect_duplicates(
@@ -253,9 +229,6 @@ def build_committee_code_map(
     """Build ``(committee_code, congress) → committee.id`` from *committee* rows.
 
     Required row fields: ``id``, ``committee_code``, ``congress``.
-
-    Duplicate ``(committee_code, congress)`` pairs raise
-    :class:`LookupBuildError`.
     """
 
     def _key(r: dict[str, Any]) -> tuple[str, int]:
@@ -282,8 +255,6 @@ def build_fec_committee_map(
     """Build ``fec_committee_id → fec_committee.id`` from *fec_committee* rows.
 
     Required row fields: ``id``, ``fec_committee_id``.
-
-    Duplicate ``fec_committee_id`` values raise :class:`LookupBuildError`.
     """
     result, duplicates = _detect_duplicates(
         rows,
@@ -303,14 +274,10 @@ def build_fec_committee_map(
 def build_disclosure_natural_key_map(
     rows: list[dict[str, Any]],
 ) -> dict[tuple[int, int, str, int], int]:
-    """Build the financial-disclosure natural-key map.
+    """Build ``(member_id, filing_year, filing_type, amendment_number) → financial_disclosure.id``.
 
     Required row fields: ``id``, ``member_id``, ``filing_year``,
     ``filing_type``, ``amendment_number``.
-
-    Key: ``(member_id, filing_year, filing_type, amendment_number)``.
-
-    Duplicate natural keys raise :class:`LookupBuildError`.
     """
 
     def _key(r: dict[str, Any]) -> tuple[int, int, str, int]:
@@ -350,30 +317,14 @@ def build_lookup_bundle(
 ) -> LookupBundle:
     """Build a complete :class:`LookupBundle` from pre-fetched DB rows.
 
-    All four row sets are required (pass empty lists for tables not yet
-    populated).  Raises :class:`LookupBuildError` on the first ambiguous set
-    detected.
+    Pass empty lists for tables not yet populated.
 
-    Parameters
-    ----------
-    member_rows:
-        Rows from the ``member`` table.  Required fields per row: ``id``,
-        ``bioguide_id``.  Optional: ``lis_member_id``, ``fec_candidate_id``.
-    committee_rows:
-        Rows from the ``committee`` table.  Required: ``id``,
-        ``committee_code``, ``congress``.
-    fec_committee_rows:
-        Rows from the ``fec_committee`` table.  Required: ``id``,
-        ``fec_committee_id``.
-    financial_disclosure_rows:
-        Rows from the ``financial_disclosure`` table.  Required: ``id``,
-        ``member_id``, ``filing_year``, ``filing_type``, ``amendment_number``.
-
-    Returns
-    -------
-    LookupBundle
-        Fully populated bundle; call ``.to_maps()`` to get a maps dict for
-        :func:`src.db.foreign_keys.resolve_foreign_keys`.
+    member_rows:               ``member`` — required fields: ``id``, ``bioguide_id``;
+                               optional: ``lis_member_id``, ``fec_candidate_id``.
+    committee_rows:            ``committee`` — required: ``id``, ``committee_code``, ``congress``.
+    fec_committee_rows:        ``fec_committee`` — required: ``id``, ``fec_committee_id``.
+    financial_disclosure_rows: ``financial_disclosure`` — required: ``id``, ``member_id``,
+                               ``filing_year``, ``filing_type``, ``amendment_number``.
     """
     return LookupBundle(
         bioguide_map=build_bioguide_map(member_rows),

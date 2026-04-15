@@ -1,20 +1,10 @@
-"""Canonical load-plan layer for financial disclosures.
+"""Disclosure load-plan layer.  No DB writes; FK resolution deferred to write layer.
 
-Takes DisclosureTransformResult objects (from the parse/transform layer) and
-produces ordered table-batch plans ready for the DB write layer, plus sidecar
-outputs for outside positions.
-
-No DB writes occur here.  FK resolution (e.g. ``member_id`` from
-``member_bioguide_id``) is deferred to the write layer.
-
-Batch order respects FK dependencies:
-  1. financial_disclosure   (parent; must be inserted before children)
-  2. holding                (FK → financial_disclosure)
-  3. transaction            (FK → financial_disclosure)
-  4. review_queue           (references provenance IDs only; no FK to holdings/txs)
-
-Outside positions are returned as sidecars and are NOT included in canonical
-batches — they have no v1 schema table.
+Batch insertion order (FK-safe):
+  1. financial_disclosure
+  2. holding            (FK → financial_disclosure)
+  3. transaction        (FK → financial_disclosure)
+  4. review_queue
 """
 
 from __future__ import annotations
@@ -75,15 +65,6 @@ class DisclosureLoadPlan:
 
 
 def _disclosure_row(p: FinancialDisclosurePayload) -> dict[str, Any]:
-    """Produce a financial_disclosure row dict.
-
-    ``member_bioguide_id`` is the natural lookup key for ``member_id``; the
-    write layer must resolve it before inserting.
-
-    ``supersedes_filing_source_id`` is the ``source_record_id`` of the filing
-    this amendment supersedes; the write layer resolves it to the FK
-    ``supersedes_financial_disclosure_id``.
-    """
     return {
         "member_bioguide_id": p.member_bioguide_id,
         "chamber": p.chamber,
@@ -114,7 +95,6 @@ def _disclosure_natural_key(p: FinancialDisclosurePayload) -> dict[str, Any]:
 
 
 def _holding_row(p: HoldingPayload, disclosure_ref: dict[str, Any]) -> dict[str, Any]:
-    """Produce a holding row dict with a natural-key reference to the parent disclosure."""
     return {
         **disclosure_ref,
         "line_number": p.line_number,
@@ -135,7 +115,6 @@ def _holding_row(p: HoldingPayload, disclosure_ref: dict[str, Any]) -> dict[str,
 
 
 def _transaction_row(p: TransactionPayload, disclosure_ref: dict[str, Any]) -> dict[str, Any]:
-    """Produce a transaction row dict with a natural-key reference to the parent disclosure."""
     return {
         **disclosure_ref,
         "line_number": p.line_number,
@@ -153,7 +132,6 @@ def _transaction_row(p: TransactionPayload, disclosure_ref: dict[str, Any]) -> d
 
 
 def _review_queue_row(p: ReviewQueuePayload) -> dict[str, Any]:
-    """Produce a review_queue row dict."""
     return {
         "review_type": p.review_type,
         "entity_type": p.entity_type,
@@ -183,27 +161,10 @@ _TABLE_ORDER: tuple[str, ...] = (
 
 
 def plan_disclosure_load(results: list[DisclosureTransformResult]) -> DisclosureLoadPlan:
-    """Build a canonical load plan from a batch of disclosure transform results.
+    """Build a load plan from a batch of transform results.
 
-    Iterates ``results`` in order, accumulating rows into per-table lists.
-    The returned plan preserves FK dependency order across all input results:
-    every ``financial_disclosure`` row appears before the holding/transaction
-    rows that reference it.
-
-    Amendment-derived review items are preserved alongside all other review
-    items; their ordering within the review_queue batch mirrors the order they
-    were emitted by the transform layer.
-
-    Outside positions are collected as sidecars and are NOT placed in any
-    canonical table batch.
-
-    Args:
-        results: One DisclosureTransformResult per filing, in any order.
-
-    Returns:
-        A DisclosureLoadPlan with four TableBatch objects (always present,
-        possibly empty) in FK-safe insertion order, plus outside-position
-        sidecars.
+    Always returns four TableBatch objects (possibly empty) in FK-safe order.
+    Outside positions are sidecars only — not in any canonical batch.
     """
     disclosure_rows: list[dict[str, Any]] = []
     holding_rows: list[dict[str, Any]] = []

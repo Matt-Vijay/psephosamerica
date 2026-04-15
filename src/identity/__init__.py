@@ -1,9 +1,3 @@
-"""Deterministic public ID builders for Open Pact.
-
-Public surface: builders for evidence card IDs, snapshot IDs, and feed event IDs.
-All IDs are URL-safe, stable, and derived deterministically from meaningful inputs.
-"""
-
 from __future__ import annotations
 
 from .public_ids import (
