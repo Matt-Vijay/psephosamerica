@@ -33,3 +33,11 @@ def local_publish_root() -> Path:
 
 def local_artifact_root() -> Path:
     return _REPO_ROOT / "artifacts"
+
+
+def local_congress_bundle_root() -> Path:
+    return _REPO_ROOT / "bundles" / "congress"
+
+
+def local_disclosure_bundle_root() -> Path:
+    return _REPO_ROOT / "bundles" / "disclosures"

@@ -147,35 +147,26 @@ class TestWrittenFiles:
 
 
 class TestManifestOnDisk:
-    def test_manifest_file_exists(self, result: PublishDemoResult) -> None:
+    @pytest.fixture()
+    def manifest(self, result: PublishDemoResult):
         manifest_file = result.target_dir / "snapshots" / "2026-04-13" / "manifest.json"
-        assert manifest_file.exists()
+        assert manifest_file.exists(), "manifest.json not written to disk"
+        return read_manifest(manifest_file)
 
-    def test_manifest_parses_correctly(self, result: PublishDemoResult) -> None:
-        manifest_file = result.target_dir / "snapshots" / "2026-04-13" / "manifest.json"
-        manifest = read_manifest(manifest_file)
+    def test_manifest_parses_correctly(self, manifest) -> None:
         assert manifest.snapshot_id == "2026-04-13"
 
-    def test_manifest_counts_consistent(self, result: PublishDemoResult) -> None:
-        manifest_file = result.target_dir / "snapshots" / "2026-04-13" / "manifest.json"
-        manifest = read_manifest(manifest_file)
+    def test_manifest_counts_consistent(self, manifest) -> None:
         assert manifest.verify_counts()
 
-    def test_manifest_entries_have_valid_sha256(self, result: PublishDemoResult) -> None:
-        manifest_file = result.target_dir / "snapshots" / "2026-04-13" / "manifest.json"
-        manifest = read_manifest(manifest_file)
+    def test_manifest_entries_have_valid_sha256(self, manifest) -> None:
         for entry in manifest.entries:
             assert len(entry.sha256) == 64, f"Bad sha256 for {entry.path}"
 
-    def test_manifest_total_bytes_positive(self, result: PublishDemoResult) -> None:
-        manifest_file = result.target_dir / "snapshots" / "2026-04-13" / "manifest.json"
-        manifest = read_manifest(manifest_file)
+    def test_manifest_total_bytes_positive(self, manifest) -> None:
         assert manifest.total_bytes > 0
 
-    def test_manifest_covers_data_files(self, result: PublishDemoResult) -> None:
-        # Manifest entries should cover all data files (all planned files except manifest itself)
-        manifest_file = result.target_dir / "snapshots" / "2026-04-13" / "manifest.json"
-        manifest = read_manifest(manifest_file)
+    def test_manifest_covers_data_files(self, result: PublishDemoResult, manifest) -> None:
         entry_paths = {e.path for e in manifest.entries}
         data_files = [f for f in result.planned if "manifest.json" not in f.path]
         for f in data_files:
@@ -202,42 +193,25 @@ class TestIdempotency:
 
 
 class TestMain:
-    def test_main_runs_without_error(self, capsys: pytest.CaptureFixture[str]) -> None:
+    @pytest.fixture()
+    def main_output(self, capsys: pytest.CaptureFixture[str]) -> dict:
+        """Run main() once per test and return parsed JSON."""
         main()
-        captured = capsys.readouterr()
-        assert captured.out.strip()
+        raw = capsys.readouterr().out
+        assert raw.strip(), "main() produced no output"
+        return json.loads(raw)
 
-    def test_main_outputs_valid_json(self, capsys: pytest.CaptureFixture[str]) -> None:
-        import json
+    def test_main_outputs_valid_json(self, main_output: dict) -> None:
+        assert isinstance(main_output, dict)
 
-        main()
-        data = json.loads(capsys.readouterr().out)
-        assert isinstance(data, dict)
+    def test_main_status_ok(self, main_output: dict) -> None:
+        assert main_output["status"] == "ok"
 
-    def test_main_status_ok(self, capsys: pytest.CaptureFixture[str]) -> None:
-        import json
+    def test_main_no_failures(self, main_output: dict) -> None:
+        assert main_output["failures"] == []
 
-        main()
-        data = json.loads(capsys.readouterr().out)
-        assert data["status"] == "ok"
+    def test_main_planned_files_positive(self, main_output: dict) -> None:
+        assert main_output["planned_files"] >= 4
 
-    def test_main_no_failures(self, capsys: pytest.CaptureFixture[str]) -> None:
-        import json
-
-        main()
-        data = json.loads(capsys.readouterr().out)
-        assert data["failures"] == []
-
-    def test_main_planned_files_positive(self, capsys: pytest.CaptureFixture[str]) -> None:
-        import json
-
-        main()
-        data = json.loads(capsys.readouterr().out)
-        assert data["planned_files"] >= 4
-
-    def test_main_includes_bioguide_id(self, capsys: pytest.CaptureFixture[str]) -> None:
-        import json
-
-        main()
-        data = json.loads(capsys.readouterr().out)
-        assert data["bioguide_id"] == "S000999"
+    def test_main_includes_bioguide_id(self, main_output: dict) -> None:
+        assert main_output["bioguide_id"] == "S000999"

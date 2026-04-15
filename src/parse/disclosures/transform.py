@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import date
 from decimal import Decimal
-from typing import Any, Optional
+from typing import Any, Optional, Sequence
 
 from src.parse.disclosures.models import (
     Filing,
@@ -172,6 +172,7 @@ class DisclosureTransformResult:
 # ---------------------------------------------------------------------------
 
 # Priority constants (1 = most urgent).
+_PRIORITY_AMENDMENT_INCONSISTENCY = 10
 _PRIORITY_AMENDMENT = 20
 _PRIORITY_TRUST_OR_OPTION = 30
 _PRIORITY_UNKNOWN_AMOUNT = 40
@@ -405,6 +406,21 @@ def _transform_outside_position(
             summary=f"Outside position on line {op.line_number} ({op.entity_name!r}) has no canonical table in v1 — stored as sidecar",
         )
     )
+
+    if op.owner_type.value == "other":
+        review_items.append(
+            _review(
+                ctx,
+                review_type="normalization",
+                entity_type="outside_position",
+                entity_key=f"line_{op.line_number}",
+                reason_code="unknown_owner_type",
+                priority=_PRIORITY_UNKNOWN_OWNER,
+                payload={"owner_type": op.owner_type.value, "line_number": op.line_number},
+                summary=f"Unknown owner type on outside position line {op.line_number}",
+            )
+        )
+
     return sidecar
 
 
@@ -441,13 +457,14 @@ def transform_filing(
     # --- Amendment review item ---
     # Amendments always require a review-queue entry so an operator can link
     # the new row to the superseded filing and confirm the supersession chain.
+    _entity_key = filing.source_record_id or f"{filing.member_bioguide_id}:{filing.filing_year}:{filing.amendment_number}"
     if filing.is_amended or filing.filing_type.value == "amendment":
         review_items.append(
             _review(
                 ctx,
                 review_type="amendment",
                 entity_type="financial_disclosure",
-                entity_key=filing.source_record_id or f"{filing.member_bioguide_id}:{filing.filing_year}:{filing.amendment_number}",
+                entity_key=_entity_key,
                 reason_code="amendment_filing",
                 priority=_PRIORITY_AMENDMENT,
                 payload={
@@ -461,6 +478,58 @@ def transform_filing(
                     f"Amendment #{filing.amendment_number} for "
                     f"{filing.member_bioguide_id} {filing.filing_year} "
                     f"{filing.filing_type.value} — supersession chain must be verified"
+                ),
+            )
+        )
+
+    # --- Amendment/supersedes inconsistency checks ---
+    # Emit high-priority review items when amendment metadata is internally
+    # inconsistent so the load path can gate on them before writing.
+    _is_amendment_type = filing.filing_type.value == "amendment"
+    if filing.supersedes_filing_source_id and not filing.is_amended and not _is_amendment_type:
+        review_items.append(
+            _review(
+                ctx,
+                review_type="amendment",
+                entity_type="financial_disclosure",
+                entity_key=_entity_key,
+                reason_code="amendment_supersedes_mismatch",
+                priority=_PRIORITY_AMENDMENT_INCONSISTENCY,
+                payload={
+                    "member_bioguide_id": filing.member_bioguide_id,
+                    "filing_year": filing.filing_year,
+                    "filing_type": filing.filing_type.value,
+                    "supersedes_filing_source_id": filing.supersedes_filing_source_id,
+                    "is_amended": filing.is_amended,
+                },
+                summary=(
+                    f"Filing {_entity_key} has supersedes_filing_source_id "
+                    f"({filing.supersedes_filing_source_id!r}) but is_amended=False "
+                    f"and filing_type={filing.filing_type.value!r} — inconsistent amendment metadata"
+                ),
+            )
+        )
+
+    if filing.amendment_number > 0 and not filing.is_amended and not _is_amendment_type:
+        review_items.append(
+            _review(
+                ctx,
+                review_type="amendment",
+                entity_type="financial_disclosure",
+                entity_key=_entity_key,
+                reason_code="amendment_number_without_flag",
+                priority=_PRIORITY_AMENDMENT_INCONSISTENCY,
+                payload={
+                    "member_bioguide_id": filing.member_bioguide_id,
+                    "filing_year": filing.filing_year,
+                    "filing_type": filing.filing_type.value,
+                    "amendment_number": filing.amendment_number,
+                    "is_amended": filing.is_amended,
+                },
+                summary=(
+                    f"Filing {_entity_key} has amendment_number={filing.amendment_number} "
+                    f"but is_amended=False and filing_type={filing.filing_type.value!r} — "
+                    f"amendment_number set without corresponding amendment flag"
                 ),
             )
         )
@@ -488,3 +557,39 @@ def transform_filing(
         outside_positions=outside_position_sidecars,
         review_items=review_items,
     )
+
+
+# ---------------------------------------------------------------------------
+# Explicit batch API at the parse layer
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class FilingBundle:
+    """All parsed inputs for a single disclosure document.
+
+    Groups the filing identity record with its extracted line items so that
+    callers can pass a typed batch to ``batch_transform_filings`` without
+    relying on parallel positional lists.
+    """
+
+    filing: Filing
+    holdings: list[Holding]
+    transactions: list[Transaction]
+    outside_positions: list[OutsidePosition]
+
+
+def batch_transform_filings(
+    bundles: Sequence[FilingBundle],
+    ctx: ParseContext,
+) -> list[DisclosureTransformResult]:
+    """Transform a sequence of filing bundles under a shared ParseContext.
+
+    Each bundle is transformed independently; results appear in the same
+    order as the input sequence.  Use ``transform_filing`` directly when
+    only one document is being processed.
+    """
+    return [
+        transform_filing(b.filing, b.holdings, b.transactions, b.outside_positions, ctx)
+        for b in bundles
+    ]

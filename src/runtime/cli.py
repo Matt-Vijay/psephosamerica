@@ -23,8 +23,15 @@ def build_parser() -> argparse.ArgumentParser:
     _add_status(sub)
     _add_load_congress(sub)
     _add_load_disclosures(sub)
+    _add_parse_disclosures(sub)
+    _add_process_disclosures(sub)
     _add_recompute(sub)
     _add_publish(sub)
+    _add_load_congress_local(sub)
+    _add_process_disclosures_local(sub)
+    _add_run_oracle_local(sub)
+    _add_verify_publish(sub)
+    _add_verify_publish_roundtrip(sub)
 
     return parser
 
@@ -83,6 +90,26 @@ def _add_load_congress(sub: argparse._SubParsersAction) -> None:  # type: ignore
         metavar="KEY",
         help="Congress.gov API key. Falls back to CONGRESS_API_KEY env var.",
     )
+    p.add_argument(
+        "--include-votes",
+        action="store_true",
+        default=False,
+        help="Also fetch and load vote records for the requested Congress.",
+    )
+    p.add_argument(
+        "--house-vote-year",
+        type=int,
+        default=None,
+        metavar="YEAR",
+        help="Calendar year to fetch House roll-call votes for (e.g. 2024).",
+    )
+    p.add_argument(
+        "--senate-session",
+        type=int,
+        default=None,
+        metavar="SESSION",
+        help="Senate session number to fetch votes for (e.g. 1 or 2).",
+    )
 
 
 def _add_load_disclosures(sub: argparse._SubParsersAction) -> None:  # type: ignore[type-arg]
@@ -108,6 +135,58 @@ def _add_load_disclosures(sub: argparse._SubParsersAction) -> None:  # type: ign
         default=None,
         metavar="PATH",
         help="Directory to mirror downloaded raw artifacts into. Defaults to the local artifact root.",
+    )
+
+
+def _add_parse_disclosures(sub: argparse._SubParsersAction) -> None:  # type: ignore[type-arg]
+    p = sub.add_parser(
+        "parse-disclosures",
+        help="Run the text-extract parse pipeline over stored, unparsed disclosure artifacts.",
+    )
+    p.add_argument(
+        "--chamber",
+        choices=["house", "senate", "both"],
+        default="both",
+        help="Chamber to parse (default: both).",
+    )
+    p.add_argument(
+        "--local-root",
+        default=None,
+        metavar="PATH",
+        help="Directory containing downloaded artifacts. Defaults to local artifact root.",
+    )
+    p.add_argument(
+        "--limit",
+        type=int,
+        default=None,
+        metavar="N",
+        help="Maximum number of artifacts to parse in this run (default: no limit).",
+    )
+
+
+def _add_process_disclosures(sub: argparse._SubParsersAction) -> None:  # type: ignore[type-arg]
+    p = sub.add_parser(
+        "process-disclosures",
+        help="Run the parse-transform-load pipeline over stored disclosure artifacts.",
+    )
+    p.add_argument(
+        "--chamber",
+        choices=["house", "senate", "both"],
+        default="both",
+        help="Chamber to process (default: both).",
+    )
+    p.add_argument(
+        "--local-root",
+        default=None,
+        metavar="PATH",
+        help="Directory containing downloaded artifacts. Defaults to local artifact root.",
+    )
+    p.add_argument(
+        "--limit",
+        type=int,
+        default=None,
+        metavar="N",
+        help="Maximum number of artifacts to process in this run (default: no limit).",
     )
 
 
@@ -148,6 +227,134 @@ def _add_publish(sub: argparse._SubParsersAction) -> None:  # type: ignore[type-
         default=None,
         metavar="PATH",
         help="Path to the JSON ZIP bundle used to build ZIP feeds.",
+    )
+
+
+# ---------------------------------------------------------------------------
+# Local-oracle subcommand definitions
+# ---------------------------------------------------------------------------
+
+
+def _add_load_congress_local(sub: argparse._SubParsersAction) -> None:  # type: ignore[type-arg]
+    p = sub.add_parser(
+        "load-congress-local",
+        help="Load congress member, committee, bill, and vote data from a local archive file.",
+    )
+    p.add_argument(
+        "--archive",
+        required=True,
+        metavar="PATH",
+        help="Path to the local congress archive file (e.g. congress_119.json).",
+    )
+    p.add_argument(
+        "--congress",
+        type=int,
+        required=True,
+        metavar="NUMBER",
+        help="Congress number the archive represents (e.g. 119).",
+    )
+
+
+def _add_process_disclosures_local(sub: argparse._SubParsersAction) -> None:  # type: ignore[type-arg]
+    p = sub.add_parser(
+        "process-disclosures-local",
+        help="Run the parse-transform-load pipeline over a local disclosure bundle.",
+    )
+    p.add_argument(
+        "--bundle",
+        required=True,
+        metavar="PATH",
+        help="Path to the local disclosure bundle (directory or archive).",
+    )
+    p.add_argument(
+        "--chamber",
+        choices=["house", "senate", "both"],
+        default="both",
+        help="Chamber to process (default: both).",
+    )
+    p.add_argument(
+        "--limit",
+        type=int,
+        default=None,
+        metavar="N",
+        help="Maximum number of artifacts to process (default: no limit).",
+    )
+
+
+def _add_run_oracle_local(sub: argparse._SubParsersAction) -> None:  # type: ignore[type-arg]
+    p = sub.add_parser(
+        "run-oracle-local",
+        help="Run the full local oracle path: load congress, process disclosures, recompute, publish.",
+    )
+    p.add_argument(
+        "--congress-archive",
+        required=True,
+        metavar="PATH",
+        help="Path to the local congress archive file (e.g. congress_119.json).",
+    )
+    p.add_argument(
+        "--disclosures-bundle",
+        required=True,
+        metavar="PATH",
+        help="Path to the local disclosure bundle (directory or archive).",
+    )
+    p.add_argument(
+        "--snapshot-date",
+        type=_parse_date,
+        required=True,
+        metavar="YYYY-MM-DD",
+        help="Date key for the oracle snapshot (e.g. 2025-01-15).",
+    )
+    p.add_argument(
+        "--target-dir",
+        required=True,
+        metavar="PATH",
+        help="Directory where published oracle artifacts are written.",
+    )
+    p.add_argument(
+        "--chamber",
+        choices=["house", "senate", "both"],
+        default="both",
+        help="Chamber to process (default: both).",
+    )
+    p.add_argument(
+        "--limit",
+        type=int,
+        default=None,
+        metavar="N",
+        help="Maximum number of disclosure artifacts to process (default: no limit).",
+    )
+    p.add_argument(
+        "--snapshot-id",
+        default=None,
+        metavar="ID",
+        help="Explicit snapshot identifier; defaults to snapshot-date ISO string.",
+    )
+
+
+def _add_verify_publish(sub: argparse._SubParsersAction) -> None:  # type: ignore[type-arg]
+    p = sub.add_parser(
+        "verify-publish",
+        help="Verify the integrity of a locally published snapshot tree.",
+    )
+    p.add_argument(
+        "--publish-root",
+        required=True,
+        metavar="PATH",
+        help="Root directory of the published snapshot tree to verify.",
+    )
+
+
+def _add_verify_publish_roundtrip(sub: argparse._SubParsersAction) -> None:  # type: ignore[type-arg]
+    p = sub.add_parser(
+        "verify-publish-roundtrip",
+        help="Verify the DB-to-publish roundtrip for a locally published snapshot tree.",
+    )
+    p.add_argument(
+        "--publish-root",
+        required=True,
+        metavar="PATH",
+        help="Root directory of the published snapshot tree to verify.",
     )
 
 

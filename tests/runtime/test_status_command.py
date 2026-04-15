@@ -163,6 +163,30 @@ class TestGetRuntimeStatus:
 
         assert isinstance(result, dict)
 
+    def test_exact_top_level_keys(self):
+        conn = MagicMock()
+        p_ing, p_par, p_ds, p_art = _patched()
+
+        with p_ing, p_par, p_ds, p_art:
+            result = get_runtime_status(conn)
+
+        assert set(result.keys()) == {
+            "ingestion_runs", "parse_runs", "data_sources",
+            "source_artifacts", "summary",
+        }
+
+    def test_exact_summary_keys(self):
+        conn = MagicMock()
+        p_ing, p_par, p_ds, p_art = _patched()
+
+        with p_ing, p_par, p_ds, p_art:
+            result = get_runtime_status(conn)
+
+        assert set(result["summary"].keys()) == {
+            "ingestion_run_count", "parse_run_count",
+            "data_source_count", "source_artifact_count",
+        }
+
 
 # ---------------------------------------------------------------------------
 # get_runtime_status_summary
@@ -320,3 +344,34 @@ class TestGetRuntimeStatusSummary:
         assert result["summary"]["parse_run_count"] == 0
         assert result["summary"]["data_source_count"] == 0
         assert result["summary"]["source_artifact_count"] == 0
+
+    def test_exact_top_level_keys(self):
+        conn = MagicMock()
+        p_ing, p_par, p_ds, p_art = _patched()
+
+        with p_ing, p_par, p_ds, p_art:
+            result = get_runtime_status_summary(conn)
+
+        assert set(result.keys()) == {"summary", "latest_ingestion_run", "latest_artifact"}
+
+    def test_latest_ingestion_run_exact_keys(self):
+        conn = MagicMock()
+        p_ing, p_par, p_ds, p_art = _patched(ingestion_rows=[_INGESTION_ROW])
+
+        with p_ing, p_par, p_ds, p_art:
+            result = get_runtime_status_summary(conn)
+
+        assert set(result["latest_ingestion_run"].keys()) == {
+            "id", "run_type", "status", "data_source",
+        }
+
+    def test_latest_artifact_exact_keys(self):
+        conn = MagicMock()
+        p_ing, p_par, p_ds, p_art = _patched(artifact_rows=[_ARTIFACT_ROW])
+
+        with p_ing, p_par, p_ds, p_art:
+            result = get_runtime_status_summary(conn)
+
+        assert set(result["latest_artifact"].keys()) == {
+            "id", "artifact_kind", "data_source",
+        }

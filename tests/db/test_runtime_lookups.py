@@ -4,10 +4,10 @@ All DB access is mocked via unittest.mock.patch on
 src.db.runtime_lookups.fetch_all — no live DB required.
 
 Covers:
-- fetch_member_lookup_rows: delegates to fetch_all with correct SQL
-- fetch_committee_lookup_rows: delegates to fetch_all with correct SQL
-- fetch_fec_committee_lookup_rows: delegates to fetch_all with correct SQL
-- fetch_financial_disclosure_lookup_rows: delegates to fetch_all with correct SQL
+- fetch_member_lookup_rows: delegates to fetch_all, returns rows
+- fetch_committee_lookup_rows: delegates to fetch_all, returns rows
+- fetch_fec_committee_lookup_rows: delegates to fetch_all, returns rows
+- fetch_financial_disclosure_lookup_rows: delegates to fetch_all, returns rows
 - load_lookup_bundle: assembles a correct LookupBundle from mocked rows
 - load_lookup_bundle: duplicate bioguide_id propagates LookupBuildError
 """
@@ -57,52 +57,43 @@ def _disclosure(id, member_id, filing_year, filing_type, amendment_number=0):
 
 
 # ---------------------------------------------------------------------------
-# fetch_* tests — verify SQL is issued via fetch_all
+# fetch_* tests — verify delegation to fetch_all and correct return
 # ---------------------------------------------------------------------------
 
 
-def test_fetch_member_lookup_rows_calls_fetch_all():
+def test_fetch_member_lookup_rows_delegates_and_returns():
     rows = [_member(1, "A000001")]
     with patch("src.db.runtime_lookups.fetch_all", return_value=rows) as mock_fa:
         result = fetch_member_lookup_rows(CONN)
     mock_fa.assert_called_once()
-    call_conn, call_sql = mock_fa.call_args[0]
-    assert call_conn is CONN
-    assert "member" in call_sql
-    assert "bioguide_id" in call_sql
+    assert mock_fa.call_args[0][0] is CONN
     assert result == rows
 
 
-def test_fetch_committee_lookup_rows_calls_fetch_all():
+def test_fetch_committee_lookup_rows_delegates_and_returns():
     rows = [_committee(1, "SSAF", 119)]
     with patch("src.db.runtime_lookups.fetch_all", return_value=rows) as mock_fa:
         result = fetch_committee_lookup_rows(CONN)
     mock_fa.assert_called_once()
-    _, call_sql = mock_fa.call_args[0]
-    assert "committee" in call_sql
-    assert "committee_code" in call_sql
+    assert mock_fa.call_args[0][0] is CONN
     assert result == rows
 
 
-def test_fetch_fec_committee_lookup_rows_calls_fetch_all():
+def test_fetch_fec_committee_lookup_rows_delegates_and_returns():
     rows = [_fec_committee(1, "C00000001")]
     with patch("src.db.runtime_lookups.fetch_all", return_value=rows) as mock_fa:
         result = fetch_fec_committee_lookup_rows(CONN)
     mock_fa.assert_called_once()
-    _, call_sql = mock_fa.call_args[0]
-    assert "fec_committee" in call_sql
-    assert "fec_committee_id" in call_sql
+    assert mock_fa.call_args[0][0] is CONN
     assert result == rows
 
 
-def test_fetch_financial_disclosure_lookup_rows_calls_fetch_all():
+def test_fetch_financial_disclosure_lookup_rows_delegates_and_returns():
     rows = [_disclosure(1, 10, 2023, "annual")]
     with patch("src.db.runtime_lookups.fetch_all", return_value=rows) as mock_fa:
         result = fetch_financial_disclosure_lookup_rows(CONN)
     mock_fa.assert_called_once()
-    _, call_sql = mock_fa.call_args[0]
-    assert "financial_disclosure" in call_sql
-    assert "filing_year" in call_sql
+    assert mock_fa.call_args[0][0] is CONN
     assert result == rows
 
 

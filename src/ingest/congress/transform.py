@@ -67,17 +67,20 @@ def member_term_row(
     congress: int,
     start_date: Any,
     end_date: Any = None,
+    chamber: str | None = None,
+    state: str | None = None,
     district: int | None = None,
     is_current: bool = False,
 ) -> dict[str, Any]:
-    """district is forced None for senators even if caller passes a value."""
-    effective_district = None if record.chamber == "senate" else district
+    effective_chamber = chamber or record.chamber
+    effective_state = state if state is not None else record.state
+    effective_district = None if effective_chamber == "senate" else district
     return {
         "_bioguide_id": record.bioguide_id,
         "member_id": None,
         "congress": congress,
-        "chamber": record.chamber,
-        "state": record.state,
+        "chamber": effective_chamber,
+        "state": effective_state,
         "district": effective_district,
         "start_date": start_date,
         "end_date": end_date,
@@ -148,7 +151,13 @@ def bill_row(record: BillRecord) -> dict[str, Any]:
     }
 
 
-def bill_sponsor_row(record: BillRecord, bioguide_id: str) -> dict[str, Any]:
+def bill_sponsor_row(
+    record: BillRecord,
+    bioguide_id: str,
+    *,
+    sponsor_date: Any = None,
+    source_url: str | None = None,
+) -> dict[str, Any]:
     return {
         "_bill_key": (record.congress, record.bill_type, record.bill_number),
         "_bioguide_id": bioguide_id,
@@ -156,9 +165,9 @@ def bill_sponsor_row(record: BillRecord, bioguide_id: str) -> dict[str, Any]:
         "member_id": None,
         "sponsor_role": "primary",
         "is_primary": True,
-        "sponsor_date": record.introduced_date,
+        "sponsor_date": sponsor_date if sponsor_date is not None else record.introduced_date,
         "source_artifact_id": None,
-        "source_record_id": record.source_url,
+        "source_record_id": source_url if source_url is not None else record.source_url,
     }
 
 

@@ -32,6 +32,18 @@ _APP_SURFACE = {
     "open_runtime_connection",
 }
 
+_COMMAND_SURFACE = {
+    "load_congress",
+    "load_congress_local",
+    "load_disclosures",
+    "process_disclosures_local",
+    "publish_snapshot",
+    "recompute_snapshot",
+    "run_oracle_local_command",
+    "verify_publish_local",
+    "verify_publish_roundtrip_local",
+}
+
 _CONTEXT_SURFACE = {
     "RuntimeContext",
     "build_runtime_context",
@@ -39,11 +51,20 @@ _CONTEXT_SURFACE = {
     "open_connection",
 }
 
+_INSPECT_SURFACE = {
+    "load_local_evidence_card",
+    "load_local_manifest",
+    "load_local_member_profile",
+    "load_local_zip_feed",
+}
+
 _PATHS_SURFACE = {
     "crosswalks_dir",
     "db_migrations_dir",
     "db_schema_path",
     "local_artifact_root",
+    "local_congress_bundle_root",
+    "local_disclosure_bundle_root",
     "local_publish_root",
     "repo_root",
     "taxonomy_dir",
@@ -61,42 +82,39 @@ _SOURCE_SURFACE = {
     "source_by_slug",
 }
 
-_RUNTIME_FLOW_SURFACE = {
+_RESULT_SURFACE = {
     "CongressLoadResult",
-    "DisclosureArtifactIngestResult",
+    "CongressOracleOptions",
     "DisclosuresLoadRuntimeResult",
-    "ParseSessionResult",
+    "LocalOracleOptions",
+    "LocalOracleRunResult",
     "PublishRuntimeResult",
+    "PublishRoundtripResult",
+    "PublishVerifyResult",
     "RuntimeRecomputeResult",
-    "current_data_sources",
-    "default_snapshot_id",
+}
+
+_STATUS_SURFACE = {
     "get_runtime_status",
     "get_runtime_status_summary",
-    "latest_ingestion_runs",
-    "latest_parse_runs",
-    "latest_source_artifacts",
-    "load_congress",
-    "load_disclosures",
-    "load_local_evidence_card",
-    "load_local_manifest",
-    "load_local_member_profile",
-    "load_local_zip_feed",
+}
+
+_ZIP_BUNDLE_SURFACE = {
     "load_zip_bundle",
-    "publish_snapshot",
-    "recompute_snapshot",
-    "run_congress_load_runtime",
-    "run_disclosure_artifact_ingest",
-    "run_disclosures_load_runtime",
-    "run_parse_session",
-    "run_publish_runtime",
-    "run_recompute_runtime",
-    "runtime_status_dict",
-    "smoke_publish",
-    "smoke_recompute",
     "zip_bundle_from_dict",
 }
 
-_EXPECTED = _APP_SURFACE | _CONTEXT_SURFACE | _PATHS_SURFACE | _SOURCE_SURFACE | _RUNTIME_FLOW_SURFACE
+_EXPECTED = (
+    _APP_SURFACE
+    | _COMMAND_SURFACE
+    | _CONTEXT_SURFACE
+    | _INSPECT_SURFACE
+    | _PATHS_SURFACE
+    | _SOURCE_SURFACE
+    | _RESULT_SURFACE
+    | _STATUS_SURFACE
+    | _ZIP_BUNDLE_SURFACE
+)
 
 
 def test_app_surface_exported():
@@ -105,10 +123,22 @@ def test_app_surface_exported():
     assert not missing, f"app surface missing from __all__: {missing}"
 
 
+def test_command_surface_exported():
+    exported = set(runtime.__all__)
+    missing = _COMMAND_SURFACE - exported
+    assert not missing, f"command surface missing from __all__: {missing}"
+
+
 def test_context_surface_exported():
     exported = set(runtime.__all__)
     missing = _CONTEXT_SURFACE - exported
     assert not missing, f"context surface missing from __all__: {missing}"
+
+
+def test_inspect_surface_exported():
+    exported = set(runtime.__all__)
+    missing = _INSPECT_SURFACE - exported
+    assert not missing, f"inspect surface missing from __all__: {missing}"
 
 
 def test_paths_surface_exported():
@@ -123,10 +153,22 @@ def test_source_surface_exported():
     assert not missing, f"source surface missing from __all__: {missing}"
 
 
-def test_runtime_flow_surface_exported():
+def test_result_surface_exported():
     exported = set(runtime.__all__)
-    missing = _RUNTIME_FLOW_SURFACE - exported
-    assert not missing, f"runtime-flow surface missing from __all__: {missing}"
+    missing = _RESULT_SURFACE - exported
+    assert not missing, f"result surface missing from __all__: {missing}"
+
+
+def test_status_surface_exported():
+    exported = set(runtime.__all__)
+    missing = _STATUS_SURFACE - exported
+    assert not missing, f"status surface missing from __all__: {missing}"
+
+
+def test_zip_bundle_surface_exported():
+    exported = set(runtime.__all__)
+    missing = _ZIP_BUNDLE_SURFACE - exported
+    assert not missing, f"zip bundle surface missing from __all__: {missing}"
 
 
 # ---------------------------------------------------------------------------
@@ -138,18 +180,77 @@ _KNOWN_INTERNAL_NAMES = {
     # submodule names — callers should import surfaces, not raw modules
     "app",
     "congress",
+    "congress_archive",
     "context",
     "disclosures",
     "disclosures_artifacts",
+    "disclosures_parse",
     "inspect",
+    "main",
+    "oracle_contracts",
+    "oracle_local",
+    "output",
     "parse_runs",
     "paths",
     "publish",
+    "publish_roundtrip",
+    "publish_roundtrip_profiles",
+    "publish_roundtrip_types",
+    "publish_verify",
+    "publish_verify_evidence",
+    "publish_verify_manifest",
+    "publish_verify_profiles",
+    "publish_verify_types",
+    "publish_verify_zip",
     "recompute",
     "smoke",
+    "smoke_oracle",
     "sources",
     "status",
     "zip_bundle",
+}
+
+# Names that are importable from src.runtime but intentionally excluded
+# from __all__ because they are internal implementation details.
+_KNOWN_INTERNAL_EXPORTS = {
+    # verify/roundtrip stage-level types
+    "PUBLISH_STAGES",
+    "PublishVerifyIssue",
+    "PublishVerifyStageResult",
+    "ROUNDTRIP_STAGES",
+    "PublishRoundtripIssue",
+    "PublishRoundtripStageResult",
+    # internal pipeline run functions
+    "run_congress_archive_load",
+    "run_congress_load_runtime",
+    "run_oracle_local",
+    "run_disclosure_artifact_ingest",
+    "run_disclosure_parse_runtime",
+    "run_disclosures_parse_load_runtime",
+    "run_disclosures_load_runtime",
+    "run_parse_session",
+    "run_publish_runtime",
+    "run_recompute_runtime",
+    # internal result types
+    "CongressStageSummary",
+    "DisclosureArtifactIngestResult",
+    "DisclosureParseRuntimeResult",
+    "DisclosuresParseLoadResult",
+    "LocalOracleInputs",
+    "ParseSessionResult",
+    # internal status queries
+    "current_data_sources",
+    "latest_ingestion_runs",
+    "latest_parse_runs",
+    "latest_source_artifacts",
+    "runtime_status_dict",
+    # smoke testing utilities
+    "smoke_oracle_path",
+    "smoke_process_disclosures",
+    "smoke_publish",
+    "smoke_recompute",
+    # internal helpers
+    "default_snapshot_id",
 }
 
 
@@ -162,6 +263,21 @@ def test_no_submodule_names_in_all():
     exported = set(runtime.__all__)
     leaked = _KNOWN_INTERNAL_NAMES & exported
     assert not leaked, f"submodule names should not appear in __all__: {leaked}"
+
+
+def test_no_internal_exports_in_all():
+    exported = set(runtime.__all__)
+    leaked = _KNOWN_INTERNAL_EXPORTS & exported
+    assert not leaked, f"internal names should not appear in __all__: {leaked}"
+
+
+def test_internal_exports_still_importable():
+    """Internal names are excluded from __all__ but must remain importable."""
+    for name in _KNOWN_INTERNAL_EXPORTS:
+        assert hasattr(runtime, name), (
+            f"{name!r} was removed from __all__ but is no longer importable — "
+            f"keep the import in __init__.py so internal callers still work"
+        )
 
 
 def test_all_is_exactly_expected_surface():

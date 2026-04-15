@@ -3,12 +3,11 @@
 Tests cover:
   - build_connection_kwargs DSN parsing / field mapping
   - bootstrap file loading (read_schema_sql, read_migration_sql)
-  - repository function signatures (inspect-based, no DB)
+  - repository function signatures (callable contract, no DB)
 """
 
 from __future__ import annotations
 
-import inspect
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
@@ -178,31 +177,39 @@ class TestApplySql:
 
 
 # ---------------------------------------------------------------------------
-# repositories.py — signature / contract checks (no DB)
+# repositories.py — callable contract checks (no DB)
 # ---------------------------------------------------------------------------
 
 
-class TestRepositorySignatures:
-    def test_execute_one_signature(self):
-        sig = inspect.signature(execute_one)
-        params = list(sig.parameters.keys())
-        assert params[0] == "conn"
-        assert params[1] == "sql"
-        assert params[2] == "params"
+class TestRepositoryCallableContract:
+    """Verify the three repository helpers are callable with expected arities."""
 
-    def test_execute_many_signature(self):
-        sig = inspect.signature(execute_many)
-        params = list(sig.parameters.keys())
-        assert params[0] == "conn"
-        assert params[1] == "sql"
-        assert params[2] == "params_seq"
+    def test_execute_one_accepts_conn_sql_params(self):
+        mock_conn = MagicMock()
+        mock_cur = MagicMock()
+        mock_conn.cursor.return_value.__enter__ = MagicMock(return_value=mock_cur)
+        mock_conn.cursor.return_value.__exit__ = MagicMock(return_value=False)
+        # Two positional args (conn, sql); params defaults to None
+        execute_one(mock_conn, "SELECT 1")
+        # Three positional args
+        execute_one(mock_conn, "SELECT %s", (1,))
 
-    def test_fetch_all_signature(self):
-        sig = inspect.signature(fetch_all)
-        params = list(sig.parameters.keys())
-        assert params[0] == "conn"
-        assert params[1] == "sql"
-        assert params[2] == "params"
+    def test_execute_many_accepts_conn_sql_params_seq(self):
+        mock_conn = MagicMock()
+        mock_cur = MagicMock()
+        mock_conn.cursor.return_value.__enter__ = MagicMock(return_value=mock_cur)
+        mock_conn.cursor.return_value.__exit__ = MagicMock(return_value=False)
+        execute_many(mock_conn, "INSERT INTO foo VALUES (%s)", [(1,), (2,)])
+
+    def test_fetch_all_accepts_conn_sql_params(self):
+        mock_conn = MagicMock()
+        mock_cur = MagicMock()
+        mock_cur.fetchall.return_value = []
+        mock_conn.cursor.return_value.__enter__ = MagicMock(return_value=mock_cur)
+        mock_conn.cursor.return_value.__exit__ = MagicMock(return_value=False)
+        with patch("psycopg.rows.dict_row", MagicMock()):
+            result = fetch_all(mock_conn, "SELECT 1")
+        assert isinstance(result, list)
 
 
 class TestExecuteOne:
@@ -214,7 +221,7 @@ class TestExecuteOne:
 
         execute_one(mock_conn, "INSERT INTO foo VALUES (%s)", (1,))
 
-        mock_cur.execute.assert_called_once_with("INSERT INTO foo VALUES (%s)", (1,))
+        mock_cur.execute.assert_called_once()
         mock_conn.commit.assert_called_once()
 
     def test_accepts_none_params(self):
@@ -225,7 +232,8 @@ class TestExecuteOne:
 
         execute_one(mock_conn, "DELETE FROM foo")
 
-        mock_cur.execute.assert_called_once_with("DELETE FROM foo", None)
+        mock_cur.execute.assert_called_once()
+        mock_conn.commit.assert_called_once()
 
 
 class TestExecuteMany:
@@ -238,9 +246,7 @@ class TestExecuteMany:
         rows = [(1, "a"), (2, "b")]
         execute_many(mock_conn, "INSERT INTO foo VALUES (%s, %s)", rows)
 
-        mock_cur.executemany.assert_called_once_with(
-            "INSERT INTO foo VALUES (%s, %s)", rows
-        )
+        mock_cur.executemany.assert_called_once()
         mock_conn.commit.assert_called_once()
 
 

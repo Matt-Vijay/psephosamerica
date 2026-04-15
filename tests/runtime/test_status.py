@@ -282,6 +282,29 @@ class TestRuntimeStatusDict:
         assert result["summary"]["parse_run_count"] == 0
         assert result["summary"]["data_source_count"] == 0
 
+    def test_exact_top_level_keys_without_artifacts(self):
+        result = runtime_status_dict([], [], [])
+        assert set(result.keys()) == {"ingestion_runs", "parse_runs", "data_sources", "summary"}
+
+    def test_exact_top_level_keys_with_artifacts(self):
+        result = runtime_status_dict([], [], [], source_artifacts=[])
+        assert set(result.keys()) == {
+            "ingestion_runs", "parse_runs", "data_sources", "source_artifacts", "summary",
+        }
+
+    def test_exact_summary_keys_without_artifacts(self):
+        result = runtime_status_dict([], [], [])
+        assert set(result["summary"].keys()) == {
+            "ingestion_run_count", "parse_run_count", "data_source_count",
+        }
+
+    def test_exact_summary_keys_with_artifacts(self):
+        result = runtime_status_dict([], [], [], source_artifacts=[])
+        assert set(result["summary"].keys()) == {
+            "ingestion_run_count", "parse_run_count", "data_source_count",
+            "source_artifact_count",
+        }
+
     def test_pure_no_side_effects(self):
         ing = [_INGESTION_ROW]
         par = [_PARSE_ROW]

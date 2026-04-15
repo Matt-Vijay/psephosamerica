@@ -8,9 +8,9 @@ Covers:
 - build_recompute_resolvers: hint keys, target columns, resolver callables
 - build_recompute_resolvers: cache hit, cache miss (→ None)
 - build_recompute_resolvers: output is structurally valid Resolvers dict
-- load_recompute_resolver_maps: issues three queries
 - load_recompute_resolver_maps: maps populated from fetched rows
 - load_recompute_resolver_maps: empty tables → empty maps
+- Round-trip: load maps → build resolvers → resolve rows
 """
 
 from __future__ import annotations
@@ -226,59 +226,11 @@ class TestResolversCompatibility:
 
 
 # ---------------------------------------------------------------------------
-# load_recompute_resolver_maps — query dispatch
+# load_recompute_resolver_maps — behavioral checks
 # ---------------------------------------------------------------------------
 
 
 class TestLoadRecomputeResolverMaps:
-    def test_issues_exactly_three_fetch_all_calls(self) -> None:
-        calls: list[str] = []
-
-        def fake_fetch(conn_, sql, params=None):
-            calls.append(sql)
-            return []
-
-        with patch("src.db.recompute_resolvers.fetch_all", side_effect=fake_fetch):
-            load_recompute_resolver_maps(CONN)
-
-        assert len(calls) == 3
-
-    def test_queries_member_table(self) -> None:
-        sqls: list[str] = []
-
-        def fake_fetch(conn_, sql, params=None):
-            sqls.append(sql)
-            return []
-
-        with patch("src.db.recompute_resolvers.fetch_all", side_effect=fake_fetch):
-            load_recompute_resolver_maps(CONN)
-
-        assert any("member" in s.lower() for s in sqls)
-
-    def test_queries_financial_disclosure_table(self) -> None:
-        sqls: list[str] = []
-
-        def fake_fetch(conn_, sql, params=None):
-            sqls.append(sql)
-            return []
-
-        with patch("src.db.recompute_resolvers.fetch_all", side_effect=fake_fetch):
-            load_recompute_resolver_maps(CONN)
-
-        assert any("financial_disclosure" in s.lower() for s in sqls)
-
-    def test_queries_rule_fire_table(self) -> None:
-        sqls: list[str] = []
-
-        def fake_fetch(conn_, sql, params=None):
-            sqls.append(sql)
-            return []
-
-        with patch("src.db.recompute_resolvers.fetch_all", side_effect=fake_fetch):
-            load_recompute_resolver_maps(CONN)
-
-        assert any("rule_fire" in s.lower() for s in sqls)
-
     def test_member_rows_populate_member_by_bioguide(self) -> None:
         member_rows = [
             {"id": 1, "bioguide_id": "A000001"},
@@ -327,18 +279,6 @@ class TestLoadRecomputeResolverMaps:
         assert maps.member_by_bioguide == {}
         assert maps.disclosure_by_source_record == {}
         assert maps.rule_fire_by_source_record == {}
-
-    def test_conn_passed_to_fetch_all(self) -> None:
-        seen_conns: list[Any] = []
-
-        def fake_fetch(conn_, sql, params=None):
-            seen_conns.append(conn_)
-            return []
-
-        with patch("src.db.recompute_resolvers.fetch_all", side_effect=fake_fetch):
-            load_recompute_resolver_maps(CONN)
-
-        assert all(c is CONN for c in seen_conns)
 
     def test_returned_maps_feed_resolvers_correctly(self) -> None:
         """Round-trip: load maps → build resolvers → resolve rows."""

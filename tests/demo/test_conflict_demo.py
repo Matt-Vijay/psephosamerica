@@ -234,43 +234,25 @@ class TestSnapshotManifest:
 
 
 class TestMain:
-    def test_main_runs_without_error(self, capsys: pytest.CaptureFixture[str]) -> None:
-        main()
-        captured = capsys.readouterr()
-        assert captured.out.strip()
-
-    def test_main_outputs_valid_json(self, capsys: pytest.CaptureFixture[str]) -> None:
+    @pytest.fixture()
+    def main_output(self, capsys: pytest.CaptureFixture[str]) -> dict:
+        """Run main() once per test and return parsed JSON."""
         import json
 
         main()
-        captured = capsys.readouterr()
-        data = json.loads(captured.out)
-        assert isinstance(data, dict)
+        return json.loads(capsys.readouterr().out)
 
-    def test_main_status_ok(self, capsys: pytest.CaptureFixture[str]) -> None:
-        import json
+    def test_main_outputs_valid_json(self, main_output: dict) -> None:
+        assert isinstance(main_output, dict)
 
-        main()
-        data = json.loads(capsys.readouterr().out)
-        assert data["status"] == "ok"
+    def test_main_status_ok(self, main_output: dict) -> None:
+        assert main_output["status"] == "ok"
 
-    def test_main_includes_bioguide_id(self, capsys: pytest.CaptureFixture[str]) -> None:
-        import json
+    def test_main_includes_bioguide_id(self, main_output: dict) -> None:
+        assert main_output["bioguide_id"] == "S000999"
 
-        main()
-        data = json.loads(capsys.readouterr().out)
-        assert data["bioguide_id"] == "S000999"
+    def test_main_rule_fires_positive(self, main_output: dict) -> None:
+        assert main_output["rule_fires"] >= 1
 
-    def test_main_rule_fires_positive(self, capsys: pytest.CaptureFixture[str]) -> None:
-        import json
-
-        main()
-        data = json.loads(capsys.readouterr().out)
-        assert data["rule_fires"] >= 1
-
-    def test_main_fired_rule_ids_present(self, capsys: pytest.CaptureFixture[str]) -> None:
-        import json
-
-        main()
-        data = json.loads(capsys.readouterr().out)
-        assert len(data["fired_rule_ids"]) >= 1
+    def test_main_fired_rule_ids_present(self, main_output: dict) -> None:
+        assert len(main_output["fired_rule_ids"]) >= 1

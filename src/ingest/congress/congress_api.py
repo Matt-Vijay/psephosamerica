@@ -65,6 +65,11 @@ def bills_url(
     return urljoin(BASE_URL, path) + "?" + urlencode(params)
 
 
+def bill_detail_url(congress: int, bill_type: str, bill_number: int) -> str:
+    path = f"bill/{congress}/{bill_type}/{bill_number}"
+    return urljoin(BASE_URL, path) + "?format=json"
+
+
 def cosponsors_url(
     congress: int,
     bill_type: str,
@@ -224,6 +229,32 @@ class CongressAPIClient:
         url = bills_url(congress, bill_type)
         for raw in self._paginate(url, "bills"):
             yield normalize_bill(raw, source_url=url)
+
+    def get_member_detail(self, bioguide_id: str) -> MemberRecord:
+        detail = self.get_member_detail_payload(bioguide_id)
+        return normalize_member(detail, source_url=member_detail_url(bioguide_id))
+
+    def get_bill_detail(self, congress: int, bill_type: str, bill_number: int) -> BillRecord:
+        detail = self.get_bill_detail_payload(congress, bill_type, bill_number)
+        return normalize_bill(
+            detail,
+            source_url=bill_detail_url(congress, bill_type, bill_number),
+        )
+
+    def get_member_detail_payload(self, bioguide_id: str) -> dict[str, Any]:
+        url = member_detail_url(bioguide_id)
+        body = self._get(url)
+        return body["member"]
+
+    def get_bill_detail_payload(
+        self,
+        congress: int,
+        bill_type: str,
+        bill_number: int,
+    ) -> dict[str, Any]:
+        url = bill_detail_url(congress, bill_type, bill_number)
+        body = self._get(url)
+        return body["bill"]
 
     def iter_cosponsors(self, congress: int, bill_type: str, bill_number: int) -> Iterator[CosponsorRecord]:
         url = cosponsors_url(congress, bill_type, bill_number)

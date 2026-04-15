@@ -2,19 +2,39 @@ from __future__ import annotations
 
 import datetime as dt
 import sys
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
 from src.runtime.app import build_runtime, open_runtime_connection
 from src.runtime.bootstrap import bootstrap_database, load_initial_migration_sql, load_schema_sql
 from src.runtime.cli import parse_args
-from src.runtime.commands import publish_snapshot, recompute_snapshot
-from src.runtime.congress_live import run_live_congress_load
+from src.runtime.commands import (
+    load_congress,
+    load_congress_local,
+    process_disclosures_local,
+    publish_snapshot,
+    recompute_snapshot,
+    run_oracle_local_command,
+    verify_publish_local,
+    verify_publish_roundtrip_local,
+)
+from src.runtime.congress_options import CongressLoadOptions
 from src.runtime.disclosures_artifacts import run_disclosure_artifact_ingest
+from src.runtime.disclosures_bundle import load_disclosures_bundle
+from src.runtime.disclosures_load_from_parse import run_disclosures_parse_load_runtime
+from src.runtime.disclosures_parse import run_disclosure_parse_runtime
+from src.runtime.oracle_contracts import CongressOracleOptions, LocalOracleOptions
 from src.runtime.output import (
     as_json,
     summarize_disclosure_artifact_ingest_result,
+    summarize_disclosures_bundle_process_result,
     summarize_load_result,
+    summarize_local_oracle_run_result,
+    summarize_parse_disclosures_result,
+    summarize_publish_verify_result,
+    summarize_publish_roundtrip_result,
+    summarize_process_disclosures_result,
     summarize_publish_result,
     summarize_recompute_result,
 )
@@ -127,14 +147,16 @@ def _dispatch(args) -> dict:
 
     if args.command == "load-congress":
         runtime = build_runtime()
-        settings = runtime.context.settings
+        ctx = runtime.context
         if args.api_key:
-            settings = settings.model_copy(update={"congress_api_key": args.api_key})
-        result = run_live_congress_load(
-            open_runtime_connection(runtime),
-            settings,
+            ctx = replace(ctx, settings=ctx.settings.model_copy(update={"congress_api_key": args.api_key}))
+        options = CongressLoadOptions(
             congress=args.congress or _current_congress(),
+            include_votes=args.include_votes,
+            house_vote_year=args.house_vote_year,
+            senate_session=args.senate_session,
         )
+        result = load_congress(ctx, options)
         return {"ok": True, "command": "load-congress", **summarize_load_result(result)}
 
     if args.command == "load-disclosures":
@@ -169,6 +191,40 @@ def _dispatch(args) -> dict:
             chamber: summary,
         }
 
+    if args.command == "parse-disclosures":
+        runtime = build_runtime()
+        conn = open_runtime_connection(runtime)
+        chamber = None if args.chamber == "both" else args.chamber
+        local_root = _artifact_root_or_default(args.local_root)
+        result = run_disclosure_parse_runtime(
+            conn,
+            local_root=local_root,
+            chamber=chamber,
+            limit=args.limit,
+        )
+        return {
+            "ok": True,
+            "command": "parse-disclosures",
+            **summarize_parse_disclosures_result(result),
+        }
+
+    if args.command == "process-disclosures":
+        runtime = build_runtime()
+        conn = open_runtime_connection(runtime)
+        chamber = None if args.chamber == "both" else args.chamber
+        local_root = _artifact_root_or_default(args.local_root)
+        result = run_disclosures_parse_load_runtime(
+            conn,
+            local_root=local_root,
+            chamber=chamber,
+            limit=args.limit,
+        )
+        return {
+            "ok": True,
+            "command": "process-disclosures",
+            **summarize_process_disclosures_result(result),
+        }
+
     if args.command == "recompute":
         runtime = build_runtime()
         result = recompute_snapshot(runtime.context, _snapshot_date_or_today(args.snapshot_date))
@@ -187,5 +243,66 @@ def _dispatch(args) -> dict:
             zip_bundle_inputs,
         )
         return {"ok": True, "command": "publish", **summarize_publish_result(result)}
+
+    if args.command == "load-congress-local":
+        runtime = build_runtime()
+        options = CongressLoadOptions(
+            congress=args.congress,
+            include_votes=False,
+            house_vote_year=None,
+            senate_session=None,
+        )
+        result = load_congress_local(runtime.context, Path(args.archive), options)
+        return {"ok": True, "command": "load-congress-local", **summarize_load_result(result)}
+
+    if args.command == "process-disclosures-local":
+        runtime = build_runtime()
+        bundle = load_disclosures_bundle(Path(args.bundle))
+        result = process_disclosures_local(runtime.context, bundle)
+        return {
+            "ok": True,
+            "command": "process-disclosures-local",
+            **summarize_disclosures_bundle_process_result(result),
+        }
+
+    if args.command == "run-oracle-local":
+        runtime = build_runtime()
+        congress_archive = Path(args.congress_archive)
+        disclosures_bundle = load_disclosures_bundle(Path(args.disclosures_bundle))
+        chamber = None if args.chamber == "both" else args.chamber
+        congress_options = CongressOracleOptions(
+            congress=_current_congress(),
+            chamber=chamber,
+            limit=args.limit,
+        )
+        options = LocalOracleOptions(
+            congress_options=congress_options,
+            snapshot_date=args.snapshot_date,
+            target_dir=Path(args.target_dir),
+            snapshot_id=args.snapshot_id,
+        )
+        result = run_oracle_local_command(runtime.context, congress_archive, disclosures_bundle, options)
+        return {
+            "ok": True,
+            "command": "run-oracle-local",
+            **summarize_local_oracle_run_result(result),
+        }
+
+    if args.command == "verify-publish":
+        result = verify_publish_local(Path(args.publish_root))
+        return {
+            "ok": result.ok,
+            "command": "verify-publish",
+            **summarize_publish_verify_result(result),
+        }
+
+    if args.command == "verify-publish-roundtrip":
+        runtime = build_runtime()
+        result = verify_publish_roundtrip_local(runtime.context, Path(args.publish_root))
+        return {
+            "ok": result.ok,
+            "command": "verify-publish-roundtrip",
+            "roundtrip": summarize_publish_roundtrip_result(result),
+        }
 
     return {"ok": False, "error": f"unknown command: {args.command!r}"}

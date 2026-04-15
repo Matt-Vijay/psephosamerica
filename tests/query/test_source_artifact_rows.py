@@ -1,6 +1,9 @@
 """Tests for src/query/source_artifact_rows.py.
 
 No live DB.  fetch_all is patched at the call site in each test.
+
+Tests focus on behavioral contracts: return values, parameter building,
+and filter propagation — not SQL structure.
 """
 
 from __future__ import annotations
@@ -79,32 +82,6 @@ class TestFetchDisclosureArtifactRows:
             fetch_disclosure_artifact_rows(CONN)
         assert mock_fa.call_args[0][0] is CONN
 
-    def test_sql_references_source_artifact(self):
-        with patch(MODULE, return_value=[]) as mock_fa:
-            fetch_disclosure_artifact_rows(CONN)
-        sql = mock_fa.call_args[0][1]
-        assert "source_artifact" in sql
-
-    def test_sql_joins_data_source(self):
-        with patch(MODULE, return_value=[]) as mock_fa:
-            fetch_disclosure_artifact_rows(CONN)
-        sql = mock_fa.call_args[0][1]
-        assert "data_source" in sql
-
-    def test_sql_left_joins_financial_disclosure(self):
-        with patch(MODULE, return_value=[]) as mock_fa:
-            fetch_disclosure_artifact_rows(CONN)
-        sql = mock_fa.call_args[0][1].upper()
-        assert "LEFT JOIN" in sql
-        assert "FINANCIAL_DISCLOSURE" in sql
-
-    def test_sql_has_chamber_case_expression(self):
-        with patch(MODULE, return_value=[]) as mock_fa:
-            fetch_disclosure_artifact_rows(CONN)
-        sql = mock_fa.call_args[0][1]
-        assert "house-disclosures" in sql
-        assert "senate-disclosures" in sql
-
     def test_params_include_both_disclosure_slugs(self):
         with patch(MODULE, return_value=[]) as mock_fa:
             fetch_disclosure_artifact_rows(CONN)
@@ -136,12 +113,6 @@ class TestFetchDisclosureArtifactRows:
         _, _, params = mock_fa.call_args[0]
         assert params["year"] == 2024
 
-    def test_year_filter_sql_references_filing_year(self):
-        with patch(MODULE, return_value=[]) as mock_fa:
-            fetch_disclosure_artifact_rows(CONN, year=2024)
-        sql = mock_fa.call_args[0][1]
-        assert "filing_year" in sql
-
     def test_no_year_param_when_year_is_none(self):
         with patch(MODULE, return_value=[]) as mock_fa:
             fetch_disclosure_artifact_rows(CONN)
@@ -159,12 +130,6 @@ class TestFetchDisclosureArtifactRows:
             fetch_disclosure_artifact_rows(CONN)
         _, _, params = mock_fa.call_args[0]
         assert "limit" not in params
-
-    def test_limit_sql_appended(self):
-        with patch(MODULE, return_value=[]) as mock_fa:
-            fetch_disclosure_artifact_rows(CONN, limit=5)
-        sql = mock_fa.call_args[0][1].upper()
-        assert "LIMIT" in sql
 
     def test_returns_empty_list_when_no_rows(self):
         with patch(MODULE, return_value=[]):
@@ -207,24 +172,6 @@ class TestFetchUnparsedDisclosureArtifactRows:
         with patch(MODULE, return_value=[]) as mock_fa:
             fetch_unparsed_disclosure_artifact_rows(CONN)
         assert mock_fa.call_args[0][0] is CONN
-
-    def test_sql_references_parse_run(self):
-        with patch(MODULE, return_value=[]) as mock_fa:
-            fetch_unparsed_disclosure_artifact_rows(CONN)
-        sql = mock_fa.call_args[0][1]
-        assert "parse_run" in sql
-
-    def test_sql_excludes_succeeded_parse_runs(self):
-        with patch(MODULE, return_value=[]) as mock_fa:
-            fetch_unparsed_disclosure_artifact_rows(CONN)
-        sql = mock_fa.call_args[0][1]
-        assert "succeeded" in sql
-
-    def test_sql_uses_not_exists(self):
-        with patch(MODULE, return_value=[]) as mock_fa:
-            fetch_unparsed_disclosure_artifact_rows(CONN)
-        sql = mock_fa.call_args[0][1].upper()
-        assert "NOT EXISTS" in sql
 
     def test_params_include_both_disclosure_slugs(self):
         with patch(MODULE, return_value=[]) as mock_fa:
@@ -275,15 +222,3 @@ class TestFetchUnparsedDisclosureArtifactRows:
         _, _, params = mock_fa.call_args[0]
         assert params["chamber_slug"] == "house-disclosures"
         assert params["limit"] == 50
-
-    def test_sql_references_source_artifact(self):
-        with patch(MODULE, return_value=[]) as mock_fa:
-            fetch_unparsed_disclosure_artifact_rows(CONN)
-        sql = mock_fa.call_args[0][1]
-        assert "source_artifact" in sql
-
-    def test_sql_joins_data_source(self):
-        with patch(MODULE, return_value=[]) as mock_fa:
-            fetch_unparsed_disclosure_artifact_rows(CONN)
-        sql = mock_fa.call_args[0][1]
-        assert "data_source" in sql

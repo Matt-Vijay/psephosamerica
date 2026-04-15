@@ -1,13 +1,20 @@
 from __future__ import annotations
 
 import json
+from dataclasses import asdict
 from typing import Any
 
 from src.db.load_report import LoadSummary, status_dict
 from src.runtime.congress import CongressLoadResult
 from src.runtime.disclosures import DisclosuresLoadRuntimeResult
 from src.runtime.disclosures_artifacts import DisclosureArtifactIngestResult
+from src.runtime.disclosures_bundle_process import DisclosuresBundleProcessResult
+from src.runtime.disclosures_load_from_parse import DisclosuresParseLoadResult
+from src.runtime.disclosures_parse import DisclosureParseRuntimeResult
+from src.runtime.oracle_contracts import LocalOracleRunResult
 from src.runtime.publish import PublishRuntimeResult
+from src.runtime.publish_roundtrip_types import PublishRoundtripResult
+from src.runtime.publish_verify_types import PublishVerifyResult
 from src.runtime.recompute import RuntimeRecomputeResult
 
 
@@ -86,6 +93,22 @@ def summarize_disclosure_artifact_ingest_result(
     return out
 
 
+def summarize_parse_disclosures_result(result: DisclosureParseRuntimeResult) -> dict[str, Any]:
+    return {
+        "processed": result.processed_count,
+        "succeeded": result.succeeded_count,
+        "failed": result.failed_count,
+    }
+
+
+def summarize_process_disclosures_result(result: DisclosuresParseLoadResult) -> dict[str, Any]:
+    return {
+        "parse": summarize_parse_disclosures_result(result.parse_result),
+        "transformed": result.transform_count,
+        "load": summarize_load_result(result.load_result),
+    }
+
+
 def summarize_status(status: dict[str, Any]) -> dict[str, Any]:
     ingestion_runs: list[dict[str, Any]] = status.get("ingestion_runs", [])
     latest_run: dict[str, Any] | None = ingestion_runs[0] if ingestion_runs else None
@@ -105,4 +128,83 @@ def summarize_status(status: dict[str, Any]) -> dict[str, Any]:
             "artifact_kind": latest_artifact.get("artifact_kind") if latest_artifact else None,
             "data_source": latest_artifact.get("data_source_slug") if latest_artifact else None,
         },
+    }
+
+
+def summarize_disclosures_bundle_process_result(
+    result: DisclosuresBundleProcessResult,
+) -> dict[str, Any]:
+    """Compact summary of a bundle-process disclosure pipeline run."""
+    return {
+        "parse": summarize_parse_disclosures_result(result.parse_result),
+        "transformed": result.transform_count,
+        "load": summarize_load_result(result.load_result),
+    }
+
+
+def summarize_local_oracle_run_result(result: LocalOracleRunResult) -> dict[str, Any]:
+    """Compact summary of a completed local oracle run."""
+    return {
+        "snapshot_id": result.snapshot_id,
+        "congress": asdict(result.congress),
+        "disclosures": dict(result.disclosures),
+        "recompute": dict(result.recompute),
+        "publish": dict(result.publish),
+        "verify": summarize_publish_verify_result(result.verify),
+        "roundtrip": summarize_publish_roundtrip_result(result.roundtrip),
+    }
+
+
+def summarize_publish_verify_result(result: PublishVerifyResult) -> dict[str, Any]:
+    """Compact summary of a publish verification outcome."""
+    return {
+        "ok": result.ok,
+        "total_checked": result.total_checked,
+        "total_errors": result.total_errors,
+        "total_warnings": result.total_warnings,
+        "stages": [
+            {
+                "stage": s.stage,
+                "checked": s.checked,
+                "ok": s.ok,
+                "errors": s.error_count,
+                "warnings": s.warning_count,
+            }
+            for s in result.stages
+        ],
+    }
+
+
+def summarize_publish_roundtrip_result(result: PublishRoundtripResult) -> dict[str, Any]:
+    """Compact summary of a publish roundtrip verification outcome."""
+    return {
+        "ok": result.ok,
+        "total_checked": result.total_checked,
+        "total_errors": result.total_errors,
+        "total_warnings": result.total_warnings,
+        "stages": [
+            {
+                "stage": s.stage,
+                "checked": s.checked,
+                "ok": s.ok,
+                "errors": s.error_count,
+                "warnings": s.warning_count,
+            }
+            for s in result.stages
+        ],
+    }
+
+
+def summarize_oracle_result(result: dict[str, Any]) -> dict[str, Any]:
+    """Compact three-stage summary from smoke_oracle_path output.
+
+    Extracts snapshot_id from the publish stage and passes the three
+    stage dicts through unchanged so operators can inspect each step.
+    """
+    publish: dict[str, Any] = result.get("publish", {})
+    return {
+        "snapshot_id": publish.get("snapshot_id"),
+        "disclosures": result.get("disclosures", {}),
+        "recompute": result.get("recompute", {}),
+        "publish": publish,
     }

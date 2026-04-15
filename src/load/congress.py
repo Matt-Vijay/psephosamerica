@@ -42,12 +42,12 @@ from src.ingest.congress.transform import (
 
 @dataclass(frozen=True, slots=True)
 class MemberTermSpec:
-    """Pairs a MemberRecord with one term's metadata for member_term_row."""
-
     record: MemberRecord
     congress: int
     start_date: datetime.date
     end_date: datetime.date | None = None
+    chamber: str | None = None
+    state: str | None = None
     district: int | None = None
     is_current: bool = False
 
@@ -68,10 +68,10 @@ class CommitteeMembershipSpec:
 
 @dataclass(frozen=True, slots=True)
 class PrimarySponsorSpec:
-    """Links a BillRecord to the primary sponsor's bioguide_id."""
-
     record: BillRecord
     bioguide_id: str
+    sponsor_date: datetime.date | None = None
+    source_url: str | None = None
 
 
 def plan_members(records: Iterable[MemberRecord]) -> dict[str, Any]:
@@ -91,6 +91,8 @@ def plan_member_terms(specs: Iterable[MemberTermSpec]) -> dict[str, Any]:
             congress=s.congress,
             start_date=s.start_date,
             end_date=s.end_date,
+            chamber=s.chamber,
+            state=s.state,
             district=s.district,
             is_current=s.is_current,
         )
@@ -153,7 +155,15 @@ def plan_bill_sponsors(
     """Primary sponsors first so upserts don't downgrade an existing primary row.
     Conflict identity: (bill_id, member_id). Both FKs resolved via _bill_key and _bioguide_id.
     """
-    rows = [bill_sponsor_row(s.record, s.bioguide_id) for s in primary_specs]
+    rows = [
+        bill_sponsor_row(
+            s.record,
+            s.bioguide_id,
+            sponsor_date=s.sponsor_date,
+            source_url=s.source_url,
+        )
+        for s in primary_specs
+    ]
     rows += [cosponsor_row(c) for c in cosponsors]
     return {
         "table": "bill_sponsor",
