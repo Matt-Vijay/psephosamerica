@@ -17,6 +17,19 @@ Launch scoring uses a narrow set of official or supporting sources:
 
 Open Pact does not use unofficial sources in the scoring path.
 
+## Current Runtime Shape
+
+The current implementation follows an artifact-first path:
+
+1. discover official disclosure listings from the House and Senate portals
+2. download raw disclosure artifacts
+3. store immutable source-artifact rows with provenance
+4. parse and normalize disclosures into canonical rows
+5. recompute rule fires and score snapshots from canonical data
+6. publish immutable read-side snapshots
+
+This is deliberate. Public pages should read from frozen exported artifacts, not from live canonical tables.
+
 ## Rule Philosophy
 
 The system is deterministic, not interpretive. Rules are authored ahead of time, versioned, and executed against official records. A score change is the sum of explicit rule fires, not a model output and not an editorial judgment.
@@ -44,6 +57,8 @@ Launch limitations are intentional:
 - House disclosures are more likely to need OCR fallback and manual review than Senate filings
 - FEC data is useful but incomplete for some donor identity detail
 - Historical cleanup before 2013 is deferred
+- House and Senate disclosure listing pages do not provide reliable `bioguide_id` values directly; name-to-member resolution remains a downstream normalization step
+- Current live Congress loading still reaches core members, committees, bills, and cosponsors before deeper enrichment like memberships and votes
 
 ## Correction Policy
 
@@ -61,3 +76,12 @@ Published output is immutable once released.
 - `pg_dump` exports are archived regularly
 
 Public traffic should read from precomputed artifacts rather than the canonical database directly. This preserves auditability and keeps the public product stable across recomputes.
+
+## Operator Model
+
+Open Pact is built as a batch publishing system, not a live scoring dashboard.
+
+- the runtime layer loads source data into canonical Postgres tables
+- recompute creates deterministic rule fires, evidence rows, and score snapshots
+- publish writes immutable public artifacts from persisted rows
+- status surfaces are operator-facing, not part of the public product contract
