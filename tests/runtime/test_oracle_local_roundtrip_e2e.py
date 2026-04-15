@@ -61,8 +61,10 @@ from src.runtime.publish_roundtrip_types import (
     PublishRoundtripStageResult,
 )
 from src.runtime.recompute import RuntimeRecomputeResult
+from src.export.writer import serialize_payload
 from tests.support.published_roundtrip_fixtures import (
     PublishedRoundtrip,
+    assemble_from_homepage_feed_row_set,
     make_roundtrip,
 )
 
@@ -359,9 +361,12 @@ def _run_oracle_with_roundtrip(
     rt = make_roundtrip(publish_dir)
 
     def _publish_se(*_a, **_kw) -> PublishRuntimeResult:
+        feed_payload = assemble_from_homepage_feed_row_set(
+            rt.homepage_feed_row_set, snapshot_date=rt.snapshot_date,
+        )
         feed_file = publish_dir / "homepage" / "feed.json"
         feed_file.parent.mkdir(parents=True, exist_ok=True)
-        feed_file.write_bytes(b'{"feed": "ok"}')
+        feed_file.write_bytes(serialize_payload(feed_payload))
         publish_inner = MagicMock(name="publish_inner")
         publish_inner.written_count = 5
         publish_inner.succeeded = True
@@ -557,9 +562,12 @@ class TestOracleRoundtripBrokenTree:
         publish_dir = tmp_path / "publish"
         publish_dir.mkdir(parents=True, exist_ok=True)
         rt = make_roundtrip(publish_dir)
+        feed_payload = assemble_from_homepage_feed_row_set(
+            rt.homepage_feed_row_set, snapshot_date=rt.snapshot_date,
+        )
         feed_file = publish_dir / "homepage" / "feed.json"
         feed_file.parent.mkdir(parents=True, exist_ok=True)
-        feed_file.write_bytes(b'{"feed": "ok"}')
+        feed_file.write_bytes(serialize_payload(feed_payload))
         return publish_dir, rt
 
     def _verify_broken(
@@ -638,9 +646,12 @@ class TestStageOrderingOracleThenRoundtrip:
 
         def _publish(*_a, **_kw):
             call_log.append("publish")
+            feed_payload = assemble_from_homepage_feed_row_set(
+                rt.homepage_feed_row_set, snapshot_date=rt.snapshot_date,
+            )
             feed_file = publish_dir / "homepage" / "feed.json"
             feed_file.parent.mkdir(parents=True, exist_ok=True)
-            feed_file.write_bytes(b'{"feed": "ok"}')
+            feed_file.write_bytes(serialize_payload(feed_payload))
             publish_inner = MagicMock()
             publish_inner.written_count = 5
             publish_inner.succeeded = True

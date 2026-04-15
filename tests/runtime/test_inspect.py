@@ -21,7 +21,8 @@ from src.export.writer import (
     member_path,
     zip_path,
 )
-from src.export.local_store import HOMEPAGE_FEED_PATH, HomepageFeedPayload
+from src.export.local_store import HOMEPAGE_FEED_PATH
+from src.homepage.contracts import HomepageFeedPayload
 from src.runtime.inspect import (
     load_latest_local_manifest,
     load_local_evidence_card,

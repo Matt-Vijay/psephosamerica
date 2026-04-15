@@ -12,7 +12,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
-from src.runtime.main import run
+from src.runtime.main import COMMAND_REGISTRY, run
 
 _MOD = "src.runtime.main"
 
@@ -1492,3 +1492,54 @@ class TestVerifyPublishRoundtripCommand:
     def test_missing_publish_root_causes_nonzero_exit(self) -> None:
         code = run(["verify-publish-roundtrip"])
         assert code != 0
+
+
+# ---------------------------------------------------------------------------
+# Command registry
+# ---------------------------------------------------------------------------
+
+
+class TestCommandRegistry:
+    """Tests for the COMMAND_REGISTRY dispatch table."""
+
+    _EXPECTED_COMMANDS = frozenset({
+        "bootstrap-db",
+        "status",
+        "load-congress",
+        "load-disclosures",
+        "parse-disclosures",
+        "process-disclosures",
+        "recompute",
+        "publish",
+        "load-congress-local",
+        "process-disclosures-local",
+        "run-oracle-local",
+        "verify-publish",
+        "verify-publish-roundtrip",
+    })
+
+    def test_registry_contains_all_commands(self) -> None:
+        assert set(COMMAND_REGISTRY.keys()) == self._EXPECTED_COMMANDS
+
+    def test_registry_values_are_callable(self) -> None:
+        for name, handler in COMMAND_REGISTRY.items():
+            assert callable(handler), f"{name!r} handler is not callable"
+
+    def test_unknown_command_returns_error(self) -> None:
+        with _run_harness() as h:
+            with patch(f"{_MOD}.parse_args") as mock_parse:
+                mock_parse.return_value = SimpleNamespace(command="no-such-command")
+                code = run(["no-such-command"])
+        assert code == 0  # dispatch returns dict, no exception
+        printed = _printed(h)
+        assert printed["ok"] is False
+        assert "unknown command" in printed["error"]
+
+    def test_dispatch_routes_to_correct_handler(self) -> None:
+        """Each registry entry is invoked when its command name matches."""
+        for cmd_name in self._EXPECTED_COMMANDS:
+            handler = COMMAND_REGISTRY[cmd_name]
+            assert handler.__name__.startswith("_handle_"), (
+                f"Registry entry {cmd_name!r} points to {handler.__name__!r}, "
+                f"expected a _handle_* function"
+            )

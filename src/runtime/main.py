@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import datetime as dt
 import sys
+from collections.abc import Callable
 from dataclasses import replace
 from pathlib import Path
 from typing import Any
@@ -59,6 +60,11 @@ def run(argv: list[str]) -> int:
 
 def main() -> None:
     sys.exit(run(sys.argv[1:]))
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
 
 
 def _snapshot_date_or_today(snapshot_date: dt.date | None) -> dt.date:
@@ -122,187 +128,229 @@ def _load_senate_disclosures(conn, year: int, local_root: Path) -> dict[str, Any
     )
 
 
-def _dispatch(args) -> dict:
-    if args.command == "bootstrap-db":
-        runtime = build_runtime()
-        conn = open_runtime_connection(runtime)
-        if args.dry_run:
-            return {
-                "ok": True,
-                "command": "bootstrap-db",
-                "schema_sql_bytes": len(load_schema_sql().encode("utf-8")),
-                "initial_migration_sql_bytes": len(load_initial_migration_sql().encode("utf-8")),
-            }
-        bootstrap_database(conn)
-        return {"ok": True, "command": "bootstrap-db"}
+# ---------------------------------------------------------------------------
+# Command handlers
+# ---------------------------------------------------------------------------
 
-    if args.command == "status":
-        runtime = build_runtime()
-        conn = open_runtime_connection(runtime)
+
+def _handle_bootstrap_db(args) -> dict:
+    runtime = build_runtime()
+    conn = open_runtime_connection(runtime)
+    if args.dry_run:
         return {
             "ok": True,
-            "command": "status",
-            **get_runtime_status_summary(conn, limit=args.limit),
+            "command": "bootstrap-db",
+            "schema_sql_bytes": len(load_schema_sql().encode("utf-8")),
+            "initial_migration_sql_bytes": len(load_initial_migration_sql().encode("utf-8")),
         }
+    bootstrap_database(conn)
+    return {"ok": True, "command": "bootstrap-db"}
 
-    if args.command == "load-congress":
-        runtime = build_runtime()
-        ctx = runtime.context
-        if args.api_key:
-            ctx = replace(ctx, settings=ctx.settings.model_copy(update={"congress_api_key": args.api_key}))
-        options = CongressLoadOptions(
-            congress=args.congress or _current_congress(),
-            include_votes=args.include_votes,
-            house_vote_year=args.house_vote_year,
-            senate_session=args.senate_session,
-        )
-        result = load_congress(ctx, options)
-        return {"ok": True, "command": "load-congress", **summarize_load_result(result)}
 
-    if args.command == "load-disclosures":
-        runtime = build_runtime()
-        conn = open_runtime_connection(runtime)
-        year = args.year if args.year is not None else dt.date.today().year
-        artifact_root = _artifact_root_or_default(args.local_root)
-        chamber = args.chamber
+def _handle_status(args) -> dict:
+    runtime = build_runtime()
+    conn = open_runtime_connection(runtime)
+    return {
+        "ok": True,
+        "command": "status",
+        **get_runtime_status_summary(conn, limit=args.limit),
+    }
 
-        if chamber == "both":
-            house_summary = _load_house_disclosures(conn, year, artifact_root)
-            senate_summary = _load_senate_disclosures(conn, year, artifact_root)
-            return {
-                "ok": True,
-                "command": "load-disclosures",
-                "year": year,
-                "local_root": str(artifact_root),
-                "house": house_summary,
-                "senate": senate_summary,
-            }
 
-        summary = (
-            _load_house_disclosures(conn, year, artifact_root)
-            if chamber == "house"
-            else _load_senate_disclosures(conn, year, artifact_root)
-        )
+def _handle_load_congress(args) -> dict:
+    runtime = build_runtime()
+    ctx = runtime.context
+    if args.api_key:
+        ctx = replace(ctx, settings=ctx.settings.model_copy(update={"congress_api_key": args.api_key}))
+    options = CongressLoadOptions(
+        congress=args.congress or _current_congress(),
+        include_votes=args.include_votes,
+        house_vote_year=args.house_vote_year,
+        senate_session=args.senate_session,
+    )
+    result = load_congress(ctx, options)
+    return {"ok": True, "command": "load-congress", **summarize_load_result(result)}
+
+
+def _handle_load_disclosures(args) -> dict:
+    runtime = build_runtime()
+    conn = open_runtime_connection(runtime)
+    year = args.year if args.year is not None else dt.date.today().year
+    artifact_root = _artifact_root_or_default(args.local_root)
+    chamber = args.chamber
+
+    if chamber == "both":
+        house_summary = _load_house_disclosures(conn, year, artifact_root)
+        senate_summary = _load_senate_disclosures(conn, year, artifact_root)
         return {
             "ok": True,
             "command": "load-disclosures",
             "year": year,
             "local_root": str(artifact_root),
-            chamber: summary,
+            "house": house_summary,
+            "senate": senate_summary,
         }
 
-    if args.command == "parse-disclosures":
-        runtime = build_runtime()
-        conn = open_runtime_connection(runtime)
-        chamber = None if args.chamber == "both" else args.chamber
-        local_root = _artifact_root_or_default(args.local_root)
-        result = run_disclosure_parse_runtime(
-            conn,
-            local_root=local_root,
-            chamber=chamber,
-            limit=args.limit,
-        )
-        return {
-            "ok": True,
-            "command": "parse-disclosures",
-            **summarize_parse_disclosures_result(result),
-        }
+    summary = (
+        _load_house_disclosures(conn, year, artifact_root)
+        if chamber == "house"
+        else _load_senate_disclosures(conn, year, artifact_root)
+    )
+    return {
+        "ok": True,
+        "command": "load-disclosures",
+        "year": year,
+        "local_root": str(artifact_root),
+        chamber: summary,
+    }
 
-    if args.command == "process-disclosures":
-        runtime = build_runtime()
-        conn = open_runtime_connection(runtime)
-        chamber = None if args.chamber == "both" else args.chamber
-        local_root = _artifact_root_or_default(args.local_root)
-        result = run_disclosures_parse_load_runtime(
-            conn,
-            local_root=local_root,
-            chamber=chamber,
-            limit=args.limit,
-        )
-        return {
-            "ok": True,
-            "command": "process-disclosures",
-            **summarize_process_disclosures_result(result),
-        }
 
-    if args.command == "recompute":
-        runtime = build_runtime()
-        result = recompute_snapshot(runtime.context, _snapshot_date_or_today(args.snapshot_date))
-        return {"ok": True, "command": "recompute", **summarize_recompute_result(result)}
+def _handle_parse_disclosures(args) -> dict:
+    runtime = build_runtime()
+    conn = open_runtime_connection(runtime)
+    chamber = None if args.chamber == "both" else args.chamber
+    local_root = _artifact_root_or_default(args.local_root)
+    result = run_disclosure_parse_runtime(
+        conn,
+        local_root=local_root,
+        chamber=chamber,
+        limit=args.limit,
+    )
+    return {
+        "ok": True,
+        "command": "parse-disclosures",
+        **summarize_parse_disclosures_result(result),
+    }
 
-    if args.command == "publish":
-        runtime = build_runtime()
-        zip_bundle_path = getattr(args, "zip_bundle", None)
-        if zip_bundle_path is None:
-            raise ValueError("publish requires --zip-bundle")
-        zip_bundle_inputs = load_zip_bundle(Path(zip_bundle_path))
-        result = publish_snapshot(
-            runtime.context,
-            _snapshot_date_or_today(args.snapshot_date),
-            _publish_target_or_default(args.out_dir, runtime),
-            zip_bundle_inputs,
-        )
-        return {"ok": True, "command": "publish", **summarize_publish_result(result)}
 
-    if args.command == "load-congress-local":
-        runtime = build_runtime()
-        options = CongressLoadOptions(
-            congress=args.congress,
-            include_votes=False,
-            house_vote_year=None,
-            senate_session=None,
-        )
-        result = load_congress_local(runtime.context, Path(args.archive), options)
-        return {"ok": True, "command": "load-congress-local", **summarize_load_result(result)}
+def _handle_process_disclosures(args) -> dict:
+    runtime = build_runtime()
+    conn = open_runtime_connection(runtime)
+    chamber = None if args.chamber == "both" else args.chamber
+    local_root = _artifact_root_or_default(args.local_root)
+    result = run_disclosures_parse_load_runtime(
+        conn,
+        local_root=local_root,
+        chamber=chamber,
+        limit=args.limit,
+    )
+    return {
+        "ok": True,
+        "command": "process-disclosures",
+        **summarize_process_disclosures_result(result),
+    }
 
-    if args.command == "process-disclosures-local":
-        runtime = build_runtime()
-        bundle = load_disclosures_bundle(Path(args.bundle))
-        result = process_disclosures_local(runtime.context, bundle)
-        return {
-            "ok": True,
-            "command": "process-disclosures-local",
-            **summarize_disclosures_bundle_process_result(result),
-        }
 
-    if args.command == "run-oracle-local":
-        runtime = build_runtime()
-        congress_archive = Path(args.congress_archive)
-        disclosures_bundle = load_disclosures_bundle(Path(args.disclosures_bundle))
-        chamber = None if args.chamber == "both" else args.chamber
-        congress_options = CongressOracleOptions(
-            congress=_current_congress(),
-            chamber=chamber,
-            limit=args.limit,
-        )
-        options = LocalOracleOptions(
-            congress_options=congress_options,
-            snapshot_date=args.snapshot_date,
-            target_dir=Path(args.target_dir),
-            snapshot_id=args.snapshot_id,
-        )
-        result = run_oracle_local_command(runtime.context, congress_archive, disclosures_bundle, options)
-        return {
-            "ok": True,
-            "command": "run-oracle-local",
-            **summarize_local_oracle_run_result(result),
-        }
+def _handle_recompute(args) -> dict:
+    runtime = build_runtime()
+    result = recompute_snapshot(runtime.context, _snapshot_date_or_today(args.snapshot_date))
+    return {"ok": True, "command": "recompute", **summarize_recompute_result(result)}
 
-    if args.command == "verify-publish":
-        result = verify_publish_local(Path(args.publish_root))
-        return {
-            "ok": result.ok,
-            "command": "verify-publish",
-            **summarize_publish_verify_result(result),
-        }
 
-    if args.command == "verify-publish-roundtrip":
-        runtime = build_runtime()
-        result = verify_publish_roundtrip_local(runtime.context, Path(args.publish_root))
-        return {
-            "ok": result.ok,
-            "command": "verify-publish-roundtrip",
-            "roundtrip": summarize_publish_roundtrip_result(result),
-        }
+def _handle_publish(args) -> dict:
+    runtime = build_runtime()
+    zip_bundle_path = getattr(args, "zip_bundle", None)
+    if zip_bundle_path is None:
+        raise ValueError("publish requires --zip-bundle")
+    zip_bundle_inputs = load_zip_bundle(Path(zip_bundle_path))
+    result = publish_snapshot(
+        runtime.context,
+        _snapshot_date_or_today(args.snapshot_date),
+        _publish_target_or_default(args.out_dir, runtime),
+        zip_bundle_inputs,
+    )
+    return {"ok": True, "command": "publish", **summarize_publish_result(result)}
 
-    return {"ok": False, "error": f"unknown command: {args.command!r}"}
+
+def _handle_load_congress_local(args) -> dict:
+    runtime = build_runtime()
+    options = CongressLoadOptions(
+        congress=args.congress,
+        include_votes=False,
+        house_vote_year=None,
+        senate_session=None,
+    )
+    result = load_congress_local(runtime.context, Path(args.archive), options)
+    return {"ok": True, "command": "load-congress-local", **summarize_load_result(result)}
+
+
+def _handle_process_disclosures_local(args) -> dict:
+    runtime = build_runtime()
+    bundle = load_disclosures_bundle(Path(args.bundle))
+    result = process_disclosures_local(runtime.context, bundle)
+    return {
+        "ok": True,
+        "command": "process-disclosures-local",
+        **summarize_disclosures_bundle_process_result(result),
+    }
+
+
+def _handle_run_oracle_local(args) -> dict:
+    runtime = build_runtime()
+    congress_archive = Path(args.congress_archive)
+    disclosures_bundle = load_disclosures_bundle(Path(args.disclosures_bundle))
+    chamber = None if args.chamber == "both" else args.chamber
+    congress_options = CongressOracleOptions(
+        congress=_current_congress(),
+        chamber=chamber,
+        limit=args.limit,
+    )
+    options = LocalOracleOptions(
+        congress_options=congress_options,
+        snapshot_date=args.snapshot_date,
+        target_dir=Path(args.target_dir),
+        snapshot_id=args.snapshot_id,
+    )
+    result = run_oracle_local_command(runtime.context, congress_archive, disclosures_bundle, options)
+    return {
+        "ok": True,
+        "command": "run-oracle-local",
+        **summarize_local_oracle_run_result(result),
+    }
+
+
+def _handle_verify_publish(args) -> dict:
+    result = verify_publish_local(Path(args.publish_root))
+    return {
+        "ok": result.ok,
+        "command": "verify-publish",
+        **summarize_publish_verify_result(result),
+    }
+
+
+def _handle_verify_publish_roundtrip(args) -> dict:
+    runtime = build_runtime()
+    result = verify_publish_roundtrip_local(runtime.context, Path(args.publish_root))
+    return {
+        "ok": result.ok,
+        "command": "verify-publish-roundtrip",
+        "roundtrip": summarize_publish_roundtrip_result(result),
+    }
+
+
+# ---------------------------------------------------------------------------
+# Command registry and dispatch
+# ---------------------------------------------------------------------------
+
+COMMAND_REGISTRY: dict[str, Callable] = {
+    "bootstrap-db": _handle_bootstrap_db,
+    "status": _handle_status,
+    "load-congress": _handle_load_congress,
+    "load-disclosures": _handle_load_disclosures,
+    "parse-disclosures": _handle_parse_disclosures,
+    "process-disclosures": _handle_process_disclosures,
+    "recompute": _handle_recompute,
+    "publish": _handle_publish,
+    "load-congress-local": _handle_load_congress_local,
+    "process-disclosures-local": _handle_process_disclosures_local,
+    "run-oracle-local": _handle_run_oracle_local,
+    "verify-publish": _handle_verify_publish,
+    "verify-publish-roundtrip": _handle_verify_publish_roundtrip,
+}
+
+
+def _dispatch(args) -> dict:
+    handler = COMMAND_REGISTRY.get(args.command)
+    if handler is None:
+        return {"ok": False, "error": f"unknown command: {args.command!r}"}
+    return handler(args)
