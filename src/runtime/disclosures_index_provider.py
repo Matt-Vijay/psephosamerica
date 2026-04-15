@@ -4,8 +4,17 @@ Exposes two explicit provider paths:
   bundle_index_matches  — resolves artifacts against a pre-loaded bundle lookup
   live_index_matches    — resolves artifacts via live network fetch
 
-Both return list[ArtifactIndexMatch] with the same row-shaped contract as
-fetch_index_rows_for_artifacts.  No parsing is performed here.
+Both return ``IndexMatchResult`` (= ``list[ArtifactIndexMatch]``) with the same
+row-shaped contract as ``fetch_index_rows_for_artifacts``.  No parsing is
+performed here.
+
+Shared output contract
+----------------------
+``IndexMatchResult`` is the canonical alias for the shared return type.
+Both paths guarantee:
+  - One ``ArtifactIndexMatch`` per input artifact, in the same order.
+  - ``index_row`` is None when the artifact cannot be resolved.
+  - ``artifact`` is the identical dict object that was passed in.
 
 Intended use
 ------------
@@ -21,11 +30,15 @@ from typing import Any, Optional
 from src.runtime.disclosures_bundle import DisclosuresLookup
 from src.runtime.disclosures_index_rows import ArtifactIndexMatch, fetch_index_rows_for_artifacts
 
+#: Canonical return type for both bundle and live index provider paths.
+#: One ArtifactIndexMatch per input artifact; order is preserved.
+IndexMatchResult = list[ArtifactIndexMatch]
+
 
 def bundle_index_matches(
     artifacts: list[dict[str, Any]],
     bundle: DisclosuresLookup,
-) -> list[ArtifactIndexMatch]:
+) -> IndexMatchResult:
     """Resolve artifacts against a pre-loaded bundle lookup.
 
     For each artifact, looks up (chamber, filing_year) in bundle then
@@ -51,7 +64,7 @@ def live_index_matches(
     artifacts: list[dict[str, Any]],
     *,
     client: Optional[Any] = None,
-) -> list[ArtifactIndexMatch]:
+) -> IndexMatchResult:
     """Resolve artifacts via live index fetch.
 
     Delegates to fetch_index_rows_for_artifacts.  One network fetch per

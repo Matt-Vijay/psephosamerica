@@ -236,3 +236,227 @@ class TestChamberFallback:
         }
         specs = member_term_specs_from_detail(detail, rep)
         assert specs[0].chamber == "house"
+
+
+# ---------------------------------------------------------------------------
+# Type-safety: non-dict terms structure
+# ---------------------------------------------------------------------------
+
+class TestTermsTypeRobustness:
+    """Congress.gov structure is stable but callers may pass partial payloads."""
+
+    def test_terms_as_list_returns_empty(self, rep: MemberRecord) -> None:
+        # If the API ever returns terms as a bare list instead of {"item": [...]}
+        detail = {"terms": [{"congress": 119, "chamber": "House of Representatives",
+                              "startYear": "2025", "endYear": None, "district": 5}]}
+        assert member_term_specs_from_detail(detail, rep) == []
+
+    def test_terms_as_none_returns_empty(self, rep: MemberRecord) -> None:
+        assert member_term_specs_from_detail({"terms": None}, rep) == []
+
+    def test_terms_as_string_returns_empty(self, rep: MemberRecord) -> None:
+        assert member_term_specs_from_detail({"terms": "unexpected"}, rep) == []
+
+    def test_startYear_as_integer_accepted(self, rep: MemberRecord) -> None:
+        detail = {
+            "terms": {"item": [
+                {"congress": 119, "chamber": "House of Representatives",
+                 "startYear": 2025, "endYear": None, "district": 3}
+            ]}
+        }
+        specs = member_term_specs_from_detail(detail, rep)
+        assert len(specs) == 1
+        assert specs[0].start_date == datetime.date(2025, 1, 3)
+
+    def test_congress_as_string_int_accepted(self, rep: MemberRecord) -> None:
+        detail = {
+            "terms": {"item": [
+                {"congress": "119", "chamber": "House of Representatives",
+                 "startYear": "2025", "endYear": None, "district": 5}
+            ]}
+        }
+        specs = member_term_specs_from_detail(detail, rep)
+        assert len(specs) == 1
+        assert specs[0].congress == 119
+
+    def test_mixed_valid_and_missing_congress_keeps_valid(self, rep: MemberRecord) -> None:
+        detail = {
+            "terms": {"item": [
+                {"congress": 119, "chamber": "House of Representatives",
+                 "startYear": "2025", "endYear": None, "district": 5},
+                {"chamber": "House of Representatives",
+                 "startYear": "2023", "endYear": "2025", "district": 5},
+            ]}
+        }
+        specs = member_term_specs_from_detail(detail, rep)
+        assert len(specs) == 1
+        assert specs[0].congress == 119
+
+
+# ---------------------------------------------------------------------------
+# Realistic full-detail payloads — Congress.gov API shape
+# ---------------------------------------------------------------------------
+
+# Realistic Congress.gov member detail inner object (senator, 3 terms).
+_WARREN_DETAIL: dict = {
+    "bioguideId": "W000817",
+    "directOrderName": "Warren, Elizabeth",
+    "firstName": "Elizabeth",
+    "lastName": "Warren",
+    "party": "Democrat",
+    "stateCode": "MA",
+    "stateName": "Massachusetts",
+    "terms": {
+        "item": [
+            {
+                "chamber": "Senate",
+                "congress": 113,
+                "endYear": "2019",
+                "memberType": "Senator",
+                "startYear": "2013",
+                "stateCode": "MA",
+                "stateName": "Massachusetts",
+            },
+            {
+                "chamber": "Senate",
+                "congress": 116,
+                "endYear": "2025",
+                "memberType": "Senator",
+                "startYear": "2019",
+                "stateCode": "MA",
+                "stateName": "Massachusetts",
+            },
+            {
+                "chamber": "Senate",
+                "congress": 119,
+                "endYear": None,
+                "memberType": "Senator",
+                "startYear": "2025",
+                "stateCode": "MA",
+                "stateName": "Massachusetts",
+            },
+        ]
+    },
+    "committees": {"item": []},
+}
+
+_WARREN = MemberRecord(
+    bioguide_id="W000817",
+    first_name="Elizabeth",
+    last_name="Warren",
+    full_name="Elizabeth Warren",
+    chamber="senate",
+    state="MA",
+    is_current=True,
+)
+
+
+class TestRealisticSenatorPayload:
+    def test_three_senate_terms_parsed(self) -> None:
+        specs = member_term_specs_from_detail(_WARREN_DETAIL, _WARREN)
+        assert len(specs) == 3
+
+    def test_sorted_chronologically(self) -> None:
+        specs = member_term_specs_from_detail(_WARREN_DETAIL, _WARREN)
+        assert [s.congress for s in specs] == [113, 116, 119]
+
+    def test_only_last_term_is_current(self) -> None:
+        specs = member_term_specs_from_detail(_WARREN_DETAIL, _WARREN)
+        assert specs[0].is_current is False
+        assert specs[1].is_current is False
+        assert specs[2].is_current is True
+
+    def test_closed_terms_have_end_date(self) -> None:
+        specs = member_term_specs_from_detail(_WARREN_DETAIL, _WARREN)
+        assert specs[0].end_date == datetime.date(2019, 1, 3)
+        assert specs[1].end_date == datetime.date(2025, 1, 3)
+
+    def test_all_senate_terms_have_no_district(self) -> None:
+        specs = member_term_specs_from_detail(_WARREN_DETAIL, _WARREN)
+        assert all(s.district is None for s in specs)
+
+    def test_state_code_from_term_item(self) -> None:
+        specs = member_term_specs_from_detail(_WARREN_DETAIL, _WARREN)
+        assert all(s.state == "MA" for s in specs)
+
+
+# Realistic crossover: served in House then elected to Senate.
+_CROSSOVER_DETAIL: dict = {
+    "bioguideId": "C999999",
+    "firstName": "Chris",
+    "lastName": "Cross",
+    "terms": {
+        "item": [
+            {
+                "chamber": "House of Representatives",
+                "congress": 116,
+                "district": 7,
+                "endYear": "2021",
+                "startYear": "2019",
+                "stateCode": "OH",
+            },
+            {
+                "chamber": "Senate",
+                "congress": 117,
+                "endYear": None,
+                "startYear": "2021",
+                "stateCode": "OH",
+            },
+        ]
+    },
+}
+
+_CROSSOVER = MemberRecord(
+    bioguide_id="C999999",
+    first_name="Chris",
+    last_name="Cross",
+    full_name="Chris Cross",
+    chamber="senate",
+    state="OH",
+    is_current=True,
+)
+
+
+class TestCrossoverMember:
+    """Member who served in House then Senate — both chambers appear in terms list."""
+
+    def test_two_terms_different_chambers(self) -> None:
+        specs = member_term_specs_from_detail(_CROSSOVER_DETAIL, _CROSSOVER)
+        assert len(specs) == 2
+        chambers = [s.chamber for s in specs]
+        assert "house" in chambers
+        assert "senate" in chambers
+
+    def test_house_term_has_district(self) -> None:
+        specs = member_term_specs_from_detail(_CROSSOVER_DETAIL, _CROSSOVER)
+        house_term = next(s for s in specs if s.chamber == "house")
+        assert house_term.district == 7
+
+    def test_senate_term_no_district(self) -> None:
+        specs = member_term_specs_from_detail(_CROSSOVER_DETAIL, _CROSSOVER)
+        senate_term = next(s for s in specs if s.chamber == "senate")
+        assert senate_term.district is None
+
+    def test_house_term_is_not_current(self) -> None:
+        specs = member_term_specs_from_detail(_CROSSOVER_DETAIL, _CROSSOVER)
+        house_term = next(s for s in specs if s.chamber == "house")
+        assert house_term.is_current is False
+
+    def test_senate_term_is_current(self) -> None:
+        specs = member_term_specs_from_detail(_CROSSOVER_DETAIL, _CROSSOVER)
+        senate_term = next(s for s in specs if s.chamber == "senate")
+        assert senate_term.is_current is True
+
+
+class TestAtLargeDistrict:
+    """At-large representatives have district=0 in Congress.gov data."""
+
+    def test_district_zero_preserved(self, rep: MemberRecord) -> None:
+        detail = {
+            "terms": {"item": [
+                {"congress": 119, "chamber": "House of Representatives",
+                 "startYear": "2025", "endYear": None, "district": 0}
+            ]}
+        }
+        specs = member_term_specs_from_detail(detail, rep)
+        assert specs[0].district == 0

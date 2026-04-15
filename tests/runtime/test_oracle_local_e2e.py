@@ -7,9 +7,15 @@ boundaries), these tests exercise run_oracle_local with:
   * A real DisclosuresBundle built from inline JSON via disclosures_bundle_from_dict
 
 Only the innermost DB-touching layers are patched; the archive-reading path
-(CongressArchiveClient, fetch_members, …) and the bundle-validation path
+(CongressArchiveClient, fetch_members, …) and the bundle-process path
 (_validate_bundle, _BundleIndexProvider construction, transform_parse_sessions)
 run against the real objects.
+
+The oracle passes artifact_root=None (default), so the bundle-process step 3
+auto-build is skipped (no local files); run_disclosure_parse_runtime is patched
+at the DB+IO boundary.  _BundleIndexProvider and transform_parse_sessions run
+for real, aligned with the stronger bundle-process path proved in
+test_disclosures_bundle_process_e2e.py.
 
 Patch strategy:
   - src.runtime.congress_archive.run_congress_load_runtime   — DB write
@@ -32,6 +38,7 @@ from typing import Any
 from unittest.mock import MagicMock, patch
 
 from src.db.load_report import TableWriteResult, WarnErrorSummary, build_load_summary
+from src.runtime.disclosures_bundle import HouseBundledIndexRow
 from src.pipeline.recompute_run import RecomputeRunResult
 from src.runtime.congress import CongressLoadResult
 from src.runtime.disclosures_bundle import DisclosuresBundle, disclosures_bundle_from_dict
@@ -650,3 +657,92 @@ class TestOracleLocalE2EEmptyBundle:
         bundle = _make_disclosures_bundle(include_house=False)
         result = _run_oracle(MagicMock(), archive, bundle, _options(tmp_path))
         assert result.disclosures["transform_count"] == 0
+
+
+# ---------------------------------------------------------------------------
+# Tests: bundle-process alignment — _BundleIndexProvider + transform run real
+# ---------------------------------------------------------------------------
+
+
+class TestBundleProcessAlignmentInOracle:
+    """Verify bundle-process internals that run for real inside run_oracle_local.
+
+    artifact_root=None (oracle default) means:
+      - step 3 auto-build is skipped (no local files required)
+      - run_disclosure_parse_runtime is patched (DB+IO boundary)
+      - _BundleIndexProvider construction and transform_parse_sessions run real
+
+    This class probes those real-path components directly and confirms they
+    remain consistent with the stronger bundle-process path in
+    test_disclosures_bundle_process_e2e.py.
+    """
+
+    def test_bundle_index_provider_indexes_oracle_bundle_artifact(self) -> None:
+        """_BundleIndexProvider built from _make_disclosures_bundle indexes correctly."""
+        from src.runtime.disclosures_bundle_process import _BundleIndexProvider
+        bundle = _make_disclosures_bundle(include_house=True)
+        provider = _BundleIndexProvider(bundle)
+
+        key = ("house", 2024, "99001")
+        assert key in provider._lookup
+        assert isinstance(provider._lookup[key], HouseBundledIndexRow)
+
+    def test_bundle_index_provider_resolves_artifact_row_for_oracle_bundle(self) -> None:
+        from src.runtime.disclosures_bundle_process import _BundleIndexProvider
+        bundle = _make_disclosures_bundle(include_house=True)
+        provider = _BundleIndexProvider(bundle)
+
+        row = {
+            "id": 1,
+            "chamber": "house",
+            "filing_year": 2024,
+            "source_record_id": "99001",
+        }
+        matches = provider.load_matches([row])
+        assert len(matches) == 1
+        assert isinstance(matches[0].index_row, HouseBundledIndexRow)
+        assert matches[0].index_row.last_name == "Doe"
+
+    def test_transform_count_zero_when_parse_sessions_empty(self, tmp_path: Path) -> None:
+        """transform_parse_sessions runs for real; empty parse_sessions → 0."""
+        archive = _make_congress_archive(tmp_path)
+        bundle = _make_disclosures_bundle(include_house=True)
+        result = _run_oracle(MagicMock(), archive, bundle, _options(tmp_path))
+        # _fake_parse_runtime_result returns parse_sessions=() so transform skips all
+        assert result.disclosures["transform_count"] == 0
+
+    def test_bundle_validation_runs_before_stage_in_oracle(self, tmp_path: Path) -> None:
+        """_validate_bundle raises TypeError before stage if bundle is malformed."""
+        archive = _make_congress_archive(tmp_path)
+        opts = _options(tmp_path)
+        conn = MagicMock()
+
+        with (
+            patch(_CONGRESS_LOAD_RT, return_value=_fake_congress_load_result()),
+            patch(_STAGE_BUNDLE) as mock_stage,
+            patch(_PARSE_RT, return_value=_fake_parse_runtime_result()),
+            patch(_DISC_LOAD_RT, return_value=_fake_disclosures_load_result()),
+            patch(_RECOMPUTE_RT, return_value=_fake_recompute_result()),
+            patch(_PUBLISH_RT, return_value=_fake_publish_result()),
+        ):
+            import pytest
+            with pytest.raises(TypeError, match="artifacts"):
+                run_oracle_local(conn, archive, object(), opts)
+
+        mock_stage.assert_not_called()
+
+    def test_richer_bundle_index_row_fields_accessible(self) -> None:
+        """All typed fields on HouseBundledIndexRow are accessible from oracle bundle."""
+        from src.runtime.disclosures_bundle_process import _BundleIndexProvider
+        bundle = _make_disclosures_bundle(include_house=True)
+        provider = _BundleIndexProvider(bundle)
+        row = {"id": 1, "chamber": "house", "filing_year": 2024, "source_record_id": "99001"}
+        matches = provider.load_matches([row])
+        index_row = matches[0].index_row
+
+        assert isinstance(index_row, HouseBundledIndexRow)
+        assert index_row.first_name == "Jane"
+        assert index_row.last_name == "Doe"
+        assert index_row.state_dst == "CA08"
+        assert index_row.doc_id == "99001"
+        assert index_row.filing_kind == "annual"

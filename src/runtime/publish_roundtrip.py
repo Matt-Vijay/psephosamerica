@@ -234,5 +234,5 @@ def verify_publish_roundtrip(conn: Any, root: Path) -> PublishRoundtripResult:
     )
 
 
-# Alias used by commands.py — keep until that import is updated.
+# Stable alias consumed by commands.py.
 verify_roundtrip = verify_publish_roundtrip

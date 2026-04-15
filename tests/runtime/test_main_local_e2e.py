@@ -196,11 +196,14 @@ def _fake_bundle_process_result() -> DisclosuresBundleProcessResult:
         failed_count=0,
         parse_sessions=(),
         parsed_documents=(),
+        failed_artifact_ids=(),
     )
     return DisclosuresBundleProcessResult(
         stage_result=None,
         parse_result=parse_result,
         transform_count=0,
+        skipped_transform_count=0,
+        skipped_sessions=(),
         load_result=_fake_disclosures_load_runtime_result(),
     )
 

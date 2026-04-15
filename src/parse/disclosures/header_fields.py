@@ -25,9 +25,30 @@ from datetime import date, datetime
 from src.parse.disclosures.models import Chamber, FilingType
 
 
+# ---------------------------------------------------------------------------
+# Stable conflict tokens
+# ---------------------------------------------------------------------------
+
+CONFLICT_AMBIGUOUS_CHAMBER = "ambiguous_chamber:both_house_and_senate"
+CONFLICT_YEAR_CONFLICT_PREFIX = "year_conflict:multiple_labeled_years="
+CONFLICT_AMBIGUOUS_MEMBER_NAME = "ambiguous_member_name:multiple_labeled"
+
+
 @dataclass(frozen=True)
 class HeaderFields:
-    """Filing-level header data extracted from raw disclosure text."""
+    """Filing-level header data extracted from raw disclosure text.
+
+    ``conflicts`` carries zero or more short machine-readable tokens that
+    describe intra-header inconsistencies found during extraction.  An empty
+    tuple means the header is internally consistent.  Downstream callers may
+    log or route-to-review filings whose conflict set is non-empty without
+    having to re-scan the raw text.
+
+    Possible tokens:
+    - ``"ambiguous_chamber:both_house_and_senate"``
+    - ``"year_conflict:multiple_labeled_years=[Y1, Y2]"``
+    - ``"ambiguous_member_name:multiple_labeled"``
+    """
 
     member_name: str | None
     chamber: Chamber | None
@@ -36,6 +57,7 @@ class HeaderFields:
     filed_at: date | None
     amendment_number: int
     is_amended: bool
+    conflicts: tuple[str, ...] = ()
 
 
 # ── Compiled patterns ─────────────────────────────────────────────────────────
@@ -168,6 +190,47 @@ def _extract_is_amended(
     return any(_RE_AMENDMENT_WORD.search(line) for line in lines)
 
 
+def _detect_conflicts(lines: Sequence[str]) -> tuple[str, ...]:
+    """Return machine-readable tokens for intra-header inconsistencies.
+
+    Scans the same line set used by the other extractors.  Only structural
+    conflicts that a downstream reviewer would need to adjudicate are
+    reported — incidental co-occurrence of keywords (e.g. "Annual" inside
+    a PTR title) is handled by extraction priority, not flagged here.
+    """
+    conflicts: list[str] = []
+
+    # Both chamber markers present in the header text.
+    has_house = any(_RE_HOUSE.search(line) for line in lines)
+    has_senate = any(_RE_SENATE.search(line) for line in lines)
+    if has_house and has_senate:
+        conflicts.append(CONFLICT_AMBIGUOUS_CHAMBER)
+
+    # Multiple distinct labeled reporting years (e.g. two "Reporting Year:" lines).
+    labeled_years = [
+        int(m.group(1))
+        for line in lines
+        for m in [_RE_YEAR_LABELED.search(line)]
+        if m
+    ]
+    unique_labeled = sorted(set(labeled_years))
+    if len(unique_labeled) > 1:
+        conflicts.append(f"{CONFLICT_YEAR_CONFLICT_PREFIX}{unique_labeled}")
+
+    # Multiple distinct names under a labeled name field.
+    named: list[str] = []
+    for line in lines:
+        m = _RE_MEMBER_NAME.match(line.strip())
+        if m:
+            name = m.group(1).strip()
+            if name:
+                named.append(name)
+    if len(set(named)) > 1:
+        conflicts.append(CONFLICT_AMBIGUOUS_MEMBER_NAME)
+
+    return tuple(conflicts)
+
+
 # ── Public entry point ────────────────────────────────────────────────────────
 
 def extract_header_fields(lines: Sequence[str]) -> HeaderFields:
@@ -176,7 +239,8 @@ def extract_header_fields(lines: Sequence[str]) -> HeaderFields:
     Lines should come from the first pages of a House or Senate financial-
     disclosure or PTR form.  Any field that cannot be determined from the
     supplied text is returned as ``None`` (or ``0`` / ``False`` for numeric
-    and boolean fields).
+    and boolean fields).  Detected intra-header inconsistencies are returned
+    in ``conflicts`` as compact tokens for downstream logging or review routing.
     """
     filing_type = _extract_filing_type(lines)
     amendment_number = _extract_amendment_number(lines)
@@ -188,4 +252,5 @@ def extract_header_fields(lines: Sequence[str]) -> HeaderFields:
         filed_at=_extract_filed_at(lines),
         amendment_number=amendment_number,
         is_amended=_extract_is_amended(lines, filing_type, amendment_number),
+        conflicts=_detect_conflicts(lines),
     )

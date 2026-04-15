@@ -441,3 +441,277 @@ class TestHeaderConflictWarnings:
         )
         result = parse_house_ptr(pages, member_bioguide_id="S000001")
         assert len(result.transactions) == 1
+
+
+# ---------------------------------------------------------------------------
+# Amendment markers — deeper
+# ---------------------------------------------------------------------------
+
+
+class TestAmendmentMarkersDeeper:
+    """Edge cases for amendment row marker stripping."""
+
+    def test_multiple_consecutive_markers_stripped(self) -> None:
+        """Both '* [A]' markers before the row number must be stripped so
+        that the owner and issuer are correctly identified."""
+        pages = _one_page(
+            rows=("* [A] 1 Self Apple Inc. (AAPL) Purchase 12/01/2023 $1,001 - $15,000",)
+        )
+        result = parse_house_ptr(pages, member_bioguide_id="S000001")
+        assert len(result.transactions) == 1
+        tx = result.transactions[0]
+        assert tx.owner_type == OwnerType.SELF
+        assert tx.issuer_ticker == "AAPL"
+        assert tx.transaction_type == TransactionType.PURCHASE
+
+    def test_lowercase_bracket_a_marker_stripped(self) -> None:
+        """'[a]' (lowercase) is equivalent to '[A]' and must be stripped."""
+        pages = _one_page(
+            rows=("[a] 1 SP Microsoft Corp (MSFT) Sale (Full) 12/05/2023 $15,001 - $50,000",)
+        )
+        result = parse_house_ptr(pages, member_bioguide_id="S000001")
+        assert len(result.transactions) == 1
+        tx = result.transactions[0]
+        assert tx.owner_type == OwnerType.SPOUSE
+        assert tx.issuer_ticker == "MSFT"
+        assert tx.transaction_type == TransactionType.SALE
+
+    def test_marker_without_row_number_still_parsed(self) -> None:
+        """An amendment marker directly before the owner (no row number) is
+        stripped, leaving the owner as the first substantive token."""
+        pages = _one_page(
+            rows=("* Self Apple Inc. (AAPL) Purchase 12/01/2023 $1,001 - $15,000",)
+        )
+        result = parse_house_ptr(pages, member_bioguide_id="S000001")
+        assert len(result.transactions) == 1
+        tx = result.transactions[0]
+        assert tx.owner_type == OwnerType.SELF
+        assert "Apple" in tx.issuer_name
+        assert tx.issuer_ticker == "AAPL"
+
+    def test_asterisk_only_row_with_no_subsequent_content_skipped(self) -> None:
+        """A lone '*' on a line has no date → silently skipped."""
+        pages = _one_page(
+            rows=(
+                "*",
+                "1 Self Apple Inc. (AAPL) Purchase 12/01/2023 $1,001 - $15,000",
+            )
+        )
+        result = parse_house_ptr(pages, member_bioguide_id="S000001")
+        assert len(result.transactions) == 1
+
+
+# ---------------------------------------------------------------------------
+# Footer/header bleed
+# ---------------------------------------------------------------------------
+
+
+class TestFooterHeaderBleed:
+    """Lines that look like repeated page headers or footers but contain
+    dates must be silently discarded — they must produce neither false
+    transactions nor spurious 'no amount' warnings.
+    """
+
+    def test_date_filed_bleed_silently_skipped(self) -> None:
+        """'Date Filed: 01/15/2024' repeated mid-document produces no warning."""
+        pages = _one_page(
+            rows=(
+                "Date Filed: 01/15/2024",
+                "1 Self Apple Inc. (AAPL) Purchase 12/01/2023 $1,001 - $15,000",
+            )
+        )
+        result = parse_house_ptr(pages, member_bioguide_id="S000001")
+        assert len(result.transactions) == 1
+        assert not any("amount" in w for w in result.meta.parse_warnings)
+
+    def test_for_calendar_year_bleed_silently_skipped(self) -> None:
+        """'For Calendar Year: 2023' repeated mid-table is not a transaction."""
+        pages = _one_page(
+            rows=(
+                "For Calendar Year: 2023",
+                "1 Self Apple Inc. (AAPL) Purchase 12/01/2023 $1,001 - $15,000",
+            )
+        )
+        result = parse_house_ptr(pages, member_bioguide_id="S000001")
+        assert len(result.transactions) == 1
+        assert not any("amount" in w for w in result.meta.parse_warnings)
+
+    def test_member_name_bleed_silently_skipped(self) -> None:
+        """'Member Name: ...' repeated mid-table produces no transaction."""
+        pages = _one_page(
+            rows=(
+                "Member Name: SMITH, JOHN",
+                "1 Self Apple Inc. (AAPL) Purchase 12/01/2023 $1,001 - $15,000",
+            )
+        )
+        result = parse_house_ptr(pages, member_bioguide_id="S000001")
+        assert len(result.transactions) == 1
+
+    def test_page_number_line_silently_skipped(self) -> None:
+        """'Page 1 of 3' (no date) is silently dropped; no warning emitted."""
+        pages = _one_page(
+            rows=(
+                "Page 1 of 3",
+                "1 Self Apple Inc. (AAPL) Purchase 12/01/2023 $1,001 - $15,000",
+            )
+        )
+        result = parse_house_ptr(pages, member_bioguide_id="S000001")
+        assert len(result.transactions) == 1
+
+    def test_filed_date_variant_silently_skipped(self) -> None:
+        """'Filed Date: 01/22/2024' (alternative label order) is also filtered."""
+        pages = _one_page(
+            rows=(
+                "Filed Date: 01/22/2024",
+                "1 Self Apple Inc. (AAPL) Purchase 12/01/2023 $1,001 - $15,000",
+            )
+        )
+        result = parse_house_ptr(pages, member_bioguide_id="S000001")
+        assert len(result.transactions) == 1
+        assert not any("amount" in w for w in result.meta.parse_warnings)
+
+    def test_non_bleed_date_line_still_warns(self) -> None:
+        """A line with a date but no amount that is NOT a header bleed still
+        produces a warning — e.g. a row with only a date token."""
+        pages = _one_page(
+            rows=(
+                "1 Self Tesla Inc (TSLA) Purchase 11/05/2023",  # missing amount
+                "2 SP Apple Inc. (AAPL) Sale 12/01/2023 $15,001 - $50,000",
+            )
+        )
+        result = parse_house_ptr(pages, member_bioguide_id="S000001")
+        assert len(result.transactions) == 1
+        assert any("amount" in w for w in result.meta.parse_warnings)
+
+
+# ---------------------------------------------------------------------------
+# Empty issuer warning
+# ---------------------------------------------------------------------------
+
+
+class TestEmptyIssuerWarning:
+    """After ticker extraction the issuer name must not be empty."""
+
+    def test_issuer_only_ticker_warns_and_skips(self) -> None:
+        """A row where the 'issuer' field is just '(AAPL)' collapses to an
+        empty string after ticker removal → warning emitted, row skipped."""
+        pages = _one_page(
+            rows=("1 Self (AAPL) Purchase 12/01/2023 $1,001 - $15,000",)
+        )
+        result = parse_house_ptr(pages, member_bioguide_id="S000001")
+        assert len(result.transactions) == 0
+        assert any("issuer" in w for w in result.meta.parse_warnings)
+
+
+# ---------------------------------------------------------------------------
+# Row without leading row number
+# ---------------------------------------------------------------------------
+
+
+class TestRowWithoutRowNumber:
+    def test_row_missing_row_number_still_parsed(self) -> None:
+        """A line that starts directly with the owner code (no integer prefix)
+        must be parsed correctly — the row-number skip is optional."""
+        pages = _one_page(
+            rows=("Self Apple Inc. (AAPL) Purchase 12/01/2023 $1,001 - $15,000",)
+        )
+        result = parse_house_ptr(pages, member_bioguide_id="S000001")
+        assert len(result.transactions) == 1
+        tx = result.transactions[0]
+        assert tx.owner_type == OwnerType.SELF
+        assert "Apple" in tx.issuer_name
+        assert tx.issuer_ticker == "AAPL"
+        assert tx.transaction_type == TransactionType.PURCHASE
+
+    def test_two_digit_row_number_skipped_correctly(self) -> None:
+        """A two-digit row number (e.g. '12') must be consumed as the row
+        number, not mistaken for the owner."""
+        pages = _one_page(
+            rows=("12 Self Apple Inc. (AAPL) Purchase 12/01/2023 $1,001 - $15,000",)
+        )
+        result = parse_house_ptr(pages, member_bioguide_id="S000001")
+        assert len(result.transactions) == 1
+        assert result.transactions[0].owner_type == OwnerType.SELF
+
+
+# ---------------------------------------------------------------------------
+# "Sale (Part)" transaction type mapping
+# ---------------------------------------------------------------------------
+
+
+class TestSalePartMapping:
+    """'Sale (Part)' text extracted from PDFs must normalize to SALE, not OTHER.
+    The parser intentionally omits "sale (part)" from _TX_TYPE_PHRASES so that
+    the shorter "sale" phrase matches the start of the text and is passed to
+    normalize_tx_type, which maps it to TransactionType.SALE.
+    """
+
+    def test_sale_part_maps_to_sale(self) -> None:
+        pages = _one_page(
+            rows=("1 Self Apple Inc. (AAPL) Sale (Part) 12/01/2023 $15,001 - $50,000",)
+        )
+        result = parse_house_ptr(pages, member_bioguide_id="S000001")
+        assert len(result.transactions) == 1
+        assert result.transactions[0].transaction_type == TransactionType.SALE
+
+    def test_sale_part_issuer_name_intact(self) -> None:
+        """The issuer name must not include 'Sale' or '(Part)' tokens."""
+        pages = _one_page(
+            rows=("1 JT Microsoft Corp (MSFT) Sale (Part) 11/20/2023 $50,001 - $100,000",)
+        )
+        result = parse_house_ptr(pages, member_bioguide_id="S000001")
+        assert len(result.transactions) == 1
+        name = result.transactions[0].issuer_name
+        assert "Microsoft" in name
+        assert "Sale" not in name
+        assert "Part" not in name
+
+
+# ---------------------------------------------------------------------------
+# Issuer name containing transaction-type words
+# ---------------------------------------------------------------------------
+
+
+class TestIssuerWithTxTypeWord:
+    """Issuers whose names contain words that match transaction-type phrases
+    must not have those names silently truncated or mis-parsed.
+    """
+
+    def test_issuer_starting_with_exchange_word(self) -> None:
+        """'ExchangeHub Corp (EXHB) Purchase ...' — 'exchange' appears in the
+        issuer name; the transaction type 'Purchase' must still be captured."""
+        pages = _one_page(
+            rows=("1 Self ExchangeHub Corp (EXHB) Purchase 12/01/2023 $1,001 - $15,000",)
+        )
+        result = parse_house_ptr(pages, member_bioguide_id="S000001")
+        assert len(result.transactions) == 1
+        tx = result.transactions[0]
+        assert tx.transaction_type == TransactionType.PURCHASE
+        assert tx.issuer_ticker == "EXHB"
+
+    def test_issuer_containing_sale_not_confused_with_tx_type(self) -> None:
+        """Issuer name 'SalePoint Inc (SALE)' must not steal the tx-type token
+        when the actual transaction type is 'Purchase'."""
+        pages = _one_page(
+            rows=("1 Self SalePoint Inc (SALE) Purchase 12/01/2023 $1,001 - $15,000",)
+        )
+        result = parse_house_ptr(pages, member_bioguide_id="S000001")
+        assert len(result.transactions) == 1
+        tx = result.transactions[0]
+        assert tx.transaction_type == TransactionType.PURCHASE
+        # issuer name should contain "SalePoint" not be truncated at "Sale"
+        assert "SalePoint" in tx.issuer_name
+
+    def test_issuer_starting_with_exchange_also_has_exchange_tx(self) -> None:
+        """'ExchangeHub Corp (EXHB) Exchange ...' — the rightmost word-bounded
+        'Exchange' token (the actual tx type) must be captured, not the
+        prefix inside 'ExchangeHub'."""
+        pages = _one_page(
+            rows=("1 Self ExchangeHub Corp (EXHB) Exchange 12/01/2023 $15,001 - $50,000",)
+        )
+        result = parse_house_ptr(pages, member_bioguide_id="S000001")
+        assert len(result.transactions) == 1
+        tx = result.transactions[0]
+        assert tx.transaction_type == TransactionType.EXCHANGE
+        assert "ExchangeHub" in tx.issuer_name
+        assert tx.issuer_ticker == "EXHB"

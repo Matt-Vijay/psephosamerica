@@ -27,6 +27,9 @@ from src.parse.disclosures.transform import (
 )
 from src.runtime.disclosures_transform import (
     BatchTransformResult,
+    SKIP_NO_PARSE_RESULT,
+    SKIP_NO_PARSED_DOCUMENT,
+    SKIP_UNRESOLVED_MEMBER_IDENTITY,
     SkippedSession,
     build_parse_context,
     transform_parse_sessions,
@@ -803,3 +806,50 @@ class TestOutsidePositionUnknownOwner:
         result = transform_parsed_disclosure(_filing(), [], [], [op])
         assert len([r for r in result.review_items if r.reason_code == "no_canonical_table_v1"]) == 1
         assert not any(r.reason_code == "unknown_owner_type" for r in result.review_items)
+
+
+# ---------------------------------------------------------------------------
+# Skip-reason constants
+# ---------------------------------------------------------------------------
+
+
+class TestSkipReasonConstants:
+    """Verify that the skip-reason constants match the values produced by
+    transform_single_session and transform_parse_sessions."""
+
+    def test_skip_constants_are_strings(self):
+        for const in (SKIP_NO_PARSE_RESULT, SKIP_NO_PARSED_DOCUMENT, SKIP_UNRESOLVED_MEMBER_IDENTITY):
+            assert isinstance(const, str)
+
+    def test_no_parse_result_matches_constant(self):
+        session = _FakeSession(parse_result=None)
+        result = transform_single_session(session)
+        assert isinstance(result, SkippedSession)
+        assert result.reason_code == SKIP_NO_PARSE_RESULT
+
+    def test_no_parsed_document_matches_constant(self):
+        session = _FakeSession(parse_result={"parsed_document": "not a ParseResult"})
+        result = transform_single_session(session)
+        assert isinstance(result, SkippedSession)
+        assert result.reason_code == SKIP_NO_PARSED_DOCUMENT
+
+    def test_unresolved_member_matches_constant(self):
+        bare_filing = _filing(member_bioguide_id="")
+        session = _FakeSession(parse_result={"parsed_document": _parse_result(bare_filing)})
+        result = transform_single_session(session)
+        assert isinstance(result, SkippedSession)
+        assert result.reason_code == SKIP_UNRESOLVED_MEMBER_IDENTITY
+
+    def test_batch_skip_reasons_use_same_constants(self):
+        bad_no_dict = _FakeSession(parse_result=None)
+        bad_no_doc = _FakeSession(parse_result={"parsed_document": "nope"})
+        bad_unresolved = _FakeSession(
+            parse_result={"parsed_document": _parse_result(_filing(member_bioguide_id=""))}
+        )
+        result = transform_parse_sessions(None, [bad_no_dict, bad_no_doc, bad_unresolved])
+        codes = [s.reason_code for s in result.skipped]
+        assert codes == [
+            SKIP_NO_PARSE_RESULT,
+            SKIP_NO_PARSED_DOCUMENT,
+            SKIP_UNRESOLVED_MEMBER_IDENTITY,
+        ]

@@ -265,3 +265,54 @@ class TestLiveDelegation:
         with patch(_LIVE_FETCH, return_value=expected):
             result = live_index_matches([artifact])
         assert result is expected
+
+
+# ---------------------------------------------------------------------------
+# Shared contract — IndexMatchResult type alias
+# ---------------------------------------------------------------------------
+
+
+class TestIndexMatchResultContract:
+    """Both bundle and live paths must satisfy the same output contract.
+
+    IndexMatchResult (= list[ArtifactIndexMatch]) is the canonical alias.
+    Tests verify the shared guarantees: one result per artifact, order
+    preserved, artifact identity preserved on both hit and miss.
+    """
+
+    def test_bundle_result_is_list_of_artifact_index_match(self):
+        s_row = _senate_index_row("DOC1")
+        bundle = _bundle(rows={"DOC1": s_row})
+        result = bundle_index_matches([_artifact("senate", 2024, "DOC1")], bundle)
+        assert isinstance(result, list)
+        assert all(isinstance(m, ArtifactIndexMatch) for m in result)
+
+    def test_live_result_is_list_of_artifact_index_match(self):
+        expected = [ArtifactIndexMatch(artifact=_artifact("senate", 2024, "DOC1"), index_row=None)]
+        with patch(_LIVE_FETCH, return_value=expected):
+            result = live_index_matches([_artifact("senate", 2024, "DOC1")])
+        assert isinstance(result, list)
+        assert all(isinstance(m, ArtifactIndexMatch) for m in result)
+
+    def test_bundle_and_live_return_same_length_as_input(self):
+        artifacts = [
+            _artifact("senate", 2024, "DOC1", artifact_id=1),
+            _artifact("senate", 2024, "DOC2", artifact_id=2),
+        ]
+        bundle = _bundle(rows={})
+        bundle_result = bundle_index_matches(artifacts, bundle)
+        assert len(bundle_result) == len(artifacts)
+
+        live_expected = [
+            ArtifactIndexMatch(artifact=a, index_row=None) for a in artifacts
+        ]
+        with patch(_LIVE_FETCH, return_value=live_expected):
+            live_result = live_index_matches(artifacts)
+        assert len(live_result) == len(artifacts)
+
+    def test_index_match_result_alias_importable(self):
+        """IndexMatchResult is exported from the provider module."""
+        from src.runtime.disclosures_index_provider import IndexMatchResult
+        # It is a generic alias; verify bundle output is assignable.
+        result: IndexMatchResult = bundle_index_matches([], _bundle())
+        assert result == []

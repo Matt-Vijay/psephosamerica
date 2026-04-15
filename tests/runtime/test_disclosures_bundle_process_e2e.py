@@ -2,17 +2,20 @@
 
 These tests prove the real staged-artifact path by using:
   - A DisclosuresBundle built from inline JSON (no mocks).
-  - Temp PDF files on disk with correct SHA-256 digests verified for real.
-  - Explicit DisclosureParseInput objects that bypass the DB artifact query.
+  - Temp artifact files on disk with content that matches the bundle SHA-256.
+  - The auto-build parse inputs path (step 3): parse_inputs is NOT supplied
+    explicitly; _build_parse_inputs reads bytes from disk and verifies SHA-256.
   - A real _BundleIndexProvider resolving index rows from the bundle.
-  - A real transform_parse_sessions invocation (all sessions skipped when
-    parse_result contains no ParseResult — that is the expected outcome for
-    stub bytes; the transform logic is still exercised fully).
+  - A real transform_parse_sessions invocation (sessions without a ParseResult
+    are skipped; transform logic is still exercised fully).
   - Minimal patching of irreducible DB/write boundaries only:
       stage_disclosures_bundle, run_parse_session, run_disclosures_load_runtime,
       fetch_member_rows_for_disclosures.
 
-No network calls.  No sys.modules injection.
+No network calls.  No sys.modules injection.  All temp files generated from
+inline content.
+
+Flow under test: validate → stage → parse inputs → parse → transform → load
 """
 from __future__ import annotations
 
@@ -32,11 +35,16 @@ from src.runtime.disclosures_bundle_files import Sha256Mismatch
 from src.runtime.disclosures_bundle_process import (
     DisclosuresBundleProcessResult,
     _BundleIndexProvider,
+    _build_parse_inputs,
     run_disclosures_bundle_process,
 )
-from src.runtime.disclosures_parse_inputs import DisclosureParseInput
 from src.runtime.disclosures_stage import DisclosureStagingResult
 from src.runtime.parse_runs import ParseSessionResult
+from tests.support.disclosures_bundle_fixtures import (
+    build_house_senate_fixture,
+    make_house_ptr_text,
+    make_senate_annual_text,
+)
 
 # ---------------------------------------------------------------------------
 # Irreducible DB/write boundary patch targets
@@ -110,6 +118,7 @@ def _senate_bundle_dict(sha256: str = _SHA256) -> dict:
                     "report_type": "Annual Report for CY2023",
                     "date_filed": "01/15/2024",
                     "doc_id": _SENATE_SOURCE_RECORD_ID,
+                    "filing_year": 2023,
                 },
             }
         ]
@@ -147,24 +156,6 @@ def _senate_artifact_row(artifact_id: int = 2) -> dict:
     }
 
 
-def _house_parse_input(artifact_row: dict | None = None) -> DisclosureParseInput:
-    return DisclosureParseInput(
-        artifact_row=artifact_row or _house_artifact_row(),
-        local_bytes=_STUB_BYTES,
-        chamber="house",
-        source_record_id=_HOUSE_SOURCE_RECORD_ID,
-    )
-
-
-def _senate_parse_input(artifact_row: dict | None = None) -> DisclosureParseInput:
-    return DisclosureParseInput(
-        artifact_row=artifact_row or _senate_artifact_row(),
-        local_bytes=_STUB_BYTES,
-        chamber="senate",
-        source_record_id=_SENATE_SOURCE_RECORD_ID,
-    )
-
-
 def _staged_result(artifact_row: dict | None = None) -> DisclosureStagingResult:
     row = artifact_row or _house_artifact_row()
     return DisclosureStagingResult(
@@ -177,7 +168,7 @@ def _staged_result(artifact_row: dict | None = None) -> DisclosureStagingResult:
 
 
 def _parse_session(run_id: int = 1) -> ParseSessionResult:
-    """A session whose parse_result dict has no ParseResult — transform skips it."""
+    """A session whose parse_result carries no ParseResult — transform skips it."""
     return ParseSessionResult(
         run_id=run_id,
         parse_result={
@@ -206,6 +197,9 @@ class _E2EPatchContext:
     session       — ParseSessionResult returned by run_parse_session (per call).
     load_result   — mock returned by run_disclosures_load_runtime.
     member_rows   — list returned by fetch_member_rows_for_disclosures.
+
+    parse_inputs is NOT patched here; the auto-build step (_build_parse_inputs)
+    runs for real so SHA-256 is verified against on-disk content.
     """
 
     def __init__(
@@ -334,7 +328,6 @@ class TestBundleIndexProviderE2E:
         bundle = disclosures_bundle_from_dict(_house_bundle_dict())
         provider = _BundleIndexProvider(bundle)
         rows = [_house_artifact_row(artifact_id=i) for i in range(1, 4)]
-        # None of these extra rows match the single bundle entry.
         extra_rows = [
             {"id": 10, "chamber": "house", "filing_year": 2024, "source_record_id": "X"},
             {"id": 11, "chamber": "house", "filing_year": 2024, "source_record_id": "Y"},
@@ -350,14 +343,14 @@ class TestBundleIndexProviderE2E:
 
 
 # ---------------------------------------------------------------------------
-# SHA-256 verification is real (not patched)
+# Auto-build parse inputs: SHA-256 verification is real (not patched)
 # ---------------------------------------------------------------------------
 
 
 class TestBundleProcessSha256E2E:
-    """Prove verify_entry_sha256 runs against real on-disk bytes.
+    """Prove _build_parse_inputs runs real SHA-256 verification against on-disk bytes.
 
-    verify_entry_sha256 is NOT patched in this class.
+    verify_entry_sha256 / read_and_verify_entry are NOT patched here.
     """
 
     def test_matching_sha256_does_not_raise(self, tmp_path):
@@ -373,7 +366,6 @@ class TestBundleProcessSha256E2E:
                 conn,
                 bundle,
                 local_root=local_root,
-                parse_inputs=[_house_parse_input()],
             )
 
         assert isinstance(result, DisclosuresBundleProcessResult)
@@ -392,11 +384,10 @@ class TestBundleProcessSha256E2E:
                     conn,
                     bundle,
                     local_root=local_root,
-                    parse_inputs=[_house_parse_input()],
                 )
 
     def test_sha256_verified_before_parse_session_called(self, tmp_path):
-        """SHA-256 check must complete before any parse_session DB write."""
+        """SHA-256 check (inside _build_parse_inputs) must abort before any parse_session write."""
         local_root = tmp_path / "artifacts"
         corrupted = b"wrong bytes"
         _write_artifact(local_root, _HOUSE_STORAGE_URI, corrupted)
@@ -409,113 +400,61 @@ class TestBundleProcessSha256E2E:
                     conn,
                     bundle,
                     local_root=local_root,
-                    parse_inputs=[_house_parse_input()],
                 )
 
         # parse_session must not have been called — sha256 aborted first
         mocks["parse_session"].assert_not_called()
 
     def test_no_sha256_check_when_local_root_is_none(self):
-        """When local_root is None the SHA-256 step is skipped entirely."""
+        """When local_root is None the auto-build step is skipped entirely."""
         bundle = disclosures_bundle_from_dict(_house_bundle_dict())
         conn = MagicMock()
 
-        # No local file exists — would raise FileNotFoundError if checked.
+        # No local file exists — would raise FileNotFoundError if auto-built.
         with _E2EPatchContext():
             result = run_disclosures_bundle_process(
                 conn,
                 bundle,
                 local_root=None,
-                parse_inputs=[_house_parse_input()],
             )
+
+        assert isinstance(result, DisclosuresBundleProcessResult)
+
+    def test_realistic_text_payload_sha256_passes(self, tmp_path):
+        """Realistic text content (not a short stub) passes real SHA-256 verification."""
+        local_root = tmp_path / "artifacts"
+        content = make_house_ptr_text(
+            _HOUSE_SOURCE_RECORD_ID,
+            last_name="Smith",
+            first_name="John",
+        )
+        sha256 = hashlib.sha256(content).hexdigest()
+        _write_artifact(local_root, _HOUSE_STORAGE_URI, content)
+        bundle = disclosures_bundle_from_dict(_house_bundle_dict(sha256=sha256))
+        conn = MagicMock()
+
+        with _E2EPatchContext(stage_result=_staged_result(_house_artifact_row())):
+            result = run_disclosures_bundle_process(conn, bundle, local_root=local_root)
 
         assert isinstance(result, DisclosuresBundleProcessResult)
 
 
 # ---------------------------------------------------------------------------
-# Stage receives real DisclosuresBundle
+# Auto-build parse inputs: verified bytes reach parse_session
 # ---------------------------------------------------------------------------
 
 
-class TestBundleProcessStageE2E:
-    """Verify stage_disclosures_bundle is called with a real DisclosuresBundle."""
+class TestBundleProcessAutoParseInputsE2E:
+    """Prove _build_parse_inputs constructs the inputs that reach run_parse_session."""
 
-    def test_stage_receives_real_disclosures_bundle_instance(self, tmp_path):
+    def test_parse_session_called_once_for_one_artifact(self, tmp_path):
         local_root = tmp_path / "artifacts"
         _write_artifact(local_root, _HOUSE_STORAGE_URI, _STUB_BYTES)
         bundle = disclosures_bundle_from_dict(_house_bundle_dict())
         conn = MagicMock()
 
-        with _E2EPatchContext() as mocks:
-            run_disclosures_bundle_process(
-                conn, bundle, local_root=local_root, parse_inputs=[_house_parse_input()]
-            )
-
-        staged_bundle = mocks["stage"].call_args[0][1]
-        assert isinstance(staged_bundle, DisclosuresBundle)
-
-    def test_stage_receives_bundle_with_correct_entry_count(self, tmp_path):
-        local_root = tmp_path / "artifacts"
-        _write_artifact(local_root, _HOUSE_STORAGE_URI, _STUB_BYTES)
-        bundle = disclosures_bundle_from_dict(_house_bundle_dict())
-        conn = MagicMock()
-
-        with _E2EPatchContext() as mocks:
-            run_disclosures_bundle_process(
-                conn, bundle, local_root=local_root, parse_inputs=[_house_parse_input()]
-            )
-
-        staged_bundle = mocks["stage"].call_args[0][1]
-        assert len(staged_bundle.artifacts) == 1
-        assert staged_bundle.artifacts[0].source_record_id == _HOUSE_SOURCE_RECORD_ID
-
-    def test_stage_receives_bundle_with_correct_sha256(self, tmp_path):
-        local_root = tmp_path / "artifacts"
-        _write_artifact(local_root, _HOUSE_STORAGE_URI, _STUB_BYTES)
-        bundle = disclosures_bundle_from_dict(_house_bundle_dict())
-        conn = MagicMock()
-
-        with _E2EPatchContext() as mocks:
-            run_disclosures_bundle_process(
-                conn, bundle, local_root=local_root, parse_inputs=[_house_parse_input()]
-            )
-
-        staged_bundle = mocks["stage"].call_args[0][1]
-        assert staged_bundle.artifacts[0].sha256 == _SHA256
-
-    def test_stage_receives_local_root(self, tmp_path):
-        local_root = tmp_path / "artifacts"
-        _write_artifact(local_root, _HOUSE_STORAGE_URI, _STUB_BYTES)
-        bundle = disclosures_bundle_from_dict(_house_bundle_dict())
-        conn = MagicMock()
-
-        with _E2EPatchContext() as mocks:
-            run_disclosures_bundle_process(
-                conn, bundle, local_root=local_root, parse_inputs=[_house_parse_input()]
-            )
-
-        _, stage_kwargs = mocks["stage"].call_args
-        assert stage_kwargs["local_root"] == local_root
-
-
-# ---------------------------------------------------------------------------
-# Explicit parse inputs reach run_disclosure_parse_runtime
-# ---------------------------------------------------------------------------
-
-
-class TestBundleProcessParseInputsE2E:
-    """Prove parse_inputs are forwarded and the bundle index provider is wired."""
-
-    def test_parse_session_called_once_per_input(self, tmp_path):
-        local_root = tmp_path / "artifacts"
-        _write_artifact(local_root, _HOUSE_STORAGE_URI, _STUB_BYTES)
-        bundle = disclosures_bundle_from_dict(_house_bundle_dict())
-        conn = MagicMock()
-
-        with _E2EPatchContext() as mocks:
-            run_disclosures_bundle_process(
-                conn, bundle, local_root=local_root, parse_inputs=[_house_parse_input()]
-            )
+        with _E2EPatchContext(stage_result=_staged_result(_house_artifact_row())) as mocks:
+            run_disclosures_bundle_process(conn, bundle, local_root=local_root)
 
         mocks["parse_session"].assert_called_once()
 
@@ -527,36 +466,36 @@ class TestBundleProcessParseInputsE2E:
         conn = MagicMock()
 
         with _E2EPatchContext(stage_result=_staged_result(artifact_row)) as mocks:
-            run_disclosures_bundle_process(
-                conn,
-                bundle,
-                local_root=local_root,
-                parse_inputs=[_house_parse_input(artifact_row=artifact_row)],
-            )
+            run_disclosures_bundle_process(conn, bundle, local_root=local_root)
 
         _, parse_kwargs = mocks["parse_session"].call_args
         assert parse_kwargs["source_artifact_id"] == 42
 
-    def test_no_parse_session_when_parse_inputs_is_empty(self, tmp_path):
-        local_root = tmp_path / "artifacts"
-        # Write the artifact so sha256 verification passes (it runs over
-        # bundle.artifacts regardless of parse_inputs length).
-        _write_artifact(local_root, _HOUSE_STORAGE_URI, _STUB_BYTES)
+    def test_no_parse_session_when_local_root_is_none(self):
+        """When local_root=None the auto-build produces no inputs; parse queries DB."""
         bundle = disclosures_bundle_from_dict(_house_bundle_dict())
         conn = MagicMock()
 
-        # Empty parse_inputs skips all parse sessions.
-        with _E2EPatchContext() as mocks:
-            result = run_disclosures_bundle_process(
-                conn, bundle, local_root=local_root, parse_inputs=[]
-            )
+        # parse_inputs=None + local_root=None → parse runtime queries DB (which
+        # returns nothing because fetch_unparsed is patched at a higher level here).
+        # We patch run_disclosure_parse_runtime itself to avoid the DB call.
+        _PARSE_RT = "src.runtime.disclosures_bundle_process.run_disclosure_parse_runtime"
+        pr = MagicMock()
+        pr.succeeded_count = 0
+        pr.failed_count = 0
+        pr.parse_sessions = ()
 
-        mocks["parse_session"].assert_not_called()
-        assert result.parse_result.succeeded_count == 0
+        with _E2EPatchContext():
+            with patch(_PARSE_RT, return_value=pr) as mock_parse:
+                result = run_disclosures_bundle_process(conn, bundle, local_root=None)
 
-    def test_bundle_index_provider_resolves_match_for_input_row(self, tmp_path):
+        assert isinstance(result, DisclosuresBundleProcessResult)
+        _, parse_kwargs = mock_parse.call_args
+        assert parse_kwargs.get("parse_inputs") is None
+
+    def test_bundle_index_provider_resolves_match_in_auto_build_path(self, tmp_path):
         """The _BundleIndexProvider built inside the pipeline resolves the
-        house entry's index_row for the supplied artifact row.
+        house entry's index_row for the auto-built parse input artifact row.
 
         We verify this by spying on _BundleIndexProvider.load_matches via
         the real class — no mock replaces it.
@@ -583,17 +522,85 @@ class TestBundleProcessParseInputsE2E:
         conn = MagicMock()
         with patch.object(_BundleIndexProvider, "__init__", _spy_init):
             with _E2EPatchContext(stage_result=_staged_result(artifact_row)):
-                run_disclosures_bundle_process(
-                    conn,
-                    bundle,
-                    local_root=local_root,
-                    parse_inputs=[_house_parse_input(artifact_row=artifact_row)],
-                )
+                run_disclosures_bundle_process(conn, bundle, local_root=local_root)
 
         assert len(captured_matches) == 1
         assert captured_matches[0].index_row is not None
         assert isinstance(captured_matches[0].index_row, HouseBundledIndexRow)
         assert captured_matches[0].index_row.last_name == "Smith"
+
+    def test_auto_built_parse_input_carries_correct_bytes(self, tmp_path):
+        """The bytes in the auto-built DisclosureParseInput match the file content."""
+        local_root = tmp_path / "artifacts"
+        content = make_house_ptr_text(_HOUSE_SOURCE_RECORD_ID)
+        sha256 = hashlib.sha256(content).hexdigest()
+        _write_artifact(local_root, _HOUSE_STORAGE_URI, content)
+        bundle = disclosures_bundle_from_dict(_house_bundle_dict(sha256=sha256))
+
+        # Use _build_parse_inputs directly to inspect the bytes.
+        staged = _staged_result(_house_artifact_row())
+        inputs = _build_parse_inputs(bundle, staged, local_root)
+
+        assert len(inputs) == 1
+        assert inputs[0].local_bytes == content
+
+
+# ---------------------------------------------------------------------------
+# Stage receives real DisclosuresBundle
+# ---------------------------------------------------------------------------
+
+
+class TestBundleProcessStageE2E:
+    """Verify stage_disclosures_bundle is called with a real DisclosuresBundle."""
+
+    def test_stage_receives_real_disclosures_bundle_instance(self, tmp_path):
+        local_root = tmp_path / "artifacts"
+        _write_artifact(local_root, _HOUSE_STORAGE_URI, _STUB_BYTES)
+        bundle = disclosures_bundle_from_dict(_house_bundle_dict())
+        conn = MagicMock()
+
+        with _E2EPatchContext() as mocks:
+            run_disclosures_bundle_process(conn, bundle, local_root=local_root)
+
+        staged_bundle = mocks["stage"].call_args[0][1]
+        assert isinstance(staged_bundle, DisclosuresBundle)
+
+    def test_stage_receives_bundle_with_correct_entry_count(self, tmp_path):
+        local_root = tmp_path / "artifacts"
+        _write_artifact(local_root, _HOUSE_STORAGE_URI, _STUB_BYTES)
+        bundle = disclosures_bundle_from_dict(_house_bundle_dict())
+        conn = MagicMock()
+
+        with _E2EPatchContext() as mocks:
+            run_disclosures_bundle_process(conn, bundle, local_root=local_root)
+
+        staged_bundle = mocks["stage"].call_args[0][1]
+        assert len(staged_bundle.artifacts) == 1
+        assert staged_bundle.artifacts[0].source_record_id == _HOUSE_SOURCE_RECORD_ID
+
+    def test_stage_receives_bundle_with_correct_sha256(self, tmp_path):
+        local_root = tmp_path / "artifacts"
+        _write_artifact(local_root, _HOUSE_STORAGE_URI, _STUB_BYTES)
+        bundle = disclosures_bundle_from_dict(_house_bundle_dict())
+        conn = MagicMock()
+
+        with _E2EPatchContext() as mocks:
+            run_disclosures_bundle_process(conn, bundle, local_root=local_root)
+
+        staged_bundle = mocks["stage"].call_args[0][1]
+        assert staged_bundle.artifacts[0].sha256 == _SHA256
+
+    def test_stage_receives_local_root(self, tmp_path):
+        local_root = tmp_path / "artifacts"
+        _write_artifact(local_root, _HOUSE_STORAGE_URI, _STUB_BYTES)
+        bundle = disclosures_bundle_from_dict(_house_bundle_dict())
+        conn = MagicMock()
+
+        with _E2EPatchContext() as mocks:
+            run_disclosures_bundle_process(conn, bundle, local_root=local_root)
+
+        _, stage_kwargs = mocks["stage"].call_args
+        assert stage_kwargs["local_root"] == local_root
 
 
 # ---------------------------------------------------------------------------
@@ -615,15 +622,46 @@ class TestBundleProcessTransformE2E:
         bundle = disclosures_bundle_from_dict(_house_bundle_dict())
         conn = MagicMock()
 
-        with _E2EPatchContext(session=_parse_session()):
-            result = run_disclosures_bundle_process(
-                conn,
-                bundle,
-                local_root=local_root,
-                parse_inputs=[_house_parse_input()],
-            )
+        with _E2EPatchContext(
+            session=_parse_session(),
+            stage_result=_staged_result(_house_artifact_row()),
+        ):
+            result = run_disclosures_bundle_process(conn, bundle, local_root=local_root)
 
         assert result.transform_count == 0
+
+    def test_skipped_sessions_populated_when_transform_skips(self, tmp_path):
+        """Sessions without a ParseResult are tracked as skipped with reason codes."""
+        local_root = tmp_path / "artifacts"
+        _write_artifact(local_root, _HOUSE_STORAGE_URI, _STUB_BYTES)
+        bundle = disclosures_bundle_from_dict(_house_bundle_dict())
+        conn = MagicMock()
+
+        with _E2EPatchContext(
+            session=_parse_session(),
+            stage_result=_staged_result(_house_artifact_row()),
+        ):
+            result = run_disclosures_bundle_process(conn, bundle, local_root=local_root)
+
+        assert result.skipped_transform_count == 1
+        assert len(result.skipped_sessions) == 1
+        assert result.skipped_sessions[0].reason_code == "no_parsed_document"
+
+    def test_skipped_plus_transform_equals_parse_succeeded(self, tmp_path):
+        """skipped_transform_count + transform_count == parse_result.succeeded_count."""
+        local_root = tmp_path / "artifacts"
+        _write_artifact(local_root, _HOUSE_STORAGE_URI, _STUB_BYTES)
+        bundle = disclosures_bundle_from_dict(_house_bundle_dict())
+        conn = MagicMock()
+
+        with _E2EPatchContext(
+            session=_parse_session(),
+            stage_result=_staged_result(_house_artifact_row()),
+        ):
+            result = run_disclosures_bundle_process(conn, bundle, local_root=local_root)
+
+        total = result.transform_count + result.skipped_transform_count
+        assert total == result.parse_result.succeeded_count
 
     def test_parse_result_succeeded_count_matches_session_count(self, tmp_path):
         local_root = tmp_path / "artifacts"
@@ -631,13 +669,11 @@ class TestBundleProcessTransformE2E:
         bundle = disclosures_bundle_from_dict(_house_bundle_dict())
         conn = MagicMock()
 
-        with _E2EPatchContext(session=_parse_session(run_id=5)):
-            result = run_disclosures_bundle_process(
-                conn,
-                bundle,
-                local_root=local_root,
-                parse_inputs=[_house_parse_input()],
-            )
+        with _E2EPatchContext(
+            session=_parse_session(run_id=5),
+            stage_result=_staged_result(_house_artifact_row()),
+        ):
+            result = run_disclosures_bundle_process(conn, bundle, local_root=local_root)
 
         assert result.parse_result.succeeded_count == 1
         assert result.parse_result.failed_count == 0
@@ -648,16 +684,9 @@ class TestBundleProcessTransformE2E:
         bundle = disclosures_bundle_from_dict(_house_bundle_dict())
         conn = MagicMock()
 
-        with _E2EPatchContext() as mocks:
-            run_disclosures_bundle_process(
-                conn,
-                bundle,
-                local_root=local_root,
-                parse_inputs=[_house_parse_input()],
-            )
+        with _E2EPatchContext(stage_result=_staged_result(_house_artifact_row())) as mocks:
+            run_disclosures_bundle_process(conn, bundle, local_root=local_root)
 
-        _, load_args = mocks["load"].call_args
-        # positional second arg is the transformed list
         transformed_list = mocks["load"].call_args[0][1]
         assert transformed_list == []
 
@@ -668,13 +697,8 @@ class TestBundleProcessTransformE2E:
         conn = MagicMock()
         lr = _load_result()
 
-        with _E2EPatchContext(load_result=lr):
-            result = run_disclosures_bundle_process(
-                conn,
-                bundle,
-                local_root=local_root,
-                parse_inputs=[_house_parse_input()],
-            )
+        with _E2EPatchContext(load_result=lr, stage_result=_staged_result(_house_artifact_row())):
+            result = run_disclosures_bundle_process(conn, bundle, local_root=local_root)
 
         assert isinstance(result, DisclosuresBundleProcessResult)
         assert result.load_result is lr
@@ -683,16 +707,11 @@ class TestBundleProcessTransformE2E:
         local_root = tmp_path / "artifacts"
         _write_artifact(local_root, _HOUSE_STORAGE_URI, _STUB_BYTES)
         bundle = disclosures_bundle_from_dict(_house_bundle_dict())
-        sr = _staged_result()
+        sr = _staged_result(_house_artifact_row())
         conn = MagicMock()
 
         with _E2EPatchContext(stage_result=sr):
-            result = run_disclosures_bundle_process(
-                conn,
-                bundle,
-                local_root=local_root,
-                parse_inputs=[_house_parse_input()],
-            )
+            result = run_disclosures_bundle_process(conn, bundle, local_root=local_root)
 
         assert result.stage_result is sr
 
@@ -737,12 +756,7 @@ class TestBundleProcessSenateE2E:
                 },
             ),
         ):
-            result = run_disclosures_bundle_process(
-                conn,
-                bundle,
-                local_root=local_root,
-                parse_inputs=[_senate_parse_input(artifact_row=senate_row)],
-            )
+            result = run_disclosures_bundle_process(conn, bundle, local_root=local_root)
 
         assert isinstance(result, DisclosuresBundleProcessResult)
         assert result.stage_result is senate_stage
@@ -757,3 +771,107 @@ class TestBundleProcessSenateE2E:
         assert matches[0].index_row is not None
         assert isinstance(matches[0].index_row, SenateBundledIndexRow)
         assert matches[0].index_row.office == "Senator, TX"
+
+    def test_senate_realistic_text_sha256_passes(self, tmp_path):
+        """Senate annual text payload SHA-256 verification passes end-to-end."""
+        local_root = tmp_path / "artifacts"
+        content = make_senate_annual_text(
+            _SENATE_SOURCE_RECORD_ID,
+            last_name="Doe",
+            first_name="Jane",
+            office="Senator, TX",
+        )
+        sha256 = hashlib.sha256(content).hexdigest()
+        _write_artifact(local_root, _SENATE_STORAGE_URI, content)
+        bundle = disclosures_bundle_from_dict(_senate_bundle_dict(sha256=sha256))
+        senate_row = _senate_artifact_row()
+        senate_stage = DisclosureStagingResult(
+            data_source={"id": 2, "slug": "senate_disclosures"},
+            run_id=20,
+            artifact_rows=(senate_row,),
+            staged_count=1,
+            mirrored_count=0,
+        )
+        conn = MagicMock()
+
+        with _E2EPatchContext(stage_result=senate_stage):
+            result = run_disclosures_bundle_process(conn, bundle, local_root=local_root)
+
+        assert isinstance(result, DisclosuresBundleProcessResult)
+        assert result.parse_result.succeeded_count == 1
+
+
+# ---------------------------------------------------------------------------
+# Multi-artifact fixture (build_house_senate_fixture)
+# ---------------------------------------------------------------------------
+
+
+class TestMultiArtifactFixtureE2E:
+    """Prove the two-artifact House+Senate path using build_house_senate_fixture."""
+
+    def test_two_artifact_fixture_passes_sha256(self, tmp_path):
+        fixture = build_house_senate_fixture(tmp_path)
+        bundle_json = fixture.bundle_json_path
+        from src.runtime.disclosures_bundle import load_disclosures_bundle
+        bundle = load_disclosures_bundle(bundle_json)
+
+        assert len(bundle.artifacts) == 2
+
+        # Verify both SHA-256 digests match actual file content.
+        for entry in bundle.artifacts:
+            file_data = fixture.artifact_paths[entry.source_record_id].read_bytes()
+            actual_sha256 = hashlib.sha256(file_data).hexdigest()
+            assert actual_sha256 == entry.sha256
+
+    def test_two_artifact_fixture_index_rows_typed(self, tmp_path):
+        fixture = build_house_senate_fixture(tmp_path)
+        from src.runtime.disclosures_bundle import load_disclosures_bundle
+        bundle = load_disclosures_bundle(fixture.bundle_json_path)
+
+        house_entry = next(e for e in bundle.artifacts if e.chamber == "house")
+        senate_entry = next(e for e in bundle.artifacts if e.chamber == "senate")
+        assert isinstance(house_entry.index_row, HouseBundledIndexRow)
+        assert isinstance(senate_entry.index_row, SenateBundledIndexRow)
+
+    def test_build_parse_inputs_from_two_artifact_fixture(self, tmp_path):
+        """Both artifacts auto-built from the fixture pass real SHA-256 checks."""
+        fixture = build_house_senate_fixture(tmp_path)
+        from src.runtime.disclosures_bundle import load_disclosures_bundle
+        bundle = load_disclosures_bundle(fixture.bundle_json_path)
+
+        # Simulate staged rows for both artifacts.
+        house_row = {
+            "id": 1,
+            "chamber": "house",
+            "filing_year": 2024,
+            "source_record_id": "12345",
+            "storage_uri": "house/2024/12345.pdf",
+        }
+        senate_row = {
+            "id": 2,
+            "chamber": "senate",
+            "filing_year": 2023,
+            "source_record_id": "uuid-xyz",
+            "storage_uri": "senate/2023/uuid-xyz.pdf",
+        }
+        sr = DisclosureStagingResult(
+            data_source={"id": 1, "slug": "house_disclosures"},
+            run_id=5,
+            artifact_rows=(house_row, senate_row),
+            staged_count=2,
+            mirrored_count=0,
+        )
+
+        inputs = _build_parse_inputs(bundle, sr, fixture.local_root)
+
+        assert len(inputs) == 2
+        chambers = {inp.chamber for inp in inputs}
+        assert chambers == {"house", "senate"}
+
+    def test_fixture_sha256s_attribute_populated(self, tmp_path):
+        fixture = build_house_senate_fixture(tmp_path)
+        assert len(fixture.sha256s) == 2
+        for src_id, sha256 in fixture.sha256s.items():
+            assert len(sha256) == 64
+            file_data = fixture.artifact_paths[src_id].read_bytes()
+            assert hashlib.sha256(file_data).hexdigest() == sha256

@@ -1301,3 +1301,127 @@ class TestExplicitParseInputs:
             )
         _, kwargs = mock_run.call_args
         assert kwargs["source_artifact_id"] == 99
+
+
+# ---------------------------------------------------------------------------
+# failed_artifact_ids — explicit per-failure tracking
+# ---------------------------------------------------------------------------
+
+
+class TestFailedArtifactIds:
+    def test_no_failures_yields_empty_tuple(self):
+        conn = MagicMock()
+        inp = _make_input(1)
+        with _patch_all(inputs=[inp], session_result=_make_session(1)):
+            result = run_disclosure_parse_runtime(conn, local_root=_LOCAL_ROOT)
+        assert result.failed_artifact_ids == ()
+
+    def test_failed_artifact_id_recorded_on_exception(self):
+        conn = MagicMock()
+        inp = _make_input(artifact_id=42)
+        with (
+            patch(_LOAD, return_value=[inp]),
+            patch(_EXTRACT, return_value=_make_metrics()),
+            patch(_RUN_SESSION, side_effect=RuntimeError("corrupt pdf")),
+        ):
+            result = run_disclosure_parse_runtime(conn, local_root=_LOCAL_ROOT)
+        assert result.failed_artifact_ids == (42,)
+
+    def test_multiple_failures_all_ids_recorded(self):
+        conn = MagicMock()
+        inputs = [_make_input(i) for i in (10, 20, 30)]
+        with (
+            patch(_LOAD, return_value=inputs),
+            patch(_EXTRACT, return_value=_make_metrics()),
+            patch(
+                _RUN_SESSION,
+                side_effect=[
+                    RuntimeError("bad 10"),
+                    RuntimeError("bad 20"),
+                    RuntimeError("bad 30"),
+                ],
+            ),
+        ):
+            result = run_disclosure_parse_runtime(conn, local_root=_LOCAL_ROOT)
+        assert set(result.failed_artifact_ids) == {10, 20, 30}
+
+    def test_failed_ids_only_from_failed_not_succeeded(self):
+        conn = MagicMock()
+        inputs = [_make_input(1), _make_input(2), _make_input(3)]
+        with (
+            patch(_LOAD, return_value=inputs),
+            patch(_EXTRACT, return_value=_make_metrics()),
+            patch(
+                _RUN_SESSION,
+                side_effect=[
+                    _make_session(1),
+                    RuntimeError("bad"),
+                    _make_session(3),
+                ],
+            ),
+        ):
+            result = run_disclosure_parse_runtime(conn, local_root=_LOCAL_ROOT)
+        assert result.failed_artifact_ids == (2,)
+
+    def test_failed_artifact_ids_is_tuple(self):
+        conn = MagicMock()
+        inp = _make_input(1)
+        with (
+            patch(_LOAD, return_value=[inp]),
+            patch(_EXTRACT, return_value=_make_metrics()),
+            patch(_RUN_SESSION, side_effect=ValueError("bad")),
+        ):
+            result = run_disclosure_parse_runtime(conn, local_root=_LOCAL_ROOT)
+        assert isinstance(result.failed_artifact_ids, tuple)
+
+    def test_failed_artifact_ids_length_equals_failed_count(self):
+        conn = MagicMock()
+        inputs = [_make_input(i) for i in range(1, 5)]
+        with (
+            patch(_LOAD, return_value=inputs),
+            patch(_EXTRACT, return_value=_make_metrics()),
+            patch(
+                _RUN_SESSION,
+                side_effect=[
+                    _make_session(1),
+                    RuntimeError("bad"),
+                    _make_session(3),
+                    RuntimeError("bad"),
+                ],
+            ),
+        ):
+            result = run_disclosure_parse_runtime(conn, local_root=_LOCAL_ROOT)
+        assert len(result.failed_artifact_ids) == result.failed_count
+
+    def test_failed_ids_order_matches_input_order(self):
+        """Failure IDs are appended in input-iteration order, not artifact-id order."""
+        conn = MagicMock()
+        inputs = [_make_input(30), _make_input(10), _make_input(20)]
+        with (
+            patch(_LOAD, return_value=inputs),
+            patch(_EXTRACT, return_value=_make_metrics()),
+            patch(
+                _RUN_SESSION,
+                side_effect=[
+                    RuntimeError("bad 30"),
+                    RuntimeError("bad 10"),
+                    RuntimeError("bad 20"),
+                ],
+            ),
+        ):
+            result = run_disclosure_parse_runtime(conn, local_root=_LOCAL_ROOT)
+        assert list(result.failed_artifact_ids) == [30, 10, 20]
+
+    def test_explicit_parse_inputs_failed_ids_tracked(self):
+        """failed_artifact_ids tracks failures from explicitly provided inputs too."""
+        conn = MagicMock()
+        inp = _make_input(artifact_id=55)
+        with (
+            patch(_LOAD),
+            patch(_EXTRACT, return_value=_make_metrics()),
+            patch(_RUN_SESSION, side_effect=RuntimeError("bad")),
+        ):
+            result = run_disclosure_parse_runtime(
+                conn, local_root=_LOCAL_ROOT, parse_inputs=[inp]
+            )
+        assert result.failed_artifact_ids == (55,)

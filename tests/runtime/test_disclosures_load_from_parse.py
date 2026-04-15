@@ -1,6 +1,7 @@
 """Tests for src/runtime/disclosures_load_from_parse.py."""
 from __future__ import annotations
 
+import contextlib
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -8,6 +9,7 @@ from src.runtime.disclosures_load_from_parse import (  # noqa: E402
     DisclosuresParseLoadResult,
     run_disclosures_parse_load_runtime,
 )
+from src.runtime.disclosures_transform import BatchTransformResult, SkippedSession
 
 # ---------------------------------------------------------------------------
 # Patch target strings
@@ -34,8 +36,19 @@ def _parse_result(succeeded: int = 1, failed: int = 0) -> MagicMock:
     return r
 
 
-def _transform_results(n: int = 1) -> list[MagicMock]:
-    return [MagicMock() for _ in range(n)]
+def _batch_result(n_transformed: int = 1, n_skipped: int = 0) -> BatchTransformResult:
+    """Build a BatchTransformResult with the given counts.
+
+    Skipped sessions all use reason_code='no_parse_result' unless callers
+    need to inspect reason codes specifically.
+    """
+    return BatchTransformResult(
+        transformed=[MagicMock() for _ in range(n_transformed)],
+        skipped=[
+            SkippedSession(run_id=None, reason_code="no_parse_result")
+            for _ in range(n_skipped)
+        ],
+    )
 
 
 def _load_result() -> MagicMock:
@@ -46,21 +59,23 @@ def _load_result() -> MagicMock:
 
 def _patch_all(
     parse_result=None,
-    transform_results=None,
+    batch_result=None,
     load_result=None,
 ):
-    """Context manager that patches all three boundaries simultaneously."""
-    import contextlib
+    """Context manager that patches all three boundaries simultaneously.
 
+    transform_parse_sessions is patched to return a BatchTransformResult so
+    the production code's .transformed and .skipped accesses are exercised.
+    """
     pr = parse_result if parse_result is not None else _parse_result()
-    tr = transform_results if transform_results is not None else _transform_results()
+    br = batch_result if batch_result is not None else _batch_result()
     lr = load_result if load_result is not None else _load_result()
 
     @contextlib.contextmanager
     def _ctx():
         with (
             patch(_PARSE, return_value=pr) as mock_parse,
-            patch(_TRANSFORM, return_value=tr) as mock_transform,
+            patch(_TRANSFORM, return_value=br) as mock_transform,
             patch(_LOAD, return_value=lr) as mock_load,
         ):
             yield {"parse": mock_parse, "transform": mock_transform, "load": mock_load}
@@ -89,8 +104,8 @@ class TestResultShape:
 
     def test_result_exposes_transform_count(self):
         conn = MagicMock()
-        tr = _transform_results(3)
-        with _patch_all(transform_results=tr):
+        br = _batch_result(n_transformed=3)
+        with _patch_all(batch_result=br):
             result = run_disclosures_parse_load_runtime(conn, local_root=_LOCAL_ROOT)
         assert result.transform_count == 3
 
@@ -103,7 +118,7 @@ class TestResultShape:
 
     def test_transform_count_zero_when_no_transform_results(self):
         conn = MagicMock()
-        with _patch_all(transform_results=[]):
+        with _patch_all(batch_result=_batch_result(n_transformed=0)):
             result = run_disclosures_parse_load_runtime(conn, local_root=_LOCAL_ROOT)
         assert result.transform_count == 0
 
@@ -112,6 +127,18 @@ class TestResultShape:
         with _patch_all():
             result = run_disclosures_parse_load_runtime(conn, local_root=_LOCAL_ROOT)
         assert hasattr(result, "skipped_transform_count")
+
+    def test_result_exposes_skipped_sessions(self):
+        conn = MagicMock()
+        with _patch_all():
+            result = run_disclosures_parse_load_runtime(conn, local_root=_LOCAL_ROOT)
+        assert hasattr(result, "skipped_sessions")
+
+    def test_skipped_sessions_is_tuple(self):
+        conn = MagicMock()
+        with _patch_all(batch_result=_batch_result(n_skipped=2)):
+            result = run_disclosures_parse_load_runtime(conn, local_root=_LOCAL_ROOT)
+        assert isinstance(result.skipped_sessions, tuple)
 
 
 # ---------------------------------------------------------------------------
@@ -124,10 +151,10 @@ class TestStepOrdering:
     def _run_with_call_order() -> list[str]:
         """Run the pipeline and return the order each step was invoked."""
         call_order: list[str] = []
-        pr, tr, lr = _parse_result(), _transform_results(), _load_result()
+        pr, br, lr = _parse_result(), _batch_result(), _load_result()
         with (
             patch(_PARSE, side_effect=lambda *a, **k: call_order.append("parse") or pr),
-            patch(_TRANSFORM, side_effect=lambda *a, **k: call_order.append("transform") or tr),
+            patch(_TRANSFORM, side_effect=lambda *a, **k: call_order.append("transform") or br),
             patch(_LOAD, side_effect=lambda *a, **k: call_order.append("load") or lr),
         ):
             run_disclosures_parse_load_runtime(MagicMock(), local_root=_LOCAL_ROOT)
@@ -259,7 +286,7 @@ class TestTransformWiring:
 
 
 # ---------------------------------------------------------------------------
-# Load wiring — transform results forwarded to run_disclosures_load_runtime
+# Load wiring — batch.transformed forwarded to run_disclosures_load_runtime
 # ---------------------------------------------------------------------------
 
 
@@ -270,85 +297,164 @@ class TestLoadWiring:
             run_disclosures_parse_load_runtime(conn, local_root=_LOCAL_ROOT)
         assert mocks["load"].call_args[0][0] is conn
 
-    def test_transform_results_forwarded_to_load(self):
+    def test_batch_transformed_forwarded_to_load(self):
+        # The load call must receive batch.transformed, not the whole BatchTransformResult.
         conn = MagicMock()
-        tr = _transform_results(2)
-        with _patch_all(transform_results=tr) as mocks:
+        br = _batch_result(n_transformed=2)
+        with _patch_all(batch_result=br) as mocks:
             run_disclosures_parse_load_runtime(conn, local_root=_LOCAL_ROOT)
-        assert mocks["load"].call_args[0][1] is tr
+        assert mocks["load"].call_args[0][1] is br.transformed
 
-    def test_empty_transform_results_forwarded(self):
+    def test_empty_batch_transformed_forwarded(self):
         conn = MagicMock()
-        with _patch_all(transform_results=[]) as mocks:
+        br = _batch_result(n_transformed=0)
+        with _patch_all(batch_result=br) as mocks:
             run_disclosures_parse_load_runtime(conn, local_root=_LOCAL_ROOT)
         args, _ = mocks["load"].call_args
         assert args[1] == []
 
+    def test_load_does_not_receive_skipped_sessions(self):
+        # Skipped sessions must NOT be forwarded to the load layer.
+        conn = MagicMock()
+        br = _batch_result(n_transformed=1, n_skipped=3)
+        with _patch_all(batch_result=br) as mocks:
+            run_disclosures_parse_load_runtime(conn, local_root=_LOCAL_ROOT)
+        # The load call's second argument must be only the transformed list.
+        assert len(mocks["load"].call_args[0][1]) == 1
+
 
 # ---------------------------------------------------------------------------
-# transform_count reflects actual transform output length
+# transform_count reflects batch.transformed length
 # ---------------------------------------------------------------------------
 
 
 class TestTransformCount:
-    def test_transform_count_matches_transform_output_length(self):
+    def test_transform_count_matches_transformed_length(self):
         conn = MagicMock()
         for n in (0, 1, 3, 7):
-            with _patch_all(transform_results=_transform_results(n)):
+            with _patch_all(batch_result=_batch_result(n_transformed=n)):
                 result = run_disclosures_parse_load_runtime(conn, local_root=_LOCAL_ROOT)
             assert result.transform_count == n, f"expected {n}, got {result.transform_count}"
 
     def test_transform_count_independent_of_parse_succeeded_count(self):
-        """transform_count reflects what transform returns, not parse.succeeded_count."""
+        """transform_count reflects batch.transformed, not parse.succeeded_count."""
         conn = MagicMock()
         pr = _parse_result(succeeded=5)
-        tr = _transform_results(2)  # transform may filter or fail some sessions
-        with _patch_all(parse_result=pr, transform_results=tr):
+        br = _batch_result(n_transformed=2, n_skipped=3)
+        with _patch_all(parse_result=pr, batch_result=br):
             result = run_disclosures_parse_load_runtime(conn, local_root=_LOCAL_ROOT)
         assert result.transform_count == 2
 
 
 # ---------------------------------------------------------------------------
-# skipped_transform_count — sessions that succeeded parse but not transform
+# skipped_transform_count — from batch.skipped, not arithmetic on succeeded
 # ---------------------------------------------------------------------------
 
 
 class TestSkippedTransformCount:
-    def test_skipped_count_zero_when_all_sessions_transform(self):
+    def test_skipped_count_zero_when_nothing_skipped(self):
         conn = MagicMock()
-        pr = _parse_result(succeeded=3)
-        tr = _transform_results(3)
-        with _patch_all(parse_result=pr, transform_results=tr):
+        with _patch_all(batch_result=_batch_result(n_transformed=3, n_skipped=0)):
             result = run_disclosures_parse_load_runtime(conn, local_root=_LOCAL_ROOT)
         assert result.skipped_transform_count == 0
 
-    def test_skipped_count_equals_gap_between_succeeded_and_transformed(self):
+    def test_skipped_count_equals_batch_skipped_length(self):
         conn = MagicMock()
-        pr = _parse_result(succeeded=5)
-        tr = _transform_results(2)
-        with _patch_all(parse_result=pr, transform_results=tr):
+        br = _batch_result(n_transformed=2, n_skipped=3)
+        with _patch_all(batch_result=br):
             result = run_disclosures_parse_load_runtime(conn, local_root=_LOCAL_ROOT)
         assert result.skipped_transform_count == 3
 
-    def test_skipped_count_equals_succeeded_when_nothing_transforms(self):
+    def test_skipped_count_all_skipped(self):
         conn = MagicMock()
-        pr = _parse_result(succeeded=4)
-        with _patch_all(parse_result=pr, transform_results=[]):
+        br = _batch_result(n_transformed=0, n_skipped=4)
+        with _patch_all(batch_result=br):
             result = run_disclosures_parse_load_runtime(conn, local_root=_LOCAL_ROOT)
         assert result.skipped_transform_count == 4
 
     def test_skipped_count_zero_when_no_sessions(self):
         conn = MagicMock()
         pr = _parse_result(succeeded=0, failed=0)
-        with _patch_all(parse_result=pr, transform_results=[]):
+        br = _batch_result(n_transformed=0, n_skipped=0)
+        with _patch_all(parse_result=pr, batch_result=br):
             result = run_disclosures_parse_load_runtime(conn, local_root=_LOCAL_ROOT)
         assert result.skipped_transform_count == 0
 
-    def test_transform_plus_skipped_equals_succeeded(self):
+    def test_transform_plus_skipped_from_batch(self):
+        """transform_count + skipped_transform_count == len(batch.transformed) + len(batch.skipped)."""
         conn = MagicMock()
-        for succeeded, transformed in ((0, 0), (1, 0), (1, 1), (4, 3), (7, 7)):
-            pr = _parse_result(succeeded=succeeded)
-            tr = _transform_results(transformed)
-            with _patch_all(parse_result=pr, transform_results=tr):
+        for n_transformed, n_skipped in ((0, 0), (1, 0), (0, 1), (4, 3), (7, 7)):
+            br = _batch_result(n_transformed=n_transformed, n_skipped=n_skipped)
+            with _patch_all(batch_result=br):
                 result = run_disclosures_parse_load_runtime(conn, local_root=_LOCAL_ROOT)
-            assert result.transform_count + result.skipped_transform_count == pr.succeeded_count
+            total = result.transform_count + result.skipped_transform_count
+            assert total == n_transformed + n_skipped
+
+
+# ---------------------------------------------------------------------------
+# skipped_sessions — explicit SkippedSession records exposed on result
+# ---------------------------------------------------------------------------
+
+
+class TestSkippedSessions:
+    def test_skipped_sessions_empty_when_nothing_skipped(self):
+        conn = MagicMock()
+        with _patch_all(batch_result=_batch_result(n_transformed=2, n_skipped=0)):
+            result = run_disclosures_parse_load_runtime(conn, local_root=_LOCAL_ROOT)
+        assert result.skipped_sessions == ()
+
+    def test_skipped_sessions_length_equals_skipped_count(self):
+        conn = MagicMock()
+        br = _batch_result(n_transformed=1, n_skipped=3)
+        with _patch_all(batch_result=br):
+            result = run_disclosures_parse_load_runtime(conn, local_root=_LOCAL_ROOT)
+        assert len(result.skipped_sessions) == 3
+
+    def test_skipped_sessions_contains_skipped_session_instances(self):
+        conn = MagicMock()
+        br = _batch_result(n_skipped=2)
+        with _patch_all(batch_result=br):
+            result = run_disclosures_parse_load_runtime(conn, local_root=_LOCAL_ROOT)
+        for s in result.skipped_sessions:
+            assert isinstance(s, SkippedSession)
+
+    def test_skipped_sessions_reason_codes_preserved(self):
+        # Build a batch with specific reason codes.
+        br = BatchTransformResult(
+            transformed=[],
+            skipped=[
+                SkippedSession(run_id=1, reason_code="no_parse_result"),
+                SkippedSession(run_id=2, reason_code="no_parsed_document"),
+                SkippedSession(run_id=3, reason_code="unresolved_member_identity"),
+            ],
+        )
+        conn = MagicMock()
+        with _patch_all(batch_result=br):
+            result = run_disclosures_parse_load_runtime(conn, local_root=_LOCAL_ROOT)
+        codes = [s.reason_code for s in result.skipped_sessions]
+        assert codes == [
+            "no_parse_result",
+            "no_parsed_document",
+            "unresolved_member_identity",
+        ]
+
+    def test_skipped_sessions_run_ids_preserved(self):
+        br = BatchTransformResult(
+            transformed=[],
+            skipped=[
+                SkippedSession(run_id=10, reason_code="no_parse_result"),
+                SkippedSession(run_id=20, reason_code="no_parsed_document"),
+            ],
+        )
+        conn = MagicMock()
+        with _patch_all(batch_result=br):
+            result = run_disclosures_parse_load_runtime(conn, local_root=_LOCAL_ROOT)
+        run_ids = [s.run_id for s in result.skipped_sessions]
+        assert run_ids == [10, 20]
+
+    def test_skipped_count_equals_skipped_sessions_length(self):
+        br = _batch_result(n_transformed=2, n_skipped=4)
+        conn = MagicMock()
+        with _patch_all(batch_result=br):
+            result = run_disclosures_parse_load_runtime(conn, local_root=_LOCAL_ROOT)
+        assert result.skipped_transform_count == len(result.skipped_sessions)

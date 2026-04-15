@@ -239,3 +239,138 @@ class TestDetailFetchMechanism:
         assert received_term_inner[0] is inner
         assert received_committee_inner[0] is inner
         client.get_member_detail_payload.assert_called_once_with("A000001")
+
+
+# ---------------------------------------------------------------------------
+# Realistic payload shapes
+# ---------------------------------------------------------------------------
+
+# Full Congress.gov-style inner member object (already unwrapped from "member" key).
+_REALISTIC_INNER_WARREN: dict = {
+    "bioguideId": "W000817",
+    "directOrderName": "Warren, Elizabeth",
+    "firstName": "Elizabeth",
+    "lastName": "Warren",
+    "party": "Democrat",
+    "stateCode": "MA",
+    "officialWebsiteUrl": "https://www.warren.senate.gov",
+    "terms": {
+        "item": [
+            {
+                "chamber": "Senate",
+                "congress": 119,
+                "endYear": None,
+                "memberType": "Senator",
+                "startYear": "2025",
+                "stateCode": "MA",
+            }
+        ]
+    },
+    "committees": {
+        "item": [
+            {
+                "committee": {
+                    "name": "Committee on Banking, Housing, and Urban Affairs",
+                    "systemCode": "ssbk00",
+                    "url": "https://api.congress.gov/v3/committee/senate/ssbk00",
+                },
+                "congress": 119,
+                "endDate": None,
+                "isCurrent": True,
+                "role": "Member",
+                "startDate": "2025-01-15",
+            }
+        ]
+    },
+}
+
+# Envelope shape (as would be returned by a mock that has NOT yet been unwrapped).
+_REALISTIC_ENVELOPE_WARREN: dict = {
+    "member": _REALISTIC_INNER_WARREN,
+    "request": {
+        "bioguideId": "W000817",
+        "contentType": "application/json",
+        "format": "json",
+    },
+}
+
+_MEMBER_WARREN = MemberRecord(
+    bioguide_id="W000817",
+    first_name="Elizabeth",
+    last_name="Warren",
+    full_name="Elizabeth Warren",
+    chamber="senate",
+    state="MA",
+    is_current=True,
+)
+
+
+class TestRealisticPayloadRouting:
+    """Verify that fetch functions route realistic Congress.gov payloads through
+    the parse helpers without loss, regardless of whether the envelope has already
+    been unwrapped by the client layer."""
+
+    def test_envelope_payload_routes_inner_to_parsers(self) -> None:
+        """When the mock returns the full API envelope, inner member dict reaches parsers."""
+        from src.ingest.congress.live_member_details import fetch_member_term_specs
+
+        client = _make_client(_REALISTIC_ENVELOPE_WARREN)
+        received: list[dict] = []
+
+        def _capture(inner: dict, member: MemberRecord) -> list:
+            received.append(inner)
+            return []
+
+        with patch(
+            "src.ingest.congress.live_member_details.member_term_specs_from_detail",
+            side_effect=_capture,
+        ):
+            fetch_member_term_specs(client, [_MEMBER_WARREN])
+
+        assert received[0] is _REALISTIC_INNER_WARREN
+
+    def test_bare_inner_payload_also_routes_correctly(self) -> None:
+        """When the client already unwraps (production path), the inner dict
+        is still passed correctly — the code is safe regardless of wrapping."""
+        from src.ingest.congress.live_member_details import fetch_member_term_specs
+
+        # Simulate what the real CongressAPIClient returns: already-unwrapped inner.
+        client = _make_client(_REALISTIC_INNER_WARREN)
+        received: list[dict] = []
+
+        def _capture(inner: dict, member: MemberRecord) -> list:
+            received.append(inner)
+            return []
+
+        with patch(
+            "src.ingest.congress.live_member_details.member_term_specs_from_detail",
+            side_effect=_capture,
+        ):
+            fetch_member_term_specs(client, [_MEMBER_WARREN])
+
+        # detail.get("member", detail) falls back to detail itself when no "member" key.
+        assert received[0] is _REALISTIC_INNER_WARREN
+
+    def test_realistic_envelope_both_parsers_see_same_inner(self) -> None:
+        from src.ingest.congress.live_member_details import fetch_member_detail_specs
+
+        client = MagicMock()
+        client.get_member_detail_payload.return_value = _REALISTIC_ENVELOPE_WARREN
+
+        seen_term: list[dict] = []
+        seen_committee: list[dict] = []
+
+        with (
+            patch(
+                "src.ingest.congress.live_member_details.member_term_specs_from_detail",
+                side_effect=lambda i, m: seen_term.append(i) or [],
+            ),
+            patch(
+                "src.ingest.congress.live_member_details.committee_membership_specs_from_detail",
+                side_effect=lambda i, m: seen_committee.append(i) or [],
+            ),
+        ):
+            fetch_member_detail_specs(client, [_MEMBER_WARREN])
+
+        assert seen_term[0] is _REALISTIC_INNER_WARREN
+        assert seen_committee[0] is _REALISTIC_INNER_WARREN

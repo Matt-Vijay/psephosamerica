@@ -8,6 +8,7 @@ counts and ok/failure state at both the stage and aggregate levels.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from pathlib import PurePosixPath
 from typing import Literal
 
 
@@ -19,6 +20,15 @@ IssueSeverity = Literal["error", "warning"]
 
 # Valid stage names for the publish verification pipeline.
 PUBLISH_STAGES = ("manifest", "profiles", "evidence", "zip")
+
+
+def path_is_confined(path: str) -> bool:
+    """True when *path* is relative and does not escape the publish root.
+
+    Rejects absolute paths and any path containing ``..`` components.
+    """
+    p = PurePosixPath(path)
+    return not p.is_absolute() and ".." not in p.parts
 
 
 # ---------------------------------------------------------------------------

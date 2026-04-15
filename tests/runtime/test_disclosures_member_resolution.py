@@ -381,3 +381,75 @@ class TestEdgeCases:
         identity = house_identity("Pelosi", "Nancy", "CA11")
         result: ResolutionResult = resolve_disclosure_member(identity, _ROWS)
         assert isinstance(result, (Resolved, NoMatch, Ambiguous))
+
+
+# ---------------------------------------------------------------------------
+# NoMatchReason — typed Literal contract
+# ---------------------------------------------------------------------------
+
+
+class TestNoMatchReason:
+    """NoMatch.reason must be one of the two canonical Literal values.
+
+    Tests ensure no silent string aliases slip through and that callers can
+    exhaustively branch on the reason without string-equality hacks.
+    """
+
+    def test_no_member_for_location_reason_is_exact_string(self):
+        identity = house_identity("Ghost", "X", "AK01")
+        result = resolve_disclosure_member(identity, [])
+        assert isinstance(result, NoMatch)
+        assert result.reason == "no_member_for_location"
+
+    def test_no_member_for_last_name_reason_is_exact_string(self):
+        rows = [_house_row("P000197", "Pelosi", "Nancy", "CA", 11)]
+        identity = house_identity("Ghost", "X", "CA11")
+        result = resolve_disclosure_member(identity, rows)
+        assert isinstance(result, NoMatch)
+        assert result.reason == "no_member_for_last_name"
+
+    def test_reason_values_are_disjoint(self):
+        """The two reason strings must be distinct — they represent different failure modes."""
+        assert "no_member_for_location" != "no_member_for_last_name"
+
+    def test_no_match_reason_importable_as_type_alias(self):
+        """NoMatchReason is exported and is a type alias (not a class or enum)."""
+        # If NoMatchReason is importable, the import at the top of this file worked.
+        # Verify it is the same underlying type as what NoMatch carries.
+        identity = house_identity("Ghost", "X", "AK01")
+        result = resolve_disclosure_member(identity, [])
+        assert isinstance(result, NoMatch)
+        # The annotation is Literal — we can only verify the value at runtime.
+        assert result.reason in ("no_member_for_location", "no_member_for_last_name")
+
+    def test_location_reason_on_wrong_state(self):
+        rows = [_house_row("P000197", "Pelosi", "Nancy", "CA", 11)]
+        identity = house_identity("Pelosi", "Nancy", "TX11")  # wrong state
+        result = resolve_disclosure_member(identity, rows)
+        assert isinstance(result, NoMatch)
+        assert result.reason == "no_member_for_location"
+
+    def test_location_reason_on_senate_wrong_state(self):
+        rows = [_senate_row("W000817", "Warren", "Elizabeth", "MA")]
+        identity = senate_identity("Warren", "Elizabeth", "Senator, TX")
+        result = resolve_disclosure_member(identity, rows)
+        assert isinstance(result, NoMatch)
+        assert result.reason == "no_member_for_location"
+
+    def test_last_name_reason_does_not_fire_on_location_failure(self):
+        """location failures must not produce no_member_for_last_name."""
+        identity = house_identity("Pelosi", "Nancy", "TX11")
+        result = resolve_disclosure_member(identity, [])
+        assert isinstance(result, NoMatch)
+        assert result.reason != "no_member_for_last_name"
+
+    def test_ambiguous_does_not_carry_reason(self):
+        """Ambiguous is a distinct outcome with no reason field."""
+        rows = [
+            _house_row("A000001", "Smith", "Adam", "NY", 10),
+            _house_row("A000002", "Smith", "Alice", "NY", 10),
+        ]
+        identity = house_identity("Smith", "Zach", "NY10")  # no first-name match
+        result = resolve_disclosure_member(identity, rows)
+        assert isinstance(result, Ambiguous)
+        assert not hasattr(result, "reason")

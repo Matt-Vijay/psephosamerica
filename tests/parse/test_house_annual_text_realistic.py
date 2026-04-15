@@ -520,3 +520,539 @@ class TestLargeScheduleA:
         h = self._holdings()[6]
         assert h.issuer_name == "Real Estate Investment Trust"
         assert h.owner_type == OwnerType.SELF
+
+
+# ---------------------------------------------------------------------------
+# Dotted row counter ("1." pypdf artefact)
+# ---------------------------------------------------------------------------
+
+# Schedule A where pypdf emits "1." instead of "1" for the row counter.
+# This arises when the PDF uses a numbered-list style that pypdf faithfully
+# renders with the trailing period.
+_SCHED_A_DOTTED = """\
+SCHEDULE A: ASSETS AND UNEARNED INCOME
+
+OWNER  ASSET NAME  VALUE OF ASSET  TYPE OF INCOME  INCOME AMOUNT
+-----  ----------  --------------  --------------  -------------
+
+1.  SP  Microsoft Corp. (MSFT)  $100,001 - $250,000  Dividends  $1,001 - $15,000
+2.  JT  S&P 500 Index Fund (IVV)  $50,001 - $100,000  Dividends  $1,001 - $15,000
+3.  Self  U.S. Treasury Bills  $15,001 - $50,000  Interest  $1 - $1,000
+4.  DC  529 College Savings Plan  $15,001 - $50,000  None (or less than $201)  $1 - $1,000
+
+Schedule B
+
+None
+"""
+
+# Schedule D where pypdf emits dotted counters.
+_SCHED_D_DOTTED = """\
+SCHEDULE D: OUTSIDE POSITIONS
+
+ORGANIZATION  POSITION  FROM DATE  TO DATE
+------------  --------  ---------  -------
+
+1.  State Bar Association  Member  01/01/2010  -
+2.  University Board  Trustee
+
+Schedule E
+"""
+
+
+class TestDottedRowCounters:
+    """pypdf sometimes appends a period to row counter digits (e.g. "1." → "1.")."""
+
+    def test_four_holdings_from_dotted_schedule_a(self) -> None:
+        result = parse_house_annual([_SCHED_A_DOTTED], _filing())
+        assert len(result.holdings) == 4
+
+    def test_dotted_counter_owner_resolved(self) -> None:
+        holdings = parse_house_annual([_SCHED_A_DOTTED], _filing()).holdings
+        assert holdings[0].owner_type == OwnerType.SPOUSE   # "SP"
+        assert holdings[1].owner_type == OwnerType.JOINT    # "JT"
+        assert holdings[2].owner_type == OwnerType.SELF     # "Self"
+        assert holdings[3].owner_type == OwnerType.DEPENDENT  # "DC"
+
+    def test_dotted_counter_issuer_names_intact(self) -> None:
+        holdings = parse_house_annual([_SCHED_A_DOTTED], _filing()).holdings
+        assert "Microsoft" in holdings[0].issuer_name
+        assert "S&P 500" in holdings[1].issuer_name
+        assert holdings[2].issuer_name == "U.S. Treasury Bills"
+
+    def test_dotted_counter_value_range_resolved(self) -> None:
+        holdings = parse_house_annual([_SCHED_A_DOTTED], _filing()).holdings
+        assert holdings[0].value_min == Decimal("100001")
+        assert holdings[0].value_max == Decimal("250000")
+
+    def test_dotted_counter_income_label_resolved(self) -> None:
+        holdings = parse_house_annual([_SCHED_A_DOTTED], _filing()).holdings
+        assert holdings[2].income_label == "$1 - $1,000"
+        assert holdings[2].income_min == Decimal("1")
+        assert holdings[2].income_max == Decimal("1000")
+
+    def test_dotted_counter_schedule_d_two_positions(self) -> None:
+        result = parse_house_annual([_SCHED_D_DOTTED], _filing())
+        assert len(result.outside_positions) == 2
+
+    def test_dotted_counter_schedule_d_entity_names(self) -> None:
+        positions = parse_house_annual([_SCHED_D_DOTTED], _filing()).outside_positions
+        assert positions[0].entity_name == "State Bar Association"
+        assert positions[1].entity_name == "University Board"
+
+    def test_dotted_counter_schedule_d_date_blank_token(self) -> None:
+        # "-" is a blank date token → to_date is None.
+        positions = parse_house_annual([_SCHED_D_DOTTED], _filing()).outside_positions
+        assert positions[0].to_date is None
+
+    def test_dotted_counter_noise_lines_not_harvested(self) -> None:
+        holdings = parse_house_annual([_SCHED_A_DOTTED], _filing()).holdings
+        names = [h.issuer_name for h in holdings]
+        assert not any("ASSET NAME" in n for n in names)
+        assert not any("---" in n for n in names)
+
+
+# ---------------------------------------------------------------------------
+# Noisy separator variants inside section bodies
+# ---------------------------------------------------------------------------
+
+# Real House PDFs include separators of many styles.  None of them start with
+# a digit, so all must be silently discarded.
+_SCHED_A_HEAVY_NOISE = """\
+SCHEDULE A: ASSETS AND UNEARNED INCOME
+============================================================
+OWNER  ASSET NAME  VALUE OF ASSET  TYPE OF INCOME  INCOME AMOUNT
+* * * * * * * * * * * * * * * * * * * * * * * * *
+. . . . . . . . . . . . . . . . . . . . . . . . .
+__________________________________________________________
+
+1  SP  Alphabet Inc. (GOOGL)  $500,001 - $1,000,000  Dividends  $15,001 - $50,000
+============================================================
+2  JT  Amazon.com Inc. (AMZN)  $250,001 - $500,000  Dividends  $1,001 - $15,000
+__________________________________________________________
+
+Schedule B
+"""
+
+
+class TestNoisySeparators:
+    """Varied separator lines (equals, asterisks, dots, underscores) are all ignored."""
+
+    def test_two_holdings_despite_heavy_noise(self) -> None:
+        result = parse_house_annual([_SCHED_A_HEAVY_NOISE], _filing())
+        assert len(result.holdings) == 2
+
+    def test_equals_separator_not_harvested(self) -> None:
+        holdings = parse_house_annual([_SCHED_A_HEAVY_NOISE], _filing()).holdings
+        names = [h.issuer_name for h in holdings]
+        assert not any("===" in n for n in names)
+
+    def test_asterisk_separator_not_harvested(self) -> None:
+        holdings = parse_house_annual([_SCHED_A_HEAVY_NOISE], _filing()).holdings
+        names = [h.issuer_name for h in holdings]
+        assert not any("* *" in n for n in names)
+
+    def test_dot_separator_not_harvested(self) -> None:
+        holdings = parse_house_annual([_SCHED_A_HEAVY_NOISE], _filing()).holdings
+        names = [h.issuer_name for h in holdings]
+        assert not any(". . ." in n for n in names)
+
+    def test_data_rows_between_separators_extracted(self) -> None:
+        holdings = parse_house_annual([_SCHED_A_HEAVY_NOISE], _filing()).holdings
+        assert holdings[0].issuer_name == "Alphabet Inc. (GOOGL)"
+        assert holdings[1].issuer_name == "Amazon.com Inc. (AMZN)"
+
+
+# ---------------------------------------------------------------------------
+# Instruction text paragraphs inside section bodies
+# ---------------------------------------------------------------------------
+
+# House PDFs often include instruction text at the top of each schedule section.
+# These paragraphs are multi-word prose lines that do not start with a digit.
+_SCHED_A_WITH_INSTRUCTIONS = """\
+SCHEDULE A: ASSETS AND UNEARNED INCOME
+
+This schedule must include all assets held by you, your spouse, or dependent
+children with a value exceeding $1,000 at the end of the reporting period or
+that generated more than $200 in income during the calendar year. Please see
+the instructions for additional guidance on excluded assets.
+
+OWNER  ASSET NAME  VALUE OF ASSET  TYPE OF INCOME  INCOME AMOUNT
+-----  ----------  --------------  --------------  -------------
+
+1  SP  Coca-Cola Co. (KO)  $100,001 - $250,000  Dividends  $1,001 - $15,000
+2  DC  529 Education Plan  $15,001 - $50,000  None (or less than $201)  $1 - $1,000
+
+FOOTNOTE: Values reflect the fair market value as of December 31, 2023.
+
+Schedule B
+"""
+
+
+class TestInstructionTextFiltering:
+    """Instruction paragraphs and footnote lines inside a section are ignored."""
+
+    def test_two_holdings_despite_instruction_paragraphs(self) -> None:
+        result = parse_house_annual([_SCHED_A_WITH_INSTRUCTIONS], _filing())
+        assert len(result.holdings) == 2
+
+    def test_instruction_text_not_harvested_as_issuer(self) -> None:
+        holdings = parse_house_annual([_SCHED_A_WITH_INSTRUCTIONS], _filing()).holdings
+        names = [h.issuer_name for h in holdings]
+        assert not any("schedule must include" in n.lower() for n in names)
+        assert not any("instructions" in n.lower() for n in names)
+
+    def test_footnote_line_not_harvested(self) -> None:
+        holdings = parse_house_annual([_SCHED_A_WITH_INSTRUCTIONS], _filing()).holdings
+        names = [h.issuer_name for h in holdings]
+        assert not any("FOOTNOTE" in n for n in names)
+
+    def test_correct_issuer_names_extracted(self) -> None:
+        holdings = parse_house_annual([_SCHED_A_WITH_INSTRUCTIONS], _filing()).holdings
+        assert holdings[0].issuer_name == "Coca-Cola Co. (KO)"
+        assert holdings[1].issuer_name == "529 Education Plan"
+
+    def test_income_placeholder_in_instruction_context(self) -> None:
+        holdings = parse_house_annual([_SCHED_A_WITH_INSTRUCTIONS], _filing()).holdings
+        h2 = holdings[1]
+        assert h2.income_label == "$1 - $1,000"
+
+
+# ---------------------------------------------------------------------------
+# Over $50,000,000 value label
+# ---------------------------------------------------------------------------
+
+_SCHED_A_OVER_50M = """\
+Schedule A
+
+1  Self  Diversified Holdings Trust  Over $50,000,000  Dividends  $5,000,001 - $25,000,000
+
+Schedule B
+"""
+
+
+class TestOverFiftyMillionLabel:
+    """The highest House disclosure range ("Over $50,000,000") normalizes correctly."""
+
+    def test_holding_extracted(self) -> None:
+        result = parse_house_annual([_SCHED_A_OVER_50M], _filing())
+        assert len(result.holdings) == 1
+
+    def test_value_label_preserved(self) -> None:
+        h = parse_house_annual([_SCHED_A_OVER_50M], _filing()).holdings[0]
+        assert h.value_label == "Over $50,000,000"
+
+    def test_value_min_max_resolved(self) -> None:
+        h = parse_house_annual([_SCHED_A_OVER_50M], _filing()).holdings[0]
+        assert h.value_min == Decimal("50000001")
+        assert h.value_max == Decimal("50000001")
+
+    def test_income_range_resolved(self) -> None:
+        h = parse_house_annual([_SCHED_A_OVER_50M], _filing()).holdings[0]
+        assert h.income_min == Decimal("5000001")
+        assert h.income_max == Decimal("25000000")
+
+
+# ---------------------------------------------------------------------------
+# Unrecognized value and income labels
+# ---------------------------------------------------------------------------
+
+_SCHED_A_UNRECOGNIZED_LABELS = """\
+Schedule A
+
+1  Self  Private Equity Fund L.P.  See Footnote  N/A  N/A
+2  SP  Apple Inc  $15,001 - $50,000  Dividends  $1,001 - $15,000
+
+Schedule B
+"""
+
+
+class TestUnrecognizedLabelsRealistic:
+    """Non-standard labels are preserved; numeric fields are None."""
+
+    def test_two_holdings_extracted(self) -> None:
+        result = parse_house_annual([_SCHED_A_UNRECOGNIZED_LABELS], _filing())
+        assert len(result.holdings) == 2
+
+    def test_unrecognized_value_label_preserved_as_string(self) -> None:
+        h = parse_house_annual([_SCHED_A_UNRECOGNIZED_LABELS], _filing()).holdings[0]
+        assert h.value_label == "See Footnote"
+
+    def test_unrecognized_label_value_min_max_none(self) -> None:
+        h = parse_house_annual([_SCHED_A_UNRECOGNIZED_LABELS], _filing()).holdings[0]
+        assert h.value_min is None
+        assert h.value_max is None
+
+    def test_standard_label_on_next_row_still_resolved(self) -> None:
+        h = parse_house_annual([_SCHED_A_UNRECOGNIZED_LABELS], _filing()).holdings[1]
+        assert h.value_min == Decimal("15001")
+        assert h.value_max == Decimal("50000")
+
+
+# ---------------------------------------------------------------------------
+# Schedule A continuation without colon or parentheses
+# ---------------------------------------------------------------------------
+
+# Some PDFs render continuation headers without the full title decoration:
+# "SCHEDULE A CONTINUED" instead of "SCHEDULE A: ASSETS AND UNEARNED INCOME (CONTINUED)".
+_SCHED_A_BARE_CONT_PAGE1 = """\
+SCHEDULE A: ASSETS AND UNEARNED INCOME
+
+1  SP  First Corp  $50,001 - $100,000  Dividends  $1,001 - $15,000
+2  JT  Second Fund  $100,001 - $250,000  Interest  $1,001 - $15,000
+"""
+
+_SCHED_A_BARE_CONT_PAGE2 = """\
+SCHEDULE A CONTINUED
+
+1  Self  Third Asset  $15,001 - $50,000  Dividends  $1 - $1,000
+
+Schedule B
+"""
+
+
+class TestScheduleAContinuationBareHeader:
+    """Bare continuation header "SCHEDULE A CONTINUED" is not a stop trigger."""
+
+    def test_three_holdings_across_two_pages(self) -> None:
+        result = parse_house_annual([_SCHED_A_BARE_CONT_PAGE1, _SCHED_A_BARE_CONT_PAGE2], _filing())
+        assert len(result.holdings) == 3
+
+    def test_bare_continuation_header_not_harvested(self) -> None:
+        holdings = parse_house_annual(
+            [_SCHED_A_BARE_CONT_PAGE1, _SCHED_A_BARE_CONT_PAGE2], _filing()
+        ).holdings
+        names = [h.issuer_name for h in holdings]
+        assert not any("CONTINUED" in n for n in names)
+
+    def test_row_from_bare_continuation_page_extracted(self) -> None:
+        holdings = parse_house_annual(
+            [_SCHED_A_BARE_CONT_PAGE1, _SCHED_A_BARE_CONT_PAGE2], _filing()
+        ).holdings
+        assert holdings[2].issuer_name == "Third Asset"
+
+    def test_schedule_b_stops_collection(self) -> None:
+        result = parse_house_annual([_SCHED_A_BARE_CONT_PAGE1, _SCHED_A_BARE_CONT_PAGE2], _filing())
+        # Only 3 data rows; Schedule B boundary respected.
+        assert len(result.holdings) == 3
+
+
+# ---------------------------------------------------------------------------
+# Row numbers restarting on continuation page
+# ---------------------------------------------------------------------------
+
+# Some House PDFs restart row numbering at 1 on each continuation page.
+# The internal line_number is assigned sequentially by holding_rows_from_table,
+# not derived from the PDF row counter.
+_SCHED_A_RESTART_P1 = """\
+SCHEDULE A: ASSETS AND UNEARNED INCOME
+
+1  SP  First Holding Corp  $50,001 - $100,000  Dividends  $1,001 - $15,000
+2  JT  Second Fund LLC  $100,001 - $250,000  Interest  $1,001 - $15,000
+"""
+
+_SCHED_A_RESTART_P2 = """\
+SCHEDULE A: ASSETS AND UNEARNED INCOME (CONTINUED)
+
+1  Self  Third Asset Trust  $15,001 - $50,000  Dividends  $1 - $1,000
+2  SP  Fourth Holding Inc  $50,001 - $100,000  None  $1,001 - $15,000
+
+Schedule B
+"""
+
+
+class TestRowNumbersRestartOnContinuationPage:
+    """PDF row counter restarting at 1 on page 2 must not drop or duplicate rows."""
+
+    def test_four_holdings_collected(self) -> None:
+        result = parse_house_annual([_SCHED_A_RESTART_P1, _SCHED_A_RESTART_P2], _filing())
+        assert len(result.holdings) == 4
+
+    def test_internal_line_numbers_sequential(self) -> None:
+        holdings = parse_house_annual([_SCHED_A_RESTART_P1, _SCHED_A_RESTART_P2], _filing()).holdings
+        assert [h.line_number for h in holdings] == [1, 2, 3, 4]
+
+    def test_issuers_from_both_pages(self) -> None:
+        holdings = parse_house_annual([_SCHED_A_RESTART_P1, _SCHED_A_RESTART_P2], _filing()).holdings
+        assert holdings[0].issuer_name == "First Holding Corp"
+        assert holdings[1].issuer_name == "Second Fund LLC"
+        assert holdings[2].issuer_name == "Third Asset Trust"
+        assert holdings[3].issuer_name == "Fourth Holding Inc"
+
+    def test_continuation_header_not_harvested(self) -> None:
+        holdings = parse_house_annual([_SCHED_A_RESTART_P1, _SCHED_A_RESTART_P2], _filing()).holdings
+        names = [h.issuer_name for h in holdings]
+        assert not any("CONTINUED" in n for n in names)
+
+
+# ---------------------------------------------------------------------------
+# Schedule D minimal row (organization name only)
+# ---------------------------------------------------------------------------
+
+_SCHED_D_MINIMAL_ROWS = """\
+SCHEDULE D: OUTSIDE POSITIONS
+
+1  Community Land Trust
+
+2  Local School Board  Board Member
+
+Schedule E
+"""
+
+
+class TestScheduleDMinimalRow:
+    """Schedule D rows with only an organization name (no position, no dates) are valid."""
+
+    def test_two_positions_extracted(self) -> None:
+        result = parse_house_annual([_SCHED_D_MINIMAL_ROWS], _filing())
+        assert len(result.outside_positions) == 2
+
+    def test_minimal_row_entity_name(self) -> None:
+        positions = parse_house_annual([_SCHED_D_MINIMAL_ROWS], _filing()).outside_positions
+        assert positions[0].entity_name == "Community Land Trust"
+
+    def test_minimal_row_position_title_none(self) -> None:
+        positions = parse_house_annual([_SCHED_D_MINIMAL_ROWS], _filing()).outside_positions
+        assert positions[0].position_title is None
+
+    def test_minimal_row_dates_none(self) -> None:
+        positions = parse_house_annual([_SCHED_D_MINIMAL_ROWS], _filing()).outside_positions
+        assert positions[0].from_date is None
+        assert positions[0].to_date is None
+
+    def test_full_row_still_extracted(self) -> None:
+        positions = parse_house_annual([_SCHED_D_MINIMAL_ROWS], _filing()).outside_positions
+        assert positions[1].entity_name == "Local School Board"
+        assert positions[1].position_title == "Board Member"
+
+    def test_all_positions_owner_self(self) -> None:
+        for p in parse_house_annual([_SCHED_D_MINIMAL_ROWS], _filing()).outside_positions:
+            assert p.owner_type == OwnerType.SELF
+
+
+# ---------------------------------------------------------------------------
+# Unknown owner abbreviation in realistic context
+# ---------------------------------------------------------------------------
+
+_SCHED_A_UNKNOWN_OWNER = """\
+SCHEDULE A: ASSETS AND UNEARNED INCOME
+
+OWNER  ASSET NAME  VALUE OF ASSET  TYPE OF INCOME  INCOME AMOUNT
+-----  ----------  --------------  --------------  -------------
+
+1  SP  Apple Inc (AAPL)  $15,001 - $50,000  Dividends  $1,001 - $15,000
+2  UNK  Mystery Holdings LLC  $50,001 - $100,000  Interest  $1,001 - $15,000
+3  Self  Treasury Bond  $100,001 - $250,000  Interest  $1,001 - $15,000
+
+Schedule B
+"""
+
+
+class TestUnknownOwnerAbbreviation:
+    """Unknown owner tokens produce OwnerType.OTHER; parsing continues normally."""
+
+    def test_three_holdings_despite_unknown_owner(self) -> None:
+        result = parse_house_annual([_SCHED_A_UNKNOWN_OWNER], _filing())
+        assert len(result.holdings) == 3
+
+    def test_unknown_owner_maps_to_other(self) -> None:
+        holdings = parse_house_annual([_SCHED_A_UNKNOWN_OWNER], _filing()).holdings
+        assert holdings[1].owner_type == OwnerType.OTHER
+
+    def test_surrounding_rows_unaffected(self) -> None:
+        holdings = parse_house_annual([_SCHED_A_UNKNOWN_OWNER], _filing()).holdings
+        assert holdings[0].owner_type == OwnerType.SPOUSE
+        assert holdings[2].owner_type == OwnerType.SELF
+
+    def test_issuer_name_intact_for_unknown_owner_row(self) -> None:
+        holdings = parse_house_annual([_SCHED_A_UNKNOWN_OWNER], _filing()).holdings
+        assert holdings[1].issuer_name == "Mystery Holdings LLC"
+
+
+# ---------------------------------------------------------------------------
+# Amendment header followed by multi-page schedules
+# ---------------------------------------------------------------------------
+
+_AMENDMENT_COVER_FULL = """\
+ANNUAL FINANCIAL DISCLOSURE REPORT - AMENDMENT
+U.S. House of Representatives
+For Calendar Year 2021
+Amendment No. 3
+
+Member Name: PATEL, PRIYA K.
+District: CA-17
+Date Filed: April 5, 2023
+"""
+
+_SCHED_A_AMENDMENT = """\
+SCHEDULE A: ASSETS AND UNEARNED INCOME
+
+1  SP  Apple Inc (AAPL)  $250,001 - $500,000  Dividends  $15,001 - $50,000
+2  Self  Vanguard Index Fund  $500,001 - $1,000,000  Dividends  $15,001 - $50,000
+3  JT  U.S. Treasury Bonds  $100,001 - $250,000  Interest  $1,001 - $15,000
+
+Schedule B
+
+None
+"""
+
+_SCHED_D_AMENDMENT = """\
+SCHEDULE D: OUTSIDE POSITIONS
+
+1  State Bar Association  Member  01/01/2008  -
+2  University Advisory Council  Advisor  09/01/2015
+
+Schedule E
+"""
+
+
+class TestAmendmentWithFullSchedules:
+    """Amendment cover + multi-page schedules: all rows collected, filing preserved."""
+
+    def _result(self):
+        f = _filing(
+            filing_type=FilingType.AMENDMENT,
+            filing_year=2021,
+            is_amended=True,
+            amendment_number=3,
+        )
+        pages = [_AMENDMENT_COVER_FULL, _SCHED_A_AMENDMENT, _SCHED_D_AMENDMENT]
+        return parse_house_annual(pages, f)
+
+    def test_three_holdings_extracted(self) -> None:
+        assert len(self._result().holdings) == 3
+
+    def test_two_positions_extracted(self) -> None:
+        assert len(self._result().outside_positions) == 2
+
+    def test_no_transactions(self) -> None:
+        assert self._result().transactions == ()
+
+    def test_amendment_filing_preserved(self) -> None:
+        result = self._result()
+        assert result.filing.is_amended is True
+        assert result.filing.amendment_number == 3
+
+    def test_no_warnings_for_complete_header(self) -> None:
+        assert self._result().meta.parse_warnings == ()
+
+    def test_holdings_line_numbers_sequential(self) -> None:
+        nums = [h.line_number for h in self._result().holdings]
+        assert nums == [1, 2, 3]
+
+    def test_positions_line_numbers_sequential(self) -> None:
+        nums = [p.line_number for p in self._result().outside_positions]
+        assert nums == [1, 2]
+
+    def test_dash_to_date_yields_none(self) -> None:
+        positions = self._result().outside_positions
+        assert positions[0].to_date is None
+
+    def test_from_date_parsed_correctly(self) -> None:
+        positions = self._result().outside_positions
+        assert positions[0].from_date == date(2008, 1, 1)
+
+    def test_incomplete_date_row_from_date_parsed(self) -> None:
+        positions = self._result().outside_positions
+        # Row 2 has only from_date, no to_date column.
+        assert positions[1].from_date == date(2015, 9, 1)
+        assert positions[1].to_date is None

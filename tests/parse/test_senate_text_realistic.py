@@ -744,3 +744,562 @@ class TestCombinedFilingIntegration:
     def test_parser_name_correct(self):
         result = parse_senate_text(_ANNUAL_PAGES, _annual())
         assert result.meta.parser_name == "senate_text"
+
+
+# ===========================================================================
+# Additional deeper fixtures
+# ===========================================================================
+
+
+# ---------------------------------------------------------------------------
+# Annual EFD using "Positions Held Outside U.S. Government" for Part I
+# and "Assets and Unearned Income" for Schedule A — long-form header pair
+# ---------------------------------------------------------------------------
+
+_LONG_HEADER_PAGES = [
+    """\
+Annual Report for Calendar Year 2023
+                                                                     (Rev. 02/2022)
+
+United States Senate
+
+Name:       DELACROIX, PIERRE F.
+Status:     Senator
+State:      LA
+Date Filed:  06/10/2024
+
+Positions Held Outside U.S. Government
+
+SP   Organization                       Position          Date From    Date To
+self  Lafayette Energy Partners         Managing Director  01/01/2010
+sp   St. Charles Charitable Fund        Trustee           03/20/2008   12/31/2022
+""",
+    """\
+Assets and Unearned Income
+
+SP     Asset Name                                Asset Type   Value of Asset        Income Type   Income Amount
+self   ExxonMobil Corp                           STK          $50,001 - $100,000    Dividends     $1,001 - $15,000
+self   Louisiana Muni Bond Trust                 MF           $100,001 - $250,000   Interest      $2,501 - $5,000
+sp     Chevron Corp                              STK          $15,001 - $50,000     Dividends     $1,001 - $15,000
+""",
+    """\
+Schedule B
+
+Owner  Ticker  Asset                               Type         Amount                Date
+01/12/2023  self  XOM    ExxonMobil Corp                Sale (Full)  $50,001 - $100,000
+02/28/2023  sp    CVX    Chevron Corp                   Purchase   $15,001 - $50,000
+""",
+]
+
+
+# ---------------------------------------------------------------------------
+# Annual EFD using "Positions Held Outside US Government" (no periods)
+# ---------------------------------------------------------------------------
+
+_NO_PERIOD_PART_I_PAGES = [
+    """\
+Annual Report for Calendar Year 2022
+
+United States Senate
+
+Name:       WATKINS, DOROTHY L.
+Date Filed:  05/01/2023
+
+Positions Held Outside US Government
+
+self  Midwest Grain Co  Board Member  01/01/2016
+jt   Prairie Heritage Foundation  Co-Chair  06/01/2014   12/31/2021
+
+Assets and Income
+
+SP   Asset Name               Asset Type   Value of Asset       Income Type   Income Amount
+self  Caterpillar Inc          STK          $15,001 - $50,000    Dividends     $1,001 - $15,000
+jt   Deere & Company           STK          $50,001 - $100,000   Dividends     $1,001 - $15,000
+""",
+]
+
+
+# ---------------------------------------------------------------------------
+# Annual EFD using "Assets and Income" (shortest Schedule A alias)
+# ---------------------------------------------------------------------------
+
+_ASSETS_AND_INCOME_PAGES = [
+    """\
+Annual Report for Calendar Year 2021
+
+United States Senate
+
+Name:       KOWALSKI, STEFAN P.
+Date Filed:  04/15/2022
+
+Assets and Income
+
+SP   Asset Name                          Asset Type   Value of Asset          Income Type  Income Amount
+self  Lockheed Martin Corp               STK          $100,001 - $250,000     Dividends    $2,501 - $5,000
+sp   Raytheon Technologies Corp          STK          $50,001 - $100,000      Dividends    $1,001 - $15,000
+dc   529 Education Savings Account       OTHER        $15,001 - $50,000       None         None
+""",
+]
+
+
+# ---------------------------------------------------------------------------
+# PTR with dep. child and dependent child owner tokens
+# ---------------------------------------------------------------------------
+
+_DEP_CHILD_PTR_PAGES = [
+    """\
+Periodic Transaction Report
+
+United States Senate
+
+Name:       BERGMAN, ANITA K.
+Date Filed:  07/15/2024
+
+Transactions
+
+Owner  Ticker  Asset                    Type         Amount              Date
+01/05/2024  self        AAPL  Apple Inc                Purchase   $15,001 - $50,000
+02/10/2024  dep. child  MSFT  Microsoft Corp           Purchase   $1,001 - $15,000
+03/22/2024  dependent   GOOGL Alphabet Inc Class A     Sale (Full)  $15,001 - $50,000
+04/01/2024  dependent child  VTI  Vanguard Total Stock Market ETF  Purchase  $1,001 - $15,000
+""",
+]
+
+
+# ---------------------------------------------------------------------------
+# Multi-page Schedule B with repeated column header at page break
+# ---------------------------------------------------------------------------
+
+_MULTIPAGE_SCHEDULE_B_PAGES = [
+    """\
+Annual Report for Calendar Year 2023
+
+United States Senate
+
+Name:       PATEL, SUNITA R.
+Date Filed:  05/20/2024
+
+Schedule B
+
+Owner  Ticker  Asset                               Type         Amount                 Date
+01/10/2023  self  AMZN  Amazon.com Inc               Purchase   $100,001 - $250,000
+01/15/2023  sp    NVDA  NVIDIA Corporation           Purchase   $50,001 - $100,000
+""",
+    """\
+Schedule B (Continued)
+
+Owner  Ticker  Asset                               Type         Amount                 Date
+02/01/2023  self  TSLA  Tesla Inc                    Sale (Full)  $15,001 - $50,000
+02/14/2023  jt    MSFT  Microsoft Corp               Purchase   $100,001 - $250,000
+""",
+    """\
+Schedule A
+
+SP     Asset Name                       Asset Type   Value of Asset        Income Type   Income Amount
+self   Amazon.com Inc                   STK          $100,001 - $250,000   None          None
+sp     NVIDIA Corporation               STK          $50,001 - $100,000    None          None
+""",
+]
+
+
+# ---------------------------------------------------------------------------
+# Annual with mixed section alias combination: Assets and Income + Part II
+# ---------------------------------------------------------------------------
+
+_MIXED_ALIAS_ANNUAL_PAGES = [
+    """\
+Annual Report for Calendar Year 2023
+
+United States Senate
+
+Name:       NAKAMURA, HIROSHI T.
+Date Filed:  04/30/2024
+
+Part I
+
+self  Pacific Rim Advisory LLC  Managing Partner  01/01/2012
+sp   Asia Pacific Foundation    Director          03/15/2011  06/30/2023
+""",
+    """\
+Assets and Income
+
+SP   Asset Name                     Asset Type  Value of Asset        Income Type  Income Amount
+self  Toyota Motor Corp ADR          STK         $100,001 - $250,000   Dividends    $2,501 - $5,000
+sp   Sony Group Corp ADR             STK         $50,001 - $100,000    Dividends    $1,001 - $15,000
+""",
+    """\
+Part II
+
+Owner  Ticker  Asset                     Type         Amount               Date
+01/20/2023  self  TM   Toyota Motor Corp ADR  Purchase   $100,001 - $250,000
+03/10/2023  sp    SNE  Sony Group Corp ADR    Sale (Full)  $50,001 - $100,000
+""",
+]
+
+
+# ---------------------------------------------------------------------------
+# PTR amendment fixture
+# ---------------------------------------------------------------------------
+
+_PTR_AMENDMENT_PAGES = [
+    """\
+Periodic Transaction Report Amendment No. 1
+
+United States Senate
+
+Name:       MORALES, CARMEN D.
+Date Filed:  08/01/2024
+
+Part II
+
+Owner  Ticker  Asset                    Type         Amount
+01/15/2024  self  AAPL  Apple Inc              Purchase   $50,001 - $100,000
+02/20/2024  self  MSFT  Microsoft Corp         Sale (Full)  $15,001 - $50,000
+""",
+]
+
+
+# ---------------------------------------------------------------------------
+# Highly malformed Schedule A (owner-like noise, spurious rows, no valid data)
+# ---------------------------------------------------------------------------
+
+_MALFORMED_SCHEDULE_A_SECTION: tuple[str, ...] = (
+    # Column header row — must be rejected (SP + "Asset Name")
+    "SP  Asset Name  Asset Type  Value of Asset  Income Type  Income Amount",
+    # Valid row
+    "self  Apple Inc  STK  $15,001 - $50,000  Dividends  $1,001 - $15,000",
+    # Row with only owner token (no issuer name) — too short to form a Holding
+    "self",
+    # Page-break artefact
+    "SCHEDULE A (Continued)",
+    # Valid dependent child row
+    "dep. child  Fidelity 529 Plan  OTHER  $1,001 - $15,000  None  None",
+    # Valid joint row
+    "jt  Berkshire Hathaway Inc  STK  $250,001 - $500,000  None  None",
+    # Non-owner noise
+    "1",
+    "2",
+    # Another valid row after the noise
+    "sp  Johnson & Johnson  STK  $50,001 - $100,000  Dividends  $1,001 - $15,000",
+)
+
+
+# ===========================================================================
+# Tests for deeper fixtures
+# ===========================================================================
+
+
+class TestLongFormSectionHeaders:
+    """Annual EFD using 'Positions Held Outside U.S. Government' and
+    'Assets and Unearned Income' section headers."""
+
+    def test_holdings_extracted(self):
+        result = parse_senate_text(_LONG_HEADER_PAGES, _annual())
+        assert len(result.holdings) == 3
+
+    def test_holding_issuer_names(self):
+        result = parse_senate_text(_LONG_HEADER_PAGES, _annual())
+        names = {h.issuer_name for h in result.holdings}
+        assert "ExxonMobil Corp" in names
+        assert "Louisiana Muni Bond Trust" in names
+        assert "Chevron Corp" in names
+
+    def test_outside_positions_extracted_via_long_alias(self):
+        result = parse_senate_text(_LONG_HEADER_PAGES, _annual())
+        assert len(result.outside_positions) == 2
+
+    def test_outside_position_names(self):
+        result = parse_senate_text(_LONG_HEADER_PAGES, _annual())
+        names = {p.entity_name for p in result.outside_positions}
+        assert "Lafayette Energy Partners" in names
+        assert "St. Charles Charitable Fund" in names
+
+    def test_outside_position_to_date_parsed(self):
+        result = parse_senate_text(_LONG_HEADER_PAGES, _annual())
+        st_charles = next(p for p in result.outside_positions if "St. Charles" in p.entity_name)
+        assert st_charles.to_date == date(2022, 12, 31)
+
+    def test_outside_position_open_ended_to_date_is_none(self):
+        result = parse_senate_text(_LONG_HEADER_PAGES, _annual())
+        lafayette = next(p for p in result.outside_positions if "Lafayette" in p.entity_name)
+        assert lafayette.to_date is None
+
+    def test_transactions_extracted(self):
+        result = parse_senate_text(_LONG_HEADER_PAGES, _annual())
+        assert len(result.transactions) == 2
+
+    def test_no_empty_document_warning(self):
+        result = parse_senate_text(_LONG_HEADER_PAGES, _annual())
+        assert "no_holdings_or_transactions_found" not in result.meta.parse_warnings
+
+    def test_filing_type_detected(self):
+        result = parse_senate_text(_LONG_HEADER_PAGES, _annual())
+        assert "filing_type_not_detected" not in result.meta.parse_warnings
+
+
+class TestNoPeriodPartIAlias:
+    """Annual EFD using 'Positions Held Outside US Government' (no periods)."""
+
+    def test_outside_positions_extracted(self):
+        result = parse_senate_text(_NO_PERIOD_PART_I_PAGES, _annual(year=2022))
+        assert len(result.outside_positions) == 2
+
+    def test_outside_position_entity_names(self):
+        result = parse_senate_text(_NO_PERIOD_PART_I_PAGES, _annual(year=2022))
+        names = {p.entity_name for p in result.outside_positions}
+        assert "Midwest Grain Co" in names
+        assert "Prairie Heritage Foundation" in names
+
+    def test_holdings_extracted_under_assets_and_income(self):
+        result = parse_senate_text(_NO_PERIOD_PART_I_PAGES, _annual(year=2022))
+        assert len(result.holdings) == 2
+
+    def test_holding_owner_types(self):
+        result = parse_senate_text(_NO_PERIOD_PART_I_PAGES, _annual(year=2022))
+        owner_types = {h.owner_type for h in result.holdings}
+        assert OwnerType.SELF in owner_types
+        assert OwnerType.JOINT in owner_types
+
+    def test_positions_and_holdings_disjoint(self):
+        result = parse_senate_text(_NO_PERIOD_PART_I_PAGES, _annual(year=2022))
+        holding_names = {h.issuer_name for h in result.holdings}
+        pos_names = {p.entity_name for p in result.outside_positions}
+        assert holding_names.isdisjoint(pos_names)
+
+
+class TestAssetsAndIncomeAlias:
+    """Annual EFD using 'Assets and Income' (shortest Schedule A alias)."""
+
+    def test_holdings_extracted(self):
+        result = parse_senate_text(_ASSETS_AND_INCOME_PAGES, _annual(year=2021))
+        assert len(result.holdings) == 3
+
+    def test_issuer_names(self):
+        result = parse_senate_text(_ASSETS_AND_INCOME_PAGES, _annual(year=2021))
+        names = {h.issuer_name for h in result.holdings}
+        assert "Lockheed Martin Corp" in names
+        assert "Raytheon Technologies Corp" in names
+        assert "529 Education Savings Account" in names
+
+    def test_dependent_child_owner_from_dc_token(self):
+        result = parse_senate_text(_ASSETS_AND_INCOME_PAGES, _annual(year=2021))
+        dc_holding = next(h for h in result.holdings if "529" in h.issuer_name)
+        assert dc_holding.owner_type == OwnerType.DEPENDENT
+
+    def test_value_range_parsed(self):
+        result = parse_senate_text(_ASSETS_AND_INCOME_PAGES, _annual(year=2021))
+        lmt = next(h for h in result.holdings if "Lockheed" in h.issuer_name)
+        assert lmt.value_min == Decimal("100001")
+        assert lmt.value_max == Decimal("250000")
+
+    def test_no_empty_document_warning(self):
+        result = parse_senate_text(_ASSETS_AND_INCOME_PAGES, _annual(year=2021))
+        assert "no_holdings_or_transactions_found" not in result.meta.parse_warnings
+
+
+class TestDepChildOwnerToken:
+    """PTR transactions with dep. child / dependent / dependent child owner tokens."""
+
+    def test_all_four_transactions_parsed(self):
+        result = parse_senate_text(_DEP_CHILD_PTR_PAGES, _ptr())
+        # All four rows: self, dep. child, dependent, dependent child
+        assert len(result.transactions) == 4
+
+    def test_self_owner_type(self):
+        result = parse_senate_text(_DEP_CHILD_PTR_PAGES, _ptr())
+        aapl = next(t for t in result.transactions if t.issuer_name == "Apple Inc")
+        assert aapl.owner_type == OwnerType.SELF
+
+    def test_dep_child_owner_type(self):
+        result = parse_senate_text(_DEP_CHILD_PTR_PAGES, _ptr())
+        msft = next(t for t in result.transactions if t.issuer_name == "Microsoft Corp")
+        assert msft.owner_type == OwnerType.DEPENDENT
+
+    def test_dependent_owner_type(self):
+        result = parse_senate_text(_DEP_CHILD_PTR_PAGES, _ptr())
+        googl = next(t for t in result.transactions if "Alphabet" in t.issuer_name)
+        assert googl.owner_type == OwnerType.DEPENDENT
+
+    def test_dependent_child_owner_type(self):
+        result = parse_senate_text(_DEP_CHILD_PTR_PAGES, _ptr())
+        vti = next(t for t in result.transactions if "Vanguard" in t.issuer_name)
+        assert vti.owner_type == OwnerType.DEPENDENT
+
+    def test_no_empty_document_warning(self):
+        result = parse_senate_text(_DEP_CHILD_PTR_PAGES, _ptr())
+        assert "no_holdings_or_transactions_found" not in result.meta.parse_warnings
+
+
+class TestMultipageScheduleB:
+    """Schedule B that spans two pages; the second page has a repeated column
+    header ('Schedule B (Continued)') which must not be treated as a new
+    section header and must not cause the first page's slice to be re-opened."""
+
+    def test_first_page_transactions_extracted(self):
+        result = parse_senate_text(_MULTIPAGE_SCHEDULE_B_PAGES, _annual())
+        names = {t.issuer_name for t in result.transactions}
+        assert "Amazon.com Inc" in names
+        assert "NVIDIA Corporation" in names
+
+    def test_second_page_continuation_extracted(self):
+        # "Schedule B (Continued)" is not an exact header match — lines after
+        # it on the same page should be parsed as Schedule B content when the
+        # slice opens from page 1.  But because slice_section stops at the
+        # next exact header token, "Schedule A" on page 3 terminates page 1's
+        # slice.  Page 2 lines between Schedule B and Schedule A should be
+        # in scope.
+        result = parse_senate_text(_MULTIPAGE_SCHEDULE_B_PAGES, _annual())
+        names = {t.issuer_name for t in result.transactions}
+        assert "Tesla Inc" in names
+        assert "Microsoft Corp" in names
+
+    def test_total_transaction_count(self):
+        result = parse_senate_text(_MULTIPAGE_SCHEDULE_B_PAGES, _annual())
+        assert len(result.transactions) == 4
+
+    def test_schedule_a_holdings_extracted(self):
+        result = parse_senate_text(_MULTIPAGE_SCHEDULE_B_PAGES, _annual())
+        assert len(result.holdings) == 2
+
+    def test_schedule_b_rows_not_in_holdings(self):
+        result = parse_senate_text(_MULTIPAGE_SCHEDULE_B_PAGES, _annual())
+        holding_names = {h.issuer_name for h in result.holdings}
+        # Transaction-only assets must not appear in holdings
+        assert "Tesla Inc" not in holding_names
+        assert "Microsoft Corp" not in holding_names
+
+    def test_transaction_amount_ranges_parsed(self):
+        result = parse_senate_text(_MULTIPAGE_SCHEDULE_B_PAGES, _annual())
+        amzn = next(t for t in result.transactions if "Amazon" in t.issuer_name)
+        assert amzn.amount_min == Decimal("100001")
+        assert amzn.amount_max == Decimal("250000")
+
+
+class TestMixedAliasAnnual:
+    """Annual filing combining: Part I, 'Assets and Income', and 'Part II'
+    (transaction section).  All three sections must parse correctly."""
+
+    def test_holdings_extracted(self):
+        result = parse_senate_text(_MIXED_ALIAS_ANNUAL_PAGES, _annual())
+        assert len(result.holdings) == 2
+
+    def test_transactions_extracted(self):
+        result = parse_senate_text(_MIXED_ALIAS_ANNUAL_PAGES, _annual())
+        assert len(result.transactions) == 2
+
+    def test_outside_positions_extracted(self):
+        result = parse_senate_text(_MIXED_ALIAS_ANNUAL_PAGES, _annual())
+        assert len(result.outside_positions) == 2
+
+    def test_holding_issuer_names(self):
+        result = parse_senate_text(_MIXED_ALIAS_ANNUAL_PAGES, _annual())
+        names = {h.issuer_name for h in result.holdings}
+        assert "Toyota Motor Corp ADR" in names
+        assert "Sony Group Corp ADR" in names
+
+    def test_transaction_types(self):
+        result = parse_senate_text(_MIXED_ALIAS_ANNUAL_PAGES, _annual())
+        tm = next(t for t in result.transactions if "Toyota" in t.issuer_name)
+        sne = next(t for t in result.transactions if "Sony" in t.issuer_name)
+        assert tm.transaction_type == TransactionType.PURCHASE
+        assert sne.transaction_type == TransactionType.SALE
+
+    def test_outside_position_names(self):
+        result = parse_senate_text(_MIXED_ALIAS_ANNUAL_PAGES, _annual())
+        names = {p.entity_name for p in result.outside_positions}
+        assert "Pacific Rim Advisory LLC" in names
+        assert "Asia Pacific Foundation" in names
+
+    def test_all_sections_disjoint(self):
+        result = parse_senate_text(_MIXED_ALIAS_ANNUAL_PAGES, _annual())
+        holding_names = {h.issuer_name for h in result.holdings}
+        tx_names = {t.issuer_name for t in result.transactions}
+        pos_names = {p.entity_name for p in result.outside_positions}
+        assert holding_names.isdisjoint(pos_names)
+        # Holdings and transactions can share names (same asset held and traded)
+        assert isinstance(tx_names, set)
+
+    def test_filing_type_detected(self):
+        result = parse_senate_text(_MIXED_ALIAS_ANNUAL_PAGES, _annual())
+        assert "filing_type_not_detected" not in result.meta.parse_warnings
+
+    def test_no_empty_document_warning(self):
+        result = parse_senate_text(_MIXED_ALIAS_ANNUAL_PAGES, _annual())
+        assert "no_holdings_or_transactions_found" not in result.meta.parse_warnings
+
+
+class TestPtrAmendment:
+    """PTR amendment filing: header must detect both PTR and amendment status."""
+
+    def test_transactions_extracted(self):
+        result = parse_senate_text(_PTR_AMENDMENT_PAGES, _ptr())
+        assert len(result.transactions) == 2
+
+    def test_transaction_types(self):
+        result = parse_senate_text(_PTR_AMENDMENT_PAGES, _ptr())
+        aapl = next(t for t in result.transactions if t.issuer_name == "Apple Inc")
+        msft = next(t for t in result.transactions if t.issuer_name == "Microsoft Corp")
+        assert aapl.transaction_type == TransactionType.PURCHASE
+        assert msft.transaction_type == TransactionType.SALE
+
+    def test_filing_type_detected_as_ptr(self):
+        # PTR takes priority over AMENDMENT in header detection.
+        result = parse_senate_text(_PTR_AMENDMENT_PAGES, _ptr())
+        assert "filing_type_not_detected" not in result.meta.parse_warnings
+
+    def test_no_empty_document_warning(self):
+        result = parse_senate_text(_PTR_AMENDMENT_PAGES, _ptr())
+        assert "no_holdings_or_transactions_found" not in result.meta.parse_warnings
+
+    def test_holdings_absent(self):
+        result = parse_senate_text(_PTR_AMENDMENT_PAGES, _ptr())
+        assert result.holdings == ()
+
+
+class TestMalformedScheduleASection:
+    """Hard realistic Schedule A with mixed noise, short rows, and dep. child."""
+
+    def test_valid_rows_extracted(self):
+        result = _holdings_from_section(_MALFORMED_SCHEDULE_A_SECTION)
+        names = {h.issuer_name for h in result}
+        assert "Apple Inc" in names
+        assert "Fidelity 529 Plan" in names
+        assert "Berkshire Hathaway Inc" in names
+        assert "Johnson & Johnson" in names
+
+    def test_column_header_row_rejected(self):
+        # "SP  Asset Name  ..." must never produce a Holding
+        result = _holdings_from_section(_MALFORMED_SCHEDULE_A_SECTION)
+        issuer_names = {h.issuer_name for h in result}
+        assert "Asset Name" not in issuer_names
+        assert "Asset Type" not in issuer_names
+
+    def test_short_owner_only_row_skipped(self):
+        # A row with just "self" (no issuer) must not produce a Holding.
+        lines = ("self",)
+        result = _holdings_from_section(lines)
+        assert result == []
+
+    def test_dep_child_holding_owner_type(self):
+        result = _holdings_from_section(_MALFORMED_SCHEDULE_A_SECTION)
+        dep = next(h for h in result if "529" in h.issuer_name)
+        assert dep.owner_type == OwnerType.DEPENDENT
+
+    def test_total_valid_holding_count(self):
+        result = _holdings_from_section(_MALFORMED_SCHEDULE_A_SECTION)
+        assert len(result) == 4
+
+    def test_noise_lines_skipped(self):
+        result = _holdings_from_section(_MALFORMED_SCHEDULE_A_SECTION)
+        # Page numbers and continuation headers must not produce holdings.
+        assert all(h.issuer_name not in {"1", "2", "SCHEDULE A (Continued)"} for h in result)
+
+    def test_joint_owner_holding(self):
+        result = _holdings_from_section(_MALFORMED_SCHEDULE_A_SECTION)
+        jt_holding = next(h for h in result if "Berkshire" in h.issuer_name)
+        assert jt_holding.owner_type == OwnerType.JOINT
+
+    def test_income_label_none_preserved(self):
+        result = _holdings_from_section(_MALFORMED_SCHEDULE_A_SECTION)
+        berk = next(h for h in result if "Berkshire" in h.issuer_name)
+        assert berk.income_label == "None"

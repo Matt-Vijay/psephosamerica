@@ -13,32 +13,10 @@ try:
 except ImportError:
     _pypdf = None  # type: ignore[assignment]
 
+from src.parse.disclosures.text_tokens import DETECTION_HEADERS as _KNOWN_HEADERS
+
 # A text page must have at least this many characters to count as text-bearing.
 _MIN_CHARS_TEXT_PAGE = 200
-
-# Section header tokens recognised across both annual and PTR filings.
-_KNOWN_HEADERS: frozenset[str] = frozenset(
-    {
-        "schedule a",
-        "schedule b",
-        "schedule c",
-        "schedule d",
-        "part i",
-        "part ii",
-        "part iii",
-        "part iv",
-        "part v",
-        "part vi",
-        "part vii",
-        "part viii",
-        "part ix",
-        "transaction",
-        "owner",
-        "asset",
-        "amount",
-        "date",
-    }
-)
 
 
 @dataclass(frozen=True)

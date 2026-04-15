@@ -16,6 +16,7 @@ from src.export.filesystem import write_planned_files
 from src.export.local_store import (
     HOMEPAGE_FEED_PATH,
     HomepageFeedPayload,
+    _safe_subpath,
     latest_snapshot_id,
     list_artifact_paths,
     load_evidence_card,
@@ -448,3 +449,50 @@ def test_full_roundtrip_via_write_and_read(tmp_path: Path) -> None:
     assert loaded_manifest.verify_counts() is True
     paths = list_artifact_paths(loaded_manifest)
     assert len(paths) == 3  # manifest itself not in the entry list
+
+
+# ── Path traversal rejection ─────────────────────────────────────
+
+
+class TestSafeSubpath:
+    """_safe_subpath must reject any relative path that escapes root."""
+
+    def test_normal_path_accepted(self, tmp_path: Path) -> None:
+        result = _safe_subpath(tmp_path, "members/alice.json")
+        assert result == tmp_path / "members/alice.json"
+
+    def test_dotdot_rejected(self, tmp_path: Path) -> None:
+        with pytest.raises(ValueError, match="Path escapes snapshot root"):
+            _safe_subpath(tmp_path, "../../../etc/passwd")
+
+    def test_dotdot_inside_segment_rejected(self, tmp_path: Path) -> None:
+        with pytest.raises(ValueError, match="Path escapes snapshot root"):
+            _safe_subpath(tmp_path, "members/../../secret.json")
+
+    def test_null_byte_rejected(self, tmp_path: Path) -> None:
+        with pytest.raises(ValueError, match="null byte"):
+            _safe_subpath(tmp_path, "members/evil\x00.json")
+
+    def test_absolute_path_rejected(self, tmp_path: Path) -> None:
+        with pytest.raises(ValueError, match="Path escapes snapshot root"):
+            _safe_subpath(tmp_path, "/etc/passwd")
+
+
+class TestLoaderPathTraversal:
+    """Loaders must reject traversal slugs before touching the filesystem."""
+
+    def test_member_profile_traversal(self, tmp_path: Path) -> None:
+        with pytest.raises(ValueError, match="Path escapes snapshot root"):
+            load_member_profile(tmp_path, "../../etc/passwd")
+
+    def test_evidence_card_traversal(self, tmp_path: Path) -> None:
+        with pytest.raises(ValueError, match="Path escapes snapshot root"):
+            load_evidence_card(tmp_path, "../../../etc/shadow")
+
+    def test_zip_feed_traversal(self, tmp_path: Path) -> None:
+        with pytest.raises(ValueError, match="Path escapes snapshot root"):
+            load_zip_feed(tmp_path, "../../../../tmp/x")
+
+    def test_manifest_traversal(self, tmp_path: Path) -> None:
+        with pytest.raises(ValueError, match="Path escapes snapshot root"):
+            load_manifest(tmp_path, "../../../etc/passwd")

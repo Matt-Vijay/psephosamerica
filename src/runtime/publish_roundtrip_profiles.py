@@ -182,7 +182,7 @@ def verify_published_member_profiles_roundtrip(
         # Step 2: Load the published profile ─────────────────────────────────
         try:
             published = load_member_profile(root, slug)
-        except (FileNotFoundError, ValueError) as exc:
+        except Exception as exc:
             issues.append(
                 _issue(
                     f"cannot load published profile for '{slug}': {exc}",

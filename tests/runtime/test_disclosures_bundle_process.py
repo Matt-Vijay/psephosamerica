@@ -1,9 +1,12 @@
 """Tests for src/runtime/disclosures_bundle_process.py.
 
-No DB, no network, no filesystem access.  All four pipeline boundaries
-(stage, parse, transform, load) are patched so the tests exercise only the
-orchestration logic in run_disclosures_bundle_process.  SHA-256 verification
-is patched where tested so no real files are required.
+No DB, no network, no filesystem access.  All pipeline boundaries
+(stage, parse inputs auto-build, parse, transform, load) are patched so the
+tests exercise only the orchestration logic in run_disclosures_bundle_process.
+SHA-256 verification (for the explicit-parse-inputs path) is patched where
+tested so no real files are required.
+
+Flow under test: validate → stage → parse inputs → parse → transform → load
 """
 from __future__ import annotations
 
@@ -14,16 +17,19 @@ from unittest.mock import MagicMock, call, patch
 from src.runtime.disclosures_bundle_process import (
     DisclosuresBundleProcessResult,
     _BundleIndexProvider,
+    _build_parse_inputs,
     _validate_bundle,
     run_disclosures_bundle_process,
 )
 from src.runtime.disclosures_parse import IndexMatchProvider
+from src.runtime.disclosures_transform import BatchTransformResult, SkippedSession
 
 # ---------------------------------------------------------------------------
 # Patch target strings
 # ---------------------------------------------------------------------------
 
 _STAGE = "src.runtime.disclosures_bundle_process.stage_disclosures_bundle"
+_BUILD_PARSE_INPUTS = "src.runtime.disclosures_bundle_process._build_parse_inputs"
 _PARSE = "src.runtime.disclosures_bundle_process.run_disclosure_parse_runtime"
 _TRANSFORM = "src.runtime.disclosures_bundle_process.transform_parse_sessions"
 _LOAD = "src.runtime.disclosures_bundle_process.run_disclosures_load_runtime"
@@ -65,6 +71,7 @@ def _bundle_entry(
 def _stage_result() -> MagicMock:
     r = MagicMock()
     r.staged_count = 2
+    r.artifact_rows = ()
     return r
 
 
@@ -77,12 +84,15 @@ def _parse_result(succeeded: int = 1, failed: int = 0) -> MagicMock:
     return r
 
 
-def _transform_batch(n: int = 1) -> MagicMock:
-    """Return a mock BatchTransformResult with n transformed entries."""
-    r = MagicMock()
-    r.transformed = [MagicMock() for _ in range(n)]
-    r.skipped = []
-    return r
+def _transform_batch(n: int = 1, n_skipped: int = 0) -> BatchTransformResult:
+    """Return a BatchTransformResult with the given counts."""
+    return BatchTransformResult(
+        transformed=[MagicMock() for _ in range(n)],
+        skipped=[
+            SkippedSession(run_id=None, reason_code="no_parse_result")
+            for _ in range(n_skipped)
+        ],
+    )
 
 
 def _load_result() -> MagicMock:
@@ -97,15 +107,27 @@ def _patch_all(
     parse_result=None,
     transform_batch=None,
     load_result=None,
+    built_parse_inputs=None,
 ):
-    """Patch all four pipeline boundaries plus SHA-256 verification."""
+    """Patch all pipeline boundaries plus SHA-256 verification.
+
+    Patches:
+      stage               — stage_disclosures_bundle
+      build_parse_inputs  — _build_parse_inputs (step 3 auto-build path)
+      parse               — run_disclosure_parse_runtime
+      transform           — transform_parse_sessions
+      load                — run_disclosures_load_runtime
+      verify              — verify_entry_sha256 (explicit-inputs SHA-256 path)
+    """
     sr = stage_result if stage_result is not None else _stage_result()
     pr = parse_result if parse_result is not None else _parse_result()
     tb = transform_batch if transform_batch is not None else _transform_batch()
     lr = load_result if load_result is not None else _load_result()
+    bpi = built_parse_inputs if built_parse_inputs is not None else []
 
     with (
         patch(_STAGE, return_value=sr) as mock_stage,
+        patch(_BUILD_PARSE_INPUTS, return_value=bpi) as mock_build,
         patch(_PARSE, return_value=pr) as mock_parse,
         patch(_TRANSFORM, return_value=tb) as mock_transform,
         patch(_LOAD, return_value=lr) as mock_load,
@@ -113,6 +135,7 @@ def _patch_all(
     ):
         yield {
             "stage": mock_stage,
+            "build_parse_inputs": mock_build,
             "parse": mock_parse,
             "transform": mock_transform,
             "load": mock_load,
@@ -141,9 +164,6 @@ class TestBundleValidation:
         call_order: list[str] = []
 
         class _Validator:
-            def __init__(self):
-                self._orig = _validate_bundle
-
             def __enter__(self):
                 import src.runtime.disclosures_bundle_process as mod
                 self._orig_fn = mod._validate_bundle
@@ -165,6 +185,7 @@ class TestBundleValidation:
         with (
             _Validator(),
             patch(_STAGE, side_effect=lambda *a, **k: call_order.append("stage") or sr),
+            patch(_BUILD_PARSE_INPUTS, return_value=[]),
             patch(_PARSE, return_value=pr),
             patch(_TRANSFORM, return_value=tb),
             patch(_LOAD, return_value=lr),
@@ -229,9 +250,21 @@ class TestResultShape:
             result = run_disclosures_bundle_process(conn, _bundle(), local_root=_LOCAL_ROOT)
         assert result.transform_count == 0
 
+    def test_result_exposes_skipped_transform_count(self):
+        conn = MagicMock()
+        with _patch_all():
+            result = run_disclosures_bundle_process(conn, _bundle(), local_root=_LOCAL_ROOT)
+        assert hasattr(result, "skipped_transform_count")
+
+    def test_result_exposes_skipped_sessions(self):
+        conn = MagicMock()
+        with _patch_all():
+            result = run_disclosures_bundle_process(conn, _bundle(), local_root=_LOCAL_ROOT)
+        assert hasattr(result, "skipped_sessions")
+
 
 # ---------------------------------------------------------------------------
-# Step ordering — stage → parse → transform → load
+# Step ordering — stage → parse inputs → parse → transform → load
 # ---------------------------------------------------------------------------
 
 
@@ -247,6 +280,7 @@ class TestStepOrdering:
         )
         with (
             patch(_STAGE, side_effect=lambda *a, **k: call_order.append("stage") or sr),
+            patch(_BUILD_PARSE_INPUTS, side_effect=lambda *a, **k: call_order.append("build_parse_inputs") or []),
             patch(_PARSE, side_effect=lambda *a, **k: call_order.append("parse") or pr),
             patch(_TRANSFORM, side_effect=lambda *a, **k: call_order.append("transform") or tb),
             patch(_LOAD, side_effect=lambda *a, **k: call_order.append("load") or lr),
@@ -255,9 +289,13 @@ class TestStepOrdering:
             run_disclosures_bundle_process(MagicMock(), _bundle(), local_root=_LOCAL_ROOT)
         return call_order
 
-    def test_stage_called_before_parse(self):
+    def test_stage_called_before_parse_inputs(self):
         order = self._run_with_call_order()
-        assert order.index("stage") < order.index("parse")
+        assert order.index("stage") < order.index("build_parse_inputs")
+
+    def test_parse_inputs_called_before_parse(self):
+        order = self._run_with_call_order()
+        assert order.index("build_parse_inputs") < order.index("parse")
 
     def test_parse_called_before_transform(self):
         order = self._run_with_call_order()
@@ -310,6 +348,182 @@ class TestStageWiring:
             run_disclosures_bundle_process(conn, _bundle(), local_root=None)
         _, kwargs = mocks["stage"].call_args
         assert kwargs.get("local_root") is None
+
+
+# ---------------------------------------------------------------------------
+# Parse inputs step — auto-build path (parse_inputs=None + local_root set)
+# ---------------------------------------------------------------------------
+
+
+class TestParseInputsAutoBuild:
+    """Step 3: when parse_inputs=None and local_root is set, _build_parse_inputs
+    is called with the bundle, staged result, and local_root."""
+
+    def test_build_parse_inputs_called_when_parse_inputs_none_and_local_root_set(self):
+        conn = MagicMock()
+        b = _bundle()
+        with _patch_all() as mocks:
+            run_disclosures_bundle_process(conn, b, local_root=_LOCAL_ROOT)
+        mocks["build_parse_inputs"].assert_called_once()
+
+    def test_build_parse_inputs_receives_bundle(self):
+        conn = MagicMock()
+        b = _bundle()
+        with _patch_all() as mocks:
+            run_disclosures_bundle_process(conn, b, local_root=_LOCAL_ROOT)
+        args, _ = mocks["build_parse_inputs"].call_args
+        assert args[0] is b
+
+    def test_build_parse_inputs_receives_stage_result(self):
+        conn = MagicMock()
+        sr = _stage_result()
+        with _patch_all(stage_result=sr) as mocks:
+            run_disclosures_bundle_process(conn, _bundle(), local_root=_LOCAL_ROOT)
+        args, _ = mocks["build_parse_inputs"].call_args
+        assert args[1] is sr
+
+    def test_build_parse_inputs_receives_local_root(self):
+        conn = MagicMock()
+        root = Path("/storage/local")
+        with _patch_all() as mocks:
+            run_disclosures_bundle_process(conn, _bundle(), local_root=root)
+        args, _ = mocks["build_parse_inputs"].call_args
+        assert args[2] == root
+
+    def test_build_parse_inputs_not_called_when_local_root_is_none(self):
+        conn = MagicMock()
+        with _patch_all() as mocks:
+            run_disclosures_bundle_process(conn, _bundle(), local_root=None)
+        mocks["build_parse_inputs"].assert_not_called()
+
+    def test_build_parse_inputs_not_called_when_explicit_inputs_provided(self):
+        conn = MagicMock()
+        explicit_inputs = [MagicMock()]
+        with _patch_all() as mocks:
+            run_disclosures_bundle_process(
+                conn, _bundle(), local_root=_LOCAL_ROOT, parse_inputs=explicit_inputs
+            )
+        mocks["build_parse_inputs"].assert_not_called()
+
+    def test_built_inputs_forwarded_to_parse(self):
+        """The list returned by _build_parse_inputs is passed to the parse step."""
+        conn = MagicMock()
+        built = [MagicMock(), MagicMock()]
+        with _patch_all(built_parse_inputs=built) as mocks:
+            run_disclosures_bundle_process(conn, _bundle(), local_root=_LOCAL_ROOT)
+        _, parse_kwargs = mocks["parse"].call_args
+        assert parse_kwargs["parse_inputs"] is built
+
+    def test_none_parse_inputs_forwarded_when_local_root_is_none(self):
+        """When local_root is None and parse_inputs=None, None passes through to parse."""
+        conn = MagicMock()
+        with _patch_all() as mocks:
+            run_disclosures_bundle_process(conn, _bundle(), local_root=None)
+        _, parse_kwargs = mocks["parse"].call_args
+        assert parse_kwargs.get("parse_inputs") is None
+
+
+# ---------------------------------------------------------------------------
+# Parse inputs step — explicit inputs path (SHA-256 verify per bundle entry)
+# ---------------------------------------------------------------------------
+
+
+class TestParseInputsExplicit:
+    """When explicit parse_inputs are provided with local_root set,
+    verify_entry_sha256 must be called for each bundle entry."""
+
+    def test_verify_called_once_per_entry_when_explicit_inputs_and_local_root(self):
+        conn = MagicMock()
+        entries = (_bundle_entry(source_record_id="1"), _bundle_entry(source_record_id="2"))
+        b = _bundle(artifacts=entries)
+        explicit_inputs = [MagicMock()]
+        with _patch_all() as mocks:
+            run_disclosures_bundle_process(
+                conn, b, local_root=_LOCAL_ROOT, parse_inputs=explicit_inputs
+            )
+        assert mocks["verify"].call_count == 2
+
+    def test_verify_receives_entry_and_local_root(self):
+        conn = MagicMock()
+        entry = _bundle_entry()
+        b = _bundle(artifacts=(entry,))
+        root = Path("/storage/root")
+        explicit_inputs = [MagicMock()]
+        with _patch_all() as mocks:
+            run_disclosures_bundle_process(
+                conn, b, local_root=root, parse_inputs=explicit_inputs
+            )
+        mocks["verify"].assert_called_once_with(entry, root)
+
+    def test_verify_not_called_when_local_root_is_none_and_explicit_inputs(self):
+        conn = MagicMock()
+        entries = (_bundle_entry(),)
+        b = _bundle(artifacts=entries)
+        explicit_inputs = [MagicMock()]
+        with _patch_all() as mocks:
+            run_disclosures_bundle_process(
+                conn, b, local_root=None, parse_inputs=explicit_inputs
+            )
+        mocks["verify"].assert_not_called()
+
+    def test_verify_not_called_when_parse_inputs_none_and_local_root_set(self):
+        """Auto-build path (parse_inputs=None) uses _build_parse_inputs, not verify."""
+        conn = MagicMock()
+        entries = (_bundle_entry(),)
+        b = _bundle(artifacts=entries)
+        with _patch_all() as mocks:
+            run_disclosures_bundle_process(conn, b, local_root=_LOCAL_ROOT)
+        mocks["verify"].assert_not_called()
+
+    def test_verify_called_before_parse_when_explicit_inputs(self):
+        """SHA-256 checks must complete before parse begins."""
+        call_order: list[str] = []
+        entry = _bundle_entry()
+        b = _bundle(artifacts=(entry,))
+        sr, pr, tb, lr = (
+            _stage_result(), _parse_result(), _transform_batch(), _load_result(),
+        )
+        explicit_inputs = [MagicMock()]
+        with (
+            patch(_STAGE, return_value=sr),
+            patch(_BUILD_PARSE_INPUTS, return_value=[]),
+            patch(_VERIFY, side_effect=lambda *a: call_order.append("verify")),
+            patch(_PARSE, side_effect=lambda *a, **k: call_order.append("parse") or pr),
+            patch(_TRANSFORM, return_value=tb),
+            patch(_LOAD, return_value=lr),
+        ):
+            run_disclosures_bundle_process(
+                MagicMock(), b, local_root=_LOCAL_ROOT, parse_inputs=explicit_inputs
+            )
+        assert call_order.index("verify") < call_order.index("parse")
+
+    def test_verify_called_for_every_entry_in_order_when_explicit_inputs(self):
+        conn = MagicMock()
+        e1 = _bundle_entry(source_record_id="A")
+        e2 = _bundle_entry(source_record_id="B")
+        e3 = _bundle_entry(source_record_id="C")
+        b = _bundle(artifacts=(e1, e2, e3))
+        root = _LOCAL_ROOT
+        explicit_inputs = [MagicMock()]
+        with _patch_all() as mocks:
+            run_disclosures_bundle_process(
+                conn, b, local_root=root, parse_inputs=explicit_inputs
+            )
+        assert mocks["verify"].call_args_list == [
+            call(e1, root),
+            call(e2, root),
+            call(e3, root),
+        ]
+
+    def test_explicit_inputs_forwarded_to_parse(self):
+        conn = MagicMock()
+        explicit_inputs = [MagicMock(), MagicMock()]
+        with _patch_all() as mocks:
+            run_disclosures_bundle_process(
+                conn, _bundle(), local_root=_LOCAL_ROOT, parse_inputs=explicit_inputs
+            )
+        _, parse_kwargs = mocks["parse"].call_args
+        assert parse_kwargs["parse_inputs"] is explicit_inputs
 
 
 # ---------------------------------------------------------------------------
@@ -443,68 +657,122 @@ class TestTransformCount:
 
 
 # ---------------------------------------------------------------------------
-# SHA-256 verification — resolve bundle files step
+# skipped_transform_count — from batch.skipped, not arithmetic on succeeded
 # ---------------------------------------------------------------------------
 
 
-class TestSha256Verification:
-    def test_verify_called_once_per_entry_when_local_root_set(self):
+class TestSkippedTransformCount:
+    def test_skipped_count_zero_when_nothing_skipped(self):
         conn = MagicMock()
-        entries = (_bundle_entry(source_record_id="1"), _bundle_entry(source_record_id="2"))
-        b = _bundle(artifacts=entries)
-        with _patch_all() as mocks:
-            run_disclosures_bundle_process(conn, b, local_root=_LOCAL_ROOT)
-        assert mocks["verify"].call_count == 2
+        with _patch_all(transform_batch=_transform_batch(n=3, n_skipped=0)):
+            result = run_disclosures_bundle_process(conn, _bundle(), local_root=_LOCAL_ROOT)
+        assert result.skipped_transform_count == 0
 
-    def test_verify_receives_entry_and_local_root(self):
+    def test_skipped_count_equals_batch_skipped_length(self):
         conn = MagicMock()
-        entry = _bundle_entry()
-        b = _bundle(artifacts=(entry,))
-        root = Path("/storage/root")
-        with _patch_all() as mocks:
-            run_disclosures_bundle_process(conn, b, local_root=root)
-        mocks["verify"].assert_called_once_with(entry, root)
+        tb = _transform_batch(n=2, n_skipped=3)
+        with _patch_all(transform_batch=tb):
+            result = run_disclosures_bundle_process(conn, _bundle(), local_root=_LOCAL_ROOT)
+        assert result.skipped_transform_count == 3
 
-    def test_verify_not_called_when_local_root_is_none(self):
+    def test_skipped_count_all_skipped(self):
         conn = MagicMock()
-        entries = (_bundle_entry(),)
-        b = _bundle(artifacts=entries)
-        with _patch_all() as mocks:
-            run_disclosures_bundle_process(conn, b, local_root=None)
-        mocks["verify"].assert_not_called()
+        tb = _transform_batch(n=0, n_skipped=4)
+        with _patch_all(transform_batch=tb):
+            result = run_disclosures_bundle_process(conn, _bundle(), local_root=_LOCAL_ROOT)
+        assert result.skipped_transform_count == 4
 
-    def test_verify_called_before_parse(self):
-        """SHA-256 checks must complete before parse begins."""
-        call_order: list[str] = []
-        entry = _bundle_entry()
-        b = _bundle(artifacts=(entry,))
-        sr, pr, tb, lr = (
-            _stage_result(), _parse_result(), _transform_batch(), _load_result(),
+    def test_transform_plus_skipped_from_batch(self):
+        """transform_count + skipped_transform_count == len(batch.transformed) + len(batch.skipped)."""
+        conn = MagicMock()
+        for n_transformed, n_skipped in ((0, 0), (1, 0), (0, 1), (4, 3), (7, 7)):
+            tb = _transform_batch(n=n_transformed, n_skipped=n_skipped)
+            with _patch_all(transform_batch=tb):
+                result = run_disclosures_bundle_process(conn, _bundle(), local_root=_LOCAL_ROOT)
+            total = result.transform_count + result.skipped_transform_count
+            assert total == n_transformed + n_skipped
+
+
+# ---------------------------------------------------------------------------
+# skipped_sessions — explicit SkippedSession records exposed on result
+# ---------------------------------------------------------------------------
+
+
+class TestSkippedSessions:
+    def test_skipped_sessions_empty_when_nothing_skipped(self):
+        conn = MagicMock()
+        with _patch_all(transform_batch=_transform_batch(n=2, n_skipped=0)):
+            result = run_disclosures_bundle_process(conn, _bundle(), local_root=_LOCAL_ROOT)
+        assert result.skipped_sessions == ()
+
+    def test_skipped_sessions_is_tuple(self):
+        conn = MagicMock()
+        with _patch_all(transform_batch=_transform_batch(n=1, n_skipped=2)):
+            result = run_disclosures_bundle_process(conn, _bundle(), local_root=_LOCAL_ROOT)
+        assert isinstance(result.skipped_sessions, tuple)
+
+    def test_skipped_sessions_length_equals_skipped_count(self):
+        conn = MagicMock()
+        tb = _transform_batch(n=1, n_skipped=3)
+        with _patch_all(transform_batch=tb):
+            result = run_disclosures_bundle_process(conn, _bundle(), local_root=_LOCAL_ROOT)
+        assert len(result.skipped_sessions) == 3
+
+    def test_skipped_sessions_contains_skipped_session_instances(self):
+        conn = MagicMock()
+        tb = _transform_batch(n=0, n_skipped=2)
+        with _patch_all(transform_batch=tb):
+            result = run_disclosures_bundle_process(conn, _bundle(), local_root=_LOCAL_ROOT)
+        for s in result.skipped_sessions:
+            assert isinstance(s, SkippedSession)
+
+    def test_skipped_sessions_reason_codes_preserved(self):
+        tb = BatchTransformResult(
+            transformed=[],
+            skipped=[
+                SkippedSession(run_id=1, reason_code="no_parse_result"),
+                SkippedSession(run_id=2, reason_code="no_parsed_document"),
+                SkippedSession(run_id=3, reason_code="unresolved_member_identity"),
+            ],
         )
-        with (
-            patch(_STAGE, return_value=sr),
-            patch(_VERIFY, side_effect=lambda *a: call_order.append("verify")),
-            patch(_PARSE, side_effect=lambda *a, **k: call_order.append("parse") or pr),
-            patch(_TRANSFORM, return_value=tb),
-            patch(_LOAD, return_value=lr),
-        ):
-            run_disclosures_bundle_process(MagicMock(), b, local_root=_LOCAL_ROOT)
-        assert call_order.index("verify") < call_order.index("parse")
-
-    def test_verify_called_for_every_entry_in_order(self):
         conn = MagicMock()
-        e1 = _bundle_entry(source_record_id="A")
-        e2 = _bundle_entry(source_record_id="B")
-        e3 = _bundle_entry(source_record_id="C")
-        b = _bundle(artifacts=(e1, e2, e3))
-        root = _LOCAL_ROOT
-        with _patch_all() as mocks:
-            run_disclosures_bundle_process(conn, b, local_root=root)
-        assert mocks["verify"].call_args_list == [
-            call(e1, root),
-            call(e2, root),
-            call(e3, root),
+        with _patch_all(transform_batch=tb):
+            result = run_disclosures_bundle_process(conn, _bundle(), local_root=_LOCAL_ROOT)
+        codes = [s.reason_code for s in result.skipped_sessions]
+        assert codes == [
+            "no_parse_result",
+            "no_parsed_document",
+            "unresolved_member_identity",
         ]
+
+    def test_skipped_sessions_run_ids_preserved(self):
+        tb = BatchTransformResult(
+            transformed=[],
+            skipped=[
+                SkippedSession(run_id=10, reason_code="no_parse_result"),
+                SkippedSession(run_id=20, reason_code="no_parsed_document"),
+            ],
+        )
+        conn = MagicMock()
+        with _patch_all(transform_batch=tb):
+            result = run_disclosures_bundle_process(conn, _bundle(), local_root=_LOCAL_ROOT)
+        run_ids = [s.run_id for s in result.skipped_sessions]
+        assert run_ids == [10, 20]
+
+    def test_skipped_count_equals_skipped_sessions_length(self):
+        tb = _transform_batch(n=2, n_skipped=4)
+        conn = MagicMock()
+        with _patch_all(transform_batch=tb):
+            result = run_disclosures_bundle_process(conn, _bundle(), local_root=_LOCAL_ROOT)
+        assert result.skipped_transform_count == len(result.skipped_sessions)
+
+    def test_load_does_not_receive_skipped_sessions(self):
+        """Skipped sessions must NOT be forwarded to the load layer."""
+        conn = MagicMock()
+        tb = _transform_batch(n=1, n_skipped=3)
+        with _patch_all(transform_batch=tb) as mocks:
+            run_disclosures_bundle_process(conn, _bundle(), local_root=_LOCAL_ROOT)
+        assert len(mocks["load"].call_args[0][1]) == 1
 
 
 # ---------------------------------------------------------------------------
@@ -603,3 +871,95 @@ class TestBundleIndexProvider:
     def test_satisfies_index_match_provider_protocol(self):
         provider = self._make_provider()
         assert isinstance(provider, IndexMatchProvider)
+
+
+# ---------------------------------------------------------------------------
+# _build_parse_inputs unit tests
+# ---------------------------------------------------------------------------
+
+
+class TestBuildParseInputs:
+    """Unit tests for the _build_parse_inputs helper.
+
+    Uses real read_and_verify_entry calls via real on-disk files in tmp_path.
+    """
+
+    def test_empty_bundle_produces_empty_inputs(self, tmp_path):
+        bundle = _bundle(artifacts=())
+        sr = _stage_result()
+        sr.artifact_rows = ()
+        inputs = _build_parse_inputs(bundle, sr, tmp_path)
+        assert inputs == []
+
+    def test_one_artifact_produces_one_input(self, tmp_path):
+        import hashlib
+        data = b"test-content-abc"
+        sha256 = hashlib.sha256(data).hexdigest()
+        dest = tmp_path / "house" / "2024" / "99.pdf"
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_bytes(data)
+
+        entry = _bundle_entry(
+            source_record_id="99",
+            chamber="house",
+            filing_year=2024,
+            storage_uri="house/2024/99.pdf",
+            sha256=sha256,
+        )
+        bundle = _bundle(artifacts=(entry,))
+        sr = MagicMock()
+        sr.artifact_rows = (
+            {"id": 1, "chamber": "house", "filing_year": 2024, "source_record_id": "99"},
+        )
+        inputs = _build_parse_inputs(bundle, sr, tmp_path)
+
+        assert len(inputs) == 1
+        assert inputs[0].source_record_id == "99"
+        assert inputs[0].chamber == "house"
+        assert inputs[0].local_bytes == data
+
+    def test_input_artifact_row_matches_staged_row(self, tmp_path):
+        import hashlib
+        data = b"content"
+        sha256 = hashlib.sha256(data).hexdigest()
+        dest = tmp_path / "house" / "2024" / "42.pdf"
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_bytes(data)
+
+        entry = _bundle_entry(
+            source_record_id="42", chamber="house", filing_year=2024,
+            storage_uri="house/2024/42.pdf", sha256=sha256,
+        )
+        bundle = _bundle(artifacts=(entry,))
+        artifact_row = {"id": 7, "chamber": "house", "filing_year": 2024, "source_record_id": "42"}
+        sr = MagicMock()
+        sr.artifact_rows = (artifact_row,)
+        inputs = _build_parse_inputs(bundle, sr, tmp_path)
+
+        assert inputs[0].artifact_row is artifact_row
+
+    def test_sha256_mismatch_raises(self, tmp_path):
+        from src.runtime.disclosures_bundle_files import Sha256Mismatch
+        import pytest
+
+        dest = tmp_path / "house" / "2024" / "X.pdf"
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_bytes(b"wrong content")
+
+        entry = _bundle_entry(
+            source_record_id="X", storage_uri="house/2024/X.pdf", sha256="a" * 64
+        )
+        bundle = _bundle(artifacts=(entry,))
+        sr = MagicMock()
+        sr.artifact_rows = ({"id": 1, "chamber": "house", "filing_year": 2024, "source_record_id": "X"},)
+
+        with pytest.raises(Sha256Mismatch):
+            _build_parse_inputs(bundle, sr, tmp_path)
+
+    def test_skips_staged_row_with_no_matching_bundle_entry(self, tmp_path):
+        """A staged row whose source_record_id is not in the bundle is skipped."""
+        bundle = _bundle(artifacts=())  # no entries
+        sr = MagicMock()
+        sr.artifact_rows = ({"id": 1, "chamber": "house", "filing_year": 2024, "source_record_id": "ORPHAN"},)
+        inputs = _build_parse_inputs(bundle, sr, tmp_path)
+        assert inputs == []

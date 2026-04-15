@@ -71,6 +71,7 @@ class DisclosureParseRuntimeResult:
     failed_count: int
     parse_sessions: tuple[ParseSessionResult, ...]
     parsed_documents: tuple[Any, ...]  # one entry per succeeded artifact
+    failed_artifact_ids: tuple[int, ...]  # artifact row IDs that raised during parse
 
 
 def _all_lines(page_texts: list[str]) -> tuple[str, ...]:
@@ -169,6 +170,7 @@ def run_disclosure_parse_runtime(
 
     sessions: list[ParseSessionResult] = []
     failed_count = 0
+    failed_artifact_ids: list[int] = []
 
     for parse_input in inputs:
 
@@ -245,6 +247,7 @@ def run_disclosure_parse_runtime(
             sessions.append(session)
         except Exception:  # noqa: BLE001
             failed_count += 1
+            failed_artifact_ids.append(parse_input.artifact_row["id"])
 
     return DisclosureParseRuntimeResult(
         processed_count=len(sessions) + failed_count,
@@ -252,4 +255,5 @@ def run_disclosure_parse_runtime(
         failed_count=failed_count,
         parse_sessions=tuple(sessions),
         parsed_documents=tuple(s.parse_result for s in sessions),
+        failed_artifact_ids=tuple(failed_artifact_ids),
     )

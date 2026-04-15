@@ -194,3 +194,56 @@ class TestDisclosureIdentityFromIndexRow:
         row = _house_row()
         result = disclosure_identity_from_index_row("house", row)
         assert isinstance(result, DisclosureHeaderIdentity)
+
+
+# ---------------------------------------------------------------------------
+# Wrong-chamber / malformed-row explicit errors — typed and distinct
+# ---------------------------------------------------------------------------
+
+
+class TestWrongChamberExplicitErrors:
+    """Wrong-chamber mismatches and malformed rows must raise typed errors.
+
+    TypeError for wrong row type, ValueError for unknown chamber string.
+    These are distinct from each other and from resolution NoMatch.
+    """
+
+    def test_house_chamber_wrong_row_type_is_type_error_not_value_error(self):
+        row = _senate_row()
+        with pytest.raises(TypeError):
+            disclosure_identity_from_index_row("house", row)
+
+    def test_senate_chamber_wrong_row_type_is_type_error_not_value_error(self):
+        row = _house_row()
+        with pytest.raises(TypeError):
+            disclosure_identity_from_index_row("senate", row)
+
+    def test_unknown_chamber_is_value_error_not_type_error(self):
+        row = _house_row()
+        with pytest.raises(ValueError):
+            disclosure_identity_from_index_row("congress", row)
+
+    def test_house_wrong_row_error_message_names_type(self):
+        row = _senate_row()
+        with pytest.raises(TypeError, match="HouseIndexRow"):
+            disclosure_identity_from_index_row("house", row)
+
+    def test_senate_wrong_row_error_message_names_type(self):
+        row = _house_row()
+        with pytest.raises(TypeError, match="SenateIndexRow"):
+            disclosure_identity_from_index_row("senate", row)
+
+    def test_unknown_chamber_error_names_the_value(self):
+        row = _house_row()
+        with pytest.raises(ValueError, match="congress"):
+            disclosure_identity_from_index_row("congress", row)
+
+    def test_malformed_state_dst_raises_value_error_through_house_extractor(self):
+        row = _house_row(state_dst="X")  # too short
+        with pytest.raises(ValueError):
+            house_identity_from_index_row(row)
+
+    def test_malformed_office_raises_value_error_through_senate_extractor(self):
+        row = _senate_row(office="no-comma-here")  # unparseable
+        with pytest.raises(ValueError):
+            senate_identity_from_index_row(row)

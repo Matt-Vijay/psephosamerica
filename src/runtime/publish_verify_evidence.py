@@ -3,6 +3,7 @@
 Entry point: verify_local_evidence_cards(root, manifest_payload)
 
 Checks performed for each evidence-card entry in the manifest:
+- The entry path is confined to the publish root.
 - The file exists on disk at the expected path.
 - The file loads and parses cleanly as EvidenceCardPayload.
 - The evidence_card_id in the payload matches the id encoded in the path.
@@ -15,13 +16,21 @@ from pathlib import Path
 from src.export.local_store import load_evidence_card
 from src.export.manifest import SnapshotManifest
 from src.runtime.publish_verify_types import (
+    IssueSeverity,
     PublishVerifyIssue,
     PublishVerifyStageResult,
+    path_is_confined,
 )
 
 _EVIDENCE_PREFIX = "evidence/"
 _EVIDENCE_SUFFIX = ".json"
 _STAGE = "evidence"
+
+
+def _issue(
+    message: str, *, path: str | None = None, severity: IssueSeverity = "error"
+) -> PublishVerifyIssue:
+    return PublishVerifyIssue(stage=_STAGE, message=message, severity=severity, path=path)
 
 
 def _id_from_path(path: str) -> str:
@@ -58,17 +67,15 @@ def verify_local_evidence_cards(
         path = entry.path
         expected_id = _id_from_path(path)
 
+        # 0. Path confinement.
+        if not path_is_confined(path):
+            issues.append(_issue("entry path escapes publish root", path=path))
+            continue
+
         # 1. File exists.
         file = root / path
         if not file.exists():
-            issues.append(
-                PublishVerifyIssue(
-                    stage=_STAGE,
-                    message=f"evidence card file missing: {path}",
-                    severity="error",
-                    path=path,
-                )
-            )
+            issues.append(_issue(f"evidence card file missing: {path}", path=path))
             continue
 
         # 2. File loads and parses cleanly.
@@ -76,34 +83,20 @@ def verify_local_evidence_cards(
             card = load_evidence_card(root, expected_id)
         except Exception as exc:
             issues.append(
-                PublishVerifyIssue(
-                    stage=_STAGE,
-                    message=f"evidence card failed to load ({path}): {exc}",
-                    severity="error",
-                    path=path,
-                )
+                _issue(f"evidence card failed to load ({path}): {exc}", path=path)
             )
             continue
 
         # 3. Structural coherence: evidence_card_id is present and matches path.
         if not card.evidence_card_id:
             issues.append(
-                PublishVerifyIssue(
-                    stage=_STAGE,
-                    message=f"evidence card has empty evidence_card_id: {path}",
-                    severity="error",
-                    path=path,
-                )
+                _issue(f"evidence card has empty evidence_card_id: {path}", path=path)
             )
         elif card.evidence_card_id != expected_id:
             issues.append(
-                PublishVerifyIssue(
-                    stage=_STAGE,
-                    message=(
-                        f"evidence_card_id mismatch: path encodes '{expected_id}' "
-                        f"but payload has '{card.evidence_card_id}'"
-                    ),
-                    severity="error",
+                _issue(
+                    f"evidence_card_id mismatch: path encodes '{expected_id}' "
+                    f"but payload has '{card.evidence_card_id}'",
                     path=path,
                 )
             )

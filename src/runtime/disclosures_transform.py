@@ -12,6 +12,14 @@ from src.parse.disclosures.transform import (
     transform_filing,
 )
 
+# ---------------------------------------------------------------------------
+# Stable skip-reason constants (used by SkippedSession.reason_code)
+# ---------------------------------------------------------------------------
+
+SKIP_NO_PARSE_RESULT = "no_parse_result"
+SKIP_NO_PARSED_DOCUMENT = "no_parsed_document"
+SKIP_UNRESOLVED_MEMBER_IDENTITY = "unresolved_member_identity"
+
 
 def build_parse_context(
     *,
@@ -66,15 +74,15 @@ def transform_single_session(
     parse_result = getattr(session, "parse_result", None)
 
     if not isinstance(parse_result, dict):
-        return SkippedSession(run_id=run_id, reason_code="no_parse_result")
+        return SkippedSession(run_id=run_id, reason_code=SKIP_NO_PARSE_RESULT)
 
     raw_document = parse_result.get("parsed_document")
     if not isinstance(raw_document, ParseResult):
-        return SkippedSession(run_id=run_id, reason_code="no_parsed_document")
+        return SkippedSession(run_id=run_id, reason_code=SKIP_NO_PARSED_DOCUMENT)
 
     resolved = _resolve_parsed_document(parse_result)
     if resolved is None:
-        return SkippedSession(run_id=run_id, reason_code="unresolved_member_identity")
+        return SkippedSession(run_id=run_id, reason_code=SKIP_UNRESOLVED_MEMBER_IDENTITY)
 
     return transform_parsed_disclosure(
         resolved.filing,
@@ -96,10 +104,10 @@ def transform_single_session(
 class SkippedSession:
     """A parse session that could not be transformed.
 
-    reason_code values:
-    - 'no_parse_result'            — session.parse_result is not a dict
-    - 'no_parsed_document'         — parse_result['parsed_document'] is not a ParseResult
-    - 'unresolved_member_identity' — member bioguide_id absent and unresolvable
+    reason_code is one of the module-level SKIP_* constants:
+    - SKIP_NO_PARSE_RESULT            — session.parse_result is not a dict
+    - SKIP_NO_PARSED_DOCUMENT         — parse_result['parsed_document'] is not a ParseResult
+    - SKIP_UNRESOLVED_MEMBER_IDENTITY — member bioguide_id absent and unresolvable
     """
 
     run_id: Optional[int]
@@ -168,43 +176,18 @@ def transform_parse_sessions(
     Returns a BatchTransformResult separating successfully transformed sessions
     from skipped ones.  Callers can inspect skipped entries to drive review-queue
     routing or logging without re-scanning the raw session list.
+
+    Delegates to ``transform_single_session`` per session so that skip-reason
+    logic has a single source of truth.
     """
     transformed: list[DisclosureTransformResult] = []
     skipped: list[SkippedSession] = []
 
     for session in parse_sessions:
-        run_id = getattr(session, "run_id", None)
-        parse_result = getattr(session, "parse_result", None)
-
-        if not isinstance(parse_result, dict):
-            skipped.append(SkippedSession(run_id=run_id, reason_code="no_parse_result"))
-            continue
-
-        # Determine skip reason before calling _resolve_parsed_document so the
-        # reason_code is precise rather than a catch-all.
-        raw_document = parse_result.get("parsed_document")
-        if not isinstance(raw_document, ParseResult):
-            skipped.append(SkippedSession(run_id=run_id, reason_code="no_parsed_document"))
-            continue
-
-        resolved = _resolve_parsed_document(parse_result)
-        if resolved is None:
-            # raw_document is a ParseResult but bioguide_id could not be resolved.
-            skipped.append(
-                SkippedSession(run_id=run_id, reason_code="unresolved_member_identity")
-            )
-            continue
-
-        transformed.append(
-            transform_parsed_disclosure(
-                resolved.filing,
-                list(resolved.holdings),
-                list(resolved.transactions),
-                list(resolved.outside_positions),
-                parse_run_id=run_id,
-                source_artifact_id=parse_result.get("source_artifact_id"),
-                ingestion_run_id=parse_result.get("ingestion_run_id"),
-            )
-        )
+        result = transform_single_session(session)
+        if isinstance(result, SkippedSession):
+            skipped.append(result)
+        else:
+            transformed.append(result)
 
     return BatchTransformResult(transformed=transformed, skipped=skipped)

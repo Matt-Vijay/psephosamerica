@@ -193,18 +193,3 @@ def summarize_publish_roundtrip_result(result: PublishRoundtripResult) -> dict[s
             for s in result.stages
         ],
     }
-
-
-def summarize_oracle_result(result: dict[str, Any]) -> dict[str, Any]:
-    """Compact three-stage summary from smoke_oracle_path output.
-
-    Extracts snapshot_id from the publish stage and passes the three
-    stage dicts through unchanged so operators can inspect each step.
-    """
-    publish: dict[str, Any] = result.get("publish", {})
-    return {
-        "snapshot_id": publish.get("snapshot_id"),
-        "disclosures": result.get("disclosures", {}),
-        "recompute": result.get("recompute", {}),
-        "publish": publish,
-    }

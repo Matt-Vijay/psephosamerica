@@ -16,6 +16,7 @@ from src.parse.disclosures.text_lines import (
     slice_section,
     split_page,
 )
+import src.parse.disclosures.text_tokens as _tokens
 
 
 # ---------------------------------------------------------------------------
@@ -249,3 +250,30 @@ class TestSliceSection:
         lines = ["part ii", "  some value  \t", "another line"]
         result = slice_section(lines, "part ii")
         assert result == ("  some value  \t", "another line")
+
+
+# ---------------------------------------------------------------------------
+# Canonical token source
+# ---------------------------------------------------------------------------
+
+
+class TestSectionHeadersCanonicalSource:
+    def test_section_headers_is_canonical(self) -> None:
+        """SECTION_HEADERS re-exported from text_lines must be the text_tokens object."""
+        assert SECTION_HEADERS is _tokens.SECTION_HEADERS
+
+    def test_section_headers_subset_of_detection_headers(self) -> None:
+        assert SECTION_HEADERS <= _tokens.DETECTION_HEADERS
+
+    def test_ptr_field_tokens_not_in_section_headers(self) -> None:
+        for token in ("transaction", "owner", "asset", "amount", "date"):
+            assert token not in SECTION_HEADERS
+
+    def test_schedule_tokens_present(self) -> None:
+        for token in ("schedule a", "schedule b", "schedule c", "schedule d"):
+            assert token in SECTION_HEADERS
+
+    def test_part_tokens_present(self) -> None:
+        for token in ("part i", "part ii", "part iii", "part iv", "part v",
+                      "part vi", "part vii", "part viii", "part ix"):
+            assert token in SECTION_HEADERS

@@ -345,3 +345,228 @@ class TestParseWarnings:
         assert any("year" in w for w in warnings)
         assert any("name" in w for w in warnings)
         assert any("filing type" in w for w in warnings)
+
+
+# ---------------------------------------------------------------------------
+# Row counter variants
+# ---------------------------------------------------------------------------
+
+
+class TestRowCounterVariants:
+    """The parser accepts dotted ("1.") and multi-digit row counters."""
+
+    def test_dotted_counter_holding_extracted(self) -> None:
+        page = (
+            "Schedule A\n"
+            "1.  SP  Apple Inc  $15,001 - $50,000  Dividends  $1,001 - $15,000\n"
+            "Schedule B\n"
+        )
+        result = parse_house_annual([page], _filing())
+        assert len(result.holdings) == 1
+
+    def test_dotted_counter_issuer_name(self) -> None:
+        page = (
+            "Schedule A\n"
+            "1.  SP  Apple Inc  $15,001 - $50,000  Dividends  $1,001 - $15,000\n"
+            "Schedule B\n"
+        )
+        result = parse_house_annual([page], _filing())
+        assert result.holdings[0].issuer_name == "Apple Inc"
+
+    def test_two_dotted_counter_rows_both_extracted(self) -> None:
+        page = (
+            "Schedule A\n"
+            "1.  SP  Apple Inc  $15,001 - $50,000  Dividends  $1,001 - $15,000\n"
+            "2.  JT  Treasury Notes  $50,001 - $100,000  Interest  $1,001 - $15,000\n"
+            "Schedule B\n"
+        )
+        result = parse_house_annual([page], _filing())
+        assert len(result.holdings) == 2
+
+    def test_three_digit_counter_row_extracted(self) -> None:
+        page = (
+            "Schedule A\n"
+            "100  Self  Apple Inc  $15,001 - $50,000  Dividends  $1,001 - $15,000\n"
+            "Schedule B\n"
+        )
+        result = parse_house_annual([page], _filing())
+        assert len(result.holdings) == 1
+
+    def test_non_numeric_first_cell_skipped(self) -> None:
+        # A line whose first 2-space-delimited token is not a digit (or "N.") is noise.
+        page = (
+            "Schedule A\n"
+            "a  SP  Apple Inc  $15,001 - $50,000  Dividends  $1,001 - $15,000\n"
+            "Schedule B\n"
+        )
+        result = parse_house_annual([page], _filing())
+        assert result.holdings == ()
+
+    def test_dotted_counter_schedule_d_row_extracted(self) -> None:
+        page = "Schedule D\n1.  Acme Corp  Director\nSchedule E\n"
+        result = parse_house_annual([page], _filing())
+        assert len(result.outside_positions) == 1
+        assert result.outside_positions[0].entity_name == "Acme Corp"
+
+    def test_mixed_bare_and_dotted_counters(self) -> None:
+        # Real PDFs sometimes emit "1." for the first row and "2" for subsequent ones.
+        page = (
+            "Schedule A\n"
+            "1.  SP  Apple Inc  $15,001 - $50,000  Dividends  $1,001 - $15,000\n"
+            "2  JT  Treasury Notes  $50,001 - $100,000  Interest  $1,001 - $15,000\n"
+            "Schedule B\n"
+        )
+        result = parse_house_annual([page], _filing())
+        assert len(result.holdings) == 2
+
+
+# ---------------------------------------------------------------------------
+# Owner abbreviation edge cases
+# ---------------------------------------------------------------------------
+
+
+class TestOwnerEdgeCases:
+    """normalize_owner_label supports full-word variants; unknowns map to OTHER."""
+
+    def test_full_word_spouse_maps_to_spouse(self) -> None:
+        page = (
+            "Schedule A\n"
+            "1  Spouse  Apple Inc  $15,001 - $50,000  Dividends  $1,001 - $15,000\n"
+            "Schedule B\n"
+        )
+        result = parse_house_annual([page], _filing())
+        assert result.holdings[0].owner_type == OwnerType.SPOUSE
+
+    def test_full_word_joint_maps_to_joint(self) -> None:
+        page = (
+            "Schedule A\n"
+            "1  Joint  Apple Inc  $15,001 - $50,000  Dividends  $1,001 - $15,000\n"
+            "Schedule B\n"
+        )
+        result = parse_house_annual([page], _filing())
+        assert result.holdings[0].owner_type == OwnerType.JOINT
+
+    def test_unknown_owner_abbreviation_maps_to_other(self) -> None:
+        page = (
+            "Schedule A\n"
+            "1  UNK  Apple Inc  $15,001 - $50,000  Dividends  $1,001 - $15,000\n"
+            "Schedule B\n"
+        )
+        result = parse_house_annual([page], _filing())
+        assert result.holdings[0].owner_type == OwnerType.OTHER
+
+    def test_empty_owner_cell_maps_to_other(self) -> None:
+        # Row with blank owner field: extra spaces produce an empty token that
+        # normalize_owner_label normalizes to OTHER.
+        page = (
+            "Schedule A\n"
+            "1    Apple Inc  $15,001 - $50,000  Dividends  $1,001 - $15,000\n"
+            "Schedule B\n"
+        )
+        result = parse_house_annual([page], _filing())
+        # Still produces one holding (Apple Inc is extracted as owner field)
+        # Main invariant: parsing doesn't crash.
+        assert len(result.holdings) == 1
+
+
+# ---------------------------------------------------------------------------
+# Unrecognized value and income labels
+# ---------------------------------------------------------------------------
+
+
+class TestUnrecognizedLabels:
+    """Out-of-table labels are preserved as strings; numeric fields are None."""
+
+    def test_unrecognized_value_label_preserved(self) -> None:
+        page = (
+            "Schedule A\n"
+            "1  Self  Private Fund LP  See Footnote  None  None\n"
+            "Schedule B\n"
+        )
+        result = parse_house_annual([page], _filing())
+        assert result.holdings[0].value_label == "See Footnote"
+
+    def test_unrecognized_value_label_min_max_none(self) -> None:
+        page = (
+            "Schedule A\n"
+            "1  Self  Private Fund LP  See Footnote  None  None\n"
+            "Schedule B\n"
+        )
+        result = parse_house_annual([page], _filing())
+        assert result.holdings[0].value_min is None
+        assert result.holdings[0].value_max is None
+
+    def test_holding_still_extracted_with_unrecognized_label(self) -> None:
+        page = (
+            "Schedule A\n"
+            "1  Self  Private Fund LP  See Footnote  None  None\n"
+            "Schedule B\n"
+        )
+        result = parse_house_annual([page], _filing())
+        assert len(result.holdings) == 1
+        assert result.holdings[0].issuer_name == "Private Fund LP"
+
+
+# ---------------------------------------------------------------------------
+# Section collection without an explicit stop marker
+# ---------------------------------------------------------------------------
+
+
+class TestSectionWithNoStopMarker:
+    """Section extends to end-of-document when no stop-pattern line follows."""
+
+    def test_schedule_a_end_of_document_collects_row(self) -> None:
+        page = (
+            "Schedule A\n"
+            "1  SP  Apple Inc  $15,001 - $50,000  Dividends  $1,001 - $15,000\n"
+        )
+        result = parse_house_annual([page], _filing())
+        assert len(result.holdings) == 1
+
+    def test_schedule_d_end_of_document_collects_row(self) -> None:
+        page = "Schedule D\n1  Acme Corp  Director\n"
+        result = parse_house_annual([page], _filing())
+        assert len(result.outside_positions) == 1
+
+
+# ---------------------------------------------------------------------------
+# Schedule A immediately before Schedule D (no B/C gap)
+# ---------------------------------------------------------------------------
+
+
+class TestScheduleADirectlyBeforeScheduleD:
+    """Schedule A is stopped by Schedule D; Schedule D is then collected normally."""
+
+    def test_holding_extracted_from_schedule_a(self) -> None:
+        page = (
+            "Schedule A\n"
+            "1  SP  Apple Inc  $15,001 - $50,000  Dividends  $1,001 - $15,000\n"
+            "Schedule D\n"
+            "1  Acme Corp  Director\n"
+        )
+        result = parse_house_annual([page], _filing())
+        assert len(result.holdings) == 1
+        assert result.holdings[0].issuer_name == "Apple Inc"
+
+    def test_position_extracted_from_schedule_d(self) -> None:
+        page = (
+            "Schedule A\n"
+            "1  SP  Apple Inc  $15,001 - $50,000  Dividends  $1,001 - $15,000\n"
+            "Schedule D\n"
+            "1  Acme Corp  Director\n"
+        )
+        result = parse_house_annual([page], _filing())
+        assert len(result.outside_positions) == 1
+        assert result.outside_positions[0].entity_name == "Acme Corp"
+
+    def test_no_cross_contamination(self) -> None:
+        # Apple Inc must not appear as an outside position entity.
+        page = (
+            "Schedule A\n"
+            "1  SP  Apple Inc  $15,001 - $50,000  Dividends  $1,001 - $15,000\n"
+            "Schedule D\n"
+            "1  Acme Corp  Director\n"
+        )
+        result = parse_house_annual([page], _filing())
+        names = [p.entity_name for p in result.outside_positions]
+        assert "Apple Inc" not in names

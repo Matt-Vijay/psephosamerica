@@ -47,10 +47,13 @@ _RE_TICKER = re.compile(r"\(([A-Z]{1,5})\)")
 # Unambiguous single-word types (exchange, gift, income) are checked before
 # "sale" so that issuers whose names contain the word "sale" do not capture
 # those transaction types incorrectly.
+# Note: "sale (part)" is intentionally absent — normalize_tx_type maps neither
+# "sale (part)" nor its mixed-case variants.  The bare "sale" phrase below
+# correctly matches the start of "Sale (Part)" text extracted from PDFs and
+# normalizes to TransactionType.SALE via the shared normalize helper.
 _TX_TYPE_PHRASES: tuple[str, ...] = (
     "sale (full)",
     "sale (partial)",
-    "sale (part)",
     "exchange",
     "gift",
     "income",
@@ -61,6 +64,23 @@ _TX_TYPE_PHRASES: tuple[str, ...] = (
 # Tokens that mark individual rows as amended; stripped before field parsing.
 # Both bare asterisk (*) and bracket forms ([A]) appear in extracted PTR text.
 _AMENDMENT_ROW_MARKERS: frozenset[str] = frozenset({"*", "[a]"})
+
+# Lines that match these patterns at the start are header or footer bleed from
+# repeated page headers or printed footers.  They may contain dates (e.g.
+# "Date Filed: 01/15/2024") that would otherwise trigger a spurious "no amount"
+# warning.  Silently skip them before the amount-presence check.
+_RE_HEADER_FOOTER_BLEED = re.compile(
+    r"^(?:"
+    r"date\s+filed\s*:"           # "Date Filed: 01/15/2024"
+    r"|filed\s*date\s*:"          # "Filed Date: 01/15/2024"
+    r"|for\s+calendar\s+year\s*:" # "For Calendar Year: 2023"
+    r"|calendar\s+year\s*:"       # "Calendar Year: 2023"
+    r"|reporting\s+year\s*:"      # "Reporting Year: 2023"
+    r"|member\s+name\s*:"         # "Member Name: SMITH, JOHN"
+    r"|page\s+\d+\s+of\s+\d+"     # "Page 1 of 3"
+    r")",
+    re.IGNORECASE,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -201,6 +221,11 @@ def _extract_row_dicts(
         if not stripped:
             continue
 
+        # Silently skip known header/footer bleed lines (repeated page headers,
+        # printed footers) that may contain dates but are never transaction rows.
+        if _RE_HEADER_FOOTER_BLEED.match(stripped):
+            continue
+
         date_m = _RE_DATE.search(stripped)
         if not date_m:
             continue  # Not a transaction data line.
@@ -267,16 +292,30 @@ def _split_before_date(text: str) -> tuple[str, str, str]:
     owner = parts[idx]
     remaining = " ".join(parts[idx + 1 :])
 
-    # Locate transaction type by longest-match right-scan.
+    # Locate transaction type by longest-match right-scan with word-boundary
+    # guards.  Both the start and end of each phrase must fall on word
+    # boundaries (not run into adjacent letters) so that issuer tokens that
+    # happen to contain a phrase substring (e.g. "ExchangeHub") are not
+    # mistakenly captured as the transaction type.
     tx_type = ""
     cut = len(remaining)
     remaining_lower = remaining.lower()
     for phrase in _TX_TYPE_PHRASES:
         pos = remaining_lower.rfind(phrase)
-        if pos >= 0:
-            tx_type = remaining[pos : pos + len(phrase)]
-            cut = pos
-            break
+        if pos < 0:
+            continue
+        # Start-boundary: the character immediately before the phrase must
+        # not be alphabetic (prevents matching inside a compound word).
+        if pos > 0 and remaining_lower[pos - 1].isalpha():
+            continue
+        # End-boundary: the character immediately after the phrase must not
+        # be alphabetic (prevents matching "sale" inside "salepoint").
+        end = pos + len(phrase)
+        if phrase[-1].isalpha() and end < len(remaining_lower) and remaining_lower[end].isalpha():
+            continue
+        tx_type = remaining[pos : pos + len(phrase)]
+        cut = pos
+        break
 
     issuer_name = remaining[:cut].strip()
     return (owner, issuer_name, tx_type)

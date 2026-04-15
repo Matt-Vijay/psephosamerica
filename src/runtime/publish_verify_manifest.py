@@ -24,6 +24,7 @@ from src.runtime.publish_verify_types import (
     IssueSeverity,
     PublishVerifyIssue,
     PublishVerifyStageResult,
+    path_is_confined,
 )
 
 _STAGE = "manifest"
@@ -92,6 +93,11 @@ def _check_manifest_file(
             for key in sorted(_REQUIRED_ENTRY_KEYS):
                 if key not in entry:
                     issues.append(_issue(f"entry[{i}] missing key: {key!r}"))
+            if "path" in entry and isinstance(entry["path"], str):
+                if not path_is_confined(entry["path"]):
+                    issues.append(
+                        _issue(f"entry[{i}] path escapes publish root: {entry['path']!r}")
+                    )
 
     if issues:
         return issues, None

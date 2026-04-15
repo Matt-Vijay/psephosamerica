@@ -43,6 +43,20 @@ def _parse_date(raw: str | None) -> datetime.date | None:
         return None
 
 
+def _parse_is_current(raw: Any) -> bool:
+    """Coerce Congress.gov isCurrent to bool.
+
+    The API returns a JSON boolean, but defensive callers may see the string
+    representations "true"/"false" from intermediate serialisation.  Any other
+    truthy value is treated as True; falsy as False.
+    """
+    if isinstance(raw, bool):
+        return raw
+    if isinstance(raw, str):
+        return raw.strip().lower() == "true"
+    return bool(raw)
+
+
 def committee_membership_specs_from_detail(
     detail: dict[str, Any],
     member: MemberRecord,
@@ -57,7 +71,12 @@ def committee_membership_specs_from_detail(
     - the congress number is missing or non-integer
     - ``startDate`` is absent or unparseable (required field, part of UNIQUE key)
     """
-    raw_items: list[dict[str, Any]] = detail.get("committees", {}).get("item", [])
+    raw_committees = detail.get("committees", {})
+    if not isinstance(raw_committees, dict):
+        return []
+    raw_items: list[dict[str, Any]] = raw_committees.get("item", [])
+    if not isinstance(raw_items, list):
+        return []
     specs: list[CommitteeMembershipSpec] = []
 
     for item in raw_items:
@@ -86,7 +105,7 @@ def committee_membership_specs_from_detail(
                 role=_normalize_role(item.get("role")),
                 start_date=start_date,
                 end_date=_parse_date(item.get("endDate")),
-                is_current=bool(item.get("isCurrent", False)),
+                is_current=_parse_is_current(item.get("isCurrent", False)),
                 source_url=committee_data.get("url"),
             )
         )

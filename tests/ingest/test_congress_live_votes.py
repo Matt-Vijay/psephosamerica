@@ -164,6 +164,91 @@ class TestFetchSenateVote:
 
 
 # ===================================================================
+# fetch_house_vote / fetch_senate_vote — no-client (context manager) path
+# ===================================================================
+
+
+class TestFetchHouseVoteNoClient:
+    """Single-vote fetch with no caller-supplied client creates and closes its own."""
+
+    def test_result_returned_via_own_client(self) -> None:
+        mock_client = MagicMock()
+        mock_client.get.return_value = _mock_response(HOUSE_VOTE_XML)
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=False)
+
+        with patch("src.ingest.congress.live_votes.httpx.Client", return_value=mock_client):
+            event, casts = fetch_house_vote(2023, 42)
+
+        assert isinstance(event, VoteEventRecord)
+        assert len(casts) == 2
+
+    def test_context_manager_exits_on_success(self) -> None:
+        mock_client = MagicMock()
+        mock_client.get.return_value = _mock_response(HOUSE_VOTE_XML)
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=False)
+
+        with patch("src.ingest.congress.live_votes.httpx.Client", return_value=mock_client):
+            fetch_house_vote(2023, 42)
+
+        mock_client.__exit__.assert_called_once()
+
+    def test_client_built_with_timeout(self) -> None:
+        mock_client = MagicMock()
+        mock_client.get.return_value = _mock_response(HOUSE_VOTE_XML)
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=False)
+
+        with patch(
+            "src.ingest.congress.live_votes.httpx.Client", return_value=mock_client
+        ) as cls_mock:
+            fetch_house_vote(2023, 42)
+
+        cls_mock.assert_called_once_with(timeout=30.0)
+
+
+class TestFetchSenateVoteNoClient:
+    """Single Senate vote fetch with no caller-supplied client creates and closes its own."""
+
+    def test_result_returned_via_own_client(self) -> None:
+        mock_client = MagicMock()
+        mock_client.get.return_value = _mock_response(SENATE_VOTE_XML)
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=False)
+
+        with patch("src.ingest.congress.live_votes.httpx.Client", return_value=mock_client):
+            event, casts = fetch_senate_vote(118, 1, 10)
+
+        assert isinstance(event, VoteEventRecord)
+        assert len(casts) == 2
+
+    def test_context_manager_exits_on_success(self) -> None:
+        mock_client = MagicMock()
+        mock_client.get.return_value = _mock_response(SENATE_VOTE_XML)
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=False)
+
+        with patch("src.ingest.congress.live_votes.httpx.Client", return_value=mock_client):
+            fetch_senate_vote(118, 1, 10)
+
+        mock_client.__exit__.assert_called_once()
+
+    def test_client_built_with_timeout(self) -> None:
+        mock_client = MagicMock()
+        mock_client.get.return_value = _mock_response(SENATE_VOTE_XML)
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=False)
+
+        with patch(
+            "src.ingest.congress.live_votes.httpx.Client", return_value=mock_client
+        ) as cls_mock:
+            fetch_senate_vote(118, 1, 10)
+
+        cls_mock.assert_called_once_with(timeout=30.0)
+
+
+# ===================================================================
 # fetch_house_votes (batch)
 # ===================================================================
 

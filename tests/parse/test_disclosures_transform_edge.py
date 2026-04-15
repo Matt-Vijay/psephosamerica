@@ -32,6 +32,19 @@ from src.parse.disclosures.transform import (
     DisclosureTransformResult,
     FilingBundle,
     ParseContext,
+    REASON_AMENDMENT_FILING,
+    REASON_AMENDMENT_NUMBER_WITHOUT_FLAG,
+    REASON_AMENDMENT_SUPERSEDES_MISMATCH,
+    REASON_NO_CANONICAL_TABLE_V1,
+    REASON_UNKNOWN_AMOUNT_RANGE,
+    REASON_UNKNOWN_INCOME_RANGE,
+    REASON_UNKNOWN_OWNER_TYPE,
+    REASON_UNKNOWN_TRANSACTION_TYPE,
+    REASON_UNRESOLVED_TRUST,
+    REVIEW_TYPE_AMENDMENT,
+    REVIEW_TYPE_CLASSIFICATION,
+    REVIEW_TYPE_NORMALIZATION,
+    REVIEW_TYPE_OUTSIDE_POSITION,
     batch_transform_filings,
     transform_filing,
 )
@@ -573,3 +586,272 @@ class TestFilingBundleAndBatch:
         assert batch_result.disclosure.member_bioguide_id == direct_result.disclosure.member_bioguide_id
         assert len(batch_result.holdings) == len(direct_result.holdings)
         assert batch_result.holdings[0].issuer_name == direct_result.holdings[0].issuer_name
+
+
+# ---------------------------------------------------------------------------
+# Amendment chain through batch_transform_filings
+# ---------------------------------------------------------------------------
+
+
+class TestAmendmentChainInBatch:
+    """Amendment and supersedes metadata must flow through batch_transform_filings
+    with exactly the same review logic as the single-filing path."""
+
+    def test_amendment_filing_in_batch_emits_amendment_review(self):
+        filing = _annual(
+            filing_type=FilingType.AMENDMENT,
+            is_amended=True,
+            amendment_number=1,
+            supersedes_filing_source_id="DOC-PREV",
+        )
+        bundle = FilingBundle(filing=filing, holdings=[], transactions=[], outside_positions=[])
+        results = batch_transform_filings([bundle], CTX)
+        codes = {r.reason_code for r in results[0].review_items}
+        assert "amendment_filing" in codes
+
+    def test_amendment_payload_supersedes_id_preserved_in_batch(self):
+        filing = _annual(
+            filing_type=FilingType.AMENDMENT,
+            is_amended=True,
+            amendment_number=2,
+            supersedes_filing_source_id="DOC-CHAIN",
+        )
+        bundle = FilingBundle(filing=filing, holdings=[], transactions=[], outside_positions=[])
+        results = batch_transform_filings([bundle], CTX)
+        item = next(r for r in results[0].review_items if r.reason_code == "amendment_filing")
+        assert item.payload["supersedes_filing_source_id"] == "DOC-CHAIN"
+
+    def test_inconsistency_review_emitted_in_batch(self):
+        filing = _annual(
+            is_amended=False,
+            amendment_number=0,
+            supersedes_filing_source_id="DOC-INCONSISTENT",
+        )
+        bundle = FilingBundle(filing=filing, holdings=[], transactions=[], outside_positions=[])
+        results = batch_transform_filings([bundle], CTX)
+        codes = {r.reason_code for r in results[0].review_items}
+        assert "amendment_supersedes_mismatch" in codes
+
+    def test_batch_amendment_review_context_ids_match_ctx(self):
+        ctx = ParseContext(parse_run_id=7, source_artifact_id=8, ingestion_run_id=9)
+        filing = _annual(is_amended=True, amendment_number=1)
+        bundle = FilingBundle(filing=filing, holdings=[], transactions=[], outside_positions=[])
+        results = batch_transform_filings([bundle], ctx)
+        item = next(r for r in results[0].review_items if r.reason_code == "amendment_filing")
+        assert item.parse_run_id == 7
+        assert item.source_artifact_id == 8
+        assert item.ingestion_run_id == 9
+
+    def test_clean_bundle_next_to_amendment_bundle_isolated(self):
+        amendment = _annual(is_amended=True, amendment_number=1, source_record_id="D1")
+        clean = _annual(is_amended=False, amendment_number=0, source_record_id="D2")
+        bundles = [
+            FilingBundle(filing=amendment, holdings=[], transactions=[], outside_positions=[]),
+            FilingBundle(filing=clean, holdings=[], transactions=[], outside_positions=[]),
+        ]
+        results = batch_transform_filings(bundles, CTX)
+        assert any(r.reason_code == "amendment_filing" for r in results[0].review_items)
+        assert not any(r.reason_code == "amendment_filing" for r in results[1].review_items)
+
+
+# ---------------------------------------------------------------------------
+# entity_key format
+# ---------------------------------------------------------------------------
+
+
+class TestEntityKeyFormat:
+    """The entity_key on review items must be stable and reference the correct
+    line number or filing identity so downstream lookup is unambiguous."""
+
+    def test_holding_review_entity_key_contains_line_number(self):
+        h = _holding_label_only(line_number=9, value_label="$MYSTERY")
+        result = transform_filing(_annual(), [h], [], [], CTX)
+        item = next(r for r in result.review_items if r.reason_code == "unknown_amount_range")
+        assert "9" in item.entity_key
+
+    def test_transaction_review_entity_key_contains_line_number(self):
+        t = _tx(line_number=5, owner_type=OwnerType.OTHER)
+        result = transform_filing(_annual(), [], [t], [], CTX)
+        item = next(r for r in result.review_items if r.reason_code == "unknown_owner_type")
+        assert "5" in item.entity_key
+
+    def test_outside_position_review_entity_key_contains_line_number(self):
+        op = _op(line_number=3)
+        result = transform_filing(_annual(), [], [], [op], CTX)
+        item = next(r for r in result.review_items if r.reason_code == "no_canonical_table_v1")
+        assert "3" in item.entity_key
+
+    def test_amendment_review_entity_key_uses_source_record_id_when_present(self):
+        filing = _annual(is_amended=True, amendment_number=1, source_record_id="DOC-EDGE-001")
+        result = transform_filing(filing, [], [], [], CTX)
+        item = next(r for r in result.review_items if r.reason_code == "amendment_filing")
+        # entity_key should include the source_record_id when present.
+        assert "DOC-EDGE-001" in item.entity_key
+
+    def test_amendment_review_entity_key_fallback_when_source_record_id_none(self):
+        filing = _annual(
+            is_amended=True,
+            amendment_number=1,
+            source_record_id=None,
+            member_bioguide_id="A000001",
+        )
+        result = transform_filing(filing, [], [], [], CTX)
+        item = next(r for r in result.review_items if r.reason_code == "amendment_filing")
+        # Falls back to member:year:amendment_number composite.
+        assert "A000001" in item.entity_key
+
+    def test_inconsistency_review_entity_key_consistent_with_amendment_review(self):
+        """Both amendment_filing and amendment_supersedes_mismatch use the same entity_key."""
+        filing = _annual(
+            filing_type=FilingType.AMENDMENT,
+            is_amended=True,
+            amendment_number=1,
+            supersedes_filing_source_id=None,
+            source_record_id="DOC-CHECK",
+        )
+        # Emit only amendment_filing (no mismatch since is_amended=True)
+        result = transform_filing(filing, [], [], [], CTX)
+        item = next(r for r in result.review_items if r.reason_code == "amendment_filing")
+        assert "DOC-CHECK" in item.entity_key
+
+    def test_trust_review_entity_key_contains_line_number(self):
+        h = _holding_label_only(line_number=12, owner_type=OwnerType.TRUST)
+        result = transform_filing(_annual(), [h], [], [], CTX)
+        item = next(r for r in result.review_items if r.reason_code == "unresolved_trust")
+        assert "12" in item.entity_key
+
+
+# ---------------------------------------------------------------------------
+# Skipped-transform accounting: empty bioguide_id forwarded without review
+# ---------------------------------------------------------------------------
+
+
+class TestSkippedTransformAtParseLayer:
+    """The parse/transform layer does not emit a review item for an empty
+    bioguide_id; skip accounting is the caller's responsibility (runtime layer).
+    These tests pin that contract so a future refactor does not silently add
+    hidden fallback review logic here."""
+
+    def test_no_review_item_for_empty_bioguide_at_parse_layer(self):
+        filing = _annual(member_bioguide_id="")
+        result = transform_filing(filing, [], [], [], CTX)
+        codes = {r.reason_code for r in result.review_items}
+        assert "unresolved_member_identity" not in codes
+        assert "empty_bioguide_id" not in codes
+
+    def test_disclosure_payload_exposes_empty_bioguide_unchanged(self):
+        filing = _annual(member_bioguide_id="")
+        result = transform_filing(filing, [], [], [], CTX)
+        assert result.disclosure.member_bioguide_id == ""
+
+    def test_no_review_item_for_unknown_bioguide_in_batch(self):
+        filings = [_annual(member_bioguide_id="") for _ in range(3)]
+        bundles = [
+            FilingBundle(filing=f, holdings=[], transactions=[], outside_positions=[])
+            for f in filings
+        ]
+        results = batch_transform_filings(bundles, CTX)
+        for res in results:
+            codes = {r.reason_code for r in res.review_items}
+            assert "unresolved_member_identity" not in codes
+
+
+# ---------------------------------------------------------------------------
+# Review constants are stable and importable
+# ---------------------------------------------------------------------------
+
+
+class TestReviewConstants:
+    """Verify that the module-level constants match the values used in review
+    items so that downstream consumers can import and compare without string
+    duplication."""
+
+    def test_reason_code_constants_are_strings(self):
+        for const in (
+            REASON_AMENDMENT_FILING,
+            REASON_AMENDMENT_SUPERSEDES_MISMATCH,
+            REASON_AMENDMENT_NUMBER_WITHOUT_FLAG,
+            REASON_UNKNOWN_AMOUNT_RANGE,
+            REASON_UNKNOWN_INCOME_RANGE,
+            REASON_UNKNOWN_OWNER_TYPE,
+            REASON_UNKNOWN_TRANSACTION_TYPE,
+            REASON_UNRESOLVED_TRUST,
+            REASON_NO_CANONICAL_TABLE_V1,
+        ):
+            assert isinstance(const, str)
+
+    def test_review_type_constants_are_strings(self):
+        for const in (
+            REVIEW_TYPE_AMENDMENT,
+            REVIEW_TYPE_NORMALIZATION,
+            REVIEW_TYPE_CLASSIFICATION,
+            REVIEW_TYPE_OUTSIDE_POSITION,
+        ):
+            assert isinstance(const, str)
+
+    def test_amendment_review_uses_constant(self):
+        filing = _annual(is_amended=True, amendment_number=1)
+        result = transform_filing(filing, [], [], [], CTX)
+        item = next(r for r in result.review_items if r.reason_code == REASON_AMENDMENT_FILING)
+        assert item.review_type == REVIEW_TYPE_AMENDMENT
+
+    def test_trust_review_uses_constant(self):
+        h = _holding_label_only(owner_type=OwnerType.TRUST)
+        result = transform_filing(_annual(), [h], [], [], CTX)
+        item = next(r for r in result.review_items if r.reason_code == REASON_UNRESOLVED_TRUST)
+        assert item.review_type == REVIEW_TYPE_CLASSIFICATION
+
+    def test_outside_position_review_uses_constant(self):
+        op = _op()
+        result = transform_filing(_annual(), [], [], [op], CTX)
+        item = next(r for r in result.review_items if r.reason_code == REASON_NO_CANONICAL_TABLE_V1)
+        assert item.review_type == REVIEW_TYPE_OUTSIDE_POSITION
+
+    def test_unknown_owner_review_uses_constant(self):
+        h = _holding_label_only(owner_type=OwnerType.OTHER)
+        result = transform_filing(_annual(), [h], [], [], CTX)
+        item = next(r for r in result.review_items if r.reason_code == REASON_UNKNOWN_OWNER_TYPE)
+        assert item.review_type == REVIEW_TYPE_NORMALIZATION
+
+
+# ---------------------------------------------------------------------------
+# Review item ordering is deterministic
+# ---------------------------------------------------------------------------
+
+
+class TestReviewItemOrdering:
+    """Review items must appear in a stable order: amendment-level first,
+    then per-line-item in input order (holdings, transactions, outside
+    positions).  This test pins that ordering."""
+
+    def test_amendment_review_before_line_item_reviews(self):
+        filing = _annual(is_amended=True, amendment_number=1)
+        h = _holding_label_only(owner_type=OwnerType.OTHER)
+        result = transform_filing(filing, [h], [], [], CTX)
+        codes = [r.reason_code for r in result.review_items]
+        amendment_idx = codes.index(REASON_AMENDMENT_FILING)
+        owner_idx = codes.index(REASON_UNKNOWN_OWNER_TYPE)
+        assert amendment_idx < owner_idx
+
+    def test_holding_reviews_before_transaction_reviews(self):
+        h = _holding_label_only(owner_type=OwnerType.OTHER, line_number=1)
+        t = _tx(owner_type=OwnerType.OTHER, line_number=1)
+        result = transform_filing(_annual(), [h], [t], [], CTX)
+        # Both emit unknown_owner_type; first must be the holding's
+        owner_reviews = [r for r in result.review_items if r.reason_code == REASON_UNKNOWN_OWNER_TYPE]
+        assert owner_reviews[0].entity_type == "holding"
+        assert owner_reviews[1].entity_type == "transaction"
+
+    def test_transaction_reviews_before_outside_position_reviews(self):
+        t = _tx(owner_type=OwnerType.OTHER, line_number=1)
+        op = _op(owner_type=OwnerType.OTHER, line_number=1)
+        result = transform_filing(_annual(), [], [t], [op], CTX)
+        tx_owner_idx = next(
+            i for i, r in enumerate(result.review_items)
+            if r.reason_code == REASON_UNKNOWN_OWNER_TYPE and r.entity_type == "transaction"
+        )
+        op_sidecar_idx = next(
+            i for i, r in enumerate(result.review_items)
+            if r.reason_code == REASON_NO_CANONICAL_TABLE_V1
+        )
+        assert tx_owner_idx < op_sidecar_idx

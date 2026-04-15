@@ -243,6 +243,64 @@ class TestFetchCongressVoteRecords:
         assert result.vote_events == [_house_event(1), _senate_event(2)]
         assert result.vote_casts == [_house_cast(1), _senate_cast(2)]
 
+    def test_house_only_does_not_call_senate(self) -> None:
+        house_result = VoteFetchResult(vote_events=[_house_event(1)], vote_casts=[_house_cast(1)])
+
+        with (
+            patch("src.runtime.congress_votes.fetch_house_vote_records", return_value=house_result),
+            patch("src.runtime.congress_votes.fetch_senate_vote_records") as mock_senate,
+        ):
+            result = fetch_congress_vote_records(119, house_vote_year=2025)
+
+        mock_senate.assert_not_called()
+        assert result.vote_events == [_house_event(1)]
+
+    def test_senate_only_does_not_call_house(self) -> None:
+        senate_result = VoteFetchResult(vote_events=[_senate_event(10)], vote_casts=[_senate_cast(10)])
+
+        with (
+            patch("src.runtime.congress_votes.fetch_house_vote_records") as mock_house,
+            patch("src.runtime.congress_votes.fetch_senate_vote_records", return_value=senate_result),
+        ):
+            result = fetch_congress_vote_records(119, senate_session=1)
+
+        mock_house.assert_not_called()
+        assert result.vote_events == [_senate_event(10)]
+
+    def test_client_forwarded_to_house_fetcher(self) -> None:
+        client = MagicMock()
+
+        with (
+            patch(
+                "src.runtime.congress_votes.fetch_house_vote_records",
+                return_value=VoteFetchResult(vote_events=[], vote_casts=[]),
+            ) as mock_house,
+            patch(
+                "src.runtime.congress_votes.fetch_senate_vote_records",
+                return_value=VoteFetchResult(vote_events=[], vote_casts=[]),
+            ),
+        ):
+            fetch_congress_vote_records(119, house_vote_year=2025, senate_session=1, client=client)
+
+        mock_house.assert_called_once_with(2025, client=client)
+
+    def test_client_forwarded_to_senate_fetcher(self) -> None:
+        client = MagicMock()
+
+        with (
+            patch(
+                "src.runtime.congress_votes.fetch_house_vote_records",
+                return_value=VoteFetchResult(vote_events=[], vote_casts=[]),
+            ),
+            patch(
+                "src.runtime.congress_votes.fetch_senate_vote_records",
+                return_value=VoteFetchResult(vote_events=[], vote_casts=[]),
+            ) as mock_senate,
+        ):
+            fetch_congress_vote_records(119, house_vote_year=2025, senate_session=1, client=client)
+
+        mock_senate.assert_called_once_with(119, 1, client=client)
+
     def test_passes_client_to_index(self) -> None:
         client = MagicMock()
 

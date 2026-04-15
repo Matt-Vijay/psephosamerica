@@ -8,7 +8,8 @@ Composes four verification stages in the fixed order:
 The manifest is discovered by scanning root/snapshots/*/manifest.json.
 When exactly one manifest is found it is loaded and forwarded to the three
 downstream stage verifiers.  If none or multiple manifests are found, or if
-loading fails, the downstream stages are each returned as an error result.
+loading fails, the downstream stages are each returned as an error result
+with an explicit reason.
 
 No CLI here.
 """
@@ -28,32 +29,29 @@ from src.runtime.publish_verify_types import (
 )
 from src.runtime.publish_verify_zip import verify_local_zip_feeds
 
-_STAGE_MANIFEST = "manifest"
-_STAGE_PROFILES = "profiles"
-_STAGE_EVIDENCE = "evidence"
-_STAGE_ZIP = "zip"
 
-
-def _find_and_load_manifest(root: Path) -> SnapshotManifest | None:
+def _find_and_load_manifest(root: Path) -> tuple[SnapshotManifest | None, str]:
     """Scan root/snapshots/*/manifest.json and load the single manifest found.
 
-    Returns None if no manifest exists, multiple manifests exist, or loading
-    fails.  Errors are silently swallowed here; the manifest stage verifier
-    already records them as PublishVerifyIssues.
+    Returns ``(manifest, "")`` on success, or ``(None, reason)`` when loading
+    is not possible.  The reason string is forwarded to downstream stages so
+    that the caller always receives an explicit explanation.
     """
     snapshots_dir = root / "snapshots"
     if not snapshots_dir.is_dir():
-        return None
+        return None, "no snapshots directory"
 
     candidates = sorted(snapshots_dir.glob("*/manifest.json"))
+    if not candidates:
+        return None, "no manifest files found"
     if len(candidates) != 1:
-        return None
+        return None, f"expected one manifest, found {len(candidates)}"
 
     try:
         raw = json.loads(candidates[0].read_bytes())
-        return SnapshotManifest.model_validate(raw)
-    except Exception:
-        return None
+        return SnapshotManifest.model_validate(raw), ""
+    except Exception as exc:
+        return None, f"manifest failed to parse: {exc}"
 
 
 def _unavailable_stage(stage: str, reason: str) -> PublishVerifyStageResult:
@@ -86,16 +84,15 @@ def verify_local_publish(root: Path) -> PublishVerifyResult:
     manifest_stage = verify_local_manifest(root)
 
     # Load the manifest so subsequent stages can inspect its entries.
-    manifest: SnapshotManifest | None = _find_and_load_manifest(root)
+    manifest, skip_reason = _find_and_load_manifest(root)
 
     if manifest is None:
-        _NO_MANIFEST = "manifest could not be loaded"
         return PublishVerifyResult(
             stages=(
                 manifest_stage,
-                _unavailable_stage(_STAGE_PROFILES, _NO_MANIFEST),
-                _unavailable_stage(_STAGE_EVIDENCE, _NO_MANIFEST),
-                _unavailable_stage(_STAGE_ZIP, _NO_MANIFEST),
+                _unavailable_stage("profiles", skip_reason),
+                _unavailable_stage("evidence", skip_reason),
+                _unavailable_stage("zip", skip_reason),
             )
         )
 

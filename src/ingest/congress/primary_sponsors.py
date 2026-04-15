@@ -12,7 +12,7 @@ def primary_sponsor_spec_from_bill_detail(
 ) -> PrimarySponsorSpec | None:
     bill_node = detail.get("bill", detail)
     sponsors = bill_node.get("sponsors") or []
-    if not sponsors:
+    if not isinstance(sponsors, list) or not sponsors:
         return None
 
     first = sponsors[0]

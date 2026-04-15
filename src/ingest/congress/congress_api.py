@@ -186,9 +186,11 @@ class CongressAPIClient:
     """Wraps the Congress.gov API. Requires an API key; paginates transparently."""
 
     def __init__(self, api_key: str, *, base_url: str = BASE_URL, timeout: float = 30.0) -> None:
-        self._api_key = api_key
         self._base_url = base_url
-        self._client = httpx.Client(timeout=timeout)
+        self._client = httpx.Client(
+            timeout=timeout,
+            headers={"X-Api-Key": api_key},
+        )
 
     def close(self) -> None:
         self._client.close()
@@ -200,9 +202,7 @@ class CongressAPIClient:
         self.close()
 
     def _get(self, url: str) -> dict[str, Any]:
-        sep = "&" if "?" in url else "?"
-        full_url = f"{url}{sep}api_key={self._api_key}"
-        resp = self._client.get(full_url)
+        resp = self._client.get(url)
         resp.raise_for_status()
         return resp.json()
 

@@ -38,6 +38,8 @@ _VERIFY_ZIP = "src.runtime.publish_verify.verify_local_zip_feeds"
 # Helpers
 # ---------------------------------------------------------------------------
 
+_SENTINEL = object()
+
 
 def _ok_stage(name: str, checked: int = 3) -> PublishVerifyStageResult:
     return PublishVerifyStageResult(stage=name, checked=checked, issues=())
@@ -53,11 +55,11 @@ def _warning_stage(name: str, message: str = "warn") -> PublishVerifyStageResult
     return PublishVerifyStageResult(stage=name, checked=2, issues=(issue,))
 
 
-def _all_ok_patches(manifest_obj=object()):
-    """Return a context-manager stack that makes all five callables succeed."""
+def _all_ok():
+    """Return patch context managers that make all five callables succeed."""
     return (
         patch(_VERIFY_MANIFEST, return_value=_ok_stage("manifest")),
-        patch(_LOAD_MANIFEST, return_value=manifest_obj),
+        patch(_LOAD_MANIFEST, return_value=(_SENTINEL, "")),
         patch(_VERIFY_PROFILES, return_value=_ok_stage("profiles")),
         patch(_VERIFY_EVIDENCE, return_value=_ok_stage("evidence")),
         patch(_VERIFY_ZIP, return_value=_ok_stage("zip")),
@@ -73,7 +75,7 @@ class TestVerifyLocalPublishShape:
     def test_returns_publish_verify_result(self, tmp_path: Path) -> None:
         with (
             patch(_VERIFY_MANIFEST, return_value=_ok_stage("manifest")),
-            patch(_LOAD_MANIFEST, return_value=object()),
+            patch(_LOAD_MANIFEST, return_value=(_SENTINEL, "")),
             patch(_VERIFY_PROFILES, return_value=_ok_stage("profiles")),
             patch(_VERIFY_EVIDENCE, return_value=_ok_stage("evidence")),
             patch(_VERIFY_ZIP, return_value=_ok_stage("zip")),
@@ -85,7 +87,7 @@ class TestVerifyLocalPublishShape:
     def test_stages_tuple_has_four_entries(self, tmp_path: Path) -> None:
         with (
             patch(_VERIFY_MANIFEST, return_value=_ok_stage("manifest")),
-            patch(_LOAD_MANIFEST, return_value=object()),
+            patch(_LOAD_MANIFEST, return_value=(_SENTINEL, "")),
             patch(_VERIFY_PROFILES, return_value=_ok_stage("profiles")),
             patch(_VERIFY_EVIDENCE, return_value=_ok_stage("evidence")),
             patch(_VERIFY_ZIP, return_value=_ok_stage("zip")),
@@ -104,7 +106,7 @@ class TestVerifyLocalPublishStageOrder:
     def test_stage_names_in_correct_order(self, tmp_path: Path) -> None:
         with (
             patch(_VERIFY_MANIFEST, return_value=_ok_stage("manifest")),
-            patch(_LOAD_MANIFEST, return_value=object()),
+            patch(_LOAD_MANIFEST, return_value=(_SENTINEL, "")),
             patch(_VERIFY_PROFILES, return_value=_ok_stage("profiles")),
             patch(_VERIFY_EVIDENCE, return_value=_ok_stage("evidence")),
             patch(_VERIFY_ZIP, return_value=_ok_stage("zip")),
@@ -121,7 +123,7 @@ class TestVerifyLocalPublishStageOrder:
 
         with (
             patch(_VERIFY_MANIFEST, return_value=manifest_r),
-            patch(_LOAD_MANIFEST, return_value=object()),
+            patch(_LOAD_MANIFEST, return_value=(_SENTINEL, "")),
             patch(_VERIFY_PROFILES, return_value=profiles_r),
             patch(_VERIFY_EVIDENCE, return_value=evidence_r),
             patch(_VERIFY_ZIP, return_value=zip_r),
@@ -143,7 +145,7 @@ class TestVerifyLocalPublishCallArgs:
     def test_root_passed_to_verify_manifest(self, tmp_path: Path) -> None:
         with (
             patch(_VERIFY_MANIFEST, return_value=_ok_stage("manifest")) as m,
-            patch(_LOAD_MANIFEST, return_value=object()),
+            patch(_LOAD_MANIFEST, return_value=(_SENTINEL, "")),
             patch(_VERIFY_PROFILES, return_value=_ok_stage("profiles")),
             patch(_VERIFY_EVIDENCE, return_value=_ok_stage("evidence")),
             patch(_VERIFY_ZIP, return_value=_ok_stage("zip")),
@@ -155,7 +157,7 @@ class TestVerifyLocalPublishCallArgs:
     def test_root_passed_to_find_and_load_manifest(self, tmp_path: Path) -> None:
         with (
             patch(_VERIFY_MANIFEST, return_value=_ok_stage("manifest")),
-            patch(_LOAD_MANIFEST, return_value=object()) as m,
+            patch(_LOAD_MANIFEST, return_value=(_SENTINEL, "")) as m,
             patch(_VERIFY_PROFILES, return_value=_ok_stage("profiles")),
             patch(_VERIFY_EVIDENCE, return_value=_ok_stage("evidence")),
             patch(_VERIFY_ZIP, return_value=_ok_stage("zip")),
@@ -168,7 +170,7 @@ class TestVerifyLocalPublishCallArgs:
         sentinel = object()
         with (
             patch(_VERIFY_MANIFEST, return_value=_ok_stage("manifest")),
-            patch(_LOAD_MANIFEST, return_value=sentinel),
+            patch(_LOAD_MANIFEST, return_value=(sentinel, "")),
             patch(_VERIFY_PROFILES, return_value=_ok_stage("profiles")) as m,
             patch(_VERIFY_EVIDENCE, return_value=_ok_stage("evidence")),
             patch(_VERIFY_ZIP, return_value=_ok_stage("zip")),
@@ -181,7 +183,7 @@ class TestVerifyLocalPublishCallArgs:
         sentinel = object()
         with (
             patch(_VERIFY_MANIFEST, return_value=_ok_stage("manifest")),
-            patch(_LOAD_MANIFEST, return_value=sentinel),
+            patch(_LOAD_MANIFEST, return_value=(sentinel, "")),
             patch(_VERIFY_PROFILES, return_value=_ok_stage("profiles")),
             patch(_VERIFY_EVIDENCE, return_value=_ok_stage("evidence")) as m,
             patch(_VERIFY_ZIP, return_value=_ok_stage("zip")),
@@ -194,7 +196,7 @@ class TestVerifyLocalPublishCallArgs:
         sentinel = object()
         with (
             patch(_VERIFY_MANIFEST, return_value=_ok_stage("manifest")),
-            patch(_LOAD_MANIFEST, return_value=sentinel),
+            patch(_LOAD_MANIFEST, return_value=(sentinel, "")),
             patch(_VERIFY_PROFILES, return_value=_ok_stage("profiles")),
             patch(_VERIFY_EVIDENCE, return_value=_ok_stage("evidence")),
             patch(_VERIFY_ZIP, return_value=_ok_stage("zip")) as m,
@@ -210,10 +212,12 @@ class TestVerifyLocalPublishCallArgs:
 
 
 class TestVerifyLocalPublishManifestUnavailable:
+    _REASON = "no manifest files found"
+
     def _run_no_manifest(self, tmp_path: Path) -> PublishVerifyResult:
         with (
             patch(_VERIFY_MANIFEST, return_value=_ok_stage("manifest")),
-            patch(_LOAD_MANIFEST, return_value=None),
+            patch(_LOAD_MANIFEST, return_value=(None, self._REASON)),
             patch(_VERIFY_PROFILES, return_value=_ok_stage("profiles")),
             patch(_VERIFY_EVIDENCE, return_value=_ok_stage("evidence")),
             patch(_VERIFY_ZIP, return_value=_ok_stage("zip")),
@@ -244,7 +248,7 @@ class TestVerifyLocalPublishManifestUnavailable:
     def test_downstream_verifiers_not_called_when_manifest_missing(self, tmp_path: Path) -> None:
         with (
             patch(_VERIFY_MANIFEST, return_value=_ok_stage("manifest")),
-            patch(_LOAD_MANIFEST, return_value=None),
+            patch(_LOAD_MANIFEST, return_value=(None, self._REASON)),
             patch(_VERIFY_PROFILES, return_value=_ok_stage("profiles")) as m_prof,
             patch(_VERIFY_EVIDENCE, return_value=_ok_stage("evidence")) as m_ev,
             patch(_VERIFY_ZIP, return_value=_ok_stage("zip")) as m_zip,
@@ -259,6 +263,11 @@ class TestVerifyLocalPublishManifestUnavailable:
         result = self._run_no_manifest(tmp_path)
         assert not result.ok
 
+    def test_skip_reason_appears_in_downstream_issues(self, tmp_path: Path) -> None:
+        result = self._run_no_manifest(tmp_path)
+        for stage in result.stages[1:]:
+            assert any(self._REASON in i.message for i in stage.issues)
+
 
 # ---------------------------------------------------------------------------
 # Aggregate ok flag
@@ -269,7 +278,7 @@ class TestVerifyLocalPublishOkFlag:
     def test_ok_when_all_stages_pass(self, tmp_path: Path) -> None:
         with (
             patch(_VERIFY_MANIFEST, return_value=_ok_stage("manifest")),
-            patch(_LOAD_MANIFEST, return_value=object()),
+            patch(_LOAD_MANIFEST, return_value=(_SENTINEL, "")),
             patch(_VERIFY_PROFILES, return_value=_ok_stage("profiles")),
             patch(_VERIFY_EVIDENCE, return_value=_ok_stage("evidence")),
             patch(_VERIFY_ZIP, return_value=_ok_stage("zip")),
@@ -281,7 +290,7 @@ class TestVerifyLocalPublishOkFlag:
     def test_not_ok_when_manifest_stage_has_error(self, tmp_path: Path) -> None:
         with (
             patch(_VERIFY_MANIFEST, return_value=_error_stage("manifest")),
-            patch(_LOAD_MANIFEST, return_value=object()),
+            patch(_LOAD_MANIFEST, return_value=(_SENTINEL, "")),
             patch(_VERIFY_PROFILES, return_value=_ok_stage("profiles")),
             patch(_VERIFY_EVIDENCE, return_value=_ok_stage("evidence")),
             patch(_VERIFY_ZIP, return_value=_ok_stage("zip")),
@@ -293,7 +302,7 @@ class TestVerifyLocalPublishOkFlag:
     def test_not_ok_when_zip_stage_has_error(self, tmp_path: Path) -> None:
         with (
             patch(_VERIFY_MANIFEST, return_value=_ok_stage("manifest")),
-            patch(_LOAD_MANIFEST, return_value=object()),
+            patch(_LOAD_MANIFEST, return_value=(_SENTINEL, "")),
             patch(_VERIFY_PROFILES, return_value=_ok_stage("profiles")),
             patch(_VERIFY_EVIDENCE, return_value=_ok_stage("evidence")),
             patch(_VERIFY_ZIP, return_value=_error_stage("zip")),
@@ -305,7 +314,7 @@ class TestVerifyLocalPublishOkFlag:
     def test_ok_when_only_warnings_present(self, tmp_path: Path) -> None:
         with (
             patch(_VERIFY_MANIFEST, return_value=_warning_stage("manifest")),
-            patch(_LOAD_MANIFEST, return_value=object()),
+            patch(_LOAD_MANIFEST, return_value=(_SENTINEL, "")),
             patch(_VERIFY_PROFILES, return_value=_warning_stage("profiles")),
             patch(_VERIFY_EVIDENCE, return_value=_ok_stage("evidence")),
             patch(_VERIFY_ZIP, return_value=_ok_stage("zip")),
@@ -324,7 +333,7 @@ class TestVerifyLocalPublishAggregateCounts:
     def test_total_checked_sums_across_stages(self, tmp_path: Path) -> None:
         with (
             patch(_VERIFY_MANIFEST, return_value=_ok_stage("manifest", checked=5)),
-            patch(_LOAD_MANIFEST, return_value=object()),
+            patch(_LOAD_MANIFEST, return_value=(_SENTINEL, "")),
             patch(_VERIFY_PROFILES, return_value=_ok_stage("profiles", checked=10)),
             patch(_VERIFY_EVIDENCE, return_value=_ok_stage("evidence", checked=15)),
             patch(_VERIFY_ZIP, return_value=_ok_stage("zip", checked=20)),
@@ -336,7 +345,7 @@ class TestVerifyLocalPublishAggregateCounts:
     def test_total_errors_sums_across_stages(self, tmp_path: Path) -> None:
         with (
             patch(_VERIFY_MANIFEST, return_value=_error_stage("manifest")),
-            patch(_LOAD_MANIFEST, return_value=object()),
+            patch(_LOAD_MANIFEST, return_value=(_SENTINEL, "")),
             patch(_VERIFY_PROFILES, return_value=_error_stage("profiles")),
             patch(_VERIFY_EVIDENCE, return_value=_ok_stage("evidence")),
             patch(_VERIFY_ZIP, return_value=_ok_stage("zip")),
@@ -348,7 +357,7 @@ class TestVerifyLocalPublishAggregateCounts:
     def test_total_warnings_sums_across_stages(self, tmp_path: Path) -> None:
         with (
             patch(_VERIFY_MANIFEST, return_value=_warning_stage("manifest")),
-            patch(_LOAD_MANIFEST, return_value=object()),
+            patch(_LOAD_MANIFEST, return_value=(_SENTINEL, "")),
             patch(_VERIFY_PROFILES, return_value=_ok_stage("profiles")),
             patch(_VERIFY_EVIDENCE, return_value=_warning_stage("evidence")),
             patch(_VERIFY_ZIP, return_value=_ok_stage("zip")),
@@ -360,7 +369,7 @@ class TestVerifyLocalPublishAggregateCounts:
     def test_all_issues_in_stage_order(self, tmp_path: Path) -> None:
         with (
             patch(_VERIFY_MANIFEST, return_value=_error_stage("manifest", "m-err")),
-            patch(_LOAD_MANIFEST, return_value=object()),
+            patch(_LOAD_MANIFEST, return_value=(_SENTINEL, "")),
             patch(_VERIFY_PROFILES, return_value=_ok_stage("profiles")),
             patch(_VERIFY_EVIDENCE, return_value=_warning_stage("evidence", "e-warn")),
             patch(_VERIFY_ZIP, return_value=_error_stage("zip", "z-err")),
@@ -385,7 +394,7 @@ class TestVerifyLocalPublishStageLookup:
 
         with (
             patch(_VERIFY_MANIFEST, return_value=_ok_stage("manifest")),
-            patch(_LOAD_MANIFEST, return_value=object()),
+            patch(_LOAD_MANIFEST, return_value=(_SENTINEL, "")),
             patch(_VERIFY_PROFILES, return_value=_ok_stage("profiles")),
             patch(_VERIFY_EVIDENCE, return_value=evidence_r),
             patch(_VERIFY_ZIP, return_value=_ok_stage("zip")),
@@ -397,7 +406,7 @@ class TestVerifyLocalPublishStageLookup:
     def test_stage_result_returns_none_for_unknown_name(self, tmp_path: Path) -> None:
         with (
             patch(_VERIFY_MANIFEST, return_value=_ok_stage("manifest")),
-            patch(_LOAD_MANIFEST, return_value=object()),
+            patch(_LOAD_MANIFEST, return_value=(_SENTINEL, "")),
             patch(_VERIFY_PROFILES, return_value=_ok_stage("profiles")),
             patch(_VERIFY_EVIDENCE, return_value=_ok_stage("evidence")),
             patch(_VERIFY_ZIP, return_value=_ok_stage("zip")),

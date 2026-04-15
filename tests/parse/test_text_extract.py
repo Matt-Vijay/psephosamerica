@@ -18,6 +18,7 @@ from src.parse.disclosures.text_extract import (
     extract_text_metrics,
     extract_text_pages,
 )
+from src.parse.disclosures.text_tokens import DETECTION_HEADERS, SECTION_HEADERS
 
 
 # ---------------------------------------------------------------------------
@@ -174,3 +175,25 @@ class TestExtractTextMetrics:
         with patch.object(_mod, "_pypdf", None):
             with pytest.raises(ImportError, match="pypdf"):
                 extract_text_metrics(b"irrelevant")
+
+
+# ---------------------------------------------------------------------------
+# Canonical token source
+# ---------------------------------------------------------------------------
+
+
+class TestKnownHeadersCanonicalSource:
+    def test_known_headers_is_detection_headers(self) -> None:
+        """_KNOWN_HEADERS must be the canonical DETECTION_HEADERS from text_tokens."""
+        assert _mod._KNOWN_HEADERS is DETECTION_HEADERS
+
+    def test_known_headers_is_superset_of_section_headers(self) -> None:
+        assert SECTION_HEADERS <= _mod._KNOWN_HEADERS
+
+    def test_ptr_field_tokens_present(self) -> None:
+        for token in ("transaction", "owner", "asset", "amount", "date"):
+            assert token in _mod._KNOWN_HEADERS
+
+    def test_section_tokens_present(self) -> None:
+        for token in ("schedule a", "schedule d", "part i", "part ix"):
+            assert token in _mod._KNOWN_HEADERS

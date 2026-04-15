@@ -348,3 +348,30 @@ def test_full_roundtrip_all_helpers(tmp_path: Path) -> None:
     assert manifest.verify_counts() is True
     assert latest.snapshot_id == manifest.snapshot_id
     assert homepage.snapshot_date == SNAPSHOT_DATE
+
+
+# ── Path traversal rejection (via local_store boundary) ──────────
+
+
+class TestInspectPathTraversal:
+    """Inspect helpers must reject traversal inputs before touching disk."""
+
+    def test_member_profile_traversal(self, tmp_path: Path) -> None:
+        with pytest.raises(ValueError, match="Path escapes snapshot root"):
+            load_local_member_profile("../../etc/passwd", snapshot_root=tmp_path)
+
+    def test_evidence_card_traversal(self, tmp_path: Path) -> None:
+        with pytest.raises(ValueError, match="Path escapes snapshot root"):
+            load_local_evidence_card("../../../etc/shadow", snapshot_root=tmp_path)
+
+    def test_zip_feed_traversal(self, tmp_path: Path) -> None:
+        with pytest.raises(ValueError, match="Path escapes snapshot root"):
+            load_local_zip_feed("../../../../tmp/x", snapshot_root=tmp_path)
+
+    def test_manifest_traversal(self, tmp_path: Path) -> None:
+        with pytest.raises(ValueError, match="Path escapes snapshot root"):
+            load_local_manifest("../../../etc/passwd", snapshot_root=tmp_path)
+
+    def test_null_byte_in_slug(self, tmp_path: Path) -> None:
+        with pytest.raises(ValueError, match="null byte"):
+            load_local_member_profile("evil\x00slug", snapshot_root=tmp_path)

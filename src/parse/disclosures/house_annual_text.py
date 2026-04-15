@@ -5,10 +5,15 @@ Single public function: parse_house_annual(page_texts, filing) -> ParseResult.
 Annual-specific assumptions baked in here:
 - Schedule A holds asset/holding rows; there are no transaction rows in annual filings.
 - Schedule D holds outside-position rows for the filer (owner defaults to self).
-- Each data row in both schedules starts with a bare integer row counter.
+- Each data row in both schedules starts with a row counter.  The counter is normally
+  a bare integer ("1", "12") but some pypdf extractions emit a trailing period ("1.",
+  "12.") — both forms are accepted.
 - Amendment filings share the same section structure as annual filings.
 - Income type text (column 3 in Schedule A) is not stored; only the income amount
   label (column 4) maps to Holding.income_label.
+- Section collection captures only the first occurrence of each schedule header;
+  continuation headers (e.g. "SCHEDULE A: ASSETS AND UNEARNED INCOME (CONTINUED)")
+  are treated as non-numbered lines and silently discarded by the table parsers.
 """
 
 from __future__ import annotations
@@ -29,6 +34,11 @@ from src.parse.disclosures.text_lines import drop_empty, flatten_lines, pages_to
 
 PARSER_NAME = "house_annual_text"
 PARSER_VERSION = "1.0"
+
+# Row-counter pattern: bare ASCII integer, optionally followed by a single
+# trailing period (e.g. "1", "12", "100", "1.", "12.").  The trailing period
+# is a common pypdf extraction artefact on some House annual PDFs.
+_RE_ROW_COUNTER = re.compile(r"^[0-9]+\.?$")
 
 # House annual schedules: A = assets, D = outside positions.
 # B = transactions (PTR only), C = earned income, E–F = agreements/liabilities.
@@ -107,8 +117,13 @@ def _split_cells(line: str) -> list[str]:
 
 
 def _is_numbered_row(cells: list[str]) -> bool:
-    """True when the leading cell is a bare non-negative integer row counter."""
-    return bool(cells) and cells[0].strip().isdigit()
+    """True when the leading cell is a recognised row counter.
+
+    Accepts bare ASCII integers ("1", "12") and integers with a trailing
+    period ("1.", "12.") — the latter is a common pypdf extraction artefact
+    on some House annual PDFs.  Non-ASCII digit characters are not accepted.
+    """
+    return bool(cells) and bool(_RE_ROW_COUNTER.match(cells[0].strip()))
 
 
 def _schedule_a_table(section_lines: tuple[str, ...]) -> list[list[str]]:

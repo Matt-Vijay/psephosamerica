@@ -332,6 +332,51 @@ class TestCountMismatch:
 # ---------------------------------------------------------------------------
 
 
+# ---------------------------------------------------------------------------
+# Path confinement
+# ---------------------------------------------------------------------------
+
+
+class TestPathConfinement:
+    def _base_with_entry(self, entry: dict) -> dict:
+        return {
+            "snapshot_id": _SNAP_ID,
+            "created_at": "2026-04-14T00:00:00",
+            "entries": [entry],
+            "total_files": 1,
+            "total_bytes": 10,
+        }
+
+    def test_error_when_entry_path_escapes_root(self, tmp_path: Path) -> None:
+        _write_raw(
+            tmp_path,
+            _SNAP_ID,
+            self._base_with_entry(
+                {"path": "../../etc/passwd", "sha256": "a" * 64, "size_bytes": 10}
+            ),
+        )
+        result = verify_local_manifest(tmp_path)
+        assert result.ok is False
+        assert any("escapes" in i.message for i in result.issues)
+
+    def test_error_when_entry_path_is_absolute(self, tmp_path: Path) -> None:
+        _write_raw(
+            tmp_path,
+            _SNAP_ID,
+            self._base_with_entry(
+                {"path": "/etc/passwd", "sha256": "a" * 64, "size_bytes": 10}
+            ),
+        )
+        result = verify_local_manifest(tmp_path)
+        assert result.ok is False
+        assert any("escapes" in i.message for i in result.issues)
+
+
+# ---------------------------------------------------------------------------
+# Issue attributes
+# ---------------------------------------------------------------------------
+
+
 class TestIssueAttributes:
     def test_issues_have_correct_stage(self, tmp_path: Path) -> None:
         dest = tmp_path / manifest_path(_SNAP_ID)

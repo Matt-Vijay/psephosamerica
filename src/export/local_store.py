@@ -12,6 +12,27 @@ from .writer import evidence_path, manifest_path, member_path, zip_path
 HOMEPAGE_FEED_PATH = "homepage/feed.json"
 
 
+# ── Path safety ────────────────────────────────────────────────────
+
+
+def _safe_subpath(root: Path, relative: str) -> Path:
+    """Resolve *relative* under *root* and reject any path that escapes it.
+
+    Raises ``ValueError`` on traversal attempts (``..``), null bytes, or
+    absolute segments that would land outside the snapshot root.
+    """
+    if "\x00" in relative:
+        raise ValueError(f"Path segment contains null byte: {relative!r}")
+    resolved = (root / relative).resolve()
+    root_resolved = root.resolve()
+    # The resolved path must be equal to or a child of root.
+    if not (resolved == root_resolved or str(resolved).startswith(str(root_resolved) + "/")):
+        raise ValueError(
+            f"Path escapes snapshot root: {relative!r} resolves to {resolved}"
+        )
+    return root / relative
+
+
 # ── Internal loader ────────────────────────────────────────────────
 
 
@@ -28,26 +49,26 @@ def _load_json(file: Path) -> object:
 
 
 def load_member_profile(snapshot_root: Path, slug: str) -> MemberProfilePayload:
-    file = snapshot_root / member_path(slug)
+    file = _safe_subpath(snapshot_root, member_path(slug))
     data = _load_json(file)
     return MemberProfilePayload.model_validate(data)
 
 
 def load_evidence_card(snapshot_root: Path, evidence_card_id: str) -> EvidenceCardPayload:
-    file = snapshot_root / evidence_path(evidence_card_id)
+    file = _safe_subpath(snapshot_root, evidence_path(evidence_card_id))
     data = _load_json(file)
     return EvidenceCardPayload.model_validate(data)
 
 
 def load_zip_feed(snapshot_root: Path, zip_code: str) -> ZipFeedPayload:
-    file = snapshot_root / zip_path(zip_code)
+    file = _safe_subpath(snapshot_root, zip_path(zip_code))
     data = _load_json(file)
     return ZipFeedPayload.model_validate(data)
 
 
 def load_homepage_feed(root: Path) -> HomepageFeedPayload:
     """Load the pre-rendered homepage feed artifact from the publish tree."""
-    file = root / HOMEPAGE_FEED_PATH
+    file = _safe_subpath(root, HOMEPAGE_FEED_PATH)
     data = _load_json(file)
     return HomepageFeedPayload.model_validate(data)
 
@@ -56,7 +77,7 @@ def load_homepage_feed(root: Path) -> HomepageFeedPayload:
 
 
 def load_manifest(snapshot_root: Path, snapshot_id: str) -> SnapshotManifest:
-    file = snapshot_root / manifest_path(snapshot_id)
+    file = _safe_subpath(snapshot_root, manifest_path(snapshot_id))
     data = _load_json(file)
     return SnapshotManifest.model_validate(data)
 

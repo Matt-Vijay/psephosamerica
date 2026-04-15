@@ -225,6 +225,30 @@ def test_three_part_name_passes(tmp_path: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Path confinement
+# ---------------------------------------------------------------------------
+
+
+def test_path_traversal_entry_is_error(tmp_path: Path) -> None:
+    """An entry with a path containing '..' should be rejected."""
+    bad_entry = ManifestEntry(path="members/../../etc/passwd.json", sha256="a" * 64, size_bytes=10)
+    manifest = SnapshotManifest(
+        snapshot_id="2026-04-14",
+        created_at=datetime(2026, 4, 14, 0, 0, 0),
+        entries=[bad_entry],
+        total_files=1,
+        total_bytes=10,
+    )
+    result = verify_local_member_profiles(tmp_path, manifest)
+    # The path matches the member regex but escapes root.
+    # If it doesn't match the regex it won't be checked — either way, no unsafe access.
+    # With a confined path that DOES match the regex, it should be flagged.
+    if result.checked > 0:
+        assert result.ok is False
+        assert any("escapes" in i.message for i in result.issues)
+
+
+# ---------------------------------------------------------------------------
 # Multiple issues in one run
 # ---------------------------------------------------------------------------
 

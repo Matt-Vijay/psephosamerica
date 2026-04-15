@@ -22,6 +22,16 @@ from .contracts import (
 from .manifest import ManifestEntry, SnapshotManifest
 
 
+# ── Internal helpers ───────────────────────────────────────────────
+
+
+def _req(row: dict[str, Any], key: str, context: str) -> Any:
+    """Return ``row[key]``, raising a readable ValueError when the key is absent."""
+    if key not in row:
+        raise ValueError(f"{context} row missing required field {key!r}")
+    return row[key]
+
+
 # ── Evidence Card ──────────────────────────────────────────────────
 
 
@@ -31,32 +41,36 @@ def build_evidence_card(
     source_rows: list[dict[str, Any]],
     snapshot_date: date,
 ) -> EvidenceCardPayload:
+    raw_blocks = _req(rule_fire, "blocks", "rule_fire")
     blocks = [
-        EvidenceBlock(section=EvidenceSection(b["section"]), text=b["text"])
-        for b in rule_fire["blocks"]
+        EvidenceBlock(
+            section=EvidenceSection(_req(b, "section", "rule_fire.blocks[]")),
+            text=_req(b, "text", "rule_fire.blocks[]"),
+        )
+        for b in raw_blocks
     ]
     anchors = [
         SourceAnchor(
-            source_type=s["source_type"],
-            source_id=s["source_id"],
+            source_type=_req(s, "source_type", "source"),
+            source_id=_req(s, "source_id", "source"),
             url=s.get("url"),
-            label=s["label"],
+            label=_req(s, "label", "source"),
         )
         for s in source_rows
     ]
     return EvidenceCardPayload(
-        evidence_card_id=rule_fire["evidence_card_id"],
-        member_bioguide_id=member["bioguide_id"],
-        member_name=member["name"],
-        member_slug=member["slug"],
-        dimension=rule_fire["dimension"],
-        rule_id=rule_fire["rule_id"],
-        rule_version=rule_fire["rule_version"],
-        score_delta=rule_fire["score_delta"],
-        short_explanation=rule_fire["short_explanation"],
+        evidence_card_id=_req(rule_fire, "evidence_card_id", "rule_fire"),
+        member_bioguide_id=_req(member, "bioguide_id", "member"),
+        member_name=_req(member, "name", "member"),
+        member_slug=_req(member, "slug", "member"),
+        dimension=_req(rule_fire, "dimension", "rule_fire"),
+        rule_id=_req(rule_fire, "rule_id", "rule_fire"),
+        rule_version=_req(rule_fire, "rule_version", "rule_fire"),
+        score_delta=_req(rule_fire, "score_delta", "rule_fire"),
+        short_explanation=_req(rule_fire, "short_explanation", "rule_fire"),
         blocks=blocks,
         source_anchors=anchors,
-        confidence=ConfidenceLabel(rule_fire["confidence"]),
+        confidence=ConfidenceLabel(_req(rule_fire, "confidence", "rule_fire")),
         snapshot_date=snapshot_date,
         created_at=rule_fire.get("created_at", datetime.now(UTC)),
     )
@@ -75,37 +89,37 @@ def build_member_profile(
 ) -> MemberProfilePayload:
     scores = [
         ScoreSummary(
-            dimension=s["dimension"],
-            current_score=s["current_score"],
-            rule_fire_count=s["rule_fire_count"],
+            dimension=_req(s, "dimension", "score"),
+            current_score=_req(s, "current_score", "score"),
+            rule_fire_count=_req(s, "rule_fire_count", "score"),
         )
         for s in score_rows
     ]
     fires = [
         RecentRuleFire(
-            rule_id=f["rule_id"],
-            evidence_card_id=f["evidence_card_id"],
-            short_explanation=f["short_explanation"],
-            score_delta=f["score_delta"],
-            snapshot_date=f["snapshot_date"],
+            rule_id=_req(f, "rule_id", "recent_fire"),
+            evidence_card_id=_req(f, "evidence_card_id", "recent_fire"),
+            short_explanation=_req(f, "short_explanation", "recent_fire"),
+            score_delta=_req(f, "score_delta", "recent_fire"),
+            snapshot_date=_req(f, "snapshot_date", "recent_fire"),
         )
         for f in recent_fires
     ]
     committees = [
         CommitteeMembership(
-            committee_name=c["committee_name"],
+            committee_name=_req(c, "committee_name", "committee"),
             role=c.get("role"),
         )
         for c in committee_rows
     ]
     return MemberProfilePayload(
-        bioguide_id=member["bioguide_id"],
-        name=member["name"],
-        slug=member["slug"],
-        state=member["state"],
+        bioguide_id=_req(member, "bioguide_id", "member"),
+        name=_req(member, "name", "member"),
+        slug=_req(member, "slug", "member"),
+        state=_req(member, "state", "member"),
         district=member.get("district"),
-        chamber=member["chamber"],
-        party=member["party"],
+        chamber=_req(member, "chamber", "member"),
+        party=_req(member, "party", "member"),
         scores=scores,
         recent_rule_fires=fires,
         committees=committees,
@@ -126,16 +140,16 @@ def build_zip_feed(
 ) -> ZipFeedPayload:
     members = [
         ZipMemberSummary(
-            bioguide_id=m["bioguide_id"],
-            name=m["name"],
-            slug=m["slug"],
-            chamber=m["chamber"],
-            party=m["party"],
+            bioguide_id=_req(m, "bioguide_id", "member"),
+            name=_req(m, "name", "member"),
+            slug=_req(m, "slug", "member"),
+            chamber=_req(m, "chamber", "member"),
+            party=_req(m, "party", "member"),
             scores=[
                 ScoreSummary(
-                    dimension=s["dimension"],
-                    current_score=s["current_score"],
-                    rule_fire_count=s["rule_fire_count"],
+                    dimension=_req(s, "dimension", "score"),
+                    current_score=_req(s, "current_score", "score"),
+                    rule_fire_count=_req(s, "rule_fire_count", "score"),
                 )
                 for s in m.get("scores", [])
             ],
@@ -165,9 +179,9 @@ def build_manifest(
 ) -> SnapshotManifest:
     entries = [
         ManifestEntry(
-            path=f["path"],
-            sha256=f["sha256"],
-            size_bytes=f["size_bytes"],
+            path=_req(f, "path", "file_entry"),
+            sha256=_req(f, "sha256", "file_entry"),
+            size_bytes=_req(f, "size_bytes", "file_entry"),
         )
         for f in file_entries
     ]

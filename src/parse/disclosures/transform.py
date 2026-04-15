@@ -17,6 +17,30 @@ from src.parse.disclosures.normalize import normalize_amount_range
 
 
 # ---------------------------------------------------------------------------
+# Stable review_type constants
+# ---------------------------------------------------------------------------
+
+REVIEW_TYPE_AMENDMENT = "amendment"
+REVIEW_TYPE_NORMALIZATION = "normalization"
+REVIEW_TYPE_CLASSIFICATION = "classification"
+REVIEW_TYPE_OUTSIDE_POSITION = "outside_position"
+
+# ---------------------------------------------------------------------------
+# Stable reason_code constants
+# ---------------------------------------------------------------------------
+
+REASON_AMENDMENT_FILING = "amendment_filing"
+REASON_AMENDMENT_SUPERSEDES_MISMATCH = "amendment_supersedes_mismatch"
+REASON_AMENDMENT_NUMBER_WITHOUT_FLAG = "amendment_number_without_flag"
+REASON_UNKNOWN_AMOUNT_RANGE = "unknown_amount_range"
+REASON_UNKNOWN_INCOME_RANGE = "unknown_income_range"
+REASON_UNKNOWN_OWNER_TYPE = "unknown_owner_type"
+REASON_UNKNOWN_TRANSACTION_TYPE = "unknown_transaction_type"
+REASON_UNRESOLVED_TRUST = "unresolved_trust"
+REASON_NO_CANONICAL_TABLE_V1 = "no_canonical_table_v1"
+
+
+# ---------------------------------------------------------------------------
 # Parse context (caller-supplied provenance refs)
 # ---------------------------------------------------------------------------
 
@@ -230,10 +254,10 @@ def _transform_holding(
             review_items.append(
                 _review(
                     ctx,
-                    review_type="normalization",
+                    review_type=REVIEW_TYPE_NORMALIZATION,
                     entity_type="holding",
                     entity_key=f"line_{h.line_number}",
-                    reason_code="unknown_amount_range",
+                    reason_code=REASON_UNKNOWN_AMOUNT_RANGE,
                     priority=_PRIORITY_UNKNOWN_AMOUNT,
                     payload={"value_label": h.value_label, "line_number": h.line_number},
                     summary=f"Unrecognized value range label on holding line {h.line_number}: {h.value_label!r}",
@@ -248,10 +272,10 @@ def _transform_holding(
             review_items.append(
                 _review(
                     ctx,
-                    review_type="normalization",
+                    review_type=REVIEW_TYPE_NORMALIZATION,
                     entity_type="holding",
                     entity_key=f"line_{h.line_number}",
-                    reason_code="unknown_income_range",
+                    reason_code=REASON_UNKNOWN_INCOME_RANGE,
                     priority=_PRIORITY_UNKNOWN_AMOUNT,
                     payload={"income_label": h.income_label, "line_number": h.line_number},
                     summary=f"Unrecognized income range label on holding line {h.line_number}: {h.income_label!r}",
@@ -263,10 +287,10 @@ def _transform_holding(
         review_items.append(
             _review(
                 ctx,
-                review_type="normalization",
+                review_type=REVIEW_TYPE_NORMALIZATION,
                 entity_type="holding",
                 entity_key=f"line_{h.line_number}",
-                reason_code="unknown_owner_type",
+                reason_code=REASON_UNKNOWN_OWNER_TYPE,
                 priority=_PRIORITY_UNKNOWN_OWNER,
                 payload={"owner_type": owner_str, "line_number": h.line_number},
                 summary=f"Unknown owner type on holding line {h.line_number}",
@@ -277,10 +301,10 @@ def _transform_holding(
         review_items.append(
             _review(
                 ctx,
-                review_type="classification",
+                review_type=REVIEW_TYPE_CLASSIFICATION,
                 entity_type="holding",
                 entity_key=f"line_{h.line_number}",
-                reason_code="unresolved_trust",
+                reason_code=REASON_UNRESOLVED_TRUST,
                 priority=_PRIORITY_TRUST_OR_OPTION,
                 payload={
                     "issuer_name": h.issuer_name,
@@ -325,10 +349,10 @@ def _transform_transaction(
             review_items.append(
                 _review(
                     ctx,
-                    review_type="normalization",
+                    review_type=REVIEW_TYPE_NORMALIZATION,
                     entity_type="transaction",
                     entity_key=f"line_{t.line_number}",
-                    reason_code="unknown_amount_range",
+                    reason_code=REASON_UNKNOWN_AMOUNT_RANGE,
                     priority=_PRIORITY_UNKNOWN_AMOUNT,
                     payload={"amount_label": t.amount_label, "line_number": t.line_number},
                     summary=f"Unrecognized amount label on transaction line {t.line_number}: {t.amount_label!r}",
@@ -340,10 +364,10 @@ def _transform_transaction(
         review_items.append(
             _review(
                 ctx,
-                review_type="normalization",
+                review_type=REVIEW_TYPE_NORMALIZATION,
                 entity_type="transaction",
                 entity_key=f"line_{t.line_number}",
-                reason_code="unknown_owner_type",
+                reason_code=REASON_UNKNOWN_OWNER_TYPE,
                 priority=_PRIORITY_UNKNOWN_OWNER,
                 payload={"owner_type": owner_str, "line_number": t.line_number},
                 summary=f"Unknown owner type on transaction line {t.line_number}",
@@ -355,10 +379,10 @@ def _transform_transaction(
         review_items.append(
             _review(
                 ctx,
-                review_type="normalization",
+                review_type=REVIEW_TYPE_NORMALIZATION,
                 entity_type="transaction",
                 entity_key=f"line_{t.line_number}",
-                reason_code="unknown_transaction_type",
+                reason_code=REASON_UNKNOWN_TRANSACTION_TYPE,
                 priority=_PRIORITY_UNKNOWN_TX_TYPE,
                 payload={"transaction_type": tx_str, "line_number": t.line_number},
                 summary=f"Unknown transaction type on transaction line {t.line_number}",
@@ -397,10 +421,10 @@ def _transform_outside_position(
     review_items.append(
         _review(
             ctx,
-            review_type="outside_position",
+            review_type=REVIEW_TYPE_OUTSIDE_POSITION,
             entity_type="outside_position",
             entity_key=f"line_{op.line_number}",
-            reason_code="no_canonical_table_v1",
+            reason_code=REASON_NO_CANONICAL_TABLE_V1,
             priority=_PRIORITY_OUTSIDE_POSITION,
             payload=sidecar.as_dict(),
             summary=f"Outside position on line {op.line_number} ({op.entity_name!r}) has no canonical table in v1 — stored as sidecar",
@@ -411,10 +435,10 @@ def _transform_outside_position(
         review_items.append(
             _review(
                 ctx,
-                review_type="normalization",
+                review_type=REVIEW_TYPE_NORMALIZATION,
                 entity_type="outside_position",
                 entity_key=f"line_{op.line_number}",
-                reason_code="unknown_owner_type",
+                reason_code=REASON_UNKNOWN_OWNER_TYPE,
                 priority=_PRIORITY_UNKNOWN_OWNER,
                 payload={"owner_type": op.owner_type.value, "line_number": op.line_number},
                 summary=f"Unknown owner type on outside position line {op.line_number}",
@@ -462,10 +486,10 @@ def transform_filing(
         review_items.append(
             _review(
                 ctx,
-                review_type="amendment",
+                review_type=REVIEW_TYPE_AMENDMENT,
                 entity_type="financial_disclosure",
                 entity_key=_entity_key,
-                reason_code="amendment_filing",
+                reason_code=REASON_AMENDMENT_FILING,
                 priority=_PRIORITY_AMENDMENT,
                 payload={
                     "member_bioguide_id": filing.member_bioguide_id,
@@ -490,10 +514,10 @@ def transform_filing(
         review_items.append(
             _review(
                 ctx,
-                review_type="amendment",
+                review_type=REVIEW_TYPE_AMENDMENT,
                 entity_type="financial_disclosure",
                 entity_key=_entity_key,
-                reason_code="amendment_supersedes_mismatch",
+                reason_code=REASON_AMENDMENT_SUPERSEDES_MISMATCH,
                 priority=_PRIORITY_AMENDMENT_INCONSISTENCY,
                 payload={
                     "member_bioguide_id": filing.member_bioguide_id,
@@ -514,10 +538,10 @@ def transform_filing(
         review_items.append(
             _review(
                 ctx,
-                review_type="amendment",
+                review_type=REVIEW_TYPE_AMENDMENT,
                 entity_type="financial_disclosure",
                 entity_key=_entity_key,
-                reason_code="amendment_number_without_flag",
+                reason_code=REASON_AMENDMENT_NUMBER_WITHOUT_FLAG,
                 priority=_PRIORITY_AMENDMENT_INCONSISTENCY,
                 payload={
                     "member_bioguide_id": filing.member_bioguide_id,

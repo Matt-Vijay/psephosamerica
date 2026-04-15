@@ -19,6 +19,7 @@ from src.runtime.publish_verify_types import (
     IssueSeverity,
     PublishVerifyIssue,
     PublishVerifyStageResult,
+    path_is_confined,
 )
 
 _STAGE = "profiles"
@@ -57,6 +58,11 @@ def verify_local_member_profiles(
 
         checked += 1
         slug_from_path = m.group("slug")
+
+        if not path_is_confined(entry.path):
+            issues.append(_issue("entry path escapes publish root", path=entry.path))
+            continue
+
         artifact_path = root / entry.path
 
         # 1. File must exist.

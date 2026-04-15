@@ -168,3 +168,112 @@ class TestEdgeCases:
         spec = primary_sponsor_spec_from_bill_detail(detail, bill)
         assert spec is not None
         assert spec.sponsor_date is None
+
+    def test_sponsorship_date_with_datetime_string(self, bill: BillRecord) -> None:
+        """Congress.gov may include a full datetime; only the date portion is used."""
+        detail = _detail([{"bioguideId": "P000197", "sponsorshipDate": "2023-01-09T00:00:00"}])
+        spec = primary_sponsor_spec_from_bill_detail(detail, bill)
+        assert spec is not None
+        assert spec.sponsor_date == datetime.date(2023, 1, 9)
+
+    def test_url_empty_string_falls_back_to_bill_source_url(self, bill: BillRecord) -> None:
+        detail = _detail([{"bioguideId": "P000197", "url": ""}])
+        spec = primary_sponsor_spec_from_bill_detail(detail, bill)
+        assert spec is not None
+        assert spec.source_url == bill.source_url
+
+    def test_sponsors_as_dict_returns_none(self, bill: BillRecord) -> None:
+        """A mis-shaped sponsors field (dict instead of list) must not crash."""
+        detail = {"bill": {"sponsors": {"bioguideId": "P000197"}}}
+        assert primary_sponsor_spec_from_bill_detail(detail, bill) is None
+
+
+# ---------------------------------------------------------------------------
+# Realistic full-detail payloads — Congress.gov API shape
+# ---------------------------------------------------------------------------
+
+# Realistic Congress.gov bill detail inner object (unwrapped from "bill" key).
+_JORDAN_HR1_DETAIL: dict = {
+    "bill": {
+        "congress": 119,
+        "type": "HR",
+        "number": "1",
+        "title": "To authorize appropriations for fiscal year 2026 for the Armed Forces.",
+        "introducedDate": "2025-01-09",
+        "originChamber": "House",
+        "policyArea": {"name": "Armed Forces and National Security"},
+        "latestAction": {
+            "actionDate": "2025-01-09",
+            "text": "Referred to the House Committee on Armed Services.",
+        },
+        "sponsors": [
+            {
+                "bioguideId": "J000289",
+                "district": 4,
+                "firstName": "Jim",
+                "fullName": "Rep. Jim Jordan (R-OH)",
+                "isByRequest": "N",
+                "lastName": "Jordan",
+                "middleName": None,
+                "party": "R",
+                "sponsorshipDate": "2025-01-09",
+                "state": "OH",
+                "url": "https://api.congress.gov/v3/member/J000289",
+            }
+        ],
+        "cosponsors": {"count": 0, "url": "https://api.congress.gov/v3/bill/119/hr/1/cosponsors"},
+        "actions": {"count": 1, "url": "https://api.congress.gov/v3/bill/119/hr/1/actions"},
+    }
+}
+
+_HR1 = BillRecord(
+    congress=119,
+    bill_type="hr",
+    bill_number=1,
+    title="To authorize appropriations for fiscal year 2026 for the Armed Forces.",
+    introduced_date=datetime.date(2025, 1, 9),
+    source_url="https://api.congress.gov/v3/bill/119/hr/1",
+)
+
+
+class TestRealisticBillDetailPayload:
+    def test_bioguide_id_extracted(self) -> None:
+        spec = primary_sponsor_spec_from_bill_detail(_JORDAN_HR1_DETAIL, _HR1)
+        assert spec is not None
+        assert spec.bioguide_id == "J000289"
+
+    def test_sponsor_date_from_detail(self) -> None:
+        spec = primary_sponsor_spec_from_bill_detail(_JORDAN_HR1_DETAIL, _HR1)
+        assert spec is not None
+        assert spec.sponsor_date == datetime.date(2025, 1, 9)
+
+    def test_source_url_is_member_url(self) -> None:
+        spec = primary_sponsor_spec_from_bill_detail(_JORDAN_HR1_DETAIL, _HR1)
+        assert spec is not None
+        assert spec.source_url == "https://api.congress.gov/v3/member/J000289"
+
+    def test_record_linked_to_bill(self) -> None:
+        spec = primary_sponsor_spec_from_bill_detail(_JORDAN_HR1_DETAIL, _HR1)
+        assert spec is not None
+        assert spec.record is _HR1
+
+    def test_extra_fields_in_payload_do_not_affect_spec(self) -> None:
+        """Fields like party, district, fullName are ignored — only bioguideId matters."""
+        detail = {
+            "bill": {
+                "sponsors": [
+                    {
+                        "bioguideId": "J000289",
+                        "party": "R",
+                        "district": 4,
+                        "fullName": "Rep. Jim Jordan (R-OH)",
+                        "isByRequest": "N",
+                        "sponsorshipDate": "2025-01-09",
+                        "url": "https://api.congress.gov/v3/member/J000289",
+                    }
+                ]
+            }
+        }
+        spec = primary_sponsor_spec_from_bill_detail(detail, _HR1)
+        assert spec is not None
+        assert spec.bioguide_id == "J000289"

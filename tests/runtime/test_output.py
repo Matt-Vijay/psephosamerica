@@ -31,7 +31,6 @@ from src.runtime.output import (
     summarize_disclosures_bundle_process_result,
     summarize_load_result,
     summarize_local_oracle_run_result,
-    summarize_oracle_result,
     summarize_parse_disclosures_result,
     summarize_process_disclosures_result,
     summarize_publish_result,
@@ -629,6 +628,7 @@ def _parse_disclosures_result(
         failed_count=failed,
         parse_sessions=parse_sessions,
         parsed_documents=(),
+        failed_artifact_ids=(),
     )
 
 
@@ -685,6 +685,7 @@ def _process_disclosures_result(
         failed_count=parse_failed,
         parse_sessions=(),
         parsed_documents=(),
+        failed_artifact_ids=(),
     )
     load = DisclosuresLoadRuntimeResult(
         data_source=_DATA_SOURCE,
@@ -696,6 +697,7 @@ def _process_disclosures_result(
         parse_result=parse,
         transform_count=transform_count,
         skipped_transform_count=skipped_transform_count,
+        skipped_sessions=(),
         load_result=load,
     )
 
@@ -765,102 +767,6 @@ class TestSummarizeProcessDisclosuresResult:
 
 
 # ---------------------------------------------------------------------------
-# summarize_oracle_result
-# ---------------------------------------------------------------------------
-
-
-def _oracle_dict(
-    snapshot_id: str = "2025-01-15",
-    rule_fires: int = 3,
-    written_count: int = 10,
-    succeeded: bool = True,
-) -> dict:
-    return {
-        "disclosures": {
-            "run_id": 1,
-            "source_slug": "financial-disclosures",
-            "parsed": 5,
-            "parse_succeeded": 4,
-            "parse_failed": 1,
-            "transformed": 3,
-            "total_written": 15,
-            "load_ok": True,
-        },
-        "recompute": {
-            "run_id": 2,
-            "source_slug": "conflict-recompute",
-            "rule_fires": rule_fires,
-            "evidence_cards": 2,
-        },
-        "publish": {
-            "run_id": 3,
-            "snapshot_id": snapshot_id,
-            "source_slug": "snapshot-publish",
-            "written_count": written_count,
-            "succeeded": succeeded,
-        },
-    }
-
-
-class TestSummarizeOracleResult:
-    def test_snapshot_id_extracted_from_publish(self):
-        result = summarize_oracle_result(_oracle_dict(snapshot_id="2025-06-01"))
-        assert result["snapshot_id"] == "2025-06-01"
-
-    def test_disclosures_stage_present(self):
-        result = summarize_oracle_result(_oracle_dict())
-        assert "disclosures" in result
-
-    def test_recompute_stage_present(self):
-        result = summarize_oracle_result(_oracle_dict())
-        assert "recompute" in result
-
-    def test_publish_stage_present(self):
-        result = summarize_oracle_result(_oracle_dict())
-        assert "publish" in result
-
-    def test_exact_top_level_keys(self):
-        result = summarize_oracle_result(_oracle_dict())
-        assert set(result.keys()) == {"snapshot_id", "disclosures", "recompute", "publish"}
-
-    def test_recompute_rule_fires_preserved(self):
-        result = summarize_oracle_result(_oracle_dict(rule_fires=7))
-        assert result["recompute"]["rule_fires"] == 7
-
-    def test_publish_written_count_preserved(self):
-        result = summarize_oracle_result(_oracle_dict(written_count=42))
-        assert result["publish"]["written_count"] == 42
-
-    def test_publish_succeeded_preserved(self):
-        result = summarize_oracle_result(_oracle_dict(succeeded=False))
-        assert result["publish"]["succeeded"] is False
-
-    def test_disclosures_content_preserved(self):
-        result = summarize_oracle_result(_oracle_dict())
-        assert result["disclosures"]["parsed"] == 5
-        assert result["disclosures"]["load_ok"] is True
-
-    def test_json_serializable(self):
-        result = summarize_oracle_result(_oracle_dict())
-        obj = json.loads(as_json(result))
-        assert obj["snapshot_id"] == "2025-01-15"
-        assert obj["recompute"]["rule_fires"] == 3
-
-    def test_pure_same_inputs_same_output(self):
-        oracle = _oracle_dict()
-        r1 = summarize_oracle_result(oracle)
-        r2 = summarize_oracle_result(oracle)
-        assert r1 == r2
-
-    def test_empty_stages_return_empty_dicts(self):
-        result = summarize_oracle_result({})
-        assert result["snapshot_id"] is None
-        assert result["disclosures"] == {}
-        assert result["recompute"] == {}
-        assert result["publish"] == {}
-
-
-# ---------------------------------------------------------------------------
 # summarize_disclosures_bundle_process_result
 # ---------------------------------------------------------------------------
 
@@ -879,6 +785,7 @@ def _bundle_process_result(
         failed_count=parse_failed,
         parse_sessions=(),
         parsed_documents=(),
+        failed_artifact_ids=(),
     )
     load = DisclosuresLoadRuntimeResult(
         data_source={"id": 1, "slug": "financial-disclosures"},
@@ -895,6 +802,8 @@ def _bundle_process_result(
         stage_result=stage_result,
         parse_result=parse,
         transform_count=transform_count,
+        skipped_transform_count=0,
+        skipped_sessions=(),
         load_result=load,
     )
 

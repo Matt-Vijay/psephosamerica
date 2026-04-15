@@ -79,7 +79,7 @@ def _load_published_homepage(
         data = json.loads(file.read_bytes())
         payload = HomepageFeedPayload.model_validate(data)
         return payload, None
-    except (json.JSONDecodeError, ValueError, Exception) as exc:
+    except Exception as exc:
         return None, _issue(f"homepage feed failed to parse: {exc}")
 
 
@@ -101,7 +101,7 @@ def _compare_payloads(
     3. ``recent_events`` — ordered ``feed_event_id`` list.
     4. ``recent_evidence_card_ids`` — ordered deduplicated card-ID list.
 
-    Each mismatch produces one ``PublishVerifyIssue`` with a message
+    Each mismatch produces one ``PublishRoundtripIssue`` with a message
     that names the field and shows both sides.
 
     Returns an empty list when the payloads agree on all four fields.

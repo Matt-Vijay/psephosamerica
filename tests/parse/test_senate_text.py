@@ -20,8 +20,13 @@ from src.parse.disclosures.models import (
 from src.parse.disclosures.parse_result import ParseResult
 from src.parse.disclosures.senate_text import (
     _ASSETS_ALT,
+    _ASSETS_ALT2,
+    _OWNER_TOKENS,
     _PARSER_NAME,
     _PARSER_VERSION,
+    _PART_I_ALT,
+    _PART_I_ALT2,
+    _SENATE_SECTION_HEADERS,
     _TRANSACTIONS_ALT2,
     _holdings_from_section,
     _is_date_row,
@@ -651,3 +656,242 @@ class TestEmptyNameCellSkipped:
         )
         result = _transactions_from_section(lines)
         assert len(result) == 2
+
+
+# ---------------------------------------------------------------------------
+# Senate-specific section header constant tests
+# ---------------------------------------------------------------------------
+
+
+class TestSectionHeaderConstants:
+    """New constants must have correct values and appear in the section header set."""
+
+    def test_assets_alt2_value(self):
+        assert _ASSETS_ALT2 == "assets and income"
+
+    def test_part_i_alt_value(self):
+        assert _PART_I_ALT == "positions held outside u.s. government"
+
+    def test_part_i_alt2_value(self):
+        assert _PART_I_ALT2 == "positions held outside us government"
+
+    def test_assets_alt2_in_senate_headers(self):
+        assert _ASSETS_ALT2 in _SENATE_SECTION_HEADERS
+
+    def test_part_i_alt_in_senate_headers(self):
+        assert _PART_I_ALT in _SENATE_SECTION_HEADERS
+
+    def test_part_i_alt2_in_senate_headers(self):
+        assert _PART_I_ALT2 in _SENATE_SECTION_HEADERS
+
+    def test_assets_alt_in_senate_headers(self):
+        assert _ASSETS_ALT in _SENATE_SECTION_HEADERS
+
+
+# ---------------------------------------------------------------------------
+# Owner token set coverage
+# ---------------------------------------------------------------------------
+
+
+class TestOwnerTokenSet:
+    """All documented owner token strings must be present and case-insensitively
+    matched by _is_owner_row."""
+
+    def test_dep_child_token_in_set(self):
+        assert "dep. child" in _OWNER_TOKENS
+
+    def test_dependent_token_in_set(self):
+        assert "dependent" in _OWNER_TOKENS
+
+    def test_dependent_child_token_in_set(self):
+        assert "dependent child" in _OWNER_TOKENS
+
+    def test_dep_child_owner_row(self):
+        assert _is_owner_row(["dep. child", "Fidelity Fund"])
+
+    def test_dependent_owner_row(self):
+        assert _is_owner_row(["dependent", "Some Corp"])
+
+    def test_dependent_child_owner_row(self):
+        assert _is_owner_row(["dependent child", "Vanguard ETF"])
+
+    def test_joint_full_word_owner_row(self):
+        assert _is_owner_row(["joint", "Apple Inc"])
+
+    def test_spouse_full_word_owner_row(self):
+        assert _is_owner_row(["spouse", "Microsoft Corp"])
+
+    def test_dep_child_case_insensitive(self):
+        assert _is_owner_row(["Dep. Child", "Fidelity"])
+
+    def test_dependent_child_case_insensitive(self):
+        assert _is_owner_row(["Dependent Child", "Vanguard"])
+
+
+# ---------------------------------------------------------------------------
+# Column-header rejection (second-cell guard)
+# ---------------------------------------------------------------------------
+
+
+class TestColumnHeaderRejection:
+    """Rows that start with an owner token but have a known header phrase in
+    the second cell must be rejected by _is_owner_row."""
+
+    def test_sp_asset_name_rejected(self):
+        assert not _is_owner_row(["sp", "asset name"])
+
+    def test_SP_Asset_Name_rejected_case_insensitive(self):
+        assert not _is_owner_row(["SP", "Asset Name"])
+
+    def test_self_organization_rejected(self):
+        # "Organization" is a header sentinel in Part I column rows
+        assert not _is_owner_row(["self", "organization"])
+
+    def test_jt_transaction_type_rejected(self):
+        assert not _is_owner_row(["jt", "transaction type"])
+
+    def test_sp_income_type_rejected(self):
+        assert not _is_owner_row(["sp", "income type"])
+
+    def test_self_value_of_asset_rejected(self):
+        assert not _is_owner_row(["self", "value of asset"])
+
+    def test_sp_income_amount_rejected(self):
+        assert not _is_owner_row(["sp", "income amount"])
+
+    def test_self_with_real_issuer_not_rejected(self):
+        # "Apple Inc" is not a header sentinel — must pass through
+        assert _is_owner_row(["self", "Apple Inc"])
+
+    def test_jt_with_fund_name_not_rejected(self):
+        assert _is_owner_row(["jt", "Vanguard Wellington Fund"])
+
+
+# ---------------------------------------------------------------------------
+# Preamble termination — new section aliases
+# ---------------------------------------------------------------------------
+
+
+class TestPreambleLinesAliasTermination:
+    """New Senate section header aliases must terminate the preamble scan."""
+
+    def test_assets_and_income_terminates_preamble(self):
+        lines = ("Annual Report", "Name: Smith", "assets and income", "self  Apple  STK")
+        preamble = _preamble_lines(lines)
+        assert "assets and income" not in preamble
+        assert "self  Apple  STK" not in preamble
+
+    def test_positions_held_outside_us_gov_terminates_preamble(self):
+        lines = ("Annual Report", "Name: Jones", "positions held outside us government", "self  Corp  CEO")
+        preamble = _preamble_lines(lines)
+        assert "positions held outside us government" not in preamble
+
+    def test_positions_held_outside_us_gov_with_periods_terminates_preamble(self):
+        lines = (
+            "Annual Report for CY 2023",
+            "Name: Lee, Robert",
+            "positions held outside u.s. government",
+            "self  Acme Corp  Director",
+        )
+        preamble = _preamble_lines(lines)
+        assert "positions held outside u.s. government" not in preamble
+        assert "self  Acme Corp  Director" not in preamble
+
+    def test_preamble_content_before_alias_included(self):
+        lines = (
+            "Annual Report for CY 2023",
+            "Name: Lee, Robert",
+            "positions held outside u.s. government",
+            "self  Acme Corp  Director",
+        )
+        preamble = _preamble_lines(lines)
+        assert "Annual Report for CY 2023" in preamble
+        assert "Name: Lee, Robert" in preamble
+
+    def test_transactions_alias_terminates_preamble(self):
+        lines = ("Periodic Transaction Report", "Name: Chen", "transactions", "01/05/2024  self  TSLA  Tesla  Purchase  $1,001 - $15,000")
+        preamble = _preamble_lines(lines)
+        assert "transactions" not in preamble
+
+
+# ---------------------------------------------------------------------------
+# parse_senate_text with Part I alias section headers
+# ---------------------------------------------------------------------------
+
+
+class TestPartIAliasInFullParse:
+    """parse_senate_text must detect outside positions under the long-form alias."""
+
+    def test_positions_held_outside_us_gov_with_periods(self):
+        pages = [
+            "Annual Report for CY 2023\nUnited States Senate\nName: Clark, James\n\nPositions Held Outside U.S. Government\n\nself  Omega Partners  Managing Director  01/01/2017\nsp  Delta Foundation  Trustee  06/01/2012  12/31/2021\n"
+        ]
+        result = parse_senate_text(pages, _annual_filing())
+        assert len(result.outside_positions) == 2
+        names = {p.entity_name for p in result.outside_positions}
+        assert "Omega Partners" in names
+        assert "Delta Foundation" in names
+
+    def test_positions_held_outside_us_gov_without_periods(self):
+        pages = [
+            "Annual Report for CY 2023\nUnited States Senate\nName: Rivera, Elena\n\nPositions Held Outside US Government\n\nself  Zeta Corp  Advisor  03/01/2018\n"
+        ]
+        result = parse_senate_text(pages, _annual_filing())
+        assert len(result.outside_positions) == 1
+        assert result.outside_positions[0].entity_name == "Zeta Corp"
+
+    def test_part_i_still_works_as_canonical_alias(self):
+        # Ensure existing "Part I" handling is not broken
+        pages = [
+            "Annual Report for CY 2023\nUnited States Senate\n\nPart I\n\nself  Alpha Corp  CEO  01/01/2015\n"
+        ]
+        result = parse_senate_text(pages, _annual_filing())
+        assert len(result.outside_positions) == 1
+
+    def test_no_empty_document_warning_with_positions_only(self):
+        # A filing with only outside positions (no holdings/transactions) still
+        # gets the empty-document warning — that is correct behaviour.
+        pages = [
+            "Annual Report for CY 2023\nUnited States Senate\n\nPositions Held Outside US Government\n\nself  Corp  Role  01/01/2020\n"
+        ]
+        result = parse_senate_text(pages, _annual_filing())
+        assert "no_holdings_or_transactions_found" in result.meta.parse_warnings
+
+
+# ---------------------------------------------------------------------------
+# parse_senate_text with "Assets and Income" Schedule A alias
+# ---------------------------------------------------------------------------
+
+
+class TestAssetsAndIncomeAlias:
+    """parse_senate_text must detect holdings under the "Assets and Income" label."""
+
+    def test_assets_and_income_header_produces_holdings(self):
+        pages = [
+            "Annual Report for CY 2023\nUnited States Senate\n\nAssets and Income\n\nself  Vanguard 500 Index Fund  MF  $50,001 - $100,000  Dividends  $1,001 - $15,000\nsp  Microsoft Corp  STK  $15,001 - $50,000  Dividends  None\n"
+        ]
+        result = parse_senate_text(pages, _annual_filing())
+        assert len(result.holdings) == 2
+        names = {h.issuer_name for h in result.holdings}
+        assert "Vanguard 500 Index Fund" in names
+        assert "Microsoft Corp" in names
+
+    def test_assets_alt_still_preferred_over_assets_alt2(self):
+        # When both "Assets and Unearned Income" and "Assets and Income" are present,
+        # the first match wins.  This test checks that both headers each produce
+        # holdings and the parser doesn't crash.
+        pages = [
+            "Annual Report for CY 2023\nUnited States Senate\n\nAssets and Unearned Income\n\nself  Fidelity Contrafund  MF  $100,001 - $250,000  None  None\n"
+        ]
+        result = parse_senate_text(pages, _annual_filing())
+        assert len(result.holdings) >= 1
+        assert result.holdings[0].issuer_name == "Fidelity Contrafund"
+
+    def test_holdings_value_range_parsed_under_alias(self):
+        pages = [
+            "Annual Report for CY 2023\nUnited States Senate\n\nAssets and Income\n\nself  Berkshire Hathaway Inc  STK  $250,001 - $500,000  None  None\n"
+        ]
+        result = parse_senate_text(pages, _annual_filing())
+        h = result.holdings[0]
+        assert h.value_min == Decimal("250001")
+        assert h.value_max == Decimal("500000")

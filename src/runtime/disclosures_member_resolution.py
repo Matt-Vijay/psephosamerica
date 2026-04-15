@@ -13,7 +13,7 @@ Resolution is deterministic:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Optional, Sequence, Union
+from typing import Any, Literal, Optional, Sequence, Union
 
 
 # ---------------------------------------------------------------------------
@@ -101,6 +101,12 @@ def senate_identity(
 # Resolution outcomes
 # ---------------------------------------------------------------------------
 
+#: Exhaustive set of reasons a disclosure header identity could not be matched
+#: to a member row.  Kept as a Literal so callers can exhaustively branch.
+#:   no_member_for_location  — no member row matches chamber + state + district
+#:   no_member_for_last_name — location matches but no row matches the last name
+NoMatchReason = Literal["no_member_for_location", "no_member_for_last_name"]
+
 
 @dataclass(frozen=True)
 class Resolved:
@@ -111,8 +117,7 @@ class Resolved:
 @dataclass(frozen=True)
 class NoMatch:
     identity: DisclosureHeaderIdentity
-    # 'no_member_for_location' | 'no_member_for_last_name'
-    reason: str
+    reason: NoMatchReason
 
 
 @dataclass(frozen=True)

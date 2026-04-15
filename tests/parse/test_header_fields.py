@@ -12,7 +12,11 @@ from datetime import date
 import pytest
 
 from src.parse.disclosures.header_fields import (
+    CONFLICT_AMBIGUOUS_CHAMBER,
+    CONFLICT_AMBIGUOUS_MEMBER_NAME,
+    CONFLICT_YEAR_CONFLICT_PREFIX,
     HeaderFields,
+    _detect_conflicts,
     _extract_amendment_number,
     _extract_chamber,
     _extract_filed_at,
@@ -302,6 +306,7 @@ class TestExtractHeaderFields:
         assert r.filed_at == date(2024, 5, 15)
         assert r.amendment_number == 0
         assert r.is_amended is False
+        assert r.conflicts == ()
 
     def test_senate_annual_full(self) -> None:
         r = extract_header_fields(_SENATE_ANNUAL)
@@ -312,6 +317,7 @@ class TestExtractHeaderFields:
         assert r.filed_at == date(2023, 5, 20)
         assert r.amendment_number == 0
         assert r.is_amended is False
+        assert r.conflicts == ()
 
     def test_senate_ptr_full(self) -> None:
         r = extract_header_fields(_SENATE_PTR)
@@ -354,8 +360,128 @@ class TestExtractHeaderFields:
         assert r.filed_at is None
         assert r.amendment_number == 0
         assert r.is_amended is False
+        assert r.conflicts == ()
 
     def test_result_is_frozen(self) -> None:
         r = extract_header_fields(_HOUSE_ANNUAL)
         with pytest.raises((AttributeError, TypeError)):
             r.member_name = "Other"  # type: ignore[misc]
+
+
+# ── _detect_conflicts ─────────────────────────────────────────────────────────
+
+
+class TestDetectConflicts:
+    def test_clean_house_annual_has_no_conflicts(self) -> None:
+        assert _detect_conflicts(_HOUSE_ANNUAL) == ()
+
+    def test_clean_senate_annual_has_no_conflicts(self) -> None:
+        assert _detect_conflicts(_SENATE_ANNUAL) == ()
+
+    def test_clean_senate_ptr_has_no_conflicts(self) -> None:
+        assert _detect_conflicts(_SENATE_PTR) == ()
+
+    def test_both_chamber_markers_flagged(self) -> None:
+        lines = [
+            "U.S. House of Representatives",
+            "U.S. Senate",
+            "Member Name: Jane Doe",
+            "Reporting Year: 2023",
+        ]
+        conflicts = _detect_conflicts(lines)
+        assert CONFLICT_AMBIGUOUS_CHAMBER in conflicts
+
+    def test_single_chamber_no_conflict(self) -> None:
+        lines = ["U.S. Senate", "Name: Smith, John", "Reporting Year: 2022"]
+        assert _detect_conflicts(lines) == ()
+
+    def test_multiple_labeled_years_flagged(self) -> None:
+        lines = [
+            "Reporting Year: 2022",
+            "U.S. Senate",
+            "Reporting Year: 2023",
+        ]
+        conflicts = _detect_conflicts(lines)
+        assert any(c.startswith(CONFLICT_YEAR_CONFLICT_PREFIX) for c in conflicts)
+        assert any("2022" in c and "2023" in c for c in conflicts)
+
+    def test_same_labeled_year_repeated_not_flagged(self) -> None:
+        lines = [
+            "Reporting Year: 2023",
+            "Annual Report for Calendar Year 2023",
+        ]
+        assert _detect_conflicts(lines) == ()
+
+    def test_multiple_distinct_member_names_flagged(self) -> None:
+        lines = [
+            "Member Name: Jane Doe",
+            "U.S. House of Representatives",
+            "Member Name: John Smith",
+        ]
+        conflicts = _detect_conflicts(lines)
+        assert CONFLICT_AMBIGUOUS_MEMBER_NAME in conflicts
+
+    def test_same_member_name_repeated_not_flagged(self) -> None:
+        lines = [
+            "Member Name: Jane Doe",
+            "Member Name: Jane Doe",
+        ]
+        assert _detect_conflicts(lines) == ()
+
+    def test_multiple_conflicts_all_reported(self) -> None:
+        lines = [
+            "U.S. House of Representatives",
+            "U.S. Senate",
+            "Member Name: Alice",
+            "Member Name: Bob",
+            "Reporting Year: 2021",
+            "Reporting Year: 2022",
+        ]
+        conflicts = _detect_conflicts(lines)
+        assert len(conflicts) == 3
+        assert CONFLICT_AMBIGUOUS_CHAMBER in conflicts
+        assert any(c.startswith(CONFLICT_YEAR_CONFLICT_PREFIX) for c in conflicts)
+        assert CONFLICT_AMBIGUOUS_MEMBER_NAME in conflicts
+
+    def test_returns_tuple(self) -> None:
+        assert isinstance(_detect_conflicts([]), tuple)
+        assert isinstance(_detect_conflicts(_HOUSE_ANNUAL), tuple)
+
+    def test_conflict_ordering_is_deterministic(self) -> None:
+        """When multiple conflicts are present, the order is stable:
+        chamber first, then year, then member name."""
+        lines = [
+            "U.S. House of Representatives",
+            "U.S. Senate",
+            "Member Name: Alice",
+            "Member Name: Bob",
+            "Reporting Year: 2021",
+            "Reporting Year: 2022",
+        ]
+        conflicts = _detect_conflicts(lines)
+        assert conflicts[0] == CONFLICT_AMBIGUOUS_CHAMBER
+        assert conflicts[1].startswith(CONFLICT_YEAR_CONFLICT_PREFIX)
+        assert conflicts[2] == CONFLICT_AMBIGUOUS_MEMBER_NAME
+
+
+# ── Conflict constants ───────────────────────────────────────────────────────
+
+
+class TestConflictConstants:
+    """Verify the module-level conflict constants are importable and match
+    the tokens produced by _detect_conflicts."""
+
+    def test_ambiguous_chamber_constant_matches_output(self) -> None:
+        lines = ["U.S. House of Representatives", "U.S. Senate"]
+        conflicts = _detect_conflicts(lines)
+        assert CONFLICT_AMBIGUOUS_CHAMBER in conflicts
+
+    def test_year_conflict_prefix_matches_output(self) -> None:
+        lines = ["Reporting Year: 2021", "Reporting Year: 2022"]
+        conflicts = _detect_conflicts(lines)
+        assert any(c.startswith(CONFLICT_YEAR_CONFLICT_PREFIX) for c in conflicts)
+
+    def test_ambiguous_member_name_constant_matches_output(self) -> None:
+        lines = ["Member Name: Alice", "Member Name: Bob"]
+        conflicts = _detect_conflicts(lines)
+        assert CONFLICT_AMBIGUOUS_MEMBER_NAME in conflicts

@@ -9,6 +9,7 @@ Covers:
   - cosponsors are fetched for every bill returned
   - CongressIngestInputs is built with the fetched data and empty vote lists
   - result is the return value of run_congress_load_runtime
+  - paginated / empty-page / no-cosponsor edge cases do not change the wiring
 """
 
 from __future__ import annotations
@@ -53,12 +54,12 @@ def _bill(bill_type: str = "hr", bill_number: int = 1) -> BillRecord:
     )
 
 
-def _cosponsor(bill_type: str = "hr", bill_number: int = 1) -> CosponsorRecord:
+def _cosponsor(bill_type: str = "hr", bill_number: int = 1, bioguide_id: str = "B000001") -> CosponsorRecord:
     return CosponsorRecord(
         congress=119,
         bill_type=bill_type,
         bill_number=bill_number,
-        bioguide_id="B000001",
+        bioguide_id=bioguide_id,
     )
 
 
@@ -156,6 +157,70 @@ class TestFetchCalls:
 
 
 # ---------------------------------------------------------------------------
+# Fetch ordering — members → committees → bills → cosponsors per bill
+# ---------------------------------------------------------------------------
+
+
+class TestFetchOrdering:
+    """Verify that the four fetch steps happen in the documented sequence."""
+
+    def _capture_call_order(self, bills=None):
+        conn = MagicMock()
+        settings = _settings()
+        bills = bills or []
+        call_log: list[str] = []
+
+        with (
+            patch("src.runtime.congress_live.CongressAPIClient", autospec=True) as MockClient,
+            patch("src.runtime.congress_live.run_congress_load_runtime", return_value=MagicMock()),
+        ):
+            instance = MockClient.return_value.__enter__.return_value
+
+            def _log_members(congress):
+                call_log.append("members")
+                return iter([])
+
+            def _log_committees(congress):
+                call_log.append("committees")
+                return iter([])
+
+            def _log_bills(congress):
+                call_log.append("bills")
+                return iter(bills)
+
+            def _log_cosponsors(congress, bill_type, bill_number):
+                call_log.append(f"cosponsors:{bill_type}:{bill_number}")
+                return iter([])
+
+            instance.iter_members.side_effect = _log_members
+            instance.iter_committees.side_effect = _log_committees
+            instance.iter_bills.side_effect = _log_bills
+            instance.iter_cosponsors.side_effect = _log_cosponsors
+
+            run_live_congress_load(conn, settings, congress=119)
+
+        return call_log
+
+    def test_members_before_committees(self):
+        log = self._capture_call_order()
+        assert log.index("members") < log.index("committees")
+
+    def test_committees_before_bills(self):
+        log = self._capture_call_order()
+        assert log.index("committees") < log.index("bills")
+
+    def test_bills_before_cosponsors(self):
+        log = self._capture_call_order(bills=[_bill("hr", 1)])
+        assert log.index("bills") < log.index("cosponsors:hr:1")
+
+    def test_cosponsor_order_matches_bill_order(self):
+        bills = [_bill("hr", 1), _bill("s", 2), _bill("hr", 3)]
+        log = self._capture_call_order(bills=bills)
+        cosponsor_entries = [e for e in log if e.startswith("cosponsors:")]
+        assert cosponsor_entries == ["cosponsors:hr:1", "cosponsors:s:2", "cosponsors:hr:3"]
+
+
+# ---------------------------------------------------------------------------
 # CongressIngestInputs wiring
 # ---------------------------------------------------------------------------
 
@@ -224,6 +289,113 @@ class TestIngestInputsWiring:
 
     def test_primary_sponsors_empty(self):
         inputs = self._capture_inputs()
+        assert inputs.primary_sponsors == []
+
+
+# ---------------------------------------------------------------------------
+# Paginated / edge-case wiring
+# ---------------------------------------------------------------------------
+
+
+class TestPaginatedEdgeCases:
+    """Ensure wiring holds for realistic paginated inputs and edge cases."""
+
+    def _run_and_capture(self, members=None, committees=None, bills=None, cosponsors_map=None):
+        """
+        cosponsors_map: dict[tuple[str, int], list[CosponsorRecord]] keyed by
+                        (bill_type, bill_number).
+        """
+        conn = MagicMock()
+        settings = _settings()
+        members = members or []
+        committees = committees or []
+        bills = bills or []
+        cosponsors_map = cosponsors_map or {}
+
+        captured: list = []
+
+        def _capture(c, inputs):
+            captured.append(inputs)
+            return MagicMock()
+
+        def _cosponsors_side_effect(congress, bill_type, bill_number):
+            return iter(cosponsors_map.get((bill_type, bill_number), []))
+
+        with (
+            patch("src.runtime.congress_live.CongressAPIClient", autospec=True) as MockClient,
+            patch("src.runtime.congress_live.run_congress_load_runtime", side_effect=_capture),
+        ):
+            instance = MockClient.return_value.__enter__.return_value
+            instance.iter_members.return_value = iter(members)
+            instance.iter_committees.return_value = iter(committees)
+            instance.iter_bills.return_value = iter(bills)
+            instance.iter_cosponsors.side_effect = _cosponsors_side_effect
+
+            run_live_congress_load(conn, settings, congress=119)
+
+        return captured[0]
+
+    def test_multiple_members_all_reach_inputs(self):
+        members = [_member("A000001"), _member("B000002"), _member("C000003")]
+        inputs = self._run_and_capture(members=members)
+        assert len(inputs.members) == 3
+        assert [m.bioguide_id for m in inputs.members] == ["A000001", "B000002", "C000003"]
+
+    def test_multiple_committees_all_reach_inputs(self):
+        committees = [_committee("hsag00"), _committee("hjud00"), _committee("hfin00")]
+        inputs = self._run_and_capture(committees=committees)
+        assert len(inputs.committees) == 3
+        codes = [c.committee_code for c in inputs.committees]
+        assert codes == ["hsag00", "hjud00", "hfin00"]
+
+    def test_multiple_bills_all_reach_inputs(self):
+        bills = [_bill("hr", 1), _bill("hr", 2), _bill("s", 3)]
+        inputs = self._run_and_capture(bills=bills)
+        assert len(inputs.bills) == 3
+
+    def test_bill_with_no_cosponsors_not_in_cosponsor_list(self):
+        bills = [_bill("hr", 1)]
+        # No cosponsors for (hr, 1) in the map — should yield empty.
+        inputs = self._run_and_capture(bills=bills, cosponsors_map={})
+        assert inputs.cosponsors == []
+
+    def test_mixed_cosponsor_coverage_across_bills(self):
+        bills = [_bill("hr", 1), _bill("s", 2), _bill("hr", 3)]
+        cs1 = _cosponsor("hr", 1, "X000001")
+        cs3a = _cosponsor("hr", 3, "X000003a")
+        cs3b = _cosponsor("hr", 3, "X000003b")
+        cmap = {
+            ("hr", 1): [cs1],
+            ("s", 2): [],
+            ("hr", 3): [cs3a, cs3b],
+        }
+        inputs = self._run_and_capture(bills=bills, cosponsors_map=cmap)
+        assert len(inputs.cosponsors) == 3
+        assert inputs.cosponsors[0].bioguide_id == "X000001"
+        assert inputs.cosponsors[1].bioguide_id == "X000003a"
+        assert inputs.cosponsors[2].bioguide_id == "X000003b"
+
+    def test_no_members_no_bills_empty_inputs(self):
+        inputs = self._run_and_capture()
+        assert inputs.members == []
+        assert inputs.committees == []
+        assert inputs.bills == []
+        assert inputs.cosponsors == []
+        assert inputs.vote_events == []
+        assert inputs.vote_casts == []
+
+    def test_all_deferred_fields_are_always_empty(self):
+        bills = [_bill("hr", 1)]
+        inputs = self._run_and_capture(
+            members=[_member()],
+            committees=[_committee()],
+            bills=bills,
+            cosponsors_map={("hr", 1): [_cosponsor()]},
+        )
+        assert inputs.vote_events == []
+        assert inputs.vote_casts == []
+        assert inputs.member_terms == []
+        assert inputs.memberships == []
         assert inputs.primary_sponsors == []
 
 

@@ -11,25 +11,17 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import dataclass
 
-# Section header tokens that bound disclosure sections (lower-cased).
-# Kept in sync with the token set in text_extract._KNOWN_HEADERS.
-SECTION_HEADERS: frozenset[str] = frozenset(
-    {
-        "schedule a",
-        "schedule b",
-        "schedule c",
-        "schedule d",
-        "part i",
-        "part ii",
-        "part iii",
-        "part iv",
-        "part v",
-        "part vi",
-        "part vii",
-        "part viii",
-        "part ix",
-    }
-)
+from src.parse.disclosures.text_tokens import SECTION_HEADERS
+
+__all__ = [
+    "SECTION_HEADERS",
+    "PageLines",
+    "split_page",
+    "pages_to_line_lists",
+    "flatten_lines",
+    "drop_empty",
+    "slice_section",
+]
 
 
 @dataclass(frozen=True)

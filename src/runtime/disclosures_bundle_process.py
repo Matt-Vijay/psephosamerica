@@ -5,12 +5,17 @@ Entry point: run_disclosures_bundle_process.
 Flow:
   1. validate bundle       — check bundle carries an 'artifacts' iterable
   2. stage bundle          — write artifact rows into DB + local_root
-  3. resolve bundle files  — SHA-256 integrity check for each staged artifact
-  4. build parse inputs    — construct bundle-backed IndexMatchProvider from
-                             staged bundle index rows (no live fetches)
-  5. parse                 — run_disclosure_parse_runtime with bundle provider
-  6. transform             — transform_parse_sessions
-  7. load                  — run_disclosures_load_runtime
+  3. parse inputs          — build DisclosureParseInput per staged artifact:
+                             read bytes from disk + SHA-256 integrity check
+                             (when local_root is supplied and parse_inputs is
+                             None).  When explicit parse_inputs are provided
+                             and local_root is set, SHA-256 is still verified
+                             for every bundle entry before parse begins.
+  4. parse                 — run_disclosure_parse_runtime with bundle-backed
+                             IndexMatchProvider (resolves index rows from
+                             bundle; no live fetches)
+  5. transform             — transform_parse_sessions
+  6. load                  — run_disclosures_load_runtime
 """
 from __future__ import annotations
 
@@ -23,7 +28,7 @@ from src.runtime.disclosures import (
     DisclosuresLoadRuntimeResult,
     run_disclosures_load_runtime,
 )
-from src.runtime.disclosures_bundle_files import verify_entry_sha256
+from src.runtime.disclosures_bundle_files import read_and_verify_entry, verify_entry_sha256
 from src.runtime.disclosures_index_rows import ArtifactIndexMatch
 from src.runtime.disclosures_parse import (
     DisclosureParseRuntimeResult,
@@ -33,6 +38,7 @@ from src.runtime.disclosures_parse_inputs import DisclosureParseInput
 from src.runtime.disclosures_stage import stage_disclosures_bundle
 from src.runtime.disclosures_transform import (
     BatchTransformResult,
+    SkippedSession,
     transform_parse_sessions,
 )
 
@@ -46,15 +52,21 @@ from src.runtime.disclosures_transform import (
 class DisclosuresBundleProcessResult:
     """Structured outcome of the full bundle-process pipeline run.
 
-    stage_result    — artifact staging outcome (rows written to DB + local_root).
-    parse_result    — raw counts and session objects from the parse step.
-    transform_count — number of DisclosureTransformResult objects produced.
-    load_result     — provenance-tracked load outcome including LoadSummary.
+    stage_result            — artifact staging outcome (rows written to DB + local_root).
+    parse_result            — raw counts and session objects from the parse step.
+    transform_count         — number of DisclosureTransformResult objects produced.
+    skipped_transform_count — parse-succeeded sessions that yielded no transform
+                              (no ParseResult, or missing bioguide_id after resolution).
+    skipped_sessions        — explicit SkippedSession records with per-session
+                              reason codes; length equals skipped_transform_count.
+    load_result             — provenance-tracked load outcome including LoadSummary.
     """
 
     stage_result: Any  # DisclosureStagingResult
     parse_result: DisclosureParseRuntimeResult
     transform_count: int
+    skipped_transform_count: int
+    skipped_sessions: tuple[SkippedSession, ...]
     load_result: DisclosuresLoadRuntimeResult
 
 
@@ -69,6 +81,53 @@ def _validate_bundle(bundle: Any) -> None:
         raise TypeError(
             f"bundle must have an 'artifacts' attribute, got {type(bundle).__name__}"
         )
+
+
+# ---------------------------------------------------------------------------
+# Parse input construction from staged bundle
+# ---------------------------------------------------------------------------
+
+
+def _build_parse_inputs(
+    bundle: Any,
+    stage_result: Any,
+    local_root: Path,
+) -> list[DisclosureParseInput]:
+    """Build one DisclosureParseInput per staged artifact.
+
+    For each artifact row in stage_result.artifact_rows:
+    - locates the matching bundle entry by source_record_id
+    - reads artifact bytes from disk via read_and_verify_entry (SHA-256 check
+      is performed atomically with the byte read)
+    - constructs a DisclosureParseInput carrying the staged DB row, verified
+      bytes, chamber, and source_record_id
+
+    Artifact rows with no matching bundle entry are silently skipped (this
+    can only happen if staging wrote rows not present in the bundle, which
+    is not expected under normal operation).
+
+    Raises Sha256Mismatch  if any on-disk digest does not match the bundle.
+    Raises FileNotFoundError if a staged artifact file is absent.
+    """
+    entry_by_id: dict[str, Any] = {
+        entry.source_record_id: entry for entry in bundle.artifacts
+    }
+    inputs: list[DisclosureParseInput] = []
+    for row in stage_result.artifact_rows:
+        src_id = row.get("source_record_id", "")
+        entry = entry_by_id.get(src_id)
+        if entry is None:
+            continue
+        local_bytes = read_and_verify_entry(entry, local_root)
+        inputs.append(
+            DisclosureParseInput(
+                artifact_row=row,
+                local_bytes=local_bytes,
+                chamber=row["chamber"],
+                source_record_id=src_id,
+            )
+        )
+    return inputs
 
 
 # ---------------------------------------------------------------------------
@@ -136,18 +195,26 @@ def run_disclosures_bundle_process(
     """Stage a local disclosure bundle, parse, transform, and load.
 
     Steps:
-      1. Validate — bundle must expose an 'artifacts' attribute.
-      2. Stage    — write each artifact into the DB source_artifact table and
-                    (when local_root is supplied) to the local filesystem.
-      3. Resolve  — verify SHA-256 integrity for each bundle artifact on disk.
-                    Skipped when local_root is None.
-      4. Provide  — build a bundle-backed IndexMatchProvider so the parse step
-                    resolves index rows exclusively from this bundle.
-      5. Parse    — run a parse_run lifecycle over every staged artifact.
-                    Per-artifact failures are absorbed; the batch continues.
-      6. Transform — convert each succeeded ParseSessionResult into a
-                     DisclosureTransformResult ready for the load layer.
-      7. Load     — execute the provenance-tracked FK-phased disclosure load.
+      1. Validate    — bundle must expose an 'artifacts' attribute.
+      2. Stage       — write each artifact into the DB source_artifact table
+                       and (when local_root is supplied) to the local
+                       filesystem.
+      3. Parse inputs — build DisclosureParseInput objects for the parse step.
+                        When parse_inputs is None and local_root is provided,
+                        inputs are auto-built from staged artifact rows by
+                        reading each artifact from disk and verifying its
+                        SHA-256 digest (via read_and_verify_entry).
+                        When parse_inputs is explicitly provided and local_root
+                        is also set, SHA-256 is verified for every bundle entry
+                        before parsing begins.
+      4. Parse       — run a parse_run lifecycle over every staged artifact
+                       using a bundle-backed IndexMatchProvider (resolves
+                       index rows from the bundle; no live index fetches).
+                       Per-artifact failures are absorbed; the batch continues.
+      5. Transform   — convert each succeeded ParseSessionResult into a
+                       DisclosureTransformResult ready for the load layer.
+      6. Load        — execute the provenance-tracked FK-phased disclosure
+                       load.
 
     Args:
         conn:         Open psycopg connection (or compatible test mock).
@@ -156,14 +223,15 @@ def run_disclosures_bundle_process(
                       filing_year, source_record_id, index_row, sha256,
                       and storage_uri fields.
         local_root:   Filesystem root for artifact storage.  When supplied,
-                      artifacts are written here during staging and their
-                      SHA-256 digests are verified before parsing begins.
+                      artifacts are expected under local_root / storage_uri.
+                      SHA-256 integrity is always checked when local_root is
+                      provided.
         parse_inputs: Explicit parse inputs passed directly to
-                      run_disclosure_parse_runtime, bypassing the DB artifact
-                      query.  When None the runtime queries the DB for
-                      unparsed artifacts.  Useful for deterministic E2E tests
-                      and local oracle runs where artifact rows are known in
-                      advance.
+                      run_disclosure_parse_runtime, bypassing the auto-build
+                      from staged artifacts.  When None and local_root is
+                      provided, inputs are built automatically from staged
+                      artifact rows.  When None and local_root is also None,
+                      the runtime queries the DB for unparsed artifacts.
     """
     # 1. validate
     _validate_bundle(bundle)
@@ -171,8 +239,14 @@ def run_disclosures_bundle_process(
     # 2. stage
     stage_result = stage_disclosures_bundle(conn, bundle, local_root=local_root)
 
-    # 3. resolve bundle files — SHA-256 integrity before parse begins
-    if local_root is not None:
+    # 3. parse inputs — build inputs and/or verify SHA-256 integrity
+    if parse_inputs is None:
+        if local_root is not None:
+            # auto-build: read bytes from disk + verify SHA-256 atomically
+            parse_inputs = _build_parse_inputs(bundle, stage_result, local_root)
+        # else: parse_inputs stays None → parse runtime queries DB for unparsed rows
+    elif local_root is not None:
+        # explicit inputs provided; still verify every bundle entry's SHA-256
         for entry in bundle.artifacts:
             verify_entry_sha256(entry, local_root)
 
@@ -199,5 +273,7 @@ def run_disclosures_bundle_process(
         stage_result=stage_result,
         parse_result=parse_result,
         transform_count=len(transform_result.transformed),
+        skipped_transform_count=len(transform_result.skipped),
+        skipped_sessions=tuple(transform_result.skipped),
         load_result=load_result,
     )

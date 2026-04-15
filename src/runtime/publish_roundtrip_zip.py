@@ -127,8 +127,8 @@ def _bundle_from_payload(published: ZipFeedPayload) -> FederalBundle | None:
 
 
 def _compare_payloads(
-    reassembled: ZipFeedPayload,
     published: ZipFeedPayload,
+    reassembled: ZipFeedPayload,
     path: str,
 ) -> list[PublishRoundtripIssue]:
     """Return issues where DB-sourced fields in *reassembled* differ from *published*.
@@ -278,7 +278,7 @@ def verify_published_zip_roundtrip(
 
         reassembled = assemble_zip_feed(bundle, score_rows, evidence_ids, snapshot_date)
 
-        issues.extend(_compare_payloads(reassembled, published, path))
+        issues.extend(_compare_payloads(published, reassembled, path))
 
     return PublishRoundtripStageResult(
         stage=_STAGE,

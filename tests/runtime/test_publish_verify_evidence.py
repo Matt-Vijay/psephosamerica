@@ -196,6 +196,33 @@ class TestVerifyLocalEvidenceCardsBadJson:
 
 
 # ---------------------------------------------------------------------------
+# Path confinement
+# ---------------------------------------------------------------------------
+
+
+class TestVerifyLocalEvidenceCardsPathConfinement:
+    def test_dotdot_path_is_error(self, tmp_path: Path) -> None:
+        """Entry with '..' in path should be flagged, not followed."""
+        entries = [
+            ManifestEntry(
+                path="evidence/../../etc/passwd.json",
+                sha256="a" * 64,
+                size_bytes=100,
+            )
+        ]
+        manifest = SnapshotManifest(
+            snapshot_id=SNAPSHOT_ID,
+            created_at=datetime(2026, 4, 14, 8, 0, 0),
+            entries=entries,
+            total_files=1,
+            total_bytes=100,
+        )
+        result = verify_local_evidence_cards(tmp_path, manifest)
+        assert result.ok is False
+        assert any("escapes" in i.message for i in result.issues)
+
+
+# ---------------------------------------------------------------------------
 # ID mismatch
 # ---------------------------------------------------------------------------
 

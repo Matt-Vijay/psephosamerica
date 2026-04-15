@@ -21,7 +21,11 @@ from src.runtime.disclosures_parse import (
     DisclosureParseRuntimeResult,
     run_disclosure_parse_runtime,
 )
-from src.runtime.disclosures_transform import transform_parse_sessions
+from src.runtime.disclosures_transform import (
+    BatchTransformResult,
+    SkippedSession,
+    transform_parse_sessions,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -37,12 +41,15 @@ class DisclosuresParseLoadResult:
     transform_count         — number of DisclosureTransformResult objects produced.
     skipped_transform_count — parse-succeeded sessions that yielded no transform
                               (no ParseResult, or missing bioguide_id after resolution).
+    skipped_sessions        — explicit SkippedSession records with per-session
+                              reason codes; length equals skipped_transform_count.
     load_result             — provenance-tracked load outcome including LoadSummary.
     """
 
     parse_result: DisclosureParseRuntimeResult
     transform_count: int
     skipped_transform_count: int
+    skipped_sessions: tuple[SkippedSession, ...]
     load_result: DisclosuresLoadRuntimeResult
 
 
@@ -86,13 +93,14 @@ def run_disclosures_parse_load_runtime(
         parser_version=parser_version,
     )
 
-    transform_results = transform_parse_sessions(conn, parse_result.parse_sessions)
+    batch: BatchTransformResult = transform_parse_sessions(conn, parse_result.parse_sessions)
 
-    load_result = run_disclosures_load_runtime(conn, transform_results)
+    load_result = run_disclosures_load_runtime(conn, batch.transformed)
 
     return DisclosuresParseLoadResult(
         parse_result=parse_result,
-        transform_count=len(transform_results),
-        skipped_transform_count=parse_result.succeeded_count - len(transform_results),
+        transform_count=len(batch.transformed),
+        skipped_transform_count=len(batch.skipped),
+        skipped_sessions=tuple(batch.skipped),
         load_result=load_result,
     )

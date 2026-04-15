@@ -78,5 +78,5 @@ def fetch_senate_votes(
 def _get(url: str, client: httpx.Client | None) -> str:
     if client is not None:
         return client.get(url).raise_for_status().text
-    with httpx.Client() as c:
+    with httpx.Client(timeout=30.0) as c:
         return c.get(url).raise_for_status().text

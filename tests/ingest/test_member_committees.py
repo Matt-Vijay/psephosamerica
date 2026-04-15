@@ -270,3 +270,173 @@ class TestDateParsing:
         item["congress"] = "118"
         result = committee_membership_specs_from_detail(_detail(item), member)
         assert result[0].congress == 118
+
+
+# ---------------------------------------------------------------------------
+# isCurrent boolean coercion
+# ---------------------------------------------------------------------------
+
+
+class TestIsCurrentCoercion:
+    """Congress.gov returns a JSON boolean; some intermediate paths may
+    serialize it as a string.  Both must produce the correct bool."""
+
+    def test_true_boolean(self, member: MemberRecord) -> None:
+        result = committee_membership_specs_from_detail(
+            _detail(_committee_item(is_current=True)), member
+        )
+        assert result[0].is_current is True
+
+    def test_false_boolean(self, member: MemberRecord) -> None:
+        result = committee_membership_specs_from_detail(
+            _detail(_committee_item(is_current=False)), member
+        )
+        assert result[0].is_current is False
+
+    def test_string_true(self, member: MemberRecord) -> None:
+        item = _committee_item()
+        item["isCurrent"] = "true"
+        result = committee_membership_specs_from_detail(_detail(item), member)
+        assert result[0].is_current is True
+
+    def test_string_false(self, member: MemberRecord) -> None:
+        """String 'false' must not be coerced to True via bool()."""
+        item = _committee_item()
+        item["isCurrent"] = "false"
+        result = committee_membership_specs_from_detail(_detail(item), member)
+        assert result[0].is_current is False
+
+    def test_string_True_capitalised(self, member: MemberRecord) -> None:
+        item = _committee_item()
+        item["isCurrent"] = "True"
+        result = committee_membership_specs_from_detail(_detail(item), member)
+        assert result[0].is_current is True
+
+    def test_string_False_capitalised(self, member: MemberRecord) -> None:
+        item = _committee_item()
+        item["isCurrent"] = "False"
+        result = committee_membership_specs_from_detail(_detail(item), member)
+        assert result[0].is_current is False
+
+    def test_missing_key_defaults_to_false(self, member: MemberRecord) -> None:
+        item = _committee_item()
+        del item["isCurrent"]
+        result = committee_membership_specs_from_detail(_detail(item), member)
+        assert result[0].is_current is False
+
+
+# ---------------------------------------------------------------------------
+# committees container type robustness
+# ---------------------------------------------------------------------------
+
+
+class TestCommitteesContainerRobustness:
+    def test_committees_as_list_returns_empty(self, member: MemberRecord) -> None:
+        detail = {"committees": [_committee_item()]}
+        assert committee_membership_specs_from_detail(detail, member) == []
+
+    def test_committees_item_as_dict_returns_empty(self, member: MemberRecord) -> None:
+        # "item" is a single dict rather than a list — non-standard, should not crash
+        detail = {"committees": {"item": _committee_item()}}
+        assert committee_membership_specs_from_detail(detail, member) == []
+
+    def test_committees_none_returns_empty(self, member: MemberRecord) -> None:
+        assert committee_membership_specs_from_detail({"committees": None}, member) == []
+
+    def test_committees_key_absent_returns_empty(self, member: MemberRecord) -> None:
+        assert committee_membership_specs_from_detail({}, member) == []
+
+
+# ---------------------------------------------------------------------------
+# Realistic full-detail payload — Congress.gov API shape
+# ---------------------------------------------------------------------------
+
+# Inner member object for a senator with two committee memberships in different
+# congress sessions; one closed (Ranking Member, 118th), one active (Member, 119th).
+_WARREN_COMMITTEES_DETAIL: dict = {
+    "bioguideId": "W000817",
+    "firstName": "Elizabeth",
+    "lastName": "Warren",
+    "committees": {
+        "item": [
+            {
+                "committee": {
+                    "name": "Committee on Banking, Housing, and Urban Affairs",
+                    "systemCode": "ssbk00",
+                    "url": "https://api.congress.gov/v3/committee/senate/ssbk00",
+                },
+                "congress": 119,
+                "endDate": None,
+                "isCurrent": True,
+                "rank": 2,
+                "role": "Member",
+                "startDate": "2025-01-15",
+            },
+            {
+                "committee": {
+                    "name": "Special Committee on Aging",
+                    "systemCode": "spag00",
+                    "url": "https://api.congress.gov/v3/committee/senate/spag00",
+                },
+                "congress": 118,
+                "endDate": "2025-01-03",
+                "isCurrent": False,
+                "rank": 1,
+                "role": "Ranking Member",
+                "startDate": "2023-01-12",
+            },
+        ]
+    },
+}
+
+_WARREN = MemberRecord(
+    bioguide_id="W000817",
+    first_name="Elizabeth",
+    last_name="Warren",
+    full_name="Elizabeth Warren",
+    chamber="senate",
+    state="MA",
+    is_current=True,
+)
+
+
+class TestRealisticSenatorCommittees:
+    def test_two_memberships_returned(self) -> None:
+        result = committee_membership_specs_from_detail(_WARREN_COMMITTEES_DETAIL, _WARREN)
+        assert len(result) == 2
+
+    def test_bioguide_ids_from_member(self) -> None:
+        result = committee_membership_specs_from_detail(_WARREN_COMMITTEES_DETAIL, _WARREN)
+        assert all(r.bioguide_id == "W000817" for r in result)
+
+    def test_committee_codes_extracted(self) -> None:
+        result = committee_membership_specs_from_detail(_WARREN_COMMITTEES_DETAIL, _WARREN)
+        codes = {r.committee_code for r in result}
+        assert codes == {"ssbk00", "spag00"}
+
+    def test_active_membership_is_current_no_end_date(self) -> None:
+        result = committee_membership_specs_from_detail(_WARREN_COMMITTEES_DETAIL, _WARREN)
+        active = next(r for r in result if r.committee_code == "ssbk00")
+        assert active.is_current is True
+        assert active.end_date is None
+
+    def test_closed_membership_not_current_has_end_date(self) -> None:
+        result = committee_membership_specs_from_detail(_WARREN_COMMITTEES_DETAIL, _WARREN)
+        closed = next(r for r in result if r.committee_code == "spag00")
+        assert closed.is_current is False
+        assert closed.end_date == datetime.date(2025, 1, 3)
+
+    def test_ranking_member_role_normalised(self) -> None:
+        result = committee_membership_specs_from_detail(_WARREN_COMMITTEES_DETAIL, _WARREN)
+        closed = next(r for r in result if r.committee_code == "spag00")
+        assert closed.role == "ranking_member"
+
+    def test_source_url_from_committee_node(self) -> None:
+        result = committee_membership_specs_from_detail(_WARREN_COMMITTEES_DETAIL, _WARREN)
+        active = next(r for r in result if r.committee_code == "ssbk00")
+        assert "ssbk00" in (active.source_url or "")
+
+    def test_rank_field_does_not_appear_in_spec(self) -> None:
+        """rank is an API-side display field; it must not bleed into the spec."""
+        result = committee_membership_specs_from_detail(_WARREN_COMMITTEES_DETAIL, _WARREN)
+        assert not hasattr(result[0], "rank")

@@ -6,6 +6,7 @@ ZIP feeds are optional.  When the manifest contains no zip entries the
 function returns an ok stage result with zero items checked.
 
 For each zip entry that *is* present the verifier checks:
+  - the entry path is confined to the publish root
   - the file loads as valid JSON and parses as ZipFeedPayload
   - zip_code in the payload matches the filename
   - members field is a list (schema guarantees this; the check is explicit)
@@ -17,13 +18,21 @@ from pathlib import Path
 from src.export.manifest import SnapshotManifest
 from src.runtime.inspect import load_local_zip_feed
 from src.runtime.publish_verify_types import (
+    IssueSeverity,
     PublishVerifyIssue,
     PublishVerifyStageResult,
+    path_is_confined,
 )
 
 _STAGE = "zip"
 _ZIP_PREFIX = "zip/"
 _ZIP_SUFFIX = ".json"
+
+
+def _issue(
+    message: str, *, path: str | None = None, severity: IssueSeverity = "error"
+) -> PublishVerifyIssue:
+    return PublishVerifyIssue(stage=_STAGE, message=message, severity=severity, path=path)
 
 
 def _zip_code_from_path(path: str) -> str | None:
@@ -66,50 +75,33 @@ def verify_local_zip_feeds(
     issues: list[PublishVerifyIssue] = []
 
     for path, zip_code in zip_entries:
+        if not path_is_confined(path):
+            issues.append(_issue("entry path escapes publish root", path=path))
+            continue
+
         try:
             feed = load_local_zip_feed(zip_code, snapshot_root=root)
         except FileNotFoundError:
-            issues.append(
-                PublishVerifyIssue(
-                    stage=_STAGE,
-                    message=f"zip feed file missing: {path}",
-                    severity="error",
-                    path=path,
-                )
-            )
+            issues.append(_issue(f"zip feed file missing: {path}", path=path))
             continue
         except Exception as exc:
             issues.append(
-                PublishVerifyIssue(
-                    stage=_STAGE,
-                    message=f"zip feed failed to load ({path}): {exc}",
-                    severity="error",
-                    path=path,
-                )
+                _issue(f"zip feed failed to load ({path}): {exc}", path=path)
             )
             continue
 
         if feed.zip_code != zip_code:
             issues.append(
-                PublishVerifyIssue(
-                    stage=_STAGE,
-                    message=(
-                        f"zip_code mismatch in {path}: "
-                        f"filename={zip_code!r}, payload={feed.zip_code!r}"
-                    ),
-                    severity="error",
+                _issue(
+                    f"zip_code mismatch in {path}: "
+                    f"filename={zip_code!r}, payload={feed.zip_code!r}",
                     path=path,
                 )
             )
 
         if not isinstance(feed.members, list):
             issues.append(
-                PublishVerifyIssue(
-                    stage=_STAGE,
-                    message=f"members field is not a list in {path}",
-                    severity="error",
-                    path=path,
-                )
+                _issue(f"members field is not a list in {path}", path=path)
             )
 
     return PublishVerifyStageResult(

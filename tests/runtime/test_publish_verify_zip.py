@@ -305,6 +305,30 @@ class TestPartialFailure:
 
 
 # ---------------------------------------------------------------------------
+# Path confinement
+# ---------------------------------------------------------------------------
+
+
+class TestPathConfinement:
+    def test_dotdot_path_is_error(self, tmp_path: Path) -> None:
+        entry = ManifestEntry(
+            path="zip/../../etc/passwd.json",
+            sha256="a" * 64,
+            size_bytes=50,
+        )
+        manifest = SnapshotManifest(
+            snapshot_id=_SNAPSHOT_ID,
+            created_at=datetime(2026, 4, 14, 0, 0, 0),
+            entries=[entry],
+            total_files=1,
+            total_bytes=50,
+        )
+        result = verify_local_zip_feeds(tmp_path, manifest)
+        assert result.ok is False
+        assert any("escapes" in i.message for i in result.issues)
+
+
+# ---------------------------------------------------------------------------
 # zip_code mismatch
 # ---------------------------------------------------------------------------
 

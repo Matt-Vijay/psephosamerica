@@ -9,6 +9,7 @@ from src.runtime.publish_verify_types import (
     PublishVerifyIssue,
     PublishVerifyResult,
     PublishVerifyStageResult,
+    path_is_confined,
 )
 
 
@@ -210,3 +211,31 @@ class TestPublishStages:
 
     def test_is_tuple(self) -> None:
         assert isinstance(PUBLISH_STAGES, tuple)
+
+
+# ---------------------------------------------------------------------------
+# path_is_confined
+# ---------------------------------------------------------------------------
+
+
+class TestPathIsConfined:
+    def test_simple_relative_path(self) -> None:
+        assert path_is_confined("members/nancy-pelosi.json") is True
+
+    def test_nested_relative_path(self) -> None:
+        assert path_is_confined("evidence/ec-001.json") is True
+
+    def test_dotdot_rejected(self) -> None:
+        assert path_is_confined("../etc/passwd") is False
+
+    def test_embedded_dotdot_rejected(self) -> None:
+        assert path_is_confined("members/../../etc/passwd") is False
+
+    def test_absolute_path_rejected(self) -> None:
+        assert path_is_confined("/etc/passwd") is False
+
+    def test_bare_filename(self) -> None:
+        assert path_is_confined("manifest.json") is True
+
+    def test_empty_string(self) -> None:
+        assert path_is_confined("") is True

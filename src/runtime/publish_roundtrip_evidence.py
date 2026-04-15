@@ -179,7 +179,7 @@ def verify_published_evidence_roundtrip(
         # Step 2a: Load the published payload from disk ───────────────────────
         try:
             published = load_evidence_card(root, evidence_card_id)
-        except (FileNotFoundError, ValueError) as exc:
+        except Exception as exc:
             issues.append(
                 _issue(
                     f"cannot load published evidence card '{evidence_card_id}': {exc}",

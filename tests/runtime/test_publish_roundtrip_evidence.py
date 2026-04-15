@@ -292,6 +292,24 @@ class TestMissingPublishedFile:
 # ---------------------------------------------------------------------------
 
 
+class TestCorruptPublishedFile:
+    def test_corrupt_schema_is_typed_error(self, tmp_path: Path) -> None:
+        """Published evidence card with invalid schema becomes a typed issue."""
+        dest = tmp_path / "evidence" / "ec-corrupt.json"
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_bytes(b'{"evidence_card_id": "ec-corrupt"}')  # valid JSON, invalid schema
+
+        manifest = _manifest_with_ids("ec-corrupt")
+
+        with patch(_PATCH_TARGET, return_value=[]):
+            result = verify_published_evidence_roundtrip(object(), tmp_path, manifest)
+
+        assert result.ok is False
+        assert result.checked == 1
+        assert result.error_count == 1
+        assert any("ec-corrupt" in i.message for i in result.issues)
+
+
 class TestMissingDbRow:
     def test_id_in_manifest_not_in_db_reports_error(self, tmp_path: Path) -> None:
         row = _db_row("ec-001")

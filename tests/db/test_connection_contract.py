@@ -15,7 +15,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from src.db.bootstrap import apply_sql, read_migration_sql, read_schema_sql
-from src.db.connection import build_connection_kwargs
+from src.db.connection import DBSettings, build_connection_kwargs
 from src.db.repositories import execute_many, execute_one, fetch_all
 
 # ---------------------------------------------------------------------------
@@ -35,6 +35,48 @@ def _make_settings(**overrides):
     )
     defaults.update(overrides)
     return SimpleNamespace(**defaults)
+
+
+# ---------------------------------------------------------------------------
+# connection.py — DBSettings Protocol
+# ---------------------------------------------------------------------------
+
+
+class TestDBSettingsProtocol:
+    """Verify the DBSettings Protocol is correctly defined and checkable at runtime."""
+
+    def test_simple_namespace_satisfies_protocol(self):
+        settings = _make_settings()
+        assert isinstance(settings, DBSettings)
+
+    def test_missing_attribute_fails_protocol_check(self):
+        # Only has db_host — missing the other four required attributes
+        incomplete = SimpleNamespace(db_host="localhost")
+        assert not isinstance(incomplete, DBSettings)
+
+    def test_all_required_attributes_present(self):
+        annotations = DBSettings.__protocol_attrs__ if hasattr(DBSettings, "__protocol_attrs__") else set(
+            k for k in DBSettings.__annotations__
+        )
+        expected = {"db_host", "db_port", "db_name", "db_user", "db_password"}
+        assert expected == set(annotations)
+
+    def test_custom_class_satisfies_protocol(self):
+        class MySettings:
+            db_host = "host"
+            db_port = 5432
+            db_name = "db"
+            db_user = "user"
+            db_password = "pw"
+
+        assert isinstance(MySettings(), DBSettings)
+
+    def test_protocol_is_runtime_checkable(self):
+        # runtime_checkable protocols support isinstance checks without raising TypeError
+        try:
+            isinstance(object(), DBSettings)
+        except TypeError:
+            pytest.fail("DBSettings is not @runtime_checkable")
 
 
 # ---------------------------------------------------------------------------

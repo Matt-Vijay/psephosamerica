@@ -2,6 +2,14 @@
 
 Wraps CongressAPIClient into explicit list-oriented fetch functions.
 No DB writes; callers own persistence.
+
+Fetch ordering contract
+-----------------------
+Every helper drains the client iterator into a ``list`` before returning, so
+callers receive a fully-materialized, stable sequence.  ``fetch_cosponsors_for_bills``
+iterates bills in the exact order supplied and appends cosponsors in that same
+order; bills that return zero cosponsors contribute nothing to the output list
+but do not interrupt the iteration.
 """
 
 from __future__ import annotations
@@ -50,6 +58,8 @@ def fetch_cosponsors_for_bills(
 
     Iterates each bill independently; results are concatenated in input order.
     Bills with zero cosponsors contribute nothing to the output list.
+    All pages for each bill are consumed before moving to the next bill,
+    so the result is deterministic regardless of pagination depth.
     """
     results: list[CosponsorRecord] = []
     for bill in bills:

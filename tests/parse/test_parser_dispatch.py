@@ -187,3 +187,71 @@ class TestEmptyPages:
             parse_disclosure_pages([], filing)
 
         mock_parse.assert_called_once_with([], filing)
+
+
+class TestDispatchDeterminism:
+    """Verify that every valid (chamber, filing_type) pair routes exactly once
+    and that the routing key is based on enum identity, not string values."""
+
+    @pytest.mark.parametrize(
+        "chamber,filing_type,expected_patch",
+        [
+            (
+                Chamber.HOUSE,
+                FilingType.PTR,
+                "src.parse.disclosures.parser_dispatch.house_ptr_text.parse_house_ptr",
+            ),
+            (
+                Chamber.HOUSE,
+                FilingType.ANNUAL,
+                "src.parse.disclosures.parser_dispatch.house_annual_text.parse_house_annual",
+            ),
+            (
+                Chamber.SENATE,
+                FilingType.PTR,
+                "src.parse.disclosures.parser_dispatch.senate_text.parse_senate_text",
+            ),
+            (
+                Chamber.SENATE,
+                FilingType.ANNUAL,
+                "src.parse.disclosures.parser_dispatch.senate_text.parse_senate_text",
+            ),
+        ],
+    )
+    def test_each_combo_dispatches_exactly_once(
+        self,
+        chamber: Chamber,
+        filing_type: FilingType,
+        expected_patch: str,
+    ) -> None:
+        filing = _filing(chamber=chamber, filing_type=filing_type)
+        with patch(expected_patch, return_value=_result("mock")) as mock_fn:
+            parse_disclosure_pages(["page"], filing)
+        assert mock_fn.call_count == 1
+
+    def test_all_four_combos_are_registered(self) -> None:
+        """All valid (chamber × filing_type) pairs dispatch without ValueError."""
+        combos = [
+            (Chamber.HOUSE, FilingType.PTR),
+            (Chamber.HOUSE, FilingType.ANNUAL),
+            (Chamber.SENATE, FilingType.PTR),
+            (Chamber.SENATE, FilingType.ANNUAL),
+        ]
+        for chamber, filing_type in combos:
+            filing = _filing(chamber=chamber, filing_type=filing_type)
+            with (
+                patch(
+                    "src.parse.disclosures.parser_dispatch.house_ptr_text.parse_house_ptr",
+                    return_value=_result("x"),
+                ),
+                patch(
+                    "src.parse.disclosures.parser_dispatch.house_annual_text.parse_house_annual",
+                    return_value=_result("x"),
+                ),
+                patch(
+                    "src.parse.disclosures.parser_dispatch.senate_text.parse_senate_text",
+                    return_value=_result("x"),
+                ),
+            ):
+                # Should not raise
+                parse_disclosure_pages(["page"], filing)

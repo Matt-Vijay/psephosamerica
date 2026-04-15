@@ -18,8 +18,15 @@ class ParserMeta:
     """Metadata emitted by the parser alongside extracted line items.
 
     parser_name identifies which parser produced this result (e.g.
-    "senate_text", "house_ocr").  parse_warnings carries non-fatal
-    extraction issues that should be logged but do not block loading.
+    "senate_text", "house_ocr").
+
+    parse_warnings carries non-fatal extraction issues that should be
+    logged but do not block loading.  Each warning is a short
+    human-readable string describing an extraction anomaly (e.g.
+    "low confidence on page 3", "missing section header").  Warnings
+    are informational — they do not affect transform or load behaviour.
+    Review-blocking concerns are surfaced as ReviewQueuePayload entries
+    by the transform layer, not as parse warnings.
     """
 
     parser_name: str

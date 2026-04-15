@@ -336,3 +336,70 @@ class TestResolveArtifactMembers:
         results = resolve_artifact_members([art, art], [idx, idx], _LOOKUP)
         assert all(isinstance(r, Resolved) for r in results)
         assert results[0].bioguide_id == results[1].bioguide_id
+
+
+# ---------------------------------------------------------------------------
+# Wrong-chamber / malformed-row explicit cases — distinct typed errors
+# ---------------------------------------------------------------------------
+
+
+class TestWrongChamberMalformedRows:
+    """Wrong-chamber and malformed-row cases in the matches layer must raise
+    typed errors (ValueError / KeyError) rather than producing silent NoMatch.
+
+    Ambiguous vs NoMatch vs data-integrity failures are distinct outcomes.
+    """
+
+    def test_wrong_chamber_string_raises_value_error(self):
+        art = {**_artifact("house"), "chamber": "congress"}
+        idx = _house_index("Pelosi", "Nancy", "CA11")
+        with pytest.raises(ValueError):
+            resolve_artifact_member(art, idx, _LOOKUP)
+
+    def test_missing_chamber_key_raises_key_error(self):
+        art = {"source_record_id": "doc-001"}  # no 'chamber' key
+        idx = _house_index("Pelosi", "Nancy", "CA11")
+        with pytest.raises(KeyError):
+            resolve_artifact_member(art, idx, _LOOKUP)
+
+    def test_missing_index_last_name_raises_key_error(self):
+        art = _artifact("house")
+        idx: dict = {"first_name": "Nancy", "state_dst": "CA11"}  # no last_name
+        with pytest.raises(KeyError):
+            resolve_artifact_member(art, idx, _LOOKUP)
+
+    def test_missing_index_state_dst_raises_key_error(self):
+        art = _artifact("house")
+        idx: dict = {"last_name": "Pelosi", "first_name": "Nancy"}  # no state_dst
+        with pytest.raises(KeyError):
+            resolve_artifact_member(art, idx, _LOOKUP)
+
+    def test_malformed_state_dst_raises_value_error_not_no_match(self):
+        """A malformed state_dst is a data-integrity failure, not a NoMatch."""
+        art = _artifact("house")
+        idx: dict = {"last_name": "Pelosi", "first_name": "Nancy", "state_dst": "X"}
+        with pytest.raises(ValueError):
+            resolve_artifact_member(art, idx, _LOOKUP)
+
+    def test_no_match_is_distinct_from_key_error(self):
+        """A genuine no-match returns NoMatch, not an exception."""
+        from src.runtime.disclosures_member_resolution import NoMatch
+        art = _artifact("house")
+        idx = _house_index("Ghost", "X", "AK01")
+        result = resolve_artifact_member(art, idx, _LOOKUP)
+        assert isinstance(result, NoMatch)
+
+    def test_ambiguous_is_distinct_from_no_match(self):
+        """Ambiguous and NoMatch are distinct types — no silent collapse."""
+        from src.runtime.disclosures_member_resolution import Ambiguous, NoMatch
+        lookup = {
+            "house": [
+                _house_member("A000001", "Smith", "Adam", "NY", 10),
+                _house_member("A000002", "Smith", "Alice", "NY", 10),
+            ]
+        }
+        art = {**_artifact("house"), "chamber": "house"}
+        idx = _house_index("Smith", "Zach", "NY10")  # no first-name match
+        result = resolve_artifact_member(art, idx, lookup)
+        assert isinstance(result, Ambiguous)
+        assert not isinstance(result, NoMatch)

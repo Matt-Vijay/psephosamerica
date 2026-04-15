@@ -37,29 +37,33 @@ _SENATE_SECTION_HEADERS: frozenset[str] = SECTION_HEADERS | frozenset(
     {
         "transactions",
         "assets and income",
-        "assets and unearned income",       # Senate EFD Schedule A variant label
+        "assets and unearned income",                # Senate EFD Schedule A variant label
         "outside positions",
-        "positions held outside u.s. government",
-        "positions held outside us government",  # variant without periods
+        "positions held outside u.s. government",    # EFD Part I long-form alias
+        "positions held outside us government",      # EFD Part I alias without periods
     }
 )
 
 # Named Senate section headers consumed by slice_section.
 _SCHEDULE_A = "schedule a"
 _ASSETS_ALT = "assets and unearned income"  # EFD Schedule A alias
+_ASSETS_ALT2 = "assets and income"          # Some older EFD forms omit "unearned"
 
 _SCHEDULE_B = "schedule b"
 _TRANSACTIONS_ALT = "transactions"      # PTR filings sometimes omit "Schedule B"
 _TRANSACTIONS_ALT2 = "part ii"          # Some PTR filings label transactions "Part II"
 
 _PART_I = "part i"
+_PART_I_ALT = "positions held outside u.s. government"  # EFD Part I long-form alias
+_PART_I_ALT2 = "positions held outside us government"   # EFD Part I alias without periods
 
 # Column separator: two or more spaces, or a hard tab, used in Senate EFD text.
 _COL_SEP: re.Pattern[str] = re.compile(r"  +|\t")
 
 # Owner tokens that appear as the first cell of data rows in all three sections.
+# Kept in sync with the normalization map in normalize.normalize_owner_label.
 _OWNER_TOKENS: frozenset[str] = frozenset(
-    {"self", "sp", "jt", "dc", "joint", "spouse", "dep. child", "dependent"}
+    {"self", "sp", "jt", "dc", "joint", "spouse", "dep. child", "dependent", "dependent child"}
 )
 
 # Second-cell values that unambiguously identify a column-header line.
@@ -262,6 +266,9 @@ def parse_senate_text(page_texts: list[str], filing: Filing) -> ParseResult:
         # Senate EFD filings occasionally label this section
         # "Assets and Unearned Income" instead of "Schedule A".
         schedule_a = _senate_slice(all_lines, _ASSETS_ALT)
+    if not schedule_a:
+        # Older Senate EFD forms use the shorter "Assets and Income" label.
+        schedule_a = _senate_slice(all_lines, _ASSETS_ALT2)
 
     schedule_b = _senate_slice(all_lines, _SCHEDULE_B)
     if not schedule_b:
@@ -273,6 +280,12 @@ def parse_senate_text(page_texts: list[str], filing: Filing) -> ParseResult:
         schedule_b = _senate_slice(all_lines, _TRANSACTIONS_ALT2)
 
     part_i = _senate_slice(all_lines, _PART_I)
+    if not part_i:
+        # Some EFD exports spell out the full section title.
+        part_i = _senate_slice(all_lines, _PART_I_ALT)
+    if not part_i:
+        # Variant without periods in "U.S."
+        part_i = _senate_slice(all_lines, _PART_I_ALT2)
 
     holdings = _holdings_from_section(schedule_a)
     transactions = _transactions_from_section(schedule_b)

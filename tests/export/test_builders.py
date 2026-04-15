@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import copy
 from datetime import date, datetime
+
+import pytest
 
 from src.export.builders import (
     build_evidence_card,
@@ -52,7 +55,7 @@ SOURCE_ROWS = [
 ]
 
 
-# ── Evidence Card ──────────────────────────────────────────────────
+# ── Evidence Card — happy path ─────────────────────────────────────
 
 
 def test_build_evidence_card_basic():
@@ -74,8 +77,59 @@ def test_evidence_card_roundtrip_json():
     assert data["dimension"] == "conflict_of_interest_risk"
 
 
-# ── Member Profile ─────────────────────────────────────────────────
+# ── Evidence Card — missing required fields ────────────────────────
 
+
+@pytest.mark.parametrize("missing_key", [
+    "evidence_card_id",
+    "dimension",
+    "rule_id",
+    "rule_version",
+    "score_delta",
+    "short_explanation",
+    "confidence",
+    "blocks",
+])
+def test_evidence_card_missing_rule_fire_field(missing_key):
+    rf = copy.deepcopy(RULE_FIRE)
+    del rf[missing_key]
+    with pytest.raises(ValueError, match=missing_key):
+        build_evidence_card(rf, MEMBER, SOURCE_ROWS, SNAPSHOT_DATE)
+
+
+@pytest.mark.parametrize("missing_key", ["bioguide_id", "name", "slug"])
+def test_evidence_card_missing_member_field(missing_key):
+    m = copy.deepcopy(MEMBER)
+    del m[missing_key]
+    with pytest.raises(ValueError, match=missing_key):
+        build_evidence_card(RULE_FIRE, m, SOURCE_ROWS, SNAPSHOT_DATE)
+
+
+@pytest.mark.parametrize("missing_key", ["source_type", "source_id", "label"])
+def test_evidence_card_missing_source_field(missing_key):
+    rows = [copy.deepcopy(SOURCE_ROWS[0])]
+    del rows[0][missing_key]
+    with pytest.raises(ValueError, match=missing_key):
+        build_evidence_card(RULE_FIRE, MEMBER, rows, SNAPSHOT_DATE)
+
+
+@pytest.mark.parametrize("missing_key", ["section", "text"])
+def test_evidence_card_missing_block_field(missing_key):
+    rf = copy.deepcopy(RULE_FIRE)
+    del rf["blocks"][0][missing_key]
+    with pytest.raises(ValueError, match=missing_key):
+        build_evidence_card(rf, MEMBER, SOURCE_ROWS, SNAPSHOT_DATE)
+
+
+def test_evidence_card_source_url_optional():
+    """url is optional — omitting it must not raise."""
+    rows = [copy.deepcopy(SOURCE_ROWS[0])]
+    del rows[0]["url"]
+    card = build_evidence_card(RULE_FIRE, MEMBER, rows, SNAPSHOT_DATE)
+    assert card.source_anchors[0].url is None
+
+
+# ── Member Profile ─────────────────────────────────────────────────
 
 SCORE_ROWS = [
     {"dimension": "conflict_of_interest_risk", "current_score": 72.0, "rule_fire_count": 3},
@@ -106,6 +160,53 @@ def test_build_member_profile():
     assert len(profile.scores) == 1
     assert profile.scores[0].current_score == 72.0
     assert profile.total_evidence_cards == 12
+
+
+@pytest.mark.parametrize("missing_key", [
+    "bioguide_id", "name", "slug", "state", "chamber", "party",
+])
+def test_member_profile_missing_member_field(missing_key):
+    m = copy.deepcopy(MEMBER)
+    del m[missing_key]
+    with pytest.raises(ValueError, match=missing_key):
+        build_member_profile(m, SCORE_ROWS, RECENT_FIRES, COMMITTEE_ROWS, 0, SNAPSHOT_DATE)
+
+
+@pytest.mark.parametrize("missing_key", ["dimension", "current_score", "rule_fire_count"])
+def test_member_profile_missing_score_field(missing_key):
+    rows = [copy.deepcopy(SCORE_ROWS[0])]
+    del rows[0][missing_key]
+    with pytest.raises(ValueError, match=missing_key):
+        build_member_profile(MEMBER, rows, RECENT_FIRES, COMMITTEE_ROWS, 0, SNAPSHOT_DATE)
+
+
+@pytest.mark.parametrize("missing_key", [
+    "rule_id", "evidence_card_id", "short_explanation", "score_delta", "snapshot_date",
+])
+def test_member_profile_missing_fire_field(missing_key):
+    fires = [copy.deepcopy(RECENT_FIRES[0])]
+    del fires[0][missing_key]
+    with pytest.raises(ValueError, match=missing_key):
+        build_member_profile(MEMBER, SCORE_ROWS, fires, COMMITTEE_ROWS, 0, SNAPSHOT_DATE)
+
+
+def test_member_profile_missing_committee_name():
+    rows = [{"role": "Member"}]  # no committee_name
+    with pytest.raises(ValueError, match="committee_name"):
+        build_member_profile(MEMBER, SCORE_ROWS, RECENT_FIRES, rows, 0, SNAPSHOT_DATE)
+
+
+def test_member_profile_committee_role_optional():
+    rows = [{"committee_name": "Judiciary"}]  # no role key
+    profile = build_member_profile(MEMBER, SCORE_ROWS, RECENT_FIRES, rows, 0, SNAPSHOT_DATE)
+    assert profile.committees[0].role is None
+
+
+def test_member_profile_district_optional():
+    m = copy.deepcopy(MEMBER)
+    del m["district"]
+    profile = build_member_profile(m, SCORE_ROWS, RECENT_FIRES, COMMITTEE_ROWS, 0, SNAPSHOT_DATE)
+    assert profile.district is None
 
 
 # ── ZIP Feed ───────────────────────────────────────────────────────
@@ -144,6 +245,50 @@ def test_zip_feed_with_ambiguity():
     assert feed.ambiguity_note is not None
 
 
+@pytest.mark.parametrize("missing_key", ["bioguide_id", "name", "slug", "chamber", "party"])
+def test_zip_feed_missing_member_field(missing_key):
+    row = {
+        "bioguide_id": "S000148",
+        "name": "Charles Schumer",
+        "slug": "charles-schumer",
+        "chamber": "senate",
+        "party": "Democrat",
+    }
+    del row[missing_key]
+    with pytest.raises(ValueError, match=missing_key):
+        build_zip_feed("10001", None, None, [row], SNAPSHOT_DATE)
+
+
+@pytest.mark.parametrize("missing_key", ["dimension", "current_score", "rule_fire_count"])
+def test_zip_feed_missing_score_field(missing_key):
+    score = {"dimension": "conflict_of_interest_risk", "current_score": 50.0, "rule_fire_count": 1}
+    del score[missing_key]
+    row = {
+        "bioguide_id": "S000148",
+        "name": "Charles Schumer",
+        "slug": "charles-schumer",
+        "chamber": "senate",
+        "party": "Democrat",
+        "scores": [score],
+    }
+    with pytest.raises(ValueError, match=missing_key):
+        build_zip_feed("10001", None, None, [row], SNAPSHOT_DATE)
+
+
+def test_zip_feed_scores_and_cards_default_empty():
+    """scores and top_evidence_card_ids are optional in member rows."""
+    row = {
+        "bioguide_id": "S000148",
+        "name": "Charles Schumer",
+        "slug": "charles-schumer",
+        "chamber": "senate",
+        "party": "Democrat",
+    }
+    feed = build_zip_feed("10001", None, None, [row], SNAPSHOT_DATE)
+    assert feed.members[0].scores == []
+    assert feed.members[0].top_evidence_card_ids == []
+
+
 # ── Manifest ───────────────────────────────────────────────────────
 
 
@@ -170,3 +315,11 @@ def test_manifest_verify_counts_mismatch():
     # Manually break invariant
     m.total_files = 5
     assert m.verify_counts() is False
+
+
+@pytest.mark.parametrize("missing_key", ["path", "sha256", "size_bytes"])
+def test_manifest_missing_file_entry_field(missing_key):
+    entry = {"path": "x.json", "sha256": "a" * 64, "size_bytes": 100}
+    del entry[missing_key]
+    with pytest.raises(ValueError, match=missing_key):
+        build_manifest("2026-04-13", [entry])

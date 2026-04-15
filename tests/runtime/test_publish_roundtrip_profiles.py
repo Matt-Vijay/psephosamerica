@@ -289,6 +289,21 @@ def test_missing_published_file_is_error(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 
 
+def test_corrupt_published_file_is_typed_error(tmp_path: Path) -> None:
+    """A published profile with invalid schema must become a typed issue, not an uncaught exception."""
+    slug = "bad-schema"
+    dest = tmp_path / "members" / f"{slug}.json"
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    dest.write_bytes(b'{"bioguide_id": "X000001"}')  # valid JSON, invalid schema
+    fake = PlannedFile.from_bytes(member_path(slug), dest.read_bytes())
+    manifest = _manifest_from_files([fake])
+    result = _run_roundtrip(tmp_path, manifest, member_row_val=None)
+    assert result.ok is False
+    assert result.checked == 1
+    assert result.error_count == 1
+    assert any("cannot load" in i.message for i in result.issues)
+
+
 def test_member_not_found_in_db_is_error(tmp_path: Path) -> None:
     profile = _profile()
     pf = _write_profile(tmp_path, profile)
