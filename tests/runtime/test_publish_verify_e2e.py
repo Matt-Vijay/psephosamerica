@@ -172,6 +172,18 @@ class TestVerifyCorruptMemberProfile:
         assert result.ok is False
         assert result.total_errors >= 1
 
+    def test_corrupt_profile_fails_manifest_stage(self, tmp_path: Path) -> None:
+        make_snapshot(tmp_path)
+        member_files = list((tmp_path / "members").glob("*.json"))
+        member_files[0].write_bytes(b'{"tampered": true}')
+
+        result = verify_local_publish(tmp_path)
+
+        manifest_stage = result.stage_result("manifest")
+        assert manifest_stage is not None
+        assert manifest_stage.ok is False
+        assert any("sha256 mismatch" in issue.message for issue in manifest_stage.issues)
+
 
 # ---------------------------------------------------------------------------
 # Missing evidence card file
@@ -261,6 +273,38 @@ class TestVerifyMissingManifest:
         empty_root.mkdir()
         result = verify_local_publish(empty_root)
         assert result.ok is False
+
+
+class TestVerifyUnmanifestedManagedFiles:
+    def test_extra_member_file_fails_manifest_stage(self, tmp_path: Path) -> None:
+        make_snapshot(tmp_path)
+        extra = tmp_path / "members" / "unlisted-member.json"
+        extra.parent.mkdir(parents=True, exist_ok=True)
+        extra.write_bytes(b'{"member":"extra"}')
+
+        result = verify_local_publish(tmp_path)
+
+        manifest_stage = result.stage_result("manifest")
+        assert manifest_stage is not None
+        assert manifest_stage.ok is False
+        assert any("not listed in manifest" in issue.message for issue in manifest_stage.issues)
+
+    def test_homepage_file_warns_without_failing_local_manifest_coverage(
+        self, tmp_path: Path
+    ) -> None:
+        make_snapshot(tmp_path)
+        homepage = tmp_path / "homepage" / "feed.json"
+        homepage.parent.mkdir(parents=True, exist_ok=True)
+        homepage.write_text('{"items":[]}', encoding="utf-8")
+
+        result = verify_local_publish(tmp_path)
+
+        manifest_stage = result.stage_result("manifest")
+        assert manifest_stage is not None
+        assert manifest_stage.ok is True
+        assert result.ok is True
+        assert any(issue.severity == "warning" for issue in manifest_stage.issues)
+        assert any(issue.path == "homepage/feed.json" for issue in manifest_stage.issues)
 
 
 # ---------------------------------------------------------------------------

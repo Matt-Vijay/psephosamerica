@@ -10,6 +10,7 @@ from src.export.filesystem import (
     verify_written_files,
     write_planned_files,
 )
+from src.export.manifest import manifest_root_sha256
 from src.export.writer import PlannedFile
 
 
@@ -71,6 +72,20 @@ def test_write_empty_content(tmp_path: Path) -> None:
     assert (tmp_path / "empty.json").read_bytes() == b""
 
 
+def test_write_duplicate_paths_raise(tmp_path: Path) -> None:
+    files = [
+        _pf("members/alice.json", b'{"name":"alice"}'),
+        _pf("members/alice.json", b'{"name":"alice-2"}'),
+    ]
+    with pytest.raises(ValueError, match="duplicate"):
+        write_planned_files(files, tmp_path)
+
+
+def test_write_path_escape_raises(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="confined"):
+        write_planned_files([_pf("../escape.json", b"nope")], tmp_path)
+
+
 # ── read_manifest ──────────────────────────────────────────────────────────────
 
 
@@ -81,14 +96,16 @@ def _write_manifest(path: Path, data: dict) -> Path:
 
 
 def _minimal_manifest_dict(snapshot_id: str = "2026-04-13") -> dict:
+    entries = [
+        {"path": "members/alice.json", "sha256": "a" * 64, "size_bytes": 128},
+    ]
     return {
         "snapshot_id": snapshot_id,
         "created_at": "2026-04-13T12:00:00",
-        "entries": [
-            {"path": "members/alice.json", "sha256": "a" * 64, "size_bytes": 128},
-        ],
+        "entries": entries,
         "total_files": 1,
         "total_bytes": 128,
+        "root_sha256": manifest_root_sha256(entries),
     }
 
 
@@ -120,6 +137,7 @@ def test_read_manifest_verify_counts(tmp_path: Path) -> None:
     mfile = _write_manifest(tmp_path / "manifest.json", _minimal_manifest_dict())
     result = read_manifest(mfile)
     assert result.verify_counts() is True
+    assert result.root_sha256 == manifest_root_sha256(result.entries)
 
 
 def test_read_manifest_missing_file_raises(tmp_path: Path) -> None:
@@ -181,6 +199,12 @@ def test_verify_empty_content_file(tmp_path: Path) -> None:
     files = [_pf("empty.json", b"")]
     write_planned_files(files, tmp_path)
     assert verify_written_files(files, tmp_path) == []
+
+
+def test_verify_path_escape_reported(tmp_path: Path) -> None:
+    files = [_pf("../escape.json", b"nope")]
+    failures = verify_written_files(files, tmp_path)
+    assert failures == ["../escape.json"]
 
 
 def test_verify_roundtrip_with_plan_snapshot(tmp_path: Path) -> None:

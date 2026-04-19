@@ -1,8 +1,10 @@
 from __future__ import annotations
 
-from unittest.mock import MagicMock, call, patch
+from types import SimpleNamespace
+from unittest.mock import MagicMock, patch
 
 import src.runtime.bootstrap as bootstrap
+import src.runtime.commands as commands
 
 
 def test_load_schema_sql_delegates_to_db():
@@ -19,34 +21,48 @@ def test_load_initial_migration_sql_delegates_to_db():
     assert result == "migration"
 
 
-def test_bootstrap_database_applies_schema_then_migration():
+def test_bootstrap_database_applies_schema_sql_once():
     conn = MagicMock()
     with (
         patch("src.db.bootstrap.read_schema_sql", return_value="schema"),
-        patch("src.db.bootstrap.read_migration_sql", return_value="migration"),
+        patch("src.db.bootstrap.read_migration_sql") as mock_migration,
         patch("src.db.bootstrap.apply_sql") as mock_apply,
     ):
         bootstrap.bootstrap_database(conn)
 
-    assert mock_apply.call_count == 2
-    mock_apply.assert_has_calls([
-        call(conn, "schema"),
-        call(conn, "migration"),
-    ])
+    mock_migration.assert_not_called()
+    mock_apply.assert_called_once_with(conn, "schema")
 
 
-def test_bootstrap_database_passes_same_conn_to_both_calls():
-    conn = MagicMock()
-    received_conns: list = []
+def test_bootstrap_database_plan_uses_schema_sql_as_authority():
+    with patch("src.db.bootstrap.read_schema_sql", return_value="SELECT 1;"):
+        plan = bootstrap.describe_bootstrap_plan()
 
-    def capture_apply(c, _sql):
-        received_conns.append(c)
+    assert plan == {
+        "bootstrap_authority": "db/schema.sql",
+        "bootstrap_sql_bytes": len("SELECT 1;".encode("utf-8")),
+    }
 
+
+def test_handle_bootstrap_db_dry_run_reports_schema_plan_without_db_access():
+    args = SimpleNamespace(dry_run=True)
+    plan = {
+        "bootstrap_authority": "db/schema.sql",
+        "bootstrap_sql_bytes": len("SELECT 1;".encode("utf-8")),
+    }
     with (
-        patch("src.db.bootstrap.read_schema_sql", return_value="s"),
-        patch("src.db.bootstrap.read_migration_sql", return_value="m"),
-        patch("src.db.bootstrap.apply_sql", side_effect=capture_apply),
+        patch("src.runtime.commands.build_runtime") as mock_build,
+        patch("src.runtime.commands.open_runtime_connection") as mock_open_conn,
+        patch("src.runtime.commands.describe_bootstrap_plan", return_value=plan) as mock_plan,
     ):
-        bootstrap.bootstrap_database(conn)
+        result = commands._handle_bootstrap_db(args)
 
-    assert received_conns == [conn, conn]
+    mock_build.assert_not_called()
+    mock_open_conn.assert_not_called()
+    mock_plan.assert_called_once_with()
+    assert result == {
+        "ok": True,
+        "command": "bootstrap-db",
+        "dry_run": True,
+        **plan,
+    }

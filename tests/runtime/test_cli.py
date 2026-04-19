@@ -6,6 +6,8 @@ No DB, no network.  All assertions target parser output only.
 from __future__ import annotations
 
 import datetime
+from pathlib import Path
+
 import pytest
 
 from src.runtime.cli import build_parser, parse_args
@@ -23,6 +25,11 @@ def test_build_parser_returns_argument_parser():
 
 def test_parser_prog_name():
     assert build_parser().prog == "openpact"
+
+
+def _subcommand_parser(name: str):
+    parser = build_parser()
+    return parser._subparsers._group_actions[0].choices[name]  # type: ignore[attr-defined]
 
 
 # ---------------------------------------------------------------------------
@@ -49,6 +56,18 @@ def test_bootstrap_db_command():
 def test_bootstrap_db_dry_run():
     ns = parse_args(["bootstrap-db", "--dry-run"])
     assert ns.dry_run is True
+
+
+def test_bootstrap_db_help_references_schema_sql_not_migrations():
+    help_text = _subcommand_parser("bootstrap-db").format_help()
+    assert "db/schema.sql" in help_text
+    assert "initial migration" not in help_text.lower()
+
+
+def test_bootstrap_db_dry_run_help_describes_plan_not_sql_dump():
+    help_text = _subcommand_parser("bootstrap-db").format_help()
+    assert "plan" in help_text.lower()
+    assert "print sql" not in help_text.lower()
 
 
 # ---------------------------------------------------------------------------
@@ -116,6 +135,7 @@ def test_load_congress_house_vote_year_default():
 
 def test_load_congress_house_vote_year():
     ns = parse_args(["load-congress", "--house-vote-year", "2024"])
+    assert ns.include_votes is True
     assert ns.house_vote_year == 2024
 
 
@@ -131,6 +151,7 @@ def test_load_congress_senate_session_default():
 
 def test_load_congress_senate_session():
     ns = parse_args(["load-congress", "--senate-session", "1"])
+    assert ns.include_votes is True
     assert ns.senate_session == 1
 
 
@@ -272,26 +293,40 @@ def test_recompute_malformed_date_exits():
 
 
 def test_publish_command():
-    ns = parse_args(["publish"])
+    ns = parse_args(["publish", "--zip-bundle", "/tmp/zip_bundle.json"])
     assert ns.command == "publish"
     assert ns.snapshot_date is None
     assert ns.out_dir is None
+    assert ns.zip_bundle == "/tmp/zip_bundle.json"
 
 
 def test_publish_snapshot_date_parsed():
-    ns = parse_args(["publish", "--snapshot-date", "2025-06-30"])
+    ns = parse_args(["publish", "--snapshot-date", "2025-06-30", "--zip-bundle", "/tmp/zip_bundle.json"])
     assert ns.snapshot_date == datetime.date(2025, 6, 30)
 
 
 def test_publish_out_dir():
-    ns = parse_args(["publish", "--out-dir", "/tmp/snap"])
+    ns = parse_args(["publish", "--out-dir", "/tmp/snap", "--zip-bundle", "/tmp/zip_bundle.json"])
     assert ns.out_dir == "/tmp/snap"
 
 
 def test_publish_all_args():
-    ns = parse_args(["publish", "--snapshot-date", "2025-06-30", "--out-dir", "/tmp/snap"])
+    ns = parse_args(
+        [
+            "publish",
+            "--snapshot-date", "2025-06-30",
+            "--out-dir", "/tmp/snap",
+            "--zip-bundle", "/tmp/zip_bundle.json",
+        ]
+    )
     assert ns.snapshot_date == datetime.date(2025, 6, 30)
     assert ns.out_dir == "/tmp/snap"
+    assert ns.zip_bundle == "/tmp/zip_bundle.json"
+
+
+def test_publish_missing_zip_bundle_exits() -> None:
+    with pytest.raises(SystemExit):
+        parse_args(["publish"])
 
 
 # ---------------------------------------------------------------------------
@@ -385,8 +420,6 @@ def test_process_disclosures_local_command():
     ns = parse_args(["process-disclosures-local", "--bundle", "/data/disclosures.zip"])
     assert ns.command == "process-disclosures-local"
     assert ns.bundle == "/data/disclosures.zip"
-    assert ns.chamber == "both"
-    assert ns.limit is None
 
 
 def test_process_disclosures_local_missing_bundle_exits():
@@ -394,41 +427,19 @@ def test_process_disclosures_local_missing_bundle_exits():
         parse_args(["process-disclosures-local"])
 
 
-def test_process_disclosures_local_chamber_house():
-    ns = parse_args(["process-disclosures-local", "--bundle", "/data/d.zip", "--chamber", "house"])
-    assert ns.chamber == "house"
-
-
-def test_process_disclosures_local_chamber_senate():
-    ns = parse_args(["process-disclosures-local", "--bundle", "/data/d.zip", "--chamber", "senate"])
-    assert ns.chamber == "senate"
-
-
-def test_process_disclosures_local_invalid_chamber_exits():
+def test_process_disclosures_local_rejects_dead_chamber_flag():
     with pytest.raises(SystemExit):
-        parse_args(["process-disclosures-local", "--bundle", "/data/d.zip", "--chamber", "invalid"])
+        parse_args(["process-disclosures-local", "--bundle", "/data/d.zip", "--chamber", "house"])
 
 
-def test_process_disclosures_local_limit():
-    ns = parse_args(["process-disclosures-local", "--bundle", "/data/d.zip", "--limit", "50"])
-    assert ns.limit == 50
-
-
-def test_process_disclosures_local_invalid_limit_exits():
+def test_process_disclosures_local_rejects_dead_limit_flag():
     with pytest.raises(SystemExit):
-        parse_args(["process-disclosures-local", "--bundle", "/data/d.zip", "--limit", "notanumber"])
+        parse_args(["process-disclosures-local", "--bundle", "/data/d.zip", "--limit", "50"])
 
 
 def test_process_disclosures_local_all_args():
-    ns = parse_args([
-        "process-disclosures-local",
-        "--bundle", "/data/disclosures.zip",
-        "--chamber", "senate",
-        "--limit", "25",
-    ])
+    ns = parse_args(["process-disclosures-local", "--bundle", "/data/disclosures.zip"])
     assert ns.bundle == "/data/disclosures.zip"
-    assert ns.chamber == "senate"
-    assert ns.limit == 25
 
 
 # ---------------------------------------------------------------------------
@@ -527,6 +538,23 @@ def test_run_oracle_local_invalid_chamber_exits():
             "--target-dir", "/out",
             "--chamber", "invalid",
         ])
+
+
+def test_readme_command_list_matches_parser_surface() -> None:
+    readme = Path(__file__).resolve().parents[2] / "README.md"
+    lines = readme.read_text(encoding="utf-8").splitlines()
+
+    start = lines.index("Current commands:") + 2
+    commands: list[str] = []
+    for line in lines[start:]:
+        if not line.startswith("- `"):
+            break
+        commands.append(line.removeprefix("- `").removesuffix("`"))
+
+    parser = build_parser()
+    parser_commands = list(parser._subparsers._group_actions[0].choices.keys())  # type: ignore[attr-defined]
+
+    assert commands == parser_commands
 
 
 def test_run_oracle_local_limit():

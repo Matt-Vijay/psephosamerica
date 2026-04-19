@@ -10,7 +10,7 @@ from pathlib import Path
 
 from src.export.contracts import ZipFeedPayload
 from src.export.filesystem import write_planned_files
-from src.export.manifest import ManifestEntry, SnapshotManifest
+from src.export.manifest import ManifestEntry, SnapshotManifest, manifest_root_sha256
 from src.export.writer import PlannedFile, zip_path
 from src.runtime.publish_verify_zip import verify_local_zip_feeds
 
@@ -43,15 +43,17 @@ def _planned(feed: ZipFeedPayload) -> PlannedFile:
 
 
 def _manifest(files: list[PlannedFile]) -> SnapshotManifest:
+    entries = [
+        ManifestEntry(path=f.path, sha256=f.sha256, size_bytes=f.size_bytes)
+        for f in files
+    ]
     return SnapshotManifest(
         snapshot_id=_SNAPSHOT_ID,
         created_at=datetime(2026, 4, 14, 0, 0, 0),
-        entries=[
-            ManifestEntry(path=f.path, sha256=f.sha256, size_bytes=f.size_bytes)
-            for f in files
-        ],
-        total_files=len(files),
-        total_bytes=sum(f.size_bytes for f in files),
+        entries=entries,
+        total_files=len(entries),
+        total_bytes=sum(entry.size_bytes for entry in entries),
+        root_sha256=manifest_root_sha256(entries),
     )
 
 
@@ -69,6 +71,7 @@ def _empty_manifest() -> SnapshotManifest:
         entries=[],
         total_files=0,
         total_bytes=0,
+        root_sha256=manifest_root_sha256([]),
     )
 
 
@@ -85,6 +88,7 @@ def _manifest_with_non_zip_entries() -> SnapshotManifest:
         entries=[entry],
         total_files=1,
         total_bytes=100,
+        root_sha256=manifest_root_sha256([entry]),
     )
 
 
@@ -179,6 +183,7 @@ class TestMissingFile:
             entries=[entry],
             total_files=1,
             total_bytes=50,
+            root_sha256=manifest_root_sha256([entry]),
         )
 
     def test_not_ok(self, tmp_path: Path) -> None:
@@ -221,6 +226,7 @@ class TestInvalidJson:
             entries=[entry],
             total_files=1,
             total_bytes=len(bad_bytes),
+            root_sha256=manifest_root_sha256([entry]),
         )
 
     def test_not_ok(self, tmp_path: Path) -> None:
@@ -253,19 +259,21 @@ class TestPartialFailure:
             sha256="c" * 64,
             size_bytes=50,
         )
+        entries = [
+            ManifestEntry(
+                path=good_planned.path,
+                sha256=good_planned.sha256,
+                size_bytes=good_planned.size_bytes,
+            ),
+            missing_entry,
+        ]
         manifest = SnapshotManifest(
             snapshot_id=_SNAPSHOT_ID,
             created_at=datetime(2026, 4, 14, 0, 0, 0),
-            entries=[
-                ManifestEntry(
-                    path=good_planned.path,
-                    sha256=good_planned.sha256,
-                    size_bytes=good_planned.size_bytes,
-                ),
-                missing_entry,
-            ],
+            entries=entries,
             total_files=2,
             total_bytes=good_planned.size_bytes + 50,
+            root_sha256=manifest_root_sha256(entries),
         )
 
         result = verify_local_zip_feeds(tmp_path, manifest)
@@ -284,19 +292,21 @@ class TestPartialFailure:
             sha256="c" * 64,
             size_bytes=50,
         )
+        entries = [
+            ManifestEntry(
+                path=good_planned.path,
+                sha256=good_planned.sha256,
+                size_bytes=good_planned.size_bytes,
+            ),
+            missing_entry,
+        ]
         manifest = SnapshotManifest(
             snapshot_id=_SNAPSHOT_ID,
             created_at=datetime(2026, 4, 14, 0, 0, 0),
-            entries=[
-                ManifestEntry(
-                    path=good_planned.path,
-                    sha256=good_planned.sha256,
-                    size_bytes=good_planned.size_bytes,
-                ),
-                missing_entry,
-            ],
+            entries=entries,
             total_files=2,
             total_bytes=good_planned.size_bytes + 50,
+            root_sha256=manifest_root_sha256(entries),
         )
 
         result = verify_local_zip_feeds(tmp_path, manifest)
@@ -322,6 +332,7 @@ class TestPathConfinement:
             entries=[entry],
             total_files=1,
             total_bytes=50,
+            root_sha256=manifest_root_sha256([entry]),
         )
         result = verify_local_zip_feeds(tmp_path, manifest)
         assert result.ok is False
@@ -350,6 +361,7 @@ class TestZipCodeMismatch:
             entries=[entry],
             total_files=1,
             total_bytes=len(content),
+            root_sha256=manifest_root_sha256([entry]),
         )
 
     def test_not_ok(self, tmp_path: Path) -> None:
@@ -387,6 +399,7 @@ class TestStageResultProperties:
             entries=[entry],
             total_files=1,
             total_bytes=10,
+            root_sha256=manifest_root_sha256([entry]),
         )
         result = verify_local_zip_feeds(tmp_path, manifest)
         assert result.ok is False

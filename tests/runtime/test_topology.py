@@ -22,6 +22,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 import src.runtime as runtime
+from src.export.manifest import manifest_root_sha256
 from src.runtime.publish_roundtrip_types import (
     ROUNDTRIP_STAGES,
     PublishRoundtripIssue,
@@ -309,39 +310,50 @@ class TestPublishDelegates:
         r.verification_failures = []
         return r
 
-    def test_delegates_to_pipeline(self):
+    def test_delegates_to_pipeline(self, tmp_path: Path):
         conn = MagicMock()
         fake_ds = {"id": 3, "slug": "snapshot-publish"}
+        target_dir = tmp_path / "snap"
+        staging_dir = tmp_path / ".staging"
 
         with (
             patch(f"{self._MOD}.ensure_data_source", return_value=fake_ds),
             patch(f"{self._MOD}.start_ingestion_run", return_value=20),
             patch(f"{self._MOD}.publish_snapshot_run", return_value=self._ok_publish_result()) as mock_pub,
+            patch(f"{self._MOD}._make_staging_dir", return_value=staging_dir) as mock_make_staging,
+            patch(f"{self._MOD}._promote_staging_dir") as mock_promote,
             patch(f"{self._MOD}.finish_ingestion_run"),
             patch(f"{self._MOD}.fail_ingestion_run"),
         ):
             result = runtime.run_publish_runtime(
-                conn, dt.date(2026, 4, 1), Path("/tmp/snap"), MagicMock()
+                conn, dt.date(2026, 4, 1), target_dir, MagicMock()
             )
 
+        mock_make_staging.assert_called_once_with(target_dir, "2026-04-01")
         mock_pub.assert_called_once()
+        assert mock_pub.call_args.kwargs["target_dir"] == staging_dir
+        mock_promote.assert_called_once_with(staging_dir, target_dir, "2026-04-01")
         assert isinstance(result, runtime.PublishRuntimeResult)
 
     def test_default_snapshot_id_is_isoformat(self):
         assert runtime.default_snapshot_id(dt.date(2026, 4, 14)) == "2026-04-14"
 
-    def test_run_type_is_export(self):
+    def test_run_type_is_export(self, tmp_path: Path):
         conn = MagicMock()
         fake_ds = {"id": 3}
+        target_dir = tmp_path / "publish-root"
+        staging_dir = tmp_path / ".staging"
 
         with (
             patch(f"{self._MOD}.ensure_data_source", return_value=fake_ds),
             patch(f"{self._MOD}.start_ingestion_run", return_value=20) as mock_start,
             patch(f"{self._MOD}.publish_snapshot_run", return_value=self._ok_publish_result()),
+            patch(f"{self._MOD}._make_staging_dir", return_value=staging_dir),
+            patch(f"{self._MOD}._promote_staging_dir"),
             patch(f"{self._MOD}.finish_ingestion_run"),
             patch(f"{self._MOD}.fail_ingestion_run"),
         ):
-            runtime.run_publish_runtime(conn, dt.date(2026, 4, 1), Path("/tmp"), MagicMock())
+            runtime.run_publish_runtime(conn, dt.date(2026, 4, 1), target_dir, MagicMock())
 
         _args, kwargs = mock_start.call_args
         run_type = kwargs.get("run_type") or _args[2]
@@ -851,6 +863,7 @@ class TestVerifyTopology:
             "entries": entries,
             "total_files": len(entries),
             "total_bytes": sum(e["size_bytes"] for e in entries),
+            "root_sha256": manifest_root_sha256(entries),
         }
         manifest_file.write_text(json.dumps(manifest_data), encoding="utf-8")
 

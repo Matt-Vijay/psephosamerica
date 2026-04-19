@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from src.db.repositories import fetch_all
+from src.db.repositories import ConnectionLike, fetch_all
 
 
 _MEMBER_SUMMARY_SQL = """
@@ -40,7 +40,7 @@ ORDER BY m.bioguide_id, rf.dimension
 
 
 def fetch_zip_member_summary_rows(
-    conn,
+    conn: ConnectionLike,
     *,
     bioguide_ids: list[str] | set[str],
 ) -> list[dict[str, Any]]:
@@ -65,7 +65,7 @@ ORDER BY m.bioguide_id, ec.rendered_at DESC
 
 
 def fetch_recent_evidence_ids_by_bioguide(
-    conn,
+    conn: ConnectionLike,
     *,
     bioguide_ids: list[str] | set[str],
 ) -> dict[str, list[str]]:

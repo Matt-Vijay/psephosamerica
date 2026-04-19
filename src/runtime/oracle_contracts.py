@@ -26,11 +26,14 @@ class CongressOracleOptions:
     """Options controlling which Congress data the oracle processes.
 
     Attributes:
-        congress:       Congress number (e.g. 119).
-        chamber:        "house", "senate", or None for both chambers.
-        limit:          Cap on disclosure filings processed; None means all.
-        parser_name:    Disclosure parser implementation to use.
-        parser_version: Version string passed to the parser dispatch.
+        congress:        Congress number (e.g. 119).
+        chamber:         "house", "senate", or None for both chambers.
+        limit:           Cap on disclosure filings processed; None means all.
+        parser_name:     Disclosure parser implementation to use.
+        parser_version:  Version string passed to the parser dispatch.
+        congress_source: Operator-visible marker describing how congress was
+                         selected for this run ("explicit", "explicit-arg",
+                         "current-date-default", ...).
     """
 
     congress: int
@@ -38,6 +41,7 @@ class CongressOracleOptions:
     limit: int | None = None
     parser_name: str = "text_extract_v1"
     parser_version: str = "1"
+    congress_source: str = "explicit"
 
 
 # ---------------------------------------------------------------------------
@@ -109,11 +113,18 @@ class CongressStageSummary:
     """Typed summary of the congress-archive load stage within a local oracle run.
 
     Attributes:
-        run_id:         Ingestion run row ID created for this stage.
-        source_slug:    Slug of the data_source row used (e.g. "congress_core").
-        total_inserted: Total rows inserted across all canonical tables.
-        total_written:  Total rows inserted or updated (inserted + updated).
-        load_ok:        False if the load produced any errors.
+        run_id:             Ingestion run row ID created for this stage.
+        source_slug:        Slug of the data_source row used (e.g. "congress_core").
+        total_inserted:     Total rows inserted across all canonical tables.
+        total_written:      Total rows inserted or updated (inserted + updated).
+        load_ok:            False if the load produced any errors.
+        configured_congress: Congress number requested for the local archive
+                            stage.
+        congress_source:    Operator-visible marker describing how congress
+                            was selected for this run.
+        include_votes:      Whether the local oracle requested vote loading for
+                            this stage. Current local-oracle runs keep this
+                            false so the contract is explicit about the scope.
     """
 
     run_id: int
@@ -121,6 +132,9 @@ class CongressStageSummary:
     total_inserted: int
     total_written: int
     load_ok: bool
+    configured_congress: int | None = None
+    congress_source: str = "explicit"
+    include_votes: bool = False
 
 
 # ---------------------------------------------------------------------------
@@ -138,9 +152,11 @@ class LocalOracleRunResult:
     Attributes:
         snapshot_id:  The snapshot identifier used during the run.
         congress:     Stage-0 typed summary from the congress-archive load.
-        disclosures:  Stage-1 summary from the process-disclosures step.
+        disclosures:  Stage-1 summary from the process-disclosures step,
+                      including requested chamber / limit scope.
         recompute:    Stage-2 summary (run_id, rule_fires, evidence_cards …).
-        publish:      Stage-3 summary (written_count, succeeded …).
+        publish:      Stage-3 summary (written_count, succeeded …), including
+                      whether ZIP feeds were generated.
         verify:       Stage-4 typed filesystem verification result across
                       manifest, profiles, evidence, and zip stages.
         roundtrip:    Stage-5 typed DB→publish roundtrip result confirming

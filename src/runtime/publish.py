@@ -4,10 +4,13 @@ Entry point: run_publish_runtime.
 """
 from __future__ import annotations
 
+import shutil
+import tempfile
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 from typing import Any
+from uuid import uuid4
 
 from src.pipeline.publish_snapshot_run import ZipBundleInputs, publish_snapshot_run
 from src.pipeline.publish_pipeline import PublishResult
@@ -47,6 +50,38 @@ def default_snapshot_id(snapshot_date: date) -> str:
     return snapshot_date.isoformat()
 
 
+def _cleanup_tree(path: Path) -> None:
+    if path.exists():
+        shutil.rmtree(path, ignore_errors=True)
+
+
+def _make_staging_dir(target_dir: Path, snapshot_id: str) -> Path:
+    target_dir.parent.mkdir(parents=True, exist_ok=True)
+    return Path(
+        tempfile.mkdtemp(
+            prefix=f".openpact-publish-{snapshot_id}-",
+            dir=target_dir.parent,
+        )
+    )
+
+
+def _promote_staging_dir(staging_dir: Path, target_dir: Path, snapshot_id: str) -> None:
+    backup_dir: Path | None = None
+    if target_dir.exists():
+        backup_dir = target_dir.parent / f".openpact-backup-{snapshot_id}-{uuid4().hex}"
+        target_dir.rename(backup_dir)
+
+    try:
+        staging_dir.rename(target_dir)
+    except Exception:
+        if backup_dir is not None and backup_dir.exists() and not target_dir.exists():
+            backup_dir.rename(target_dir)
+        raise
+
+    if backup_dir is not None:
+        _cleanup_tree(backup_dir)
+
+
 def run_publish_runtime(
     conn: Any,
     snapshot_date: date,
@@ -75,23 +110,24 @@ def run_publish_runtime(
     )
 
     resolved_snapshot_id = snapshot_id if snapshot_id is not None else default_snapshot_id(snapshot_date)
+    staging_dir = _make_staging_dir(target_dir, resolved_snapshot_id)
 
     try:
         publish_result = publish_snapshot_run(
             conn,
             snapshot_id=resolved_snapshot_id,
             snapshot_date=snapshot_date,
-            target_dir=target_dir,
+            target_dir=staging_dir,
             zip_bundle_inputs=zip_bundle_inputs,
         )
+        if not publish_result.succeeded:
+            failure_summary = "; ".join(publish_result.verification_failures) or "publish pipeline failed"
+            raise RuntimeError(failure_summary)
+        _promote_staging_dir(staging_dir, target_dir, resolved_snapshot_id)
     except Exception as exc:
+        _cleanup_tree(staging_dir)
         fail_ingestion_run(conn, run_id, str(exc))
         raise
-
-    if not publish_result.succeeded:
-        failure_summary = "; ".join(publish_result.verification_failures) or "publish pipeline failed"
-        fail_ingestion_run(conn, run_id, failure_summary)
-        raise RuntimeError(failure_summary)
 
     finish_ingestion_run(conn, run_id, publish_result.written_count)
 

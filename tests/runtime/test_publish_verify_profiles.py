@@ -8,7 +8,7 @@ from pathlib import Path
 
 from src.export.contracts import MemberProfilePayload
 from src.export.filesystem import write_planned_files
-from src.export.manifest import ManifestEntry, SnapshotManifest
+from src.export.manifest import ManifestEntry, SnapshotManifest, manifest_root_sha256
 from src.export.writer import PlannedFile, member_path, serialize_payload
 from src.runtime.publish_verify_profiles import verify_local_member_profiles
 from src.runtime.publish_verify_types import PublishVerifyStageResult
@@ -46,12 +46,14 @@ def _profile(
 
 
 def _manifest_from_files(files: list[PlannedFile], *, snapshot_id: str = "2026-04-14") -> SnapshotManifest:
+    entries = [ManifestEntry(path=f.path, sha256=f.sha256, size_bytes=f.size_bytes) for f in files]
     return SnapshotManifest(
         snapshot_id=snapshot_id,
         created_at=datetime(2026, 4, 14, 0, 0, 0),
-        entries=[ManifestEntry(path=f.path, sha256=f.sha256, size_bytes=f.size_bytes) for f in files],
-        total_files=len(files),
-        total_bytes=sum(f.size_bytes for f in files),
+        entries=entries,
+        total_files=len(entries),
+        total_bytes=sum(entry.size_bytes for entry in entries),
+        root_sha256=manifest_root_sha256(entries),
     )
 
 
@@ -238,6 +240,7 @@ def test_path_traversal_entry_is_error(tmp_path: Path) -> None:
         entries=[bad_entry],
         total_files=1,
         total_bytes=10,
+        root_sha256=manifest_root_sha256([bad_entry]),
     )
     result = verify_local_member_profiles(tmp_path, manifest)
     # The path matches the member regex but escapes root.

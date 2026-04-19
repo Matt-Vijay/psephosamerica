@@ -466,12 +466,36 @@ class TestVerifySnapshot:
         assert stage.ok
         assert manifest is not None
 
+    def test_error_when_manifest_hashes_do_not_match_tree(self, tmp_path: Path) -> None:
+        PublishedSnapshotBuilder(tmp_path, snapshot_id="2026-01-01").build()
+        member_file = next((tmp_path / "members").glob("*.json"))
+        member_file.write_bytes(b'{"tampered": true}')
+
+        stage, manifest = _verify_snapshot(tmp_path)
+
+        assert not stage.ok
+        assert manifest is None
+        assert any("sha256 mismatch" in issue.message for issue in stage.issues)
+
     def test_checked_equals_artifact_count(self, tmp_path: Path) -> None:
         PublishedSnapshotBuilder(tmp_path, snapshot_id="2026-01-01").build()
         stage, manifest = _verify_snapshot(tmp_path)
         assert stage.checked > 0
         assert manifest is not None
         assert stage.checked == len(manifest.entries)
+
+    def test_snapshot_stage_ignores_unmanifested_homepage_file(self, tmp_path: Path) -> None:
+        PublishedSnapshotBuilder(tmp_path, snapshot_id="2026-01-01").build()
+        homepage = tmp_path / "homepage" / "feed.json"
+        homepage.parent.mkdir(parents=True, exist_ok=True)
+        homepage.write_text('{"items":[]}', encoding="utf-8")
+
+        stage, manifest = _verify_snapshot(tmp_path)
+
+        assert stage.ok is True
+        assert manifest is not None
+        assert stage.checked == len(manifest.entries)
+        assert all(issue.path != "homepage/feed.json" for issue in stage.issues)
 
     def test_error_when_no_snapshots_dir(self, tmp_path: Path) -> None:
         stage, manifest = _verify_snapshot(tmp_path)
@@ -510,6 +534,27 @@ class TestVerifySnapshot:
         stage, manifest = _verify_snapshot(tmp_path)
         assert not stage.ok
         assert manifest is None
+
+    def test_error_when_manifest_omits_root_sha256(self, tmp_path: Path) -> None:
+        snap_dir = tmp_path / "snapshots" / "2026-01-01"
+        snap_dir.mkdir(parents=True)
+        (snap_dir / "manifest.json").write_text(
+            json.dumps(
+                {
+                    "snapshot_id": "2026-01-01",
+                    "created_at": "2026-01-01T00:00:00+00:00",
+                    "entries": [],
+                    "total_files": 0,
+                    "total_bytes": 0,
+                }
+            )
+        )
+
+        stage, manifest = _verify_snapshot(tmp_path)
+
+        assert not stage.ok
+        assert manifest is None
+        assert any("root_sha256" in issue.message for issue in stage.issues)
 
     def test_error_when_manifest_fails_schema_validation(self, tmp_path: Path) -> None:
         snap_dir = tmp_path / "snapshots" / "2026-01-01"

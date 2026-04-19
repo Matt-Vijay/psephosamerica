@@ -197,6 +197,7 @@ def verify_published_homepage_roundtrip(
         return PublishRoundtripStageResult(
             stage=_STAGE, checked=0, issues=(load_issue,)
         )
+    assert published is not None
 
     # Stage 2: build DB payload.
     db_payload = _build_db_payload(conn, snapshot_date)

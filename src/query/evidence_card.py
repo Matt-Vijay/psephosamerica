@@ -63,9 +63,9 @@ def _section_blocks(
 
 
 def _blocks_from_columns(
-    facts: dict | list | None,
-    inferences: dict | list | None,
-    normative_judgments: dict | list | None,
+    facts: dict[str, str] | list[str] | None,
+    inferences: dict[str, str] | list[str] | None,
+    normative_judgments: dict[str, str] | list[str] | None,
 ) -> list[EvidenceBlock]:
     """Reconstruct EvidenceBlocks from stored JSON columns.
 

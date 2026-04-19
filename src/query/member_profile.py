@@ -102,7 +102,11 @@ def _normalize_committees(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
 def _latest_snapshot_date(snapshot_rows: list[dict[str, Any]]) -> date:
     if not snapshot_rows:
         return date.today()
-    return max(r["snapshot_at"] for r in snapshot_rows)
+    latest = max(snapshot_rows, key=lambda row: row["snapshot_at"])
+    snapshot_at = latest.get("snapshot_at")
+    if isinstance(snapshot_at, date):
+        return snapshot_at
+    return date.today()
 
 
 def _count_distinct_evidence_cards(fire_rows: list[dict[str, Any]]) -> int:

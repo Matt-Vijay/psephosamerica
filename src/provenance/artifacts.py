@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import json
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, cast
 
 from src.db.repositories import execute_one, fetch_all
 
@@ -20,14 +20,19 @@ def _utcnow() -> datetime:
     return datetime.now(tz=timezone.utc)
 
 
-def _insert_returning_id(conn, sql: str, params: tuple) -> int:
+def _insert_returning_id(conn: Any, sql: str, params: tuple[Any, ...]) -> int:
     from psycopg.rows import dict_row
 
     with conn.cursor(row_factory=dict_row) as cur:
         cur.execute(sql, params)
-        row = cur.fetchone()
+        row = cast(dict[str, object] | None, cur.fetchone())
     conn.commit()
-    return row["id"]
+    if row is None:
+        raise ValueError("INSERT ... RETURNING id produced no row")
+    row_id = row.get("id")
+    if not isinstance(row_id, int):
+        raise TypeError(f"expected integer id from INSERT ... RETURNING, got {row_id!r}")
+    return row_id
 
 
 # ---------------------------------------------------------------------------
@@ -36,7 +41,7 @@ def _insert_returning_id(conn, sql: str, params: tuple) -> int:
 
 
 def create_source_artifact(
-    conn,
+    conn: Any,
     data_source_id: int,
     artifact_kind: str,
     storage_uri: str,
@@ -87,7 +92,7 @@ def create_source_artifact(
 
 
 def create_parse_run(
-    conn,
+    conn: Any,
     source_artifact_id: int,
     parser_name: str,
     parser_version: str,
@@ -120,7 +125,7 @@ def create_parse_run(
 
 
 def finish_parse_run(
-    conn,
+    conn: Any,
     run_id: int,
     *,
     page_count: int | None = None,
@@ -152,7 +157,7 @@ def finish_parse_run(
     )
 
 
-def fail_parse_run(conn, run_id: int, error_message: str) -> None:
+def fail_parse_run(conn: Any, run_id: int, error_message: str) -> None:
     """Mark a parse_run as failed and store the error message."""
     now = _utcnow()
     execute_one(

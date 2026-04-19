@@ -4,6 +4,7 @@ import copy
 from datetime import date, datetime
 
 import pytest
+from pydantic import ValidationError
 
 from src.export.builders import (
     build_evidence_card,
@@ -13,6 +14,7 @@ from src.export.builders import (
     sha256_hex,
 )
 from src.export.contracts import ConfidenceLabel, EvidenceSection
+from src.export.manifest import SnapshotManifest, manifest_root_sha256
 
 
 # ── Fixtures ───────────────────────────────────────────────────────
@@ -308,6 +310,38 @@ def test_build_manifest():
     assert m.total_files == 2
     assert m.total_bytes == 1536
     assert m.verify_counts() is True
+
+
+def test_build_manifest_sets_root_sha256():
+    files = [
+        {"path": "members/charles-schumer.json", "sha256": "a" * 64, "size_bytes": 1024},
+        {"path": "zip/10001.json", "sha256": "b" * 64, "size_bytes": 512},
+    ]
+    manifest = build_manifest("2026-04-13", files)
+    assert manifest.root_sha256 == manifest_root_sha256(manifest.entries)
+
+
+def test_build_manifest_root_sha256_is_order_independent():
+    files = [
+        {"path": "zip/10001.json", "sha256": "b" * 64, "size_bytes": 512},
+        {"path": "members/charles-schumer.json", "sha256": "a" * 64, "size_bytes": 1024},
+    ]
+    manifest_a = build_manifest("2026-04-13", files)
+    manifest_b = build_manifest("2026-04-13", list(reversed(files)))
+    assert manifest_a.root_sha256 == manifest_b.root_sha256
+
+
+def test_snapshot_manifest_requires_explicit_root_sha256():
+    with pytest.raises(ValidationError, match="root_sha256"):
+        SnapshotManifest.model_validate(
+            {
+                "snapshot_id": "2026-04-13",
+                "created_at": "2026-04-13T00:00:00",
+                "entries": [],
+                "total_files": 0,
+                "total_bytes": 0,
+            }
+        )
 
 
 def test_manifest_verify_counts_mismatch():

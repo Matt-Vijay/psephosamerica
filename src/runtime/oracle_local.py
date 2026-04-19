@@ -6,9 +6,13 @@ One public entry point:
 
 Flow (linear, explicit):
   1. Local Congress load      — run_congress_archive_load
+                                 (members / committees / bills from a local
+                                 archive; vote loading stays off here)
   2. Local disclosure process — run_disclosures_bundle_process
+                                 (process a prebuilt local bundle only)
   3. Recompute                — run_recompute_runtime
   4. Publish                  — run_publish_runtime
+                                 (uses an empty ZIP bundle; no ZIP feeds)
   5. Verify                   — _run_verify (verify_local_publish)
   6. Roundtrip                — _run_roundtrip (verify_publish_roundtrip)
 
@@ -41,6 +45,13 @@ from src.runtime.publish_verify_types import PublishVerifyResult
 from src.runtime.recompute import RuntimeRecomputeResult, run_recompute_runtime
 
 
+def _required_source_slug(data_source: dict[str, Any]) -> str:
+    slug = data_source.get("slug")
+    if not isinstance(slug, str) or not slug:
+        raise ValueError("runtime result is missing a data_source slug")
+    return slug
+
+
 # ---------------------------------------------------------------------------
 def _run_verify(target_dir: Path) -> PublishVerifyResult:
     """Thin wrapper around verify_local_publish for test patching."""
@@ -69,8 +80,10 @@ def run_oracle_local(
     Steps:
       1. Local Congress load — read members, committees, bills, sponsors,
          and cosponsors from congress_archive; load into the canonical DB.
+         Local-oracle runs do not request vote records on this surface.
       2. Local disclosure process — stage, parse, transform, and load
-         disclosures from disclosures_bundle.
+         disclosures from disclosures_bundle. The returned summary reports the
+         requested chamber / limit so the processed scope is explicit.
       3. Recompute — fire conflict-of-interest rules; produce evidence cards.
       4. Publish — write a dated snapshot to options.target_dir using an
          empty zip bundle (local oracle runs do not populate ZIP feeds).
@@ -102,10 +115,13 @@ def run_oracle_local(
     congress_load_result = run_congress_archive_load(conn, congress_archive, congress_load_options)
     congress_summary = CongressStageSummary(
         run_id=congress_load_result.run_id,
-        source_slug=congress_load_result.data_source.get("slug"),
+        source_slug=_required_source_slug(congress_load_result.data_source),
         total_inserted=congress_load_result.load_summary.total_inserted,
         total_written=congress_load_result.load_summary.total_written,
         load_ok=congress_load_result.load_summary.ok,
+        configured_congress=options.congress_options.congress,
+        congress_source=options.congress_options.congress_source,
+        include_votes=False,
     )
 
     # 2. Local disclosure process
@@ -150,6 +166,8 @@ def run_oracle_local(
         disclosures={
             "run_id": disclosures_result.load_result.run_id,
             "source_slug": disclosures_result.load_result.data_source.get("slug"),
+            "requested_chamber": options.congress_options.chamber or "both",
+            "artifact_limit": options.congress_options.limit,
             "parse_succeeded": disclosures_result.parse_result.succeeded_count,
             "parse_failed": disclosures_result.parse_result.failed_count,
             "transform_count": disclosures_result.transform_count,
@@ -168,6 +186,7 @@ def run_oracle_local(
             "source_slug": publish_result.data_source.get("slug"),
             "written_count": publish_result.publish_result.written_count,
             "succeeded": publish_result.publish_result.succeeded,
+            "zip_feeds_generated": False,
         },
         verify=verify_result,
         roundtrip=roundtrip_result,

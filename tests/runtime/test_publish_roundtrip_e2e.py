@@ -45,6 +45,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from src.export.filesystem import write_planned_files
+from src.export.writer import PlannedFile, finalize_publish_plan
 from src.runtime.publish_roundtrip import verify_roundtrip
 from src.runtime.publish_roundtrip_types import (
     PublishRoundtripIssue,
@@ -153,11 +155,24 @@ def _homepage_stub(
 # ---------------------------------------------------------------------------
 
 
+def _reanchor_manifest(root: Path) -> None:
+    manifest_files = sorted((root / "snapshots").glob("*/manifest.json"))
+    assert len(manifest_files) == 1
+    snapshot_id = manifest_files[0].parent.name
+    planned = [
+        PlannedFile.from_bytes(file.relative_to(root).as_posix(), file.read_bytes())
+        for file in sorted(root.rglob("*"))
+        if file.is_file()
+    ]
+    write_planned_files(finalize_publish_plan(snapshot_id, planned), root)
+
+
 def _write_feed_json(root: Path) -> None:
     """Write a minimal homepage/feed.json so the homepage stage sees a real file."""
     feed_file = root / "homepage" / "feed.json"
     feed_file.parent.mkdir(parents=True, exist_ok=True)
     feed_file.write_bytes(b'{"feed": "ok"}')
+    _reanchor_manifest(root)
 
 
 def _make_profile_side_effects(rt: PublishedRoundtrip):
@@ -390,10 +405,10 @@ class TestVerifyRoundtripProfilesStage:
         _write_feed_json(tmp_path)
         (tmp_path / "members" / f"{slug}.json").unlink()
         result = _run_roundtrip(tmp_path, rt)
-        profiles_stage = result.stage_result("profiles")
-        assert profiles_stage is not None
-        error_msgs = [i.message for i in profiles_stage.issues if i.severity == "error"]
-        assert any(slug in m for m in error_msgs), error_msgs
+        snapshot_stage = result.stage_result("snapshot")
+        assert snapshot_stage is not None
+        error_paths = [i.path for i in snapshot_stage.issues if i.severity == "error"]
+        assert any(path is not None and slug in path for path in error_paths), error_paths
 
     def test_member_absent_from_db_fails_profiles_stage(self, tmp_path: Path) -> None:
         """fetch_member_row_by_slug returning None reports an error for the member."""
@@ -462,10 +477,10 @@ class TestVerifyRoundtripEvidenceStage:
         _write_feed_json(tmp_path)
         (tmp_path / "evidence" / "ec-target-001.json").unlink()
         result = _run_roundtrip(tmp_path, rt)
-        ev_stage = result.stage_result("evidence")
-        assert ev_stage is not None
-        error_msgs = [i.message for i in ev_stage.issues if i.severity == "error"]
-        assert any("ec-target-001" in m for m in error_msgs), error_msgs
+        snapshot_stage = result.stage_result("snapshot")
+        assert snapshot_stage is not None
+        error_paths = [i.path for i in snapshot_stage.issues if i.severity == "error"]
+        assert any(path is not None and "ec-target-001" in path for path in error_paths), error_paths
 
     def test_card_absent_from_db_fails_evidence_stage(self, tmp_path: Path) -> None:
         """fetch_all_evidence_card_rows returning [] causes card-not-in-DB errors."""

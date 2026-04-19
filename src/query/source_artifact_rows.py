@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from src.db.repositories import fetch_all
+from src.db.repositories import ConnectionLike, fetch_all
 
 _HOUSE_SLUG = "house-disclosures"
 _SENATE_SLUG = "senate-disclosures"
@@ -64,7 +64,7 @@ def _build_params(
 
 
 def fetch_disclosure_artifact_rows(
-    conn,
+    conn: ConnectionLike,
     *,
     chamber: str | None = None,
     year: int | None = None,
@@ -95,7 +95,7 @@ def fetch_disclosure_artifact_rows(
 
 
 def fetch_unparsed_disclosure_artifact_rows(
-    conn,
+    conn: ConnectionLike,
     *,
     chamber: str | None = None,
     limit: int | None = None,

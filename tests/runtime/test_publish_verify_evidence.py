@@ -11,7 +11,7 @@ from datetime import date, datetime
 from pathlib import Path
 
 from src.export.contracts import ConfidenceLabel, EvidenceCardPayload
-from src.export.manifest import ManifestEntry, SnapshotManifest
+from src.export.manifest import ManifestEntry, SnapshotManifest, manifest_root_sha256
 from src.export.writer import evidence_path, serialize_payload
 from src.runtime.publish_verify_evidence import verify_local_evidence_cards
 
@@ -58,6 +58,7 @@ def _manifest_with_cards(*card_ids: str) -> SnapshotManifest:
         entries=entries,
         total_files=len(entries),
         total_bytes=sum(e.size_bytes for e in entries),
+        root_sha256=manifest_root_sha256(entries),
     )
 
 
@@ -121,6 +122,7 @@ class TestVerifyLocalEvidenceCardsOk:
             entries=entries,
             total_files=3,
             total_bytes=150,
+            root_sha256=manifest_root_sha256(entries),
         )
 
         result = verify_local_evidence_cards(tmp_path, manifest)
@@ -216,6 +218,7 @@ class TestVerifyLocalEvidenceCardsPathConfinement:
             entries=entries,
             total_files=1,
             total_bytes=100,
+            root_sha256=manifest_root_sha256(entries),
         )
         result = verify_local_evidence_cards(tmp_path, manifest)
         assert result.ok is False

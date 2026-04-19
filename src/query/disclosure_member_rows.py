@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from src.db.repositories import fetch_all
+from src.db.repositories import ConnectionLike, fetch_all
 
 # ---------------------------------------------------------------------------
 # fetch_house_member_rows
@@ -34,7 +34,7 @@ ORDER BY m.bioguide_id, mt.start_date DESC
 """
 
 
-def fetch_house_member_rows(conn) -> list[dict[str, Any]]:
+def fetch_house_member_rows(conn: ConnectionLike) -> list[dict[str, Any]]:
     """Return one row per current House member with state and district.
 
     District comes from the most recent house member_term.  Callers combine
@@ -60,7 +60,7 @@ ORDER BY bioguide_id
 """
 
 
-def fetch_senate_member_rows(conn) -> list[dict[str, Any]]:
+def fetch_senate_member_rows(conn: ConnectionLike) -> list[dict[str, Any]]:
     """Return one row per current Senate member with state.
 
     Callers match against the name + state encoded in SenateIndexRow.office
@@ -75,7 +75,7 @@ def fetch_senate_member_rows(conn) -> list[dict[str, Any]]:
 
 
 def fetch_member_rows_for_disclosures(
-    conn,
+    conn: ConnectionLike,
     *,
     chamber: str,
 ) -> list[dict[str, Any]]:

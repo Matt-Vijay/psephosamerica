@@ -20,6 +20,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from src.pipeline.recompute_run import RecomputeRunResult
+from src.export.manifest import manifest_root_sha256
 from src.runtime.oracle_contracts import (
     CongressOracleOptions,
     CongressStageSummary,
@@ -499,6 +500,37 @@ class TestRunOracleLocalArgForwarding:
 
         congress_load_options = m_congress.call_args[0][2]
         assert congress_load_options.include_votes is False
+
+    def test_result_surfaces_local_oracle_scope_honestly(self):
+        conn = MagicMock()
+        bundle = MagicMock()
+        options = LocalOracleOptions(
+            congress_options=CongressOracleOptions(
+                congress=118,
+                chamber="house",
+                limit=25,
+                congress_source="current-date-default",
+            ),
+            snapshot_date=_SNAPSHOT_DATE,
+            target_dir=_TARGET_DIR,
+        )
+
+        with (
+            patch(f"{_MODULE}.run_congress_archive_load", return_value=_fake_congress_result()),
+            patch(f"{_MODULE}.run_disclosures_bundle_process", return_value=_fake_disclosures_result()),
+            patch(f"{_MODULE}.run_recompute_runtime", return_value=_fake_recompute_result()),
+            patch(f"{_MODULE}.run_publish_runtime", return_value=_fake_publish_result()),
+            patch(f"{_MODULE}._run_verify", return_value=_fake_verify_result()),
+            patch(f"{_MODULE}._run_roundtrip", return_value=_fake_roundtrip_result()),
+        ):
+            result = run_oracle_local(conn, _ARCHIVE, bundle, options)
+
+        assert result.congress.configured_congress == 118
+        assert result.congress.congress_source == "current-date-default"
+        assert result.congress.include_votes is False
+        assert result.disclosures["requested_chamber"] == "house"
+        assert result.disclosures["artifact_limit"] == 25
+        assert result.publish["zip_feeds_generated"] is False
 
     def test_disclosures_bundle_process_receives_conn_and_bundle(self):
         conn = MagicMock()
@@ -1073,6 +1105,7 @@ class TestRunOracleLocalVerifyIntegration:
                 "entries": [],
                 "total_files": 0,
                 "total_bytes": 0,
+                "root_sha256": manifest_root_sha256([]),
             },
             sort_keys=True,
         ).encode()

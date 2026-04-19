@@ -8,10 +8,10 @@ from __future__ import annotations
 
 from typing import Any
 
-from src.db.repositories import fetch_all
+from src.db.repositories import ConnectionLike, fetch_all
 
 
-def fetch_current_member_slugs(conn) -> list[str]:
+def fetch_current_member_slugs(conn: ConnectionLike) -> list[str]:
     rows = fetch_all(
         conn,
         """
@@ -24,7 +24,7 @@ def fetch_current_member_slugs(conn) -> list[str]:
     return [row["slug"] for row in rows]
 
 
-def fetch_member_row_by_slug(conn, slug: str) -> dict[str, Any] | None:
+def fetch_member_row_by_slug(conn: ConnectionLike, slug: str) -> dict[str, Any] | None:
     rows = fetch_all(
         conn,
         """
@@ -41,7 +41,7 @@ def fetch_member_row_by_slug(conn, slug: str) -> dict[str, Any] | None:
 
 
 def fetch_member_score_snapshot_rows(
-    conn, member_id: int
+    conn: ConnectionLike, member_id: int
 ) -> list[dict[str, Any]]:
     return fetch_all(
         conn,
@@ -57,7 +57,7 @@ def fetch_member_score_snapshot_rows(
 
 
 def fetch_member_rule_fire_rows(
-    conn, member_id: int
+    conn: ConnectionLike, member_id: int
 ) -> list[dict[str, Any]]:
     """Rule fires joined to their evidence card for member-profile surfaces.
 
@@ -89,7 +89,7 @@ def fetch_member_rule_fire_rows(
 
 
 def fetch_member_committee_rows(
-    conn, member_id: int
+    conn: ConnectionLike, member_id: int
 ) -> list[dict[str, Any]]:
     """Current and historical committee memberships with committee metadata."""
     return fetch_all(
@@ -113,7 +113,7 @@ def fetch_member_committee_rows(
     )
 
 
-def fetch_evidence_card_row(conn, public_id: str) -> dict[str, Any] | None:
+def fetch_evidence_card_row(conn: ConnectionLike, public_id: str) -> dict[str, Any] | None:
     rows = fetch_all(
         conn,
         """
@@ -145,7 +145,7 @@ def fetch_evidence_card_row(conn, public_id: str) -> dict[str, Any] | None:
     return rows[0] if rows else None
 
 
-def fetch_all_evidence_card_rows(conn) -> list[dict[str, Any]]:
+def fetch_all_evidence_card_rows(conn: ConnectionLike) -> list[dict[str, Any]]:
     return fetch_all(
         conn,
         """
@@ -175,7 +175,7 @@ def fetch_all_evidence_card_rows(conn) -> list[dict[str, Any]]:
 
 
 def fetch_homepage_feed_rows(
-    conn, limit: int = 20
+    conn: ConnectionLike, limit: int = 20
 ) -> list[dict[str, Any]]:
     """Most-recently-rendered evidence cards for the homepage activity feed."""
     return fetch_all(

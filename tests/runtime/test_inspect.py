@@ -13,7 +13,7 @@ from src.export.contracts import (
     ZipFeedPayload,
 )
 from src.export.filesystem import write_planned_files
-from src.export.manifest import ManifestEntry, SnapshotManifest
+from src.export.manifest import ManifestEntry, SnapshotManifest, manifest_root_sha256
 from src.export.writer import (
     PlannedFile,
     evidence_path,
@@ -88,15 +88,17 @@ def _zip_feed() -> ZipFeedPayload:
 
 
 def _manifest(files: list[PlannedFile]) -> SnapshotManifest:
+    entries = [
+        ManifestEntry(path=f.path, sha256=f.sha256, size_bytes=f.size_bytes)
+        for f in files
+    ]
     return SnapshotManifest(
         snapshot_id=SNAPSHOT_ID,
         created_at=datetime(2026, 4, 14, 0, 0, 0),
-        entries=[
-            ManifestEntry(path=f.path, sha256=f.sha256, size_bytes=f.size_bytes)
-            for f in files
-        ],
+        entries=entries,
         total_files=len(files),
         total_bytes=sum(f.size_bytes for f in files),
+        root_sha256=manifest_root_sha256(entries),
     )
 
 
@@ -157,16 +159,16 @@ def _write_snapshot(root: Path, *, snapshot_id: str = SNAPSHOT_ID) -> None:
         PlannedFile.from_bytes(evidence_path(evidence.evidence_card_id), _serialise(evidence)),
         PlannedFile.from_bytes(zip_path(feed.zip_code), _serialise(feed)),
     ]
-    manifest = SnapshotManifest(
-        snapshot_id=snapshot_id,
-        created_at=datetime(2026, 4, 14, 0, 0, 0),
-        entries=[
-            ManifestEntry(path=f.path, sha256=f.sha256, size_bytes=f.size_bytes)
-            for f in files
-        ],
-        total_files=len(files),
-        total_bytes=sum(f.size_bytes for f in files),
-    )
+    manifest = _manifest(files)
+    if snapshot_id != SNAPSHOT_ID:
+        manifest = SnapshotManifest(
+            snapshot_id=snapshot_id,
+            created_at=manifest.created_at,
+            entries=manifest.entries,
+            total_files=manifest.total_files,
+            total_bytes=manifest.total_bytes,
+            root_sha256=manifest.root_sha256,
+        )
     files.append(PlannedFile.from_bytes(manifest_path(snapshot_id), _serialise(manifest)))
     write_planned_files(files, root)
 
@@ -275,6 +277,7 @@ def test_load_local_manifest_explicit_root(tmp_path: Path) -> None:
     assert result.snapshot_id == SNAPSHOT_ID
     assert result.verify_counts() is True
     assert result.total_files == 3
+    assert result.root_sha256 == manifest_root_sha256(result.entries)
 
 
 def test_load_local_manifest_missing(tmp_path: Path) -> None:
@@ -299,6 +302,7 @@ def test_load_latest_local_manifest_single_snapshot(tmp_path: Path) -> None:
     assert result.snapshot_id == SNAPSHOT_ID
     assert result.verify_counts() is True
     assert result.total_files == 3
+    assert result.root_sha256 == manifest_root_sha256(result.entries)
 
 
 def test_load_latest_local_manifest_picks_lexicographic_max(tmp_path: Path) -> None:

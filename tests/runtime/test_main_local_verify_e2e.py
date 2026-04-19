@@ -12,10 +12,7 @@ Boundary patch strategy
 -----------------------
 verify-publish requires no database connection; the verification pipeline
 reads only the local filesystem.  Therefore no DB or runtime patches are
-needed.  The only patch used is build_runtime for commands that touch
-Settings/taxonomy initialisation (verify-publish does not, but we guard
-against incidental imports by avoiding build_runtime entirely for this
-command).
+needed for this command path.
 
 If the verify-publish dispatch is absent from main.py the tests in
 TestRunVerifyPublishE2E will fail with an error indicating the command
@@ -134,7 +131,7 @@ class TestRunVerifyPublishE2E:
 
 
 class TestRunVerifyPublishBrokenTree:
-    """Broken trees produce ok=False in output; exit code is still 0 (not a crash)."""
+    """Broken trees produce ok=False in output and a nonzero exit code."""
 
     def test_missing_member_profile_ok_false(self, tmp_path: Path, capsys) -> None:
         make_snapshot(tmp_path)
@@ -143,7 +140,7 @@ class TestRunVerifyPublishBrokenTree:
         member_files[0].unlink()
 
         code, out = _run_and_parse(tmp_path, capsys)
-        assert code == 0
+        assert code == 1
         assert out["ok"] is False
 
     def test_missing_evidence_card_ok_false(self, tmp_path: Path, capsys) -> None:
@@ -153,7 +150,7 @@ class TestRunVerifyPublishBrokenTree:
         ev_files[0].unlink()
 
         code, out = _run_and_parse(tmp_path, capsys)
-        assert code == 0
+        assert code == 1
         assert out["ok"] is False
 
     def test_corrupt_member_profile_ok_false(self, tmp_path: Path, capsys) -> None:
@@ -162,7 +159,7 @@ class TestRunVerifyPublishBrokenTree:
         member_files[0].write_bytes(b"not valid json {{{")
 
         code, out = _run_and_parse(tmp_path, capsys)
-        assert code == 0
+        assert code == 1
         assert out["ok"] is False
 
     def test_total_errors_nonzero_for_broken_tree(self, tmp_path: Path, capsys) -> None:
@@ -177,7 +174,7 @@ class TestRunVerifyPublishBrokenTree:
         empty_root = tmp_path / "empty"
         empty_root.mkdir()
         code, out = _run_and_parse(empty_root, capsys)
-        assert code == 0
+        assert code == 1
         assert out["ok"] is False
 
 
@@ -193,11 +190,10 @@ class TestRunVerifyPublishCliArgs:
         code = run(["verify-publish"])
         assert code != 0
 
-    def test_nonexistent_root_exits_zero_ok_false(self, tmp_path: Path, capsys) -> None:
+    def test_nonexistent_root_exits_nonzero_ok_false(self, tmp_path: Path, capsys) -> None:
         missing = tmp_path / "does_not_exist"
         code, out = _run_and_parse(missing, capsys)
-        # The verifier should handle a missing root gracefully — ok=False,
-        # exit code 0 (not a runtime crash).
+        assert code == 1
         assert out["ok"] is False
 
     def test_publish_root_is_forwarded_to_verifier(self, tmp_path: Path, capsys) -> None:

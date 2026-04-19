@@ -58,6 +58,9 @@ def _congress_summary(
     total_inserted: int = 10,
     total_written: int = 10,
     load_ok: bool = True,
+    configured_congress: int = 119,
+    congress_source: str = "explicit",
+    include_votes: bool = False,
 ) -> CongressStageSummary:
     return CongressStageSummary(
         run_id=run_id,
@@ -65,6 +68,9 @@ def _congress_summary(
         total_inserted=total_inserted,
         total_written=total_written,
         load_ok=load_ok,
+        configured_congress=configured_congress,
+        congress_source=congress_source,
+        include_votes=include_votes,
     )
 
 
@@ -72,6 +78,8 @@ def _disclosures_summary(
     *,
     run_id: int = 10,
     source_slug: str = "house-disclosures",
+    requested_chamber: str = "both",
+    artifact_limit: int | None = None,
     parse_succeeded: int = 3,
     parse_failed: int = 0,
     transform_count: int = 3,
@@ -81,6 +89,8 @@ def _disclosures_summary(
     return {
         "run_id": run_id,
         "source_slug": source_slug,
+        "requested_chamber": requested_chamber,
+        "artifact_limit": artifact_limit,
         "parse_succeeded": parse_succeeded,
         "parse_failed": parse_failed,
         "transform_count": transform_count,
@@ -111,6 +121,7 @@ def _publish_summary(
     source_slug: str = "snapshot-publish",
     written_count: int = 9,
     succeeded: bool = True,
+    zip_feeds_generated: bool = False,
 ) -> dict:
     return {
         "run_id": run_id,
@@ -118,6 +129,7 @@ def _publish_summary(
         "source_slug": source_slug,
         "written_count": written_count,
         "succeeded": succeeded,
+        "zip_feeds_generated": zip_feeds_generated,
     }
 
 
@@ -244,6 +256,9 @@ class TestSmokeOracleLocalStructure:
             "total_inserted",
             "total_written",
             "load_ok",
+            "configured_congress",
+            "congress_source",
+            "include_votes",
         }
 
     def test_disclosures_keys(self) -> None:
@@ -251,6 +266,8 @@ class TestSmokeOracleLocalStructure:
         assert set(summary["disclosures"]) == {
             "run_id",
             "source_slug",
+            "requested_chamber",
+            "artifact_limit",
             "parse_succeeded",
             "parse_failed",
             "transform_count",
@@ -275,6 +292,7 @@ class TestSmokeOracleLocalStructure:
             "source_slug",
             "written_count",
             "succeeded",
+            "zip_feeds_generated",
         }
 
     def test_verify_keys(self) -> None:
@@ -331,7 +349,16 @@ class TestArgumentForwarding:
 
 class TestValueForwarding:
     def test_congress_values(self) -> None:
-        cong = _congress_summary(run_id=99, source_slug="congress-core", total_inserted=50, total_written=50, load_ok=True)
+        cong = _congress_summary(
+            run_id=99,
+            source_slug="congress-core",
+            total_inserted=50,
+            total_written=50,
+            load_ok=True,
+            configured_congress=118,
+            congress_source="explicit-arg",
+            include_votes=False,
+        )
         result = _make_run_result(congress=cong)
         summary, *_ = _run(run_result=result)
         c = summary["congress"]
@@ -340,6 +367,9 @@ class TestValueForwarding:
         assert c["total_inserted"] == 50
         assert c["total_written"] == 50
         assert c["load_ok"] is True
+        assert c["configured_congress"] == 118
+        assert c["congress_source"] == "explicit-arg"
+        assert c["include_votes"] is False
 
     def test_snapshot_id_from_result(self) -> None:
         result = _make_run_result(snapshot_id="2024-06-01")
@@ -349,6 +379,8 @@ class TestValueForwarding:
     def test_disclosures_values(self) -> None:
         disc = _disclosures_summary(
             run_id=11,
+            requested_chamber="senate",
+            artifact_limit=25,
             parse_succeeded=5,
             parse_failed=1,
             transform_count=5,
@@ -359,6 +391,8 @@ class TestValueForwarding:
         summary, *_ = _run(run_result=result)
         d = summary["disclosures"]
         assert d["run_id"] == 11
+        assert d["requested_chamber"] == "senate"
+        assert d["artifact_limit"] == 25
         assert d["parse_succeeded"] == 5
         assert d["parse_failed"] == 1
         assert d["transform_count"] == 5
@@ -380,6 +414,7 @@ class TestValueForwarding:
             snapshot_id="snap-id",
             written_count=15,
             succeeded=True,
+            zip_feeds_generated=False,
         )
         result = _make_run_result(publish=pub)
         summary, *_ = _run(run_result=result)
@@ -388,6 +423,7 @@ class TestValueForwarding:
         assert p["snapshot_id"] == "snap-id"
         assert p["written_count"] == 15
         assert p["succeeded"] is True
+        assert p["zip_feeds_generated"] is False
 
     def test_load_ok_false(self) -> None:
         disc = _disclosures_summary(load_ok=False, total_written=0)

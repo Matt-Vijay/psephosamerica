@@ -47,8 +47,15 @@ Current commands:
 - `status`
 - `load-congress`
 - `load-disclosures`
+- `parse-disclosures`
+- `process-disclosures`
 - `recompute`
 - `publish`
+- `load-congress-local`
+- `process-disclosures-local`
+- `run-oracle-local`
+- `verify-publish`
+- `verify-publish-roundtrip`
 
 Examples:
 
@@ -56,9 +63,23 @@ Examples:
 python3 -m src.runtime.main status
 python3 -m src.runtime.main load-congress --congress 119
 python3 -m src.runtime.main load-disclosures --chamber both --year 2025
+python3 -m src.runtime.main parse-disclosures --chamber both --local-root data/artifacts
+python3 -m src.runtime.main process-disclosures --chamber both --local-root data/artifacts
 python3 -m src.runtime.main recompute --snapshot-date 2026-04-14
 python3 -m src.runtime.main publish --snapshot-date 2026-04-14 --zip-bundle data/zip_bundle.json
+python3 -m src.runtime.main process-disclosures-local --bundle data/disclosures_bundle.json
+python3 -m src.runtime.main verify-publish --publish-root out/publish
+python3 -m src.runtime.main verify-publish-roundtrip --publish-root out/publish
 ```
+
+Notes:
+
+- `bootstrap-db` applies the canonical bootstrap SQL from `db/schema.sql`; `--dry-run` reports the plan instead of dumping SQL.
+- `status` returns summary counts plus the latest ingestion run, latest parse run, latest artifact, and active data sources.
+- `load-congress` treats `--house-vote-year` or `--senate-session` as an explicit vote request, even if `--include-votes` is omitted.
+- `publish` requires `--zip-bundle`; there is no implicit default.
+- `process-disclosures-local` only accepts `--bundle`; unused `--chamber` and `--limit` flags are gone.
+- verification commands still emit structured JSON on stdout, print a one-line failure summary to stderr when checks fail, and exit nonzero on verification failure.
 
 ## Repository Layout
 

@@ -20,6 +20,7 @@ from src.export.contracts import (
 from src.export.writer import (
     PlannedFile,
     evidence_path,
+    finalize_publish_plan,
     manifest_path,
     member_path,
     plan_snapshot,
@@ -265,6 +266,20 @@ def test_plan_snapshot_manifest_covers_data_files():
     manifest_paths = {e["path"] for e in manifest_content["entries"]}
     data_paths = {f.path for f in plan[:-1]}
     assert data_paths == manifest_paths
+
+
+def test_finalize_publish_plan_manifest_covers_root_public_files():
+    plan = plan_snapshot(SNAPSHOT_ID, [_make_member_profile()], [], [])
+    homepage = PlannedFile.from_bytes("homepage/feed.json", b'{"items":[]}')
+    robots = PlannedFile.from_bytes("robots.txt", b"User-agent: *\nAllow: /\n")
+
+    finalized = finalize_publish_plan(SNAPSHOT_ID, plan + [homepage, robots])
+
+    manifest_file = next(f for f in finalized if f.path == manifest_path(SNAPSHOT_ID))
+    manifest_content = json.loads(manifest_file.content)
+    manifest_paths = {entry["path"] for entry in manifest_content["entries"]}
+
+    assert manifest_paths == {f.path for f in finalized if f.path != manifest_path(SNAPSHOT_ID)}
 
 
 def test_plan_snapshot_manifest_sha256_correct():

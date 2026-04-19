@@ -11,6 +11,9 @@ The remaining four stages delegate to their dedicated modules, each
 receiving the live DB connection, the publish root, and the loaded
 manifest.
 
+The snapshot stage is limited to the manifest-backed artifact set. Homepage
+coverage is established separately by the dedicated homepage stage.
+
 If the manifest cannot be loaded after the snapshot stage, the four
 downstream stages are each returned as an error result so the caller
 always receives a complete five-stage PublishRoundtripResult.
@@ -19,7 +22,6 @@ No CLI here.  No lazy imports.
 """
 from __future__ import annotations
 
-import json
 from datetime import date
 from pathlib import Path
 from typing import Any
@@ -36,6 +38,7 @@ from src.runtime.publish_roundtrip_types import (
     PublishRoundtripResult,
     PublishRoundtripStageResult,
 )
+from src.runtime.publish_verify_manifest import inspect_local_manifest
 from src.runtime.publish_roundtrip_zip import verify_published_zip_roundtrip
 
 _STAGE_SNAPSHOT = "snapshot"
@@ -79,88 +82,43 @@ def _verify_snapshot(root: Path) -> tuple[PublishRoundtripStageResult, SnapshotM
     Returns:
         A ``(stage_result, manifest_or_none)`` pair.
     """
-    snapshots_dir = root / "snapshots"
-
-    if not snapshots_dir.is_dir():
+    inspection = inspect_local_manifest(root)
+    if inspection.manifest is None:
+        if inspection.stage_result.issues:
+            issues = tuple(
+                PublishRoundtripIssue(
+                    stage=_STAGE_SNAPSHOT,
+                    message=issue.message,
+                    severity=issue.severity,
+                    path=issue.path,
+                )
+                for issue in inspection.stage_result.issues
+            )
+        else:
+            issues = (
+                PublishRoundtripIssue(
+                    stage=_STAGE_SNAPSHOT,
+                    message=inspection.reason,
+                    severity="error",
+                ),
+            )
         return (
             PublishRoundtripStageResult(
                 stage=_STAGE_SNAPSHOT,
-                checked=0,
-                issues=(
-                    PublishRoundtripIssue(
-                        stage=_STAGE_SNAPSHOT,
-                        message="snapshots/ directory is missing",
-                        severity="error",
-                    ),
-                ),
+                checked=inspection.stage_result.checked,
+                issues=issues,
             ),
             None,
         )
 
-    candidates = sorted(snapshots_dir.glob("*/manifest.json"))
-
-    if not candidates:
-        return (
-            PublishRoundtripStageResult(
-                stage=_STAGE_SNAPSHOT,
-                checked=0,
-                issues=(
-                    PublishRoundtripIssue(
-                        stage=_STAGE_SNAPSHOT,
-                        message="no manifest.json found under snapshots/",
-                        severity="error",
-                    ),
-                ),
-            ),
-            None,
-        )
-
-    if len(candidates) > 1:
-        paths_str = ", ".join(str(c.relative_to(root)) for c in candidates)
-        return (
-            PublishRoundtripStageResult(
-                stage=_STAGE_SNAPSHOT,
-                checked=0,
-                issues=(
-                    PublishRoundtripIssue(
-                        stage=_STAGE_SNAPSHOT,
-                        message=f"expected exactly one manifest, found {len(candidates)}: {paths_str}",
-                        severity="error",
-                    ),
-                ),
-            ),
-            None,
-        )
-
-    manifest_file = candidates[0]
-    try:
-        raw = json.loads(manifest_file.read_bytes())
-        manifest = SnapshotManifest.model_validate(raw)
-    except Exception as exc:  # noqa: BLE001
-        return (
-            PublishRoundtripStageResult(
-                stage=_STAGE_SNAPSHOT,
-                checked=1,
-                issues=(
-                    PublishRoundtripIssue(
-                        stage=_STAGE_SNAPSHOT,
-                        message=f"manifest failed to load: {exc}",
-                        severity="error",
-                        path=str(manifest_file.relative_to(root)),
-                    ),
-                ),
-            ),
-            None,
-        )
-
-    artifact_paths = list_artifact_paths(manifest)
+    artifact_paths = list_artifact_paths(inspection.manifest)
     return (
         PublishRoundtripStageResult(
             stage=_STAGE_SNAPSHOT,
             checked=len(artifact_paths),
             issues=(),
         ),
-        manifest,
+        inspection.manifest,
     )
 
 
@@ -192,7 +150,8 @@ def verify_publish_roundtrip(conn: Any, root: Path) -> PublishRoundtripResult:
 
     Returns:
         A :class:`PublishRoundtripResult` summarising all stage outcomes.
-        Inspect ``.ok`` to determine whether the roundtrip is sound.
+        Inspect ``.ok`` to determine whether the checked roundtrip stages are
+        self-consistent against the live DB inputs.
     """
     # Stage 1: snapshot
     snapshot_stage, manifest = _verify_snapshot(root)

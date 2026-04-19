@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any, Callable, Optional
 
 from src.export.filesystem import verify_written_files, write_planned_files
-from src.export.writer import PlannedFile
+from src.export.writer import PlannedFile, finalize_publish_plan
 from src.pipeline.stages import (
     NullEmitter,
     PipelineResult,
@@ -86,7 +86,7 @@ def _make_verify_stage(target_dir: Path) -> StageDefinition:
             raise ValueError(
                 f"Verification failed for {len(failures)} file(s): {failures}"
             )
-        logs.append(f"all {len(planned)} file(s) verified")
+        logs.append(f"all {len(planned)} planned file(s) verified")
         return failures
 
     return StageDefinition(name="verify", fn=_fn)
@@ -102,11 +102,14 @@ def run_publish(
     planner: Planner,
     emitter: Optional[ProvenanceEmitter] = None,
 ) -> PublishResult:
-    """Run the three-stage publish pipeline: plan → write → verify SHA-256 digests."""
+    """Run the three-stage publish pipeline: plan -> write -> verify planned SHA-256 digests."""
     _emitter: ProvenanceEmitter = emitter or NullEmitter()
 
+    def finalized_planner() -> list[PlannedFile]:
+        return finalize_publish_plan(config.snapshot_id, planner())
+
     stages = [
-        _make_plan_stage(planner),
+        _make_plan_stage(finalized_planner),
         _make_write_stage(config.target_dir),
         _make_verify_stage(config.target_dir),
     ]

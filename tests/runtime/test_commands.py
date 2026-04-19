@@ -16,6 +16,7 @@ import pytest
 
 from src.pipeline.publish_snapshot_run import ZipBundleInputs
 from src.runtime.commands import (
+    _oracle_summary_ok,
     load_congress,
     load_congress_local,
     load_disclosures,
@@ -55,6 +56,30 @@ def _command_env():
     conn = MagicMock()
     with patch(f"{_MODULE}.open_connection", return_value=conn) as mock_open:
         yield SimpleNamespace(ctx=ctx, conn=conn, mock_open=mock_open)
+
+
+class TestOracleSummaryOk:
+    def test_returns_false_when_congress_stage_fails(self) -> None:
+        summary = {
+            "congress": {"load_ok": False},
+            "disclosures": {"load_ok": True},
+            "publish": {"succeeded": True},
+            "verify": {"ok": True},
+            "roundtrip": {"ok": True},
+        }
+
+        assert _oracle_summary_ok(summary) is False
+
+    def test_returns_false_when_disclosures_stage_fails(self) -> None:
+        summary = {
+            "congress": {"load_ok": True},
+            "disclosures": {"load_ok": False},
+            "publish": {"succeeded": True},
+            "verify": {"ok": True},
+            "roundtrip": {"ok": True},
+        }
+
+        assert _oracle_summary_ok(summary) is False
 
 
 # ---------------------------------------------------------------------------

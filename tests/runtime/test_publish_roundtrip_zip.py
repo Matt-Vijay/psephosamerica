@@ -12,7 +12,7 @@ from unittest.mock import patch
 
 from src.export.contracts import ScoreSummary, ZipFeedPayload, ZipMemberSummary
 from src.export.filesystem import write_planned_files
-from src.export.manifest import ManifestEntry, SnapshotManifest
+from src.export.manifest import ManifestEntry, SnapshotManifest, manifest_root_sha256
 from src.export.writer import PlannedFile, serialize_payload, zip_path
 from src.runtime.publish_roundtrip_types import PublishRoundtripStageResult
 from src.runtime.publish_roundtrip_zip import verify_published_zip_roundtrip
@@ -72,22 +72,37 @@ def _planned(feed: ZipFeedPayload) -> PlannedFile:
 
 
 def _manifest(files: list[PlannedFile]) -> SnapshotManifest:
+    entries = [ManifestEntry(path=f.path, sha256=f.sha256, size_bytes=f.size_bytes) for f in files]
     return SnapshotManifest(
         snapshot_id=_SNAPSHOT_ID,
         created_at=datetime(2026, 4, 14, 0, 0, 0),
-        entries=[ManifestEntry(path=f.path, sha256=f.sha256, size_bytes=f.size_bytes) for f in files],
+        entries=entries,
         total_files=len(files),
         total_bytes=sum(f.size_bytes for f in files),
+        root_sha256=manifest_root_sha256(entries),
     )
 
 
 def _empty_manifest() -> SnapshotManifest:
+    entries: list[ManifestEntry] = []
     return SnapshotManifest(
         snapshot_id=_SNAPSHOT_ID,
         created_at=datetime(2026, 4, 14, 0, 0, 0),
-        entries=[],
+        entries=entries,
         total_files=0,
         total_bytes=0,
+        root_sha256=manifest_root_sha256(entries),
+    )
+
+
+def _manifest_from_entries(entries: list[ManifestEntry]) -> SnapshotManifest:
+    return SnapshotManifest(
+        snapshot_id=_SNAPSHOT_ID,
+        created_at=datetime(2026, 4, 14, 0, 0, 0),
+        entries=entries,
+        total_files=len(entries),
+        total_bytes=sum(entry.size_bytes for entry in entries),
+        root_sha256=manifest_root_sha256(entries),
     )
 
 
@@ -141,13 +156,7 @@ class TestNoZipEntries:
 
     def test_non_zip_entries_ignored(self, tmp_path: Path) -> None:
         entry = ManifestEntry(path="members/alice-smith.json", sha256="a" * 64, size_bytes=100)
-        manifest = SnapshotManifest(
-            snapshot_id=_SNAPSHOT_ID,
-            created_at=datetime(2026, 4, 14, 0, 0, 0),
-            entries=[entry],
-            total_files=1,
-            total_bytes=100,
-        )
+        manifest = _manifest_from_entries([entry])
         with patch(_PATCH_SCORE_ROWS), patch(_PATCH_EVIDENCE_IDS):
             result = verify_published_zip_roundtrip(None, tmp_path, manifest, _SNAPSHOT_DATE)
         assert result.ok is True
@@ -326,13 +335,7 @@ class TestEvidenceMismatch:
 class TestMissingFile:
     def _manifest_missing(self) -> SnapshotManifest:
         entry = ManifestEntry(path="zip/99999.json", sha256="a" * 64, size_bytes=50)
-        return SnapshotManifest(
-            snapshot_id=_SNAPSHOT_ID,
-            created_at=datetime(2026, 4, 14, 0, 0, 0),
-            entries=[entry],
-            total_files=1,
-            total_bytes=50,
-        )
+        return _manifest_from_entries([entry])
 
     def test_not_ok(self, tmp_path: Path) -> None:
         with patch(_PATCH_SCORE_ROWS), patch(_PATCH_EVIDENCE_IDS):
@@ -389,16 +392,10 @@ class TestMultipleFeeds:
         write_planned_files([good_pf], tmp_path)
 
         missing_entry = ManifestEntry(path="zip/99998.json", sha256="b" * 64, size_bytes=50)
-        manifest = SnapshotManifest(
-            snapshot_id=_SNAPSHOT_ID,
-            created_at=datetime(2026, 4, 14, 0, 0, 0),
-            entries=[
-                ManifestEntry(path=good_pf.path, sha256=good_pf.sha256, size_bytes=good_pf.size_bytes),
-                missing_entry,
-            ],
-            total_files=2,
-            total_bytes=good_pf.size_bytes + 50,
-        )
+        manifest = _manifest_from_entries([
+            ManifestEntry(path=good_pf.path, sha256=good_pf.sha256, size_bytes=good_pf.size_bytes),
+            missing_entry,
+        ])
 
         with patch(_PATCH_SCORE_ROWS, return_value=[]), patch(_PATCH_EVIDENCE_IDS, return_value={}):
             result = verify_published_zip_roundtrip(None, tmp_path, manifest, _SNAPSHOT_DATE)
@@ -411,16 +408,10 @@ class TestMultipleFeeds:
         write_planned_files([good_pf], tmp_path)
 
         missing_entry = ManifestEntry(path="zip/99998.json", sha256="b" * 64, size_bytes=50)
-        manifest = SnapshotManifest(
-            snapshot_id=_SNAPSHOT_ID,
-            created_at=datetime(2026, 4, 14, 0, 0, 0),
-            entries=[
-                ManifestEntry(path=good_pf.path, sha256=good_pf.sha256, size_bytes=good_pf.size_bytes),
-                missing_entry,
-            ],
-            total_files=2,
-            total_bytes=good_pf.size_bytes + 50,
-        )
+        manifest = _manifest_from_entries([
+            ManifestEntry(path=good_pf.path, sha256=good_pf.sha256, size_bytes=good_pf.size_bytes),
+            missing_entry,
+        ])
 
         with patch(_PATCH_SCORE_ROWS, return_value=[]), patch(_PATCH_EVIDENCE_IDS, return_value={}):
             result = verify_published_zip_roundtrip(None, tmp_path, manifest, _SNAPSHOT_DATE)
@@ -501,13 +492,7 @@ class TestStageResultProperties:
 
     def test_ok_false_when_error(self, tmp_path: Path) -> None:
         entry = ManifestEntry(path="zip/55555.json", sha256="d" * 64, size_bytes=10)
-        manifest = SnapshotManifest(
-            snapshot_id=_SNAPSHOT_ID,
-            created_at=datetime(2026, 4, 14, 0, 0, 0),
-            entries=[entry],
-            total_files=1,
-            total_bytes=10,
-        )
+        manifest = _manifest_from_entries([entry])
         with patch(_PATCH_SCORE_ROWS), patch(_PATCH_EVIDENCE_IDS):
             result = verify_published_zip_roundtrip(None, tmp_path, manifest, _SNAPSHOT_DATE)
         assert result.ok is False

@@ -10,7 +10,7 @@ Street-level resolution is deferred.
 from __future__ import annotations
 
 from datetime import date
-from typing import Any, Mapping, Sequence
+from typing import Any, Literal, Mapping, Sequence, cast
 
 from src.export.contracts import (
     ScoreSummary,
@@ -23,6 +23,10 @@ from src.zip.resolve import FederalBundle, MemberRef
 def _format_district(state: str, district: int) -> str:
     # e.g. "CA-33", "AK-00" (at-large)
     return f"{state}-{district:02d}"
+
+
+def _member_chamber(chamber: str) -> Literal["house", "senate"]:
+    return cast(Literal["house", "senate"], chamber)
 
 
 def _build_member_summary(
@@ -42,7 +46,7 @@ def _build_member_summary(
         bioguide_id=ref.bioguide_id,
         name=ref.full_name,
         slug=ref.slug,
-        chamber=ref.chamber,
+        chamber=_member_chamber(ref.chamber),
         party=ref.party,
         scores=scores,
         top_evidence_card_ids=list(evidence_card_ids)[:3],

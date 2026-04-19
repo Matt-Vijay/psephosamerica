@@ -19,7 +19,7 @@ from unittest.mock import MagicMock, patch
 
 from src.export.contracts import MemberProfilePayload
 from src.export.filesystem import write_planned_files
-from src.export.manifest import ManifestEntry, SnapshotManifest
+from src.export.manifest import ManifestEntry, SnapshotManifest, manifest_root_sha256
 from src.export.writer import PlannedFile, member_path, serialize_payload
 from src.runtime.publish_roundtrip_profiles import verify_published_member_profiles_roundtrip
 from src.runtime.publish_roundtrip_types import PublishRoundtripStageResult
@@ -98,15 +98,17 @@ def _score_snapshot_row(*, member_id: int = 1, snapshot_at: date = SNAPSHOT_DATE
 def _manifest_from_files(
     files: list[PlannedFile], *, snapshot_id: str = "2026-04-14"
 ) -> SnapshotManifest:
+    entries = [
+        ManifestEntry(path=f.path, sha256=f.sha256, size_bytes=f.size_bytes)
+        for f in files
+    ]
     return SnapshotManifest(
         snapshot_id=snapshot_id,
         created_at=datetime(2026, 4, 14, 0, 0, 0),
-        entries=[
-            ManifestEntry(path=f.path, sha256=f.sha256, size_bytes=f.size_bytes)
-            for f in files
-        ],
+        entries=entries,
         total_files=len(files),
         total_bytes=sum(f.size_bytes for f in files),
+        root_sha256=manifest_root_sha256(entries),
     )
 
 

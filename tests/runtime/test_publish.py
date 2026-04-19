@@ -142,10 +142,11 @@ class TestRunPublishRuntimeSuccess:
 
 
 class TestRunPublishRuntimePublishException:
-    def test_marks_run_failed_and_reraises(self):
+    def test_marks_run_failed_and_reraises(self, tmp_path: Path):
         conn = MagicMock()
         zip_inputs = MagicMock()
         boom = RuntimeError("disk full")
+        target_dir = tmp_path / "publish"
 
         with (
             patch(_ENSURE, return_value=_DS_ROW),
@@ -155,7 +156,7 @@ class TestRunPublishRuntimePublishException:
             patch(_PUBLISH_SNAP, side_effect=boom),
         ):
             with pytest.raises(RuntimeError, match="disk full"):
-                run_publish_runtime(conn, _SNAP_DATE, Path("/tmp"), zip_inputs)
+                run_publish_runtime(conn, _SNAP_DATE, target_dir, zip_inputs)
 
         mock_fail.assert_called_once()
         _conn, run_id, msg = mock_fail.call_args[0]
@@ -170,9 +171,10 @@ class TestRunPublishRuntimePublishException:
 
 
 class TestRunPublishRuntimePublishFailure:
-    def test_marks_run_failed_and_raises_on_verification_failures(self):
+    def test_marks_run_failed_and_raises_on_verification_failures(self, tmp_path: Path):
         conn = MagicMock()
         zip_inputs = MagicMock()
+        target_dir = tmp_path / "publish"
 
         with (
             patch(_ENSURE, return_value=_DS_ROW),
@@ -182,10 +184,72 @@ class TestRunPublishRuntimePublishFailure:
             patch(_PUBLISH_SNAP, return_value=_failed_publish_result(["bad hash", "missing file"])),
         ):
             with pytest.raises(RuntimeError, match="bad hash"):
-                run_publish_runtime(conn, _SNAP_DATE, Path("/tmp"), zip_inputs)
+                run_publish_runtime(conn, _SNAP_DATE, target_dir, zip_inputs)
 
         mock_fail.assert_called_once()
         _conn, run_id, msg = mock_fail.call_args[0]
         assert run_id == _RUN_ID
         assert "bad hash" in msg
+        mock_finish.assert_not_called()
+
+
+class TestRunPublishRuntimePromotion:
+    def test_promotes_staged_tree_on_success(self, tmp_path: Path) -> None:
+        conn = MagicMock()
+        zip_inputs = MagicMock()
+        target_dir = tmp_path / "publish"
+        target_dir.mkdir()
+        (target_dir / "old.json").write_text("old", encoding="utf-8")
+        seen: dict[str, Path] = {}
+
+        def _publish(*args, **kwargs):
+            staging_dir = kwargs["target_dir"]
+            seen["staging_dir"] = staging_dir
+            staging_dir.mkdir(parents=True, exist_ok=True)
+            (staging_dir / "new.json").write_text("new", encoding="utf-8")
+            return _succeeded_publish_result()
+
+        with (
+            patch(_ENSURE, return_value=_DS_ROW),
+            patch(_START, return_value=_RUN_ID),
+            patch(_FINISH),
+            patch(_FAIL),
+            patch(_PUBLISH_SNAP, side_effect=_publish),
+        ):
+            run_publish_runtime(conn, _SNAP_DATE, target_dir, zip_inputs)
+
+        assert seen["staging_dir"] != target_dir
+        assert seen["staging_dir"].parent == target_dir.parent
+        assert (target_dir / "new.json").read_text(encoding="utf-8") == "new"
+        assert not (target_dir / "old.json").exists()
+
+    def test_failed_publish_preserves_existing_target_tree(self, tmp_path: Path) -> None:
+        conn = MagicMock()
+        zip_inputs = MagicMock()
+        target_dir = tmp_path / "publish"
+        target_dir.mkdir()
+        (target_dir / "old.json").write_text("old", encoding="utf-8")
+        seen: dict[str, Path] = {}
+
+        def _publish(*args, **kwargs):
+            staging_dir = kwargs["target_dir"]
+            seen["staging_dir"] = staging_dir
+            staging_dir.mkdir(parents=True, exist_ok=True)
+            (staging_dir / "new.json").write_text("new", encoding="utf-8")
+            return _failed_publish_result(["bad hash"])
+
+        with (
+            patch(_ENSURE, return_value=_DS_ROW),
+            patch(_START, return_value=_RUN_ID),
+            patch(_FINISH) as mock_finish,
+            patch(_FAIL) as mock_fail,
+            patch(_PUBLISH_SNAP, side_effect=_publish),
+        ):
+            with pytest.raises(RuntimeError, match="bad hash"):
+                run_publish_runtime(conn, _SNAP_DATE, target_dir, zip_inputs)
+
+        assert seen["staging_dir"] != target_dir
+        assert (target_dir / "old.json").read_text(encoding="utf-8") == "old"
+        assert not (target_dir / "new.json").exists()
+        mock_fail.assert_called_once()
         mock_finish.assert_not_called()

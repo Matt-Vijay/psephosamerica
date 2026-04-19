@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from src.db.repositories import fetch_all
+from src.db.repositories import ConnectionLike, fetch_all
 
 
 # ---------------------------------------------------------------------------
@@ -58,7 +58,7 @@ ORDER BY bioguide_id
 
 
 def fetch_recompute_members(
-    conn,
+    conn: ConnectionLike,
     *,
     bioguide_ids: list[str] | None = None,
 ) -> list[dict[str, Any]]:
@@ -93,7 +93,7 @@ ORDER BY member_id, snapshot_at DESC
 
 
 def fetch_previous_score_snapshot_rows(
-    conn,
+    conn: ConnectionLike,
     *,
     member_ids: list[int],
 ) -> list[dict[str, Any]]:

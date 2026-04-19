@@ -21,16 +21,16 @@ class ParseResult(Protocol):
 @dataclass(frozen=True)
 class ParseSessionResult:
     run_id: int
-    parse_result: Any  # full object returned by parse_fn
+    parse_result: ParseResult | dict[str, Any]  # full object returned by parse_fn
 
 
 def run_parse_session(
-    conn,
+    conn: Any,
     *,
     source_artifact_id: int,
     parser_name: str,
     parser_version: str,
-    parse_fn: Callable[[], Any],
+    parse_fn: Callable[[], ParseResult | dict[str, Any]],
     ingestion_run_id: int | None = None,
 ) -> ParseSessionResult:
     """Create a parse_run, invoke parse_fn, then close the run.

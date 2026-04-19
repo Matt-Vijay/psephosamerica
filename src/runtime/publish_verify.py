@@ -1,4 +1,4 @@
-"""Aggregate publish verification.
+"""Aggregate local publish verification.
 
 Entry point: verify_local_publish(root)
 
@@ -11,16 +11,19 @@ downstream stage verifiers.  If none or multiple manifests are found, or if
 loading fails, the downstream stages are each returned as an error result
 with an explicit reason.
 
+This local verifier establishes manifest-backed self-consistency for the
+published snapshot artifacts it knows how to check. Files outside that local
+coverage may be surfaced as warnings rather than claimed as verified.
+
 No CLI here.
 """
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 from src.export.manifest import SnapshotManifest
 from src.runtime.publish_verify_evidence import verify_local_evidence_cards
-from src.runtime.publish_verify_manifest import verify_local_manifest
+from src.runtime.publish_verify_manifest import inspect_local_manifest, verify_local_manifest
 from src.runtime.publish_verify_profiles import verify_local_member_profiles
 from src.runtime.publish_verify_types import (
     PublishVerifyIssue,
@@ -31,27 +34,8 @@ from src.runtime.publish_verify_zip import verify_local_zip_feeds
 
 
 def _find_and_load_manifest(root: Path) -> tuple[SnapshotManifest | None, str]:
-    """Scan root/snapshots/*/manifest.json and load the single manifest found.
-
-    Returns ``(manifest, "")`` on success, or ``(None, reason)`` when loading
-    is not possible.  The reason string is forwarded to downstream stages so
-    that the caller always receives an explicit explanation.
-    """
-    snapshots_dir = root / "snapshots"
-    if not snapshots_dir.is_dir():
-        return None, "no snapshots directory"
-
-    candidates = sorted(snapshots_dir.glob("*/manifest.json"))
-    if not candidates:
-        return None, "no manifest files found"
-    if len(candidates) != 1:
-        return None, f"expected one manifest, found {len(candidates)}"
-
-    try:
-        raw = json.loads(candidates[0].read_bytes())
-        return SnapshotManifest.model_validate(raw), ""
-    except Exception as exc:
-        return None, f"manifest failed to parse: {exc}"
+    inspection = inspect_local_manifest(root)
+    return inspection.manifest, inspection.reason
 
 
 def _unavailable_stage(stage: str, reason: str) -> PublishVerifyStageResult:
@@ -78,7 +62,8 @@ def verify_local_publish(root: Path) -> PublishVerifyResult:
 
     Returns:
         A :class:`PublishVerifyResult` summarising all stage outcomes.
-        Inspect ``.ok`` to determine whether the publish tree is sound.
+        Inspect ``.ok`` to determine whether the manifest-backed local publish
+        set is self-consistent.
     """
     # Stage 1: manifest
     manifest_stage = verify_local_manifest(root)

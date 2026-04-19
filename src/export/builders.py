@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 from datetime import UTC, date, datetime
+from pathlib import PurePosixPath
 from typing import Any
 
 from .contracts import (
@@ -19,7 +20,7 @@ from .contracts import (
     ZipFeedPayload,
     ZipMemberSummary,
 )
-from .manifest import ManifestEntry, SnapshotManifest
+from .manifest import ManifestEntry, SnapshotManifest, manifest_root_sha256
 
 
 # ── Internal helpers ───────────────────────────────────────────────
@@ -173,6 +174,27 @@ def sha256_hex(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
+def _is_confined(path: str) -> bool:
+    pure = PurePosixPath(path)
+    return not pure.is_absolute() and ".." not in pure.parts
+
+
+def _validate_manifest_entries(entries: list[ManifestEntry]) -> None:
+    seen_paths: set[str] = set()
+    duplicate_paths: set[str] = set()
+
+    for entry in entries:
+        if not _is_confined(entry.path):
+            raise ValueError(f"manifest entry path must stay confined to publish root: {entry.path!r}")
+        if entry.path in seen_paths:
+            duplicate_paths.add(entry.path)
+        seen_paths.add(entry.path)
+
+    if duplicate_paths:
+        duplicates = ", ".join(sorted(duplicate_paths))
+        raise ValueError(f"duplicate manifest entry paths are not allowed: {duplicates}")
+
+
 def build_manifest(
     snapshot_id: str,
     file_entries: list[dict[str, Any]],  # each must have: path, sha256, size_bytes
@@ -185,10 +207,13 @@ def build_manifest(
         )
         for f in file_entries
     ]
+    _validate_manifest_entries(entries)
+    ordered_entries = sorted(entries, key=lambda entry: entry.path)
     return SnapshotManifest(
         snapshot_id=snapshot_id,
         created_at=datetime.now(UTC),
-        entries=entries,
-        total_files=len(entries),
-        total_bytes=sum(e.size_bytes for e in entries),
+        entries=ordered_entries,
+        total_files=len(ordered_entries),
+        total_bytes=sum(e.size_bytes for e in ordered_entries),
+        root_sha256=manifest_root_sha256(ordered_entries),
     )

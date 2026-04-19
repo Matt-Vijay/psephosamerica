@@ -15,7 +15,7 @@ from src.export.contracts import (
     EvidenceCardPayload,
 )
 from src.export.filesystem import write_planned_files
-from src.export.manifest import ManifestEntry, SnapshotManifest
+from src.export.manifest import ManifestEntry, SnapshotManifest, manifest_root_sha256
 from src.export.writer import evidence_path, plan_snapshot, serialize_payload
 from src.query.evidence_card import assemble_evidence_card
 from src.runtime.publish_roundtrip_evidence import verify_published_evidence_roundtrip
@@ -113,6 +113,7 @@ def _manifest_with_ids(*evidence_card_ids: str) -> SnapshotManifest:
         entries=entries,
         total_files=len(entries),
         total_bytes=len(entries),
+        root_sha256=manifest_root_sha256(entries),
     )
 
 
@@ -161,6 +162,7 @@ class TestResultShape:
             entries=entries,
             total_files=2,
             total_bytes=2,
+            root_sha256=manifest_root_sha256(entries),
         )
 
         with patch(_PATCH_TARGET, return_value=[]):
@@ -452,6 +454,7 @@ class TestCheckedCount:
             entries=[evidence_entry, member_entry],
             total_files=2,
             total_bytes=2,
+            root_sha256=manifest_root_sha256([evidence_entry, member_entry]),
         )
         # Write the evidence file to disk so load_evidence_card succeeds
         dest = tmp_path / "evidence" / "ec-001.json"

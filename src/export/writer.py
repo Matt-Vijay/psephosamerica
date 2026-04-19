@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
+from pathlib import PurePosixPath
 from typing import Any
 
 from pydantic import BaseModel
@@ -40,6 +41,11 @@ def manifest_path(snapshot_id: str) -> str:
     return f"snapshots/{snapshot_id}/manifest.json"
 
 
+def _is_manifest_path(path: str) -> bool:
+    pure = PurePosixPath(path)
+    return len(pure.parts) == 3 and pure.parts[0] == "snapshots" and pure.parts[2] == "manifest.json"
+
+
 # ── PlannedFile ────────────────────────────────────────────────────────────────
 
 
@@ -64,6 +70,32 @@ class PlannedFile:
             sha256=sha256_hex(content),
             size_bytes=len(content),
         )
+
+
+def finalize_publish_plan(snapshot_id: str, files: list[PlannedFile]) -> list[PlannedFile]:
+    manifest_file_path = manifest_path(snapshot_id)
+    manifest_paths = {planned.path for planned in files if _is_manifest_path(planned.path)}
+
+    if not manifest_paths:
+        return list(files)
+
+    if manifest_paths != {manifest_file_path}:
+        unexpected = ", ".join(sorted(manifest_paths))
+        raise ValueError(f"publish plan must contain exactly one canonical manifest path: {unexpected}")
+
+    non_manifest_files = [planned for planned in files if planned.path != manifest_file_path]
+    manifest = build_manifest(
+        snapshot_id=snapshot_id,
+        file_entries=[
+            {"path": planned.path, "sha256": planned.sha256, "size_bytes": planned.size_bytes}
+            for planned in non_manifest_files
+        ],
+    )
+    finalized_manifest = PlannedFile.from_bytes(
+        manifest_file_path,
+        serialize_payload(manifest),
+    )
+    return non_manifest_files + [finalized_manifest]
 
 
 # ── Snapshot plan ──────────────────────────────────────────────────────────────

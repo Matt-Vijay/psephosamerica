@@ -63,6 +63,8 @@ from src.runtime.disclosures_bundle_process import DisclosuresBundleProcessResul
 from src.runtime.disclosures_parse import DisclosureParseRuntimeResult
 from src.runtime.main import run
 from src.runtime.publish import PublishRuntimeResult
+from src.runtime.publish_roundtrip_types import PublishRoundtripResult, PublishRoundtripStageResult
+from src.runtime.publish_verify_types import PublishVerifyResult, PublishVerifyStageResult
 from src.runtime.recompute import RuntimeRecomputeResult
 
 # ---------------------------------------------------------------------------
@@ -97,9 +99,61 @@ _RAW_MEMBER_DETAIL = {
     "partyName": "D",
     "state": "CA",
     "currentMember": True,
-    "terms": {"item": [{"chamber": "House of Representatives", "startYear": "2025-01-03"}]},
+    "terms": {
+        "item": [
+            {
+                "congress": 119,
+                "chamber": "House of Representatives",
+                "startYear": "2025-01-03",
+                "stateCode": "CA",
+                "district": 12,
+            }
+        ]
+    },
+    "committees": {
+        "item": [
+            {
+                "committee": {"systemCode": "hsif00"},
+                "congress": 119,
+                "role": "Chair",
+                "startDate": "2025-01-03",
+                "isCurrent": True,
+            }
+        ]
+    },
     "leadership": [],
     "partyHistory": [{"partyName": "D", "startYear": 2025}],
+}
+
+_RAW_COMMITTEE = {
+    "systemCode": "hsif00",
+    "chamber": "House",
+    "committeeTypeCode": "Standing",
+    "name": "Committee on Innovation Futures",
+}
+
+_RAW_BILL = {
+    "congress": 119,
+    "type": "HR",
+    "number": 42,
+    "title": "Local Congress Confidence Act",
+    "introducedDate": "2025-01-09",
+    "latestAction": {"actionDate": "2025-01-10", "text": "Introduced"},
+}
+
+_RAW_BILL_DETAIL = {
+    "congress": 119,
+    "type": "HR",
+    "number": 42,
+    "title": "Local Congress Confidence Act",
+    "introducedDate": "2025-01-09",
+    "latestAction": {"actionDate": "2025-01-10", "text": "Introduced"},
+    "sponsors": [
+        {
+            "bioguideId": "T000001",
+            "sponsorshipDate": "2025-01-09",
+        }
+    ],
 }
 
 # ---------------------------------------------------------------------------
@@ -118,13 +172,39 @@ def build_congress_archive(root: Path, congress: int = 119) -> Path:
     Returns the archive root path.
     """
     _write_json(root / "members.json", {"members": [_RAW_MEMBER]})
-    _write_json(root / "committees.json", {"committees": []})
-    _write_json(root / "bills.json", {"bills": []})
+    _write_json(root / "committees.json", {"committees": [_RAW_COMMITTEE]})
+    _write_json(root / "bills.json", {"bills": [_RAW_BILL]})
     _write_json(
         root / "member_details" / f"{_RAW_MEMBER['bioguideId']}.json",
         {"member": _RAW_MEMBER_DETAIL},
     )
+    _write_json(
+        root / "bill_details" / f"{congress}_hr_{_RAW_BILL['number']}.json",
+        {"bill": _RAW_BILL_DETAIL},
+    )
     return root
+
+
+def _assert_archive_enrichment(inputs) -> None:
+    assert [m.bioguide_id for m in inputs.members] == ["T000001"]
+    assert [
+        (term.record.bioguide_id, term.congress, term.district) for term in inputs.member_terms
+    ] == [
+        ("T000001", 119, 12),
+    ]
+    assert [
+        (membership.bioguide_id, membership.committee_code, membership.role)
+        for membership in inputs.memberships
+    ] == [
+        ("T000001", "hsif00", "chair"),
+    ]
+    assert [committee.committee_code for committee in inputs.committees] == ["hsif00"]
+    assert [bill.bill_number for bill in inputs.bills] == [42]
+    assert [
+        (sponsor.record.bill_number, sponsor.bioguide_id) for sponsor in inputs.primary_sponsors
+    ] == [
+        (42, "T000001"),
+    ]
 
 
 # ---------------------------------------------------------------------------
@@ -230,6 +310,18 @@ def _fake_publish_result(snapshot_id: str = "2025-01-15") -> PublishRuntimeResul
     )
 
 
+def _fake_verify_result() -> PublishVerifyResult:
+    return PublishVerifyResult(
+        stages=(PublishVerifyStageResult(stage="manifest", checked=1, issues=()),),
+    )
+
+
+def _fake_roundtrip_result() -> PublishRoundtripResult:
+    return PublishRoundtripResult(
+        stages=(PublishRoundtripStageResult(stage="snapshot", checked=1, issues=()),),
+    )
+
+
 # ---------------------------------------------------------------------------
 # Test: load-congress-local
 # ---------------------------------------------------------------------------
@@ -248,14 +340,16 @@ class TestLoadCongressLocalE2E:
     def _argv(self, archive_path: Path) -> list[str]:
         return [
             "load-congress-local",
-            "--archive", str(archive_path),
-            "--congress", str(self._CONGRESS),
+            "--archive",
+            str(archive_path),
+            "--congress",
+            str(self._CONGRESS),
         ]
 
     def test_exits_zero_with_valid_archive(self, tmp_path: Path) -> None:
         archive = build_congress_archive(tmp_path / "archive")
         with (
-            patch(f"{_MAIN}.build_runtime", return_value=MagicMock()),
+            patch(f"{_COMMANDS}.build_runtime", return_value=MagicMock()),
             patch(f"{_COMMANDS}.open_connection", return_value=MagicMock()),
             patch(
                 f"{_CONGRESS_ARCHIVE}.run_congress_load_runtime",
@@ -268,7 +362,7 @@ class TestLoadCongressLocalE2E:
     def test_output_contains_ok_true(self, tmp_path: Path, capsys) -> None:
         archive = build_congress_archive(tmp_path / "archive")
         with (
-            patch(f"{_MAIN}.build_runtime", return_value=MagicMock()),
+            patch(f"{_COMMANDS}.build_runtime", return_value=MagicMock()),
             patch(f"{_COMMANDS}.open_connection", return_value=MagicMock()),
             patch(
                 f"{_CONGRESS_ARCHIVE}.run_congress_load_runtime",
@@ -285,7 +379,7 @@ class TestLoadCongressLocalE2E:
         passed to the DB boundary function."""
         archive = build_congress_archive(tmp_path / "archive")
         with (
-            patch(f"{_MAIN}.build_runtime", return_value=MagicMock()),
+            patch(f"{_COMMANDS}.build_runtime", return_value=MagicMock()),
             patch(f"{_COMMANDS}.open_connection", return_value=MagicMock()),
             patch(
                 f"{_CONGRESS_ARCHIVE}.run_congress_load_runtime",
@@ -302,10 +396,25 @@ class TestLoadCongressLocalE2E:
             "run_congress_load_runtime, but it was not."
         )
 
+    def test_archive_enrichment_is_forwarded_to_db_boundary(self, tmp_path: Path) -> None:
+        archive = build_congress_archive(tmp_path / "archive")
+        with (
+            patch(f"{_COMMANDS}.build_runtime", return_value=MagicMock()),
+            patch(f"{_COMMANDS}.open_connection", return_value=MagicMock()),
+            patch(
+                f"{_CONGRESS_ARCHIVE}.run_congress_load_runtime",
+                return_value=_fake_congress_load_result(),
+            ) as mock_load_rt,
+        ):
+            run(self._argv(archive))
+
+        _, inputs = mock_load_rt.call_args.args
+        _assert_archive_enrichment(inputs)
+
     def test_congress_number_forwarded_to_load(self, tmp_path: Path) -> None:
         archive = build_congress_archive(tmp_path / "archive")
         with (
-            patch(f"{_MAIN}.build_runtime", return_value=MagicMock()),
+            patch(f"{_COMMANDS}.build_runtime", return_value=MagicMock()),
             patch(f"{_COMMANDS}.open_connection", return_value=MagicMock()),
             patch(
                 f"{_CONGRESS_ARCHIVE}.run_congress_load_runtime",
@@ -327,7 +436,7 @@ class TestLoadCongressLocalE2E:
     def test_nonexistent_archive_exits_nonzero(self, tmp_path: Path, capsys) -> None:
         missing = tmp_path / "does_not_exist"
         with (
-            patch(f"{_MAIN}.build_runtime", return_value=MagicMock()),
+            patch(f"{_COMMANDS}.build_runtime", return_value=MagicMock()),
             patch(f"{_COMMANDS}.open_connection", return_value=MagicMock()),
         ):
             code = run(["load-congress-local", "--archive", str(missing), "--congress", "119"])
@@ -356,7 +465,7 @@ class TestProcessDisclosuresLocalE2E:
     def test_exits_zero_with_valid_bundle(self, tmp_path: Path) -> None:
         bundle = build_disclosures_bundle(tmp_path / "bundle.json")
         with (
-            patch(f"{_MAIN}.build_runtime", return_value=MagicMock()),
+            patch(f"{_COMMANDS}.build_runtime", return_value=MagicMock()),
             patch(f"{_COMMANDS}.open_connection", return_value=MagicMock()),
             patch(
                 f"{_COMMANDS}.run_disclosures_bundle_process",
@@ -369,7 +478,7 @@ class TestProcessDisclosuresLocalE2E:
     def test_output_contains_ok_true(self, tmp_path: Path, capsys) -> None:
         bundle = build_disclosures_bundle(tmp_path / "bundle.json")
         with (
-            patch(f"{_MAIN}.build_runtime", return_value=MagicMock()),
+            patch(f"{_COMMANDS}.build_runtime", return_value=MagicMock()),
             patch(f"{_COMMANDS}.open_connection", return_value=MagicMock()),
             patch(
                 f"{_COMMANDS}.run_disclosures_bundle_process",
@@ -386,7 +495,7 @@ class TestProcessDisclosuresLocalE2E:
         the DisclosuresBundle passed to the DB boundary function."""
         bundle_path = build_disclosures_bundle(tmp_path / "bundle.json")
         with (
-            patch(f"{_MAIN}.build_runtime", return_value=MagicMock()),
+            patch(f"{_COMMANDS}.build_runtime", return_value=MagicMock()),
             patch(f"{_COMMANDS}.open_connection", return_value=MagicMock()),
             patch(
                 f"{_COMMANDS}.run_disclosures_bundle_process",
@@ -409,7 +518,7 @@ class TestProcessDisclosuresLocalE2E:
             tmp_path / "empty_bundle.json", include_artifact=False
         )
         with (
-            patch(f"{_MAIN}.build_runtime", return_value=MagicMock()),
+            patch(f"{_COMMANDS}.build_runtime", return_value=MagicMock()),
             patch(f"{_COMMANDS}.open_connection", return_value=MagicMock()),
             patch(
                 f"{_COMMANDS}.run_disclosures_bundle_process",
@@ -427,7 +536,7 @@ class TestProcessDisclosuresLocalE2E:
 
     def test_nonexistent_bundle_exits_nonzero(self, tmp_path: Path, capsys) -> None:
         missing = tmp_path / "no_bundle.json"
-        with patch(f"{_MAIN}.build_runtime", return_value=MagicMock()):
+        with patch(f"{_COMMANDS}.build_runtime", return_value=MagicMock()):
             code = run(["process-disclosures-local", "--bundle", str(missing)])
         assert code != 0
         out = json.loads(capsys.readouterr().out)
@@ -436,7 +545,7 @@ class TestProcessDisclosuresLocalE2E:
     def test_malformed_bundle_json_exits_nonzero(self, tmp_path: Path, capsys) -> None:
         bad_path = tmp_path / "bad.json"
         bad_path.write_text('{"artifacts": "not-a-list"}', encoding="utf-8")
-        with patch(f"{_MAIN}.build_runtime", return_value=MagicMock()):
+        with patch(f"{_COMMANDS}.build_runtime", return_value=MagicMock()):
             code = run(["process-disclosures-local", "--bundle", str(bad_path)])
         assert code != 0
         out = json.loads(capsys.readouterr().out)
@@ -482,10 +591,14 @@ class TestRunOracleLocalE2E:
     ) -> list[str]:
         return [
             "run-oracle-local",
-            "--congress-archive", str(archive_path),
-            "--disclosures-bundle", str(bundle_path),
-            "--snapshot-date", self._DATE_STR,
-            "--target-dir", str(target_dir),
+            "--congress-archive",
+            str(archive_path),
+            "--disclosures-bundle",
+            str(bundle_path),
+            "--snapshot-date",
+            self._DATE_STR,
+            "--target-dir",
+            str(target_dir),
         ] + (extra or [])
 
     @contextlib.contextmanager
@@ -493,7 +606,7 @@ class TestRunOracleLocalE2E:
         """Enter all four DB-facing boundary patches as one context manager."""
         sid = snapshot_id or self._DATE_STR
         with (
-            patch(f"{_MAIN}.build_runtime", return_value=MagicMock()),
+            patch(f"{_COMMANDS}.build_runtime", return_value=MagicMock()),
             patch(f"{_COMMANDS}.open_connection", return_value=MagicMock()),
             patch(
                 f"{_CONGRESS_ARCHIVE}.run_congress_load_runtime",
@@ -511,6 +624,8 @@ class TestRunOracleLocalE2E:
                 f"{_ORACLE_LOCAL}.run_publish_runtime",
                 return_value=_fake_publish_result(sid),
             ),
+            patch(f"{_ORACLE_LOCAL}._run_verify", return_value=_fake_verify_result()),
+            patch(f"{_ORACLE_LOCAL}._run_roundtrip", return_value=_fake_roundtrip_result()),
         ):
             yield
 
@@ -544,16 +659,43 @@ class TestRunOracleLocalE2E:
         out = json.loads(capsys.readouterr().out)
         assert out["snapshot_id"] == self._DATE_STR
 
-    def test_archive_is_read_and_member_forwarded_to_db_boundary(
-        self, tmp_path: Path
-    ) -> None:
+    def test_output_surfaces_default_local_oracle_scope(self, tmp_path: Path, capsys) -> None:
+        archive = build_congress_archive(tmp_path / "archive")
+        bundle = build_disclosures_bundle(tmp_path / "bundle.json")
+        target = tmp_path / "out"
+        target.mkdir()
+        with self._patch_stack():
+            run(self._argv(archive, bundle, target))
+        out = json.loads(capsys.readouterr().out)
+        assert out["congress"]["configured_congress"] == 119
+        assert out["congress"]["congress_source"] == "current-date-default"
+        assert out["congress"]["include_votes"] is False
+        assert out["disclosures"]["requested_chamber"] == "both"
+        assert out["disclosures"]["artifact_limit"] is None
+        assert out["publish"]["zip_feeds_generated"] is False
+
+    def test_explicit_congress_flag_overrides_default_assumption(self, tmp_path: Path, capsys) -> None:
+        archive = build_congress_archive(tmp_path / "archive")
+        bundle = build_disclosures_bundle(tmp_path / "bundle.json")
+        target = tmp_path / "out"
+        target.mkdir()
+        with (
+            patch(f"{_MAIN}._current_congress", return_value=118),
+            self._patch_stack(),
+        ):
+            run(self._argv(archive, bundle, target, extra=["--congress", "119"]))
+        out = json.loads(capsys.readouterr().out)
+        assert out["congress"]["configured_congress"] == 119
+        assert out["congress"]["congress_source"] == "explicit-arg"
+
+    def test_archive_is_read_and_member_forwarded_to_db_boundary(self, tmp_path: Path) -> None:
         """Prove the archive is actually parsed: T000001 must reach the DB boundary."""
         archive = build_congress_archive(tmp_path / "archive")
         bundle = build_disclosures_bundle(tmp_path / "bundle.json")
         target = tmp_path / "out"
         target.mkdir()
         with (
-            patch(f"{_MAIN}.build_runtime", return_value=MagicMock()),
+            patch(f"{_COMMANDS}.build_runtime", return_value=MagicMock()),
             patch(f"{_COMMANDS}.open_connection", return_value=MagicMock()),
             patch(
                 f"{_CONGRESS_ARCHIVE}.run_congress_load_runtime",
@@ -581,9 +723,39 @@ class TestRunOracleLocalE2E:
             "run_congress_load_runtime, but it was not."
         )
 
-    def test_bundle_artifact_forwarded_to_process_boundary(
+    def test_archive_enrichment_reaches_oracle_congress_stage_boundary(
         self, tmp_path: Path
     ) -> None:
+        archive = build_congress_archive(tmp_path / "archive")
+        bundle = build_disclosures_bundle(tmp_path / "bundle.json")
+        target = tmp_path / "out"
+        target.mkdir()
+        with (
+            patch(f"{_COMMANDS}.build_runtime", return_value=MagicMock()),
+            patch(f"{_COMMANDS}.open_connection", return_value=MagicMock()),
+            patch(
+                f"{_CONGRESS_ARCHIVE}.run_congress_load_runtime",
+                return_value=_fake_congress_load_result(),
+            ) as mock_load_rt,
+            patch(
+                f"{_ORACLE_LOCAL}.run_disclosures_bundle_process",
+                return_value=_fake_bundle_process_result(),
+            ),
+            patch(
+                f"{_ORACLE_LOCAL}.run_recompute_runtime",
+                return_value=_fake_recompute_result(),
+            ),
+            patch(
+                f"{_ORACLE_LOCAL}.run_publish_runtime",
+                return_value=_fake_publish_result(self._DATE_STR),
+            ),
+        ):
+            run(self._argv(archive, bundle, target))
+
+        _, inputs = mock_load_rt.call_args.args
+        _assert_archive_enrichment(inputs)
+
+    def test_bundle_artifact_forwarded_to_process_boundary(self, tmp_path: Path) -> None:
         """Prove the bundle JSON is parsed: the house artifact must reach the
         oracle_local process step."""
         archive = build_congress_archive(tmp_path / "archive")
@@ -591,7 +763,7 @@ class TestRunOracleLocalE2E:
         target = tmp_path / "out"
         target.mkdir()
         with (
-            patch(f"{_MAIN}.build_runtime", return_value=MagicMock()),
+            patch(f"{_COMMANDS}.build_runtime", return_value=MagicMock()),
             patch(f"{_COMMANDS}.open_connection", return_value=MagicMock()),
             patch(
                 f"{_CONGRESS_ARCHIVE}.run_congress_load_runtime",
@@ -637,21 +809,31 @@ class TestRunOracleLocalE2E:
         bundle = build_disclosures_bundle(tmp_path / "bundle.json")
         target = tmp_path / "out"
         target.mkdir()
-        code = run([
-            "run-oracle-local",
-            "--congress-archive", str(archive),
-            "--disclosures-bundle", str(bundle),
-            "--target-dir", str(target),
-        ])
+        code = run(
+            [
+                "run-oracle-local",
+                "--congress-archive",
+                str(archive),
+                "--disclosures-bundle",
+                str(bundle),
+                "--target-dir",
+                str(target),
+            ]
+        )
         assert code != 0
 
     def test_missing_target_dir_exits_nonzero(self, tmp_path: Path) -> None:
         archive = build_congress_archive(tmp_path / "archive")
         bundle = build_disclosures_bundle(tmp_path / "bundle.json")
-        code = run([
-            "run-oracle-local",
-            "--congress-archive", str(archive),
-            "--disclosures-bundle", str(bundle),
-            "--snapshot-date", self._DATE_STR,
-        ])
+        code = run(
+            [
+                "run-oracle-local",
+                "--congress-archive",
+                str(archive),
+                "--disclosures-bundle",
+                str(bundle),
+                "--snapshot-date",
+                self._DATE_STR,
+            ]
+        )
         assert code != 0

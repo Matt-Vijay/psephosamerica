@@ -1,9 +1,8 @@
 """End-to-end tests for `run(argv)` over the DB-backed publish roundtrip path.
 
-These tests keep CLI parsing, `main._dispatch`, `commands.verify_publish_roundtrip_local`,
+These tests keep CLI parsing, `commands.verify_publish_roundtrip_local`,
 and the real roundtrip verifier in play. The only patched boundaries are:
 
-- `build_runtime` in `main.py` so no real operator runtime is constructed
 - `open_connection` in `commands.py` so no real database is required
 - the irreducible DB fetch helpers used by the roundtrip stages
 """
@@ -12,9 +11,10 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
+from src.export.filesystem import write_planned_files
+from src.export.writer import PlannedFile, finalize_publish_plan
 from src.export.writer import serialize_payload
 from src.runtime.main import run
 from tests.support.published_roundtrip_fixtures import (
@@ -26,7 +26,6 @@ from tests.support.published_roundtrip_fixtures import (
     make_zip_feed_row_set,
 )
 
-_BUILD_RUNTIME = "src.runtime.main.build_runtime"
 _OPEN_CONNECTION = "src.runtime.commands.open_connection"
 _FETCH_MEMBER_BY_SLUG = "src.runtime.publish_roundtrip_profiles.fetch_member_row_by_slug"
 _FETCH_SCORE_ROWS = "src.runtime.publish_roundtrip_profiles.fetch_member_score_snapshot_rows"
@@ -50,6 +49,19 @@ def _write_homepage_feed(root: Path, rt: PublishedRoundtrip) -> None:
     feed_file = root / "homepage" / "feed.json"
     feed_file.parent.mkdir(parents=True, exist_ok=True)
     feed_file.write_bytes(serialize_payload(payload))
+    _reanchor_manifest(root)
+
+
+def _reanchor_manifest(root: Path) -> None:
+    manifest_files = sorted((root / "snapshots").glob("*/manifest.json"))
+    assert len(manifest_files) == 1
+    snapshot_id = manifest_files[0].parent.name
+    planned = [
+        PlannedFile.from_bytes(file.relative_to(root).as_posix(), file.read_bytes())
+        for file in sorted(root.rglob("*"))
+        if file.is_file()
+    ]
+    write_planned_files(finalize_publish_plan(snapshot_id, planned), root)
 
 
 def _make_profile_side_effects(rt: PublishedRoundtrip):
@@ -105,7 +117,6 @@ def _run_and_parse(
     *,
     roundtrip: PublishedRoundtrip | None = None,
 ) -> tuple[int, dict]:
-    runtime = SimpleNamespace(context=MagicMock(name="ctx"))
     conn = MagicMock(name="conn")
 
     if roundtrip is None:
@@ -133,7 +144,6 @@ def _run_and_parse(
         homepage_rows = roundtrip.homepage_feed_row_set.rows
 
     with (
-        patch(_BUILD_RUNTIME, return_value=runtime),
         patch(_OPEN_CONNECTION, return_value=conn),
         patch(_FETCH_MEMBER_BY_SLUG, side_effect=by_slug),
         patch(_FETCH_SCORE_ROWS, side_effect=score_rows),
@@ -225,7 +235,7 @@ class TestRunVerifyPublishRoundtripBrokenTree:
         assert member_files
         member_files[0].unlink()
         code, out = _run_and_parse(tmp_path, capsys, roundtrip=rt)
-        assert code == 0
+        assert code == 1
         assert out["ok"] is False
 
     def test_missing_manifest_sets_ok_false(self, tmp_path: Path, capsys) -> None:
@@ -234,14 +244,14 @@ class TestRunVerifyPublishRoundtripBrokenTree:
         assert manifest_files
         manifest_files[0].unlink()
         code, out = _run_and_parse(tmp_path, capsys, roundtrip=rt)
-        assert code == 0
+        assert code == 1
         assert out["ok"] is False
 
     def test_empty_root_sets_ok_false(self, tmp_path: Path, capsys) -> None:
         empty_root = tmp_path / "empty"
         empty_root.mkdir()
         code, out = _run_and_parse(empty_root, capsys)
-        assert code == 0
+        assert code == 1
         assert out["ok"] is False
 
 
@@ -253,7 +263,7 @@ class TestRunVerifyPublishRoundtripCliArgs:
     def test_nonexistent_root_returns_ok_false(self, tmp_path: Path, capsys) -> None:
         missing = tmp_path / "does-not-exist"
         code, out = _run_and_parse(missing, capsys)
-        assert code == 0
+        assert code == 1
         assert out["ok"] is False
 
 

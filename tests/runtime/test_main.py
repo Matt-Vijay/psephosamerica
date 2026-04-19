@@ -7,14 +7,20 @@ module-level import paths.
 from __future__ import annotations
 
 import datetime as dt
+import json
+import runpy
+import sys
 from contextlib import contextmanager
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from src.runtime.main import COMMAND_REGISTRY, run
 
-_MOD = "src.runtime.main"
+_MAIN_MOD = "src.runtime.main"
+_MOD = "src.runtime.commands"
 
 # ---------------------------------------------------------------------------
 # Shared harness — collapses the build/open/json/print patch stack
@@ -39,7 +45,7 @@ def _run_harness():
     with (
         patch(f"{_MOD}.build_runtime", return_value=rt) as mock_build,
         patch(f"{_MOD}.open_runtime_connection", return_value=conn) as mock_open_conn,
-        patch(f"{_MOD}.as_json", side_effect=lambda obj: obj),
+        patch(f"{_MAIN_MOD}.as_json", side_effect=lambda obj: obj),
         patch("builtins.print") as mock_print,
     ):
         yield SimpleNamespace(
@@ -54,6 +60,16 @@ def _run_harness():
 def _printed(h) -> dict:
     """Return the first positional arg passed to print()."""
     return h.mock_print.call_args[0][0]
+
+
+@contextmanager
+def _run_module_as_main():
+    existing = sys.modules.pop("src.runtime.main", None)
+    try:
+        yield
+    finally:
+        if existing is not None:
+            sys.modules["src.runtime.main"] = existing
 
 
 # ---------------------------------------------------------------------------
@@ -79,41 +95,95 @@ class TestNoCommand:
 
 class TestStatusCommand:
     _STATUS_PAYLOAD = {
-        "summary": {"ingestion_run_count": 0, "parse_run_count": 0, "data_source_count": 0},
-        "latest_ingestion_run": {"id": None, "run_type": None, "status": None, "data_source": None},
-        "latest_artifact": {"id": None, "artifact_kind": None, "data_source": None},
+        "summary": {
+            "ingestion_run_count": 1,
+            "parse_run_count": 1,
+            "data_source_count": 2,
+            "source_artifact_count": 1,
+        },
+        "ingestion_runs": [
+            {
+                "id": 11,
+                "run_type": "load-congress",
+                "status": "succeeded",
+                "data_source_slug": "congress-gov-api",
+            }
+        ],
+        "parse_runs": [
+            {
+                "id": 22,
+                "parser_name": "house-pdf",
+                "status": "succeeded",
+            }
+        ],
+        "data_sources": [
+            {
+                "slug": "congress-gov-api",
+                "name": "Congress.gov API",
+                "source_kind": "official",
+            },
+            {
+                "slug": "house-disclosures",
+                "name": "House Disclosures",
+                "source_kind": "official",
+            },
+        ],
+        "source_artifacts": [
+            {
+                "id": 33,
+                "artifact_kind": "pdf",
+                "data_source_slug": "house-disclosures",
+            }
+        ],
     }
 
     def test_returns_0_on_success(self) -> None:
         with _run_harness():
-            with patch(f"{_MOD}.get_runtime_status_summary", return_value=self._STATUS_PAYLOAD):
+            with patch(f"{_MOD}.get_runtime_status", return_value=self._STATUS_PAYLOAD):
                 code = run(["status"])
         assert code == 0
 
-    def test_passes_connection_to_get_runtime_status_summary(self) -> None:
+    def test_passes_connection_to_get_runtime_status(self) -> None:
         with _run_harness() as h:
-            with patch(f"{_MOD}.get_runtime_status_summary", return_value={}) as mock_status:
+            with patch(f"{_MOD}.get_runtime_status", return_value={}) as mock_status:
                 run(["status"])
         mock_status.assert_called_once_with(h.conn, limit=20)
 
     def test_opens_connection_from_runtime(self) -> None:
         with _run_harness() as h:
-            with patch(f"{_MOD}.get_runtime_status_summary", return_value={}):
+            with patch(f"{_MOD}.get_runtime_status", return_value={}):
                 run(["status"])
         h.mock_open_conn.assert_called_once_with(h.rt)
 
     def test_prints_status_result_as_json(self) -> None:
         with _run_harness() as h:
-            with patch(f"{_MOD}.get_runtime_status_summary", return_value=self._STATUS_PAYLOAD):
+            with patch(f"{_MOD}.get_runtime_status", return_value=self._STATUS_PAYLOAD):
                 run(["status"])
         printed = _printed(h)
         assert printed["ok"] is True
         assert printed["command"] == "status"
         assert printed["summary"] == self._STATUS_PAYLOAD["summary"]
+        assert printed["latest_parse_run"] == {
+            "id": 22,
+            "parser_name": "house-pdf",
+            "status": "succeeded",
+        }
+        assert printed["active_data_sources"] == [
+            {
+                "slug": "congress-gov-api",
+                "name": "Congress.gov API",
+                "source_kind": "official",
+            },
+            {
+                "slug": "house-disclosures",
+                "name": "House Disclosures",
+                "source_kind": "official",
+            },
+        ]
 
     def test_returns_1_and_prints_error_on_exception(self) -> None:
         with _run_harness() as h:
-            with patch(f"{_MOD}.get_runtime_status_summary", side_effect=RuntimeError("db down")):
+            with patch(f"{_MOD}.get_runtime_status", side_effect=RuntimeError("db down")):
                 code = run(["status"])
         assert code == 1
         printed = _printed(h)
@@ -297,6 +367,14 @@ class TestPublishCommand:
     def test_missing_zip_bundle_causes_nonzero_exit(self) -> None:
         code = run(["publish", "--snapshot-date", self._DATE_STR])
         assert code != 0
+
+    def test_unsucceeded_publish_returns_nonzero(self) -> None:
+        summary = self._summary() | {"succeeded": False}
+        with _run_harness() as h:
+            with self._publish_env(summary=summary):
+                code = run(self._argv())
+        assert code == 1
+        assert _printed(h)["ok"] is False
 
 
 # ---------------------------------------------------------------------------
@@ -543,7 +621,7 @@ class TestParseDisclosuresCommand:
 class TestRuntimeBuiltOnce:
     def test_status_builds_runtime_once(self) -> None:
         with _run_harness() as h:
-            with patch(f"{_MOD}.get_runtime_status_summary", return_value={}):
+            with patch(f"{_MOD}.get_runtime_status", return_value={}):
                 run(["status"])
         assert h.mock_build.call_count == 1
 
@@ -767,12 +845,14 @@ class TestLoadCongressCommand:
         with _run_harness():
             with self._congress_env() as c:
                 run(self._argv(["--house-vote-year", "2024"]))
+        assert c.mock_run.call_args.args[1].include_votes is True
         assert c.mock_run.call_args.args[1].house_vote_year == 2024
 
     def test_senate_session_forwarded(self) -> None:
         with _run_harness():
             with self._congress_env() as c:
                 run(self._argv(["--senate-session", "2"]))
+        assert c.mock_run.call_args.args[1].include_votes is True
         assert c.mock_run.call_args.args[1].senate_session == 2
 
     def test_all_vote_flags_forwarded_together(self) -> None:
@@ -1239,6 +1319,46 @@ class TestRunOracleLocalCommand:
         assert printed["verify"]["ok"] is False
         assert printed["verify"]["total_errors"] == 2
 
+    def test_returns_nonzero_when_verify_fails(self) -> None:
+        summary = self._summary() | {
+            "verify": {
+                "ok": False,
+                "total_checked": 6,
+                "total_errors": 2,
+                "total_warnings": 0,
+                "stages": [],
+            }
+        }
+        with _run_harness() as h:
+            with self._oracle_env(summary=summary):
+                code = run(self._argv())
+        assert code == 1
+        assert _printed(h)["ok"] is False
+
+    def test_returns_nonzero_when_congress_stage_fails(self) -> None:
+        summary = self._summary() | {
+            "congress": {
+                "load_ok": False,
+            }
+        }
+        with _run_harness() as h:
+            with self._oracle_env(summary=summary):
+                code = run(self._argv())
+        assert code == 1
+        assert _printed(h)["ok"] is False
+
+    def test_returns_nonzero_when_disclosures_stage_fails(self) -> None:
+        summary = self._summary() | {
+            "disclosures": {
+                "load_ok": False,
+            }
+        }
+        with _run_harness() as h:
+            with self._oracle_env(summary=summary):
+                code = run(self._argv())
+        assert code == 1
+        assert _printed(h)["ok"] is False
+
     def test_roundtrip_included_in_oracle_output(self) -> None:
         roundtrip = {"ok": True, "total_checked": 5, "total_errors": 0, "total_warnings": 0, "stages": []}
         summary = self._summary() | {"roundtrip": roundtrip}
@@ -1265,6 +1385,15 @@ class TestRunOracleLocalCommand:
         printed = _printed(h)
         assert printed["roundtrip"]["ok"] is False
         assert printed["roundtrip"]["total_errors"] == 1
+
+    def test_returns_nonzero_when_roundtrip_fails(self) -> None:
+        roundtrip = {"ok": False, "total_checked": 3, "total_errors": 1, "total_warnings": 0, "stages": []}
+        summary = self._summary() | {"roundtrip": roundtrip}
+        with _run_harness() as h:
+            with self._oracle_env(summary=summary):
+                code = run(self._argv())
+        assert code == 1
+        assert _printed(h)["ok"] is False
 
     def test_output_contains_both_verify_and_roundtrip(self) -> None:
         roundtrip = {"ok": True, "total_checked": 4, "total_errors": 0, "total_warnings": 0, "stages": []}
@@ -1338,7 +1467,7 @@ class TestVerifyPublishCommand:
         with _run_harness() as h:
             with self._verify_env(verify_result=failing):
                 code = run(self._argv())
-        assert code == 0
+        assert code == 1
         assert _printed(h)["ok"] is False
 
     def test_stages_serialized_in_output(self) -> None:
@@ -1376,6 +1505,18 @@ class TestVerifyPublishCommand:
     def test_missing_publish_root_causes_nonzero_exit(self) -> None:
         code = run(["verify-publish"])
         assert code != 0
+
+    def test_failing_verify_writes_human_summary_to_stderr(self, tmp_path: Path, capsys) -> None:
+        empty_root = tmp_path / "empty"
+        empty_root.mkdir()
+
+        code = run(["verify-publish", "--publish-root", str(empty_root)])
+
+        captured = capsys.readouterr()
+        printed = json.loads(captured.out)
+        assert code == 1
+        assert printed["ok"] is False
+        assert "verify-publish failed" in captured.err
 
 
 # ---------------------------------------------------------------------------
@@ -1464,7 +1605,7 @@ class TestVerifyPublishRoundtripCommand:
         with _run_harness() as h:
             with self._roundtrip_env(verify_result=failing):
                 code = run(self._argv())
-        assert code == 0
+        assert code == 1
         assert _printed(h)["ok"] is False
 
     def test_summarize_called_with_verify_result(self) -> None:
@@ -1492,6 +1633,32 @@ class TestVerifyPublishRoundtripCommand:
     def test_missing_publish_root_causes_nonzero_exit(self) -> None:
         code = run(["verify-publish-roundtrip"])
         assert code != 0
+
+    def test_failing_roundtrip_writes_human_summary_to_stderr(self, capsys) -> None:
+        issue = MagicMock()
+        issue.message = "manifest mismatch"
+        issue.severity = "error"
+        issue.stage = "snapshot"
+        issue.path = "snapshots/2024-06-01/manifest.json"
+
+        failing = self._verify_result()
+        failing.ok = False
+        failing.total_errors = 1
+        failing.all_issues.return_value = [issue]
+
+        runtime = SimpleNamespace(context=MagicMock(name="ctx"))
+        with (
+            patch(f"{_MOD}.build_runtime", return_value=runtime),
+            patch("src.runtime.commands.open_connection", return_value=MagicMock(name="conn")),
+            patch("src.runtime.commands._verify_roundtrip", return_value=failing),
+        ):
+            code = run(self._argv())
+
+        captured = capsys.readouterr()
+        printed = json.loads(captured.out)
+        assert code == 1
+        assert printed["ok"] is False
+        assert "verify-publish-roundtrip failed" in captured.err
 
 
 # ---------------------------------------------------------------------------
@@ -1527,10 +1694,10 @@ class TestCommandRegistry:
 
     def test_unknown_command_returns_error(self) -> None:
         with _run_harness() as h:
-            with patch(f"{_MOD}.parse_args") as mock_parse:
+            with patch(f"{_MAIN_MOD}.parse_args") as mock_parse:
                 mock_parse.return_value = SimpleNamespace(command="no-such-command")
                 code = run(["no-such-command"])
-        assert code == 0  # dispatch returns dict, no exception
+        assert code == 1
         printed = _printed(h)
         assert printed["ok"] is False
         assert "unknown command" in printed["error"]
@@ -1543,3 +1710,64 @@ class TestCommandRegistry:
                 f"Registry entry {cmd_name!r} points to {handler.__name__!r}, "
                 f"expected a _handle_* function"
             )
+
+
+# ---------------------------------------------------------------------------
+# Module entrypoint
+# ---------------------------------------------------------------------------
+
+
+class TestModuleEntrypoint:
+    def test_module_invocation_exits_nonzero_for_verify_publish_failures(self) -> None:
+        with (
+            patch.object(sys, "argv", ["python3", "verify-publish", "--publish-root", "/tmp/snapshot"]),
+            patch("src.runtime.cli.parse_args", return_value=SimpleNamespace(command="verify-publish")),
+            patch(
+                "src.runtime.commands.dispatch_command",
+                return_value={"ok": False, "command": "verify-publish", "total_errors": 1},
+            ),
+            patch("src.runtime.output.as_json", side_effect=lambda obj: obj),
+            patch("builtins.print"),
+            _run_module_as_main(),
+            pytest.raises(SystemExit) as excinfo,
+        ):
+            runpy.run_module("src.runtime.main", run_name="__main__", alter_sys=True)
+
+        assert excinfo.value.code == 1
+
+    def test_module_invocation_exits_nonzero_for_verify_publish_roundtrip_failures(self) -> None:
+        with (
+            patch.object(
+                sys,
+                "argv",
+                ["python3", "verify-publish-roundtrip", "--publish-root", "/tmp/snapshot"],
+            ),
+            patch(
+                "src.runtime.cli.parse_args",
+                return_value=SimpleNamespace(command="verify-publish-roundtrip"),
+            ),
+            patch(
+                "src.runtime.commands.dispatch_command",
+                return_value={"ok": False, "command": "verify-publish-roundtrip", "roundtrip": {"ok": False}},
+            ),
+            patch("src.runtime.output.as_json", side_effect=lambda obj: obj),
+            patch("builtins.print"),
+            _run_module_as_main(),
+            pytest.raises(SystemExit) as excinfo,
+        ):
+            runpy.run_module("src.runtime.main", run_name="__main__", alter_sys=True)
+
+        assert excinfo.value.code == 1
+
+    def test_module_bootstrap_help_exposes_current_dry_run_text(self, capsys) -> None:
+        with (
+            patch.object(sys, "argv", ["python3", "bootstrap-db", "--help"]),
+            _run_module_as_main(),
+            pytest.raises(SystemExit) as excinfo,
+        ):
+            runpy.run_module("src.runtime.main", run_name="__main__", alter_sys=True)
+
+        captured = capsys.readouterr()
+        assert excinfo.value.code == 0
+        assert "db/schema.sql" in captured.out
+        assert "Show the bootstrap plan without applying schema SQL." in captured.out

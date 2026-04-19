@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import json
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, cast
 
 from src.db.repositories import execute_one, fetch_all
 
@@ -20,15 +20,20 @@ def _utcnow() -> datetime:
     return datetime.now(tz=timezone.utc)
 
 
-def _insert_returning_id(conn, sql: str, params: tuple) -> int:
+def _insert_returning_id(conn: Any, sql: str, params: tuple[Any, ...]) -> int:
     """Execute an INSERT ... RETURNING id, commit, and return the new id."""
     from psycopg.rows import dict_row
 
     with conn.cursor(row_factory=dict_row) as cur:
         cur.execute(sql, params)
-        row = cur.fetchone()
+        row = cast(dict[str, object] | None, cur.fetchone())
     conn.commit()
-    return row["id"]
+    if row is None:
+        raise ValueError("INSERT ... RETURNING id produced no row")
+    row_id = row.get("id")
+    if not isinstance(row_id, int):
+        raise TypeError(f"expected integer id from INSERT ... RETURNING, got {row_id!r}")
+    return row_id
 
 
 # ---------------------------------------------------------------------------
@@ -37,7 +42,7 @@ def _insert_returning_id(conn, sql: str, params: tuple) -> int:
 
 
 def ensure_data_source(
-    conn,
+    conn: Any,
     slug: str,
     name: str,
     source_kind: str,
@@ -67,7 +72,7 @@ def ensure_data_source(
 
 
 def start_ingestion_run(
-    conn,
+    conn: Any,
     data_source_id: int,
     run_type: str,
     parameters: dict[str, Any] | None = None,
@@ -85,7 +90,7 @@ def start_ingestion_run(
     )
 
 
-def finish_ingestion_run(conn, run_id: int, record_count: int) -> None:
+def finish_ingestion_run(conn: Any, run_id: int, record_count: int) -> None:
     """Mark an ingestion_run as succeeded and record the final row count."""
     now = _utcnow()
     execute_one(
@@ -102,7 +107,7 @@ def finish_ingestion_run(conn, run_id: int, record_count: int) -> None:
     )
 
 
-def fail_ingestion_run(conn, run_id: int, error_message: str) -> None:
+def fail_ingestion_run(conn: Any, run_id: int, error_message: str) -> None:
     """Mark an ingestion_run as failed and store the error message."""
     now = _utcnow()
     execute_one(

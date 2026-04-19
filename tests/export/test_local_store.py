@@ -26,7 +26,7 @@ from src.export.local_store import (
     load_zip_feed,
 )
 from src.homepage.contracts import HomepageFeedPayload, MemberMovementSummary, RecentEventSummary
-from src.export.manifest import ManifestEntry, SnapshotManifest
+from src.export.manifest import ManifestEntry, SnapshotManifest, manifest_root_sha256
 from src.export.writer import (
     PlannedFile,
     evidence_path,
@@ -90,15 +90,17 @@ def _zip_payload() -> ZipFeedPayload:
 
 
 def _manifest(files: list[PlannedFile]) -> SnapshotManifest:
+    entries = [
+        ManifestEntry(path=f.path, sha256=f.sha256, size_bytes=f.size_bytes)
+        for f in files
+    ]
     return SnapshotManifest(
         snapshot_id=SNAPSHOT_ID,
         created_at=datetime(2026, 4, 13, 0, 0, 0),
-        entries=[
-            ManifestEntry(path=f.path, sha256=f.sha256, size_bytes=f.size_bytes)
-            for f in files
-        ],
+        entries=entries,
         total_files=len(files),
         total_bytes=sum(f.size_bytes for f in files),
+        root_sha256=manifest_root_sha256(entries),
     )
 
 
@@ -306,6 +308,7 @@ def test_load_manifest_roundtrip(tmp_path: Path) -> None:
     assert result.total_files == 1
     assert result.entries[0].path == "members/test.json"
     assert result.verify_counts() is True
+    assert result.root_sha256 == manifest.root_sha256
 
 
 def test_load_manifest_missing(tmp_path: Path) -> None:
@@ -342,6 +345,7 @@ def test_list_artifact_paths_empty() -> None:
         entries=[],
         total_files=0,
         total_bytes=0,
+        root_sha256=manifest_root_sha256([]),
     )
     assert list_artifact_paths(manifest) == []
 
@@ -357,6 +361,7 @@ def _write_manifest_for_snapshot(root: Path, snapshot_id: str) -> None:
         entries=[],
         total_files=0,
         total_bytes=0,
+        root_sha256=manifest_root_sha256([]),
     )
     pf = PlannedFile.from_bytes(manifest_path(snapshot_id), _serialise(manifest))
     write_planned_files([pf], root)
@@ -408,12 +413,14 @@ def test_load_latest_manifest_no_snapshots(tmp_path: Path) -> None:
 
 def test_load_latest_manifest_counts_verify(tmp_path: Path) -> None:
     data_file = PlannedFile.from_bytes("members/test.json", b'{"key":"value"}')
+    entries = [ManifestEntry(path=data_file.path, sha256=data_file.sha256, size_bytes=data_file.size_bytes)]
     manifest = SnapshotManifest(
         snapshot_id=SNAPSHOT_ID,
         created_at=datetime(2026, 4, 13, 0, 0, 0),
-        entries=[ManifestEntry(path=data_file.path, sha256=data_file.sha256, size_bytes=data_file.size_bytes)],
+        entries=entries,
         total_files=1,
         total_bytes=data_file.size_bytes,
+        root_sha256=manifest_root_sha256(entries),
     )
     pf = PlannedFile.from_bytes(manifest_path(SNAPSHOT_ID), _serialise(manifest))
     write_planned_files([pf], tmp_path)
@@ -421,6 +428,7 @@ def test_load_latest_manifest_counts_verify(tmp_path: Path) -> None:
     result = load_latest_manifest(tmp_path)
     assert result.verify_counts() is True
     assert result.total_files == 1
+    assert result.root_sha256 == manifest.root_sha256
 
 
 # ── Integration: write then read back all artifact types ───────────
@@ -446,6 +454,7 @@ def test_full_roundtrip_via_write_and_read(tmp_path: Path) -> None:
     assert load_zip_feed(tmp_path, "10001").zip_code == "10001"
     loaded_manifest = load_manifest(tmp_path, SNAPSHOT_ID)
     assert loaded_manifest.verify_counts() is True
+    assert loaded_manifest.root_sha256 == manifest.root_sha256
     paths = list_artifact_paths(loaded_manifest)
     assert len(paths) == 3  # manifest itself not in the entry list
 

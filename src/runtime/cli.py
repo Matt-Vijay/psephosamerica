@@ -37,7 +37,13 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def parse_args(argv: Sequence[str]) -> argparse.Namespace:
-    return build_parser().parse_args(list(argv))
+    args = build_parser().parse_args(list(argv))
+    if (
+        args.command == "load-congress"
+        and (args.house_vote_year is not None or args.senate_session is not None)
+    ):
+        args.include_votes = True
+    return args
 
 
 # ---------------------------------------------------------------------------
@@ -46,22 +52,24 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
 
 
 def _add_bootstrap_db(sub: argparse._SubParsersAction) -> None:  # type: ignore[type-arg]
+    description = "Apply the canonical bootstrap schema from db/schema.sql to the target database."
     p = sub.add_parser(
         "bootstrap-db",
-        help="Apply schema and initial migration SQL to the target database.",
+        help=description,
+        description=description,
     )
     p.add_argument(
         "--dry-run",
         action="store_true",
         default=False,
-        help="Print SQL that would be applied without executing it.",
+        help="Show the bootstrap plan without applying schema SQL.",
     )
 
 
 def _add_status(sub: argparse._SubParsersAction) -> None:  # type: ignore[type-arg]
     p = sub.add_parser(
         "status",
-        help="Show recent ingestion runs, parse runs, and active data sources.",
+        help="Show summary counts plus latest ingestion, parse, artifact, and active source state.",
     )
     p.add_argument(
         "--limit",
@@ -224,6 +232,7 @@ def _add_publish(sub: argparse._SubParsersAction) -> None:  # type: ignore[type-
     )
     p.add_argument(
         "--zip-bundle",
+        required=True,
         default=None,
         metavar="PATH",
         help="Path to the JSON ZIP bundle used to build ZIP feeds.",
@@ -238,13 +247,13 @@ def _add_publish(sub: argparse._SubParsersAction) -> None:  # type: ignore[type-
 def _add_load_congress_local(sub: argparse._SubParsersAction) -> None:  # type: ignore[type-arg]
     p = sub.add_parser(
         "load-congress-local",
-        help="Load congress member, committee, bill, and vote data from a local archive file.",
+        help="Load congress member, committee, bill, sponsor, and cosponsor data from a local archive.",
     )
     p.add_argument(
         "--archive",
         required=True,
         metavar="PATH",
-        help="Path to the local congress archive file (e.g. congress_119.json).",
+        help="Path to the local congress archive directory or manifest JSON.",
     )
     p.add_argument(
         "--congress",
@@ -266,37 +275,37 @@ def _add_process_disclosures_local(sub: argparse._SubParsersAction) -> None:  # 
         metavar="PATH",
         help="Path to the local disclosure bundle (directory or archive).",
     )
-    p.add_argument(
-        "--chamber",
-        choices=["house", "senate", "both"],
-        default="both",
-        help="Chamber to process (default: both).",
-    )
-    p.add_argument(
-        "--limit",
-        type=int,
-        default=None,
-        metavar="N",
-        help="Maximum number of artifacts to process (default: no limit).",
-    )
 
 
 def _add_run_oracle_local(sub: argparse._SubParsersAction) -> None:  # type: ignore[type-arg]
     p = sub.add_parser(
         "run-oracle-local",
-        help="Run the full local oracle path: load congress, process disclosures, recompute, publish.",
+        help=(
+            "Run the local oracle over a local congress archive and a prebuilt disclosures "
+            "bundle. This surface does not fetch live data, request votes, or generate ZIP feeds."
+        ),
     )
     p.add_argument(
         "--congress-archive",
         required=True,
         metavar="PATH",
-        help="Path to the local congress archive file (e.g. congress_119.json).",
+        help="Path to the local congress archive directory or manifest JSON.",
     )
     p.add_argument(
         "--disclosures-bundle",
         required=True,
         metavar="PATH",
-        help="Path to the local disclosure bundle (directory or archive).",
+        help="Path to the prebuilt local disclosure bundle (directory or archive).",
+    )
+    p.add_argument(
+        "--congress",
+        type=int,
+        default=None,
+        metavar="NUMBER",
+        help=(
+            "Congress number to use for the archive stage. Defaults to the current Congress "
+            "by calendar date when omitted; the resolved value is surfaced in the output."
+        ),
     )
     p.add_argument(
         "--snapshot-date",
