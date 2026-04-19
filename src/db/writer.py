@@ -24,7 +24,7 @@ No source-specific logic lives here.
 
 from __future__ import annotations
 
-from typing import Any, Sequence
+from typing import Any, Sequence, cast
 
 from src.db.load_report import (
     LoadSummary,
@@ -32,7 +32,7 @@ from src.db.load_report import (
     WarnErrorSummary,
     build_load_summary,
 )
-from src.db.repositories import execute_many
+from src.db.repositories import ConnectionLike, Row, execute_many
 from src.db.sql import build_insert, build_upsert
 
 # ---------------------------------------------------------------------------
@@ -42,7 +42,7 @@ from src.db.sql import build_insert, build_upsert
 _VALID_MODES = frozenset({"insert", "upsert", "ignore"})
 
 
-def _build_ignore_sql(table: str, row: dict, conflict_columns: list[str]) -> tuple[str, list]:
+def _build_ignore_sql(table: str, row: Row, conflict_columns: list[str]) -> tuple[str, list[Any]]:
     """Return (sql, params) for INSERT … ON CONFLICT DO NOTHING.
 
     conflict_columns may be empty, in which case no conflict target is emitted.
@@ -58,7 +58,7 @@ def _build_ignore_sql(table: str, row: dict, conflict_columns: list[str]) -> tup
 
 def _params_for_rows(
     table: str,
-    rows: list[dict],
+    rows: list[Row],
     conflict_columns: list[str],
     mode: str,
 ) -> tuple[str, list[list[Any]]]:
@@ -105,10 +105,10 @@ def _params_for_rows(
 
 
 def write_table_batch(
-    conn,
+    conn: ConnectionLike,
     *,
     table: str,
-    rows: list[dict],
+    rows: list[Row],
     conflict_columns: list[str] | None = None,
     mode: str = "insert",
 ) -> TableWriteResult:
@@ -136,8 +136,8 @@ def write_table_batch(
 
 
 def write_table_batches(
-    conn,
-    batches: Sequence[dict],
+    conn: ConnectionLike,
+    batches: Sequence[dict[str, Any]],
     *,
     run_id: int | None = None,
     warn_error: WarnErrorSummary | None = None,
@@ -156,9 +156,9 @@ def write_table_batches(
         result = write_table_batch(
             conn,
             table=batch["table"],
-            rows=batch.get("rows", []),
-            conflict_columns=batch.get("conflict_columns") or [],
-            mode=batch.get("mode", "insert"),
+            rows=cast(list[Row], batch.get("rows", [])),
+            conflict_columns=cast(list[str], batch.get("conflict_columns") or []),
+            mode=cast(str, batch.get("mode", "insert")),
         )
         results.append(result)
 

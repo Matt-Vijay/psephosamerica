@@ -50,6 +50,12 @@ def test_mypy_strict_mode():
     assert cfg.get("strict") is True
 
 
+def test_mypy_does_not_ignore_missing_imports():
+    """mypy contract must not silently ignore unresolved imports."""
+    cfg = _load_mypy_config()
+    assert cfg.get("ignore_missing_imports") is False
+
+
 def test_mypy_in_dev_dependencies():
     """mypy is listed in dev dependencies."""
     assert PYPROJECT.exists()

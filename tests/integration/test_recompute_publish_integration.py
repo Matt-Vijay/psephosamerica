@@ -286,7 +286,7 @@ class TestRecomputeFromDBRows:
 
         card = result.evidence_cards[0]
         assert card.member_bioguide_id == "T000001"
-        assert card.score_delta == 2.0
+        assert card.score_delta == -2.0
         assert card.dimension == "conflict_of_interest_risk"
 
     def test_two_members_recompute(self, pg_conn_clean):
@@ -389,7 +389,7 @@ class TestRecomputeThenPublish:
         written = json.loads(card_path.read_bytes())
         assert written["member_bioguide_id"] == "P000001"
         assert written["dimension"] == "conflict_of_interest_risk"
-        assert written["score_delta"] == 2.0
+        assert written["score_delta"] == -2.0
 
     def test_scoring_snapshot_from_recompute(self, pg_conn_clean):
         """Verify that recompute fires feed correctly into build_snapshot_row."""
@@ -442,12 +442,6 @@ class TestRecomputeThenPublish:
 
         assert snapshot_row["member_id"] == member_id
         assert snapshot_row["snapshot_at"] == _SNAPSHOT_DATE
-        # score_total = 100 + (-2.0) = 98.0  (medium severity → score_delta 2.0, subtracted)
-        # Actually score_delta is positive 2.0, so score_total = 100 + 2.0 = 102 → clamped to 100
-        # Wait — evidence cards have score_delta as a positive penalty number.
-        # build_snapshot_row uses raw delta values. The evidence card score_delta is +2.0.
-        # So dimension score = 100 + 2.0 = clamped to 100.
-        # But in the real system, score_delta on evidence cards represents penalty points.
-        # The scoring module treats them as additive: 100 + sum(deltas).
         assert "conflict_of_interest_risk" in snapshot_row["dimension_scores"]
-        assert snapshot_row["score_total"] == snapshot_row["dimension_scores"]["conflict_of_interest_risk"]
+        assert snapshot_row["dimension_scores"]["conflict_of_interest_risk"] == 98.0
+        assert snapshot_row["score_total"] == 98.0

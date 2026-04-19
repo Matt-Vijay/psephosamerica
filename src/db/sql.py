@@ -8,20 +8,24 @@ No DB I/O is performed here.
 
 from __future__ import annotations
 
+from typing import Any
 
-def _columns(row: dict) -> list[str]:
+Row = dict[str, Any]
+
+
+def _columns(row: Row) -> list[str]:
     return list(row.keys())
 
 
-def _placeholders(row: dict) -> list[str]:
+def _placeholders(row: Row) -> list[str]:
     return ["%s"] * len(row)
 
 
-def _values(row: dict) -> list:
+def _values(row: Row) -> list[Any]:
     return list(row.values())
 
 
-def build_insert(table: str, row: dict) -> tuple[str, list]:
+def build_insert(table: str, row: Row) -> tuple[str, list[Any]]:
     """Return (sql, params) for a plain INSERT."""
     if not row:
         raise ValueError("row must contain at least one column")
@@ -37,9 +41,9 @@ def build_insert(table: str, row: dict) -> tuple[str, list]:
 
 def build_upsert(
     table: str,
-    row: dict,
+    row: Row,
     conflict_columns: list[str],
-) -> tuple[str, list]:
+) -> tuple[str, list[Any]]:
     """Return (sql, params) for an INSERT … ON CONFLICT DO UPDATE.
 
     *conflict_columns* are used in the ON CONFLICT clause and excluded from
@@ -82,7 +86,7 @@ def build_upsert(
     return sql, _values(row) + update_values
 
 
-def derive_update_columns(row: dict, exclude: list[str]) -> list[str]:
+def derive_update_columns(row: Row, exclude: list[str]) -> list[str]:
     """Return columns from *row* not in *exclude*, preserving insertion order.
 
     Used to build the SET list for upserts, where PK and conflict columns

@@ -28,7 +28,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from src.db.load_executor import Resolvers
-from src.db.repositories import fetch_all
+from src.db.repositories import ConnectionLike, Row, fetch_all
 
 # ---------------------------------------------------------------------------
 # SQL — fetch only the columns each map needs
@@ -76,17 +76,17 @@ class RecomputeResolverMaps:
 # ---------------------------------------------------------------------------
 
 
-def _fetch_member_by_bioguide(conn) -> dict[str, int]:
+def _fetch_member_by_bioguide(conn: ConnectionLike) -> dict[str, int]:
     rows = fetch_all(conn, _MEMBER_SQL)
     return {r["bioguide_id"]: r["id"] for r in rows}
 
 
-def _fetch_disclosure_by_source_record(conn) -> dict[str, int]:
+def _fetch_disclosure_by_source_record(conn: ConnectionLike) -> dict[str, int]:
     rows = fetch_all(conn, _DISCLOSURE_SQL)
     return {r["source_record_id"]: r["id"] for r in rows}
 
 
-def _fetch_rule_fire_by_source_record(conn) -> dict[str, int]:
+def _fetch_rule_fire_by_source_record(conn: ConnectionLike) -> dict[str, int]:
     rows = fetch_all(conn, _RULE_FIRE_SQL)
     return {r["source_record_id"]: r["id"] for r in rows}
 
@@ -96,7 +96,7 @@ def _fetch_rule_fire_by_source_record(conn) -> dict[str, int]:
 # ---------------------------------------------------------------------------
 
 
-def load_recompute_resolver_maps(conn) -> RecomputeResolverMaps:
+def load_recompute_resolver_maps(conn: ConnectionLike) -> RecomputeResolverMaps:
     """Fetch the three lookup maps needed for recompute FK resolution.
 
     Makes three small sequential queries; each touches only the columns the
@@ -123,17 +123,29 @@ def build_recompute_resolvers(maps: RecomputeResolverMaps) -> Resolvers:
     d = maps.disclosure_by_source_record
     rf = maps.rule_fire_by_source_record
 
+    def _resolve_member(row: Row) -> int | None:
+        key = row.get("_member_bioguide_id")
+        return m.get(key) if isinstance(key, str) else None
+
+    def _resolve_disclosure(row: Row) -> int | None:
+        key = row.get("_financial_disclosure_source_record_id")
+        return d.get(key) if isinstance(key, str) else None
+
+    def _resolve_rule_fire(row: Row) -> int | None:
+        key = row.get("_rule_fire_source_record_id")
+        return rf.get(key) if isinstance(key, str) else None
+
     return {
         "_member_bioguide_id": (
             "member_id",
-            lambda row: m.get(row["_member_bioguide_id"]),
+            _resolve_member,
         ),
         "_financial_disclosure_source_record_id": (
             "financial_disclosure_id",
-            lambda row: d.get(row["_financial_disclosure_source_record_id"]),
+            _resolve_disclosure,
         ),
         "_rule_fire_source_record_id": (
             "rule_fire_id",
-            lambda row: rf.get(row["_rule_fire_source_record_id"]),
+            _resolve_rule_fire,
         ),
     }

@@ -6,7 +6,7 @@ Pure in-memory types — no database calls.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Sequence
+from typing import Any, Sequence
 
 
 # ---------------------------------------------------------------------------
@@ -137,7 +137,7 @@ def build_load_summary(
     )
 
 
-def status_dict(summary: LoadSummary) -> dict:
+def status_dict(summary: LoadSummary) -> dict[str, Any]:
     """Return a compact dict suitable for serialisation into the /status endpoint.
 
     Shape::

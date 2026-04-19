@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import os
+import runpy
 from pathlib import Path
 
 import yaml
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 CI_PATH = REPO_ROOT / ".github" / "workflows" / "ci.yml"
+INTEGRATION_CONFTEST_PATH = REPO_ROOT / "tests" / "integration" / "conftest.py"
 
 
 def _load_ci() -> dict:
@@ -48,6 +51,8 @@ class TestCIJobs:
         steps = data["jobs"]["typecheck"]["steps"]
         runs = " ".join(s.get("run", "") for s in steps)
         assert "mypy" in runs
+        assert "--config-file pyproject.toml" in runs
+        assert "--ignore-missing-imports" not in runs
 
     def test_unit_runs_pytest(self) -> None:
         data = _load_ci()
@@ -65,7 +70,7 @@ class TestCIJobs:
         data = _load_ci()
         job = data["jobs"]["test-integration"]
         env = job.get("env", {})
-        assert "OPENPACT_POSTGRES_DSN" in env
+        assert "OPENPACT_TEST_POSTGRES_DSN" in env
 
     def test_integration_runs_pytest(self) -> None:
         data = _load_ci()
@@ -73,3 +78,24 @@ class TestCIJobs:
         runs = " ".join(s.get("run", "") for s in steps)
         assert "pytest" in runs
         assert "integration" in runs
+
+
+class TestIntegrationConftestContract:
+    def test_promotes_app_dsn_to_test_dsn(self, monkeypatch) -> None:
+        dsn = "postgresql://openpact:openpact@localhost:5432/openpact_test"
+        monkeypatch.delenv("OPENPACT_TEST_POSTGRES_DSN", raising=False)
+        monkeypatch.setenv("OPENPACT_POSTGRES_DSN", dsn)
+
+        data = runpy.run_path(str(INTEGRATION_CONFTEST_PATH))
+
+        assert data["_DSN"] == dsn
+        assert os.environ["OPENPACT_TEST_POSTGRES_DSN"] == dsn
+
+    def test_keeps_integration_tests_skippable_without_any_dsn(self, monkeypatch) -> None:
+        monkeypatch.delenv("OPENPACT_TEST_POSTGRES_DSN", raising=False)
+        monkeypatch.delenv("OPENPACT_POSTGRES_DSN", raising=False)
+
+        data = runpy.run_path(str(INTEGRATION_CONFTEST_PATH))
+
+        assert data["_DSN"] is None
+        assert "OPENPACT_TEST_POSTGRES_DSN" not in os.environ

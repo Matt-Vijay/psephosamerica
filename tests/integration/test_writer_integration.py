@@ -10,6 +10,7 @@ import pytest
 from src.db.bootstrap import apply_sql, read_schema_sql
 from src.db.repositories import fetch_all
 from src.db.writer import write_table_batch, write_table_batches
+from tests.integration.conftest import _open_external_connection
 
 
 pytestmark = pytest.mark.skipif(
@@ -143,6 +144,87 @@ class TestWriteTableBatch:
     def test_empty_batch_is_noop(self, db):
         result = write_table_batch(db, table="member", rows=[])
         assert result.total_attempted == 0
+
+    def test_helper_commit_is_not_visible_outside_test_transaction(self, db):
+        write_table_batch(
+            db,
+            table="member",
+            rows=[{
+                "bioguide_id": "V000001",
+                "slug": "visible-member",
+                "last_name": "Hidden",
+                "full_name": "Should Stay Hidden",
+                "chamber": "house",
+            }],
+        )
+
+        observer = _open_external_connection(db.schema_name)
+        try:
+            rows = fetch_all(observer, "SELECT to_regclass('member') AS regclass_name")
+            assert rows == [{"regclass_name": None}]
+        finally:
+            observer.close()
+
+    def test_failed_write_preserves_prior_commits_and_allows_recovery(self, db):
+        write_table_batch(
+            db,
+            table="member",
+            rows=[{
+                "bioguide_id": "S000001",
+                "slug": "stable-member",
+                "last_name": "Stable",
+                "full_name": "Stable Member",
+                "chamber": "house",
+            }],
+        )
+
+        with pytest.raises(Exception):
+            write_table_batch(
+                db,
+                table="member",
+                rows=[{
+                    "bioguide_id": "X000001",
+                    "slug": "bad-chamber",
+                    "last_name": "Bad",
+                    "full_name": "Bad Chamber",
+                    "chamber": "invalid_value",
+                }],
+            )
+
+        rows = fetch_all(
+            db,
+            "SELECT bioguide_id FROM member ORDER BY bioguide_id",
+        )
+        assert rows == [{"bioguide_id": "S000001"}]
+
+        result = write_table_batch(
+            db,
+            table="member",
+            rows=[{
+                "bioguide_id": "R000001",
+                "slug": "recovered-member",
+                "last_name": "Recovered",
+                "full_name": "Recovered Member",
+                "chamber": "senate",
+            }],
+        )
+        assert result.inserted == 1
+
+        rows = fetch_all(
+            db,
+            "SELECT bioguide_id FROM member ORDER BY bioguide_id",
+        )
+        assert rows == [
+            {"bioguide_id": "R000001"},
+            {"bioguide_id": "S000001"},
+        ]
+
+        observer = _open_external_connection(db.schema_name)
+        try:
+            rows = fetch_all(observer, "SELECT to_regclass('member') AS regclass_name")
+            assert rows == [{"regclass_name": None}]
+        finally:
+            observer.close()
 
 
 class TestWriteTableBatches:

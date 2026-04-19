@@ -17,7 +17,7 @@ from __future__ import annotations
 from typing import Any
 
 from src.db.lookups import LookupBundle, build_lookup_bundle
-from src.db.repositories import fetch_all
+from src.db.repositories import ConnectionLike, fetch_all
 
 # ---------------------------------------------------------------------------
 # Row fetchers — each pulls only the columns the builder needs
@@ -44,19 +44,19 @@ FROM financial_disclosure
 """
 
 
-def fetch_member_lookup_rows(conn) -> list[dict[str, Any]]:
+def fetch_member_lookup_rows(conn: ConnectionLike) -> list[dict[str, Any]]:
     return fetch_all(conn, _MEMBER_SQL)
 
 
-def fetch_committee_lookup_rows(conn) -> list[dict[str, Any]]:
+def fetch_committee_lookup_rows(conn: ConnectionLike) -> list[dict[str, Any]]:
     return fetch_all(conn, _COMMITTEE_SQL)
 
 
-def fetch_fec_committee_lookup_rows(conn) -> list[dict[str, Any]]:
+def fetch_fec_committee_lookup_rows(conn: ConnectionLike) -> list[dict[str, Any]]:
     return fetch_all(conn, _FEC_COMMITTEE_SQL)
 
 
-def fetch_financial_disclosure_lookup_rows(conn) -> list[dict[str, Any]]:
+def fetch_financial_disclosure_lookup_rows(conn: ConnectionLike) -> list[dict[str, Any]]:
     return fetch_all(conn, _FINANCIAL_DISCLOSURE_SQL)
 
 
@@ -65,7 +65,7 @@ def fetch_financial_disclosure_lookup_rows(conn) -> list[dict[str, Any]]:
 # ---------------------------------------------------------------------------
 
 
-def load_lookup_bundle(conn) -> LookupBundle:
+def load_lookup_bundle(conn: ConnectionLike) -> LookupBundle:
     """Fetch all lookup rows and build a complete :class:`LookupBundle`.
 
     Makes four small sequential queries; each touches only the columns the

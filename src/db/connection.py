@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Protocol, runtime_checkable
+from typing import Any, Protocol, TypedDict, runtime_checkable
 
 
 @runtime_checkable
@@ -12,7 +12,15 @@ class DBSettings(Protocol):
     db_password: str
 
 
-def build_connection_kwargs(settings: DBSettings) -> dict[str, str | int]:
+class ConnectionKwargs(TypedDict):
+    host: str
+    port: int
+    dbname: str
+    user: str
+    password: str
+
+
+def build_connection_kwargs(settings: DBSettings) -> ConnectionKwargs:
     # getattr lets any duck-typed object work (Pydantic model, dataclass, SimpleNamespace)
     return {
         "host": getattr(settings, "db_host"),
@@ -23,9 +31,15 @@ def build_connection_kwargs(settings: DBSettings) -> dict[str, str | int]:
     }
 
 
-def connect(settings: DBSettings):
+def connect(settings: DBSettings) -> Any:
     # Caller owns the connection lifecycle; use as context manager or close explicitly.
     import psycopg  # local import keeps the module importable without psycopg installed
 
     kwargs = build_connection_kwargs(settings)
-    return psycopg.connect(**kwargs)
+    return psycopg.connect(
+        host=kwargs["host"],
+        port=kwargs["port"],
+        dbname=kwargs["dbname"],
+        user=kwargs["user"],
+        password=kwargs["password"],
+    )

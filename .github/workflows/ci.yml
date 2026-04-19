@@ -46,9 +46,8 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -e ".[dev]"
-      - run: pip install mypy
       - name: mypy
-        run: python -m mypy src/ --ignore-missing-imports
+        run: python -m mypy --config-file pyproject.toml
 
   test-unit:
     name: Unit tests
@@ -80,7 +79,7 @@ jobs:
           --health-timeout=5s
           --health-retries=5
     env:
-      OPENPACT_POSTGRES_DSN: "postgresql://openpact:openpact@localhost:5432/openpact_test"
+      OPENPACT_TEST_POSTGRES_DSN: "postgresql://openpact:openpact@localhost:5432/openpact_test"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
