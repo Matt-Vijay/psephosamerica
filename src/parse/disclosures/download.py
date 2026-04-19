@@ -41,15 +41,20 @@ def sha256_bytes(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
-def _fetch_data_source_id(conn, slug: str) -> int:
+def _fetch_data_source_id(conn: Any, slug: str) -> int:
     rows = fetch_all(conn, "SELECT id FROM data_source WHERE slug = %s", (slug,))
     if not rows:
         raise ValueError(f"data_source slug not found: {slug!r}")
-    return rows[0]["id"]
+    raw_id = rows[0]["id"]
+    if isinstance(raw_id, bool) or not isinstance(raw_id, int):
+        raise ValueError(
+            f"data_source id for slug {slug!r} must be an integer, got {type(raw_id).__name__}"
+        )
+    return int(raw_id)
 
 
 def store_downloaded_artifact(
-    conn,
+    conn: Any,
     meta: ArtifactMeta,
     data: bytes,
 ) -> dict[str, Any]:

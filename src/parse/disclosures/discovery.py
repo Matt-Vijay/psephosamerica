@@ -20,6 +20,8 @@ from __future__ import annotations
 
 from typing import Optional
 
+import httpx
+
 from src.parse.disclosures.acquire import (
     HOUSE_DISCLOSURE_SOURCE,
     SENATE_DISCLOSURE_SOURCE,
@@ -79,7 +81,7 @@ def fetch_house_artifacts(
     year: int,
     filing_kind: str,
     *,
-    client: Optional[object] = None,
+    client: Optional[httpx.Client] = None,
 ) -> list[ArtifactMeta]:
     """Return provisional ArtifactMeta for every House filing of *filing_kind* in *year*.
 
@@ -95,7 +97,7 @@ def fetch_house_artifacts(
 def fetch_senate_artifacts(
     year: int,
     *,
-    client: Optional[object] = None,
+    client: Optional[httpx.Client] = None,
 ) -> list[ArtifactMeta]:
     """Return provisional ArtifactMeta for every Senate EFD filing in *year*.
 
@@ -111,7 +113,7 @@ def fetch_disclosure_artifacts(
     year: int,
     *,
     filing_kind: Optional[str] = None,
-    client: Optional[object] = None,
+    client: Optional[httpx.Client] = None,
 ) -> list[ArtifactMeta]:
     """Return provisional ArtifactMeta for all filings in *chamber* and *year*.
 

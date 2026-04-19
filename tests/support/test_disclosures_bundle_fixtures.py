@@ -145,6 +145,55 @@ class TestMakeSenateSpec:
 
 
 # ---------------------------------------------------------------------------
+# realistic_text shape selection
+# ---------------------------------------------------------------------------
+
+
+class TestRealisticTextShapeSelection:
+    def test_house_annual_realistic_text_matches_annual_index_shape(self):
+        spec = make_house_spec(
+            "HOUSE-ANN-1",
+            filing_kind="annual",
+            raw_filing_type="O",
+            realistic_text=True,
+        )
+
+        assert spec.text_payload is not None
+        text = spec.text_payload.decode("ascii")
+
+        assert "ANNUAL FINANCIAL DISCLOSURE REPORT" in text
+        assert "Periodic Transaction Report" not in text
+
+    def test_house_amendment_realistic_text_mentions_amendment(self):
+        spec = make_house_spec(
+            "HOUSE-AMD-1",
+            filing_kind="annual",
+            raw_filing_type="A",
+            realistic_text=True,
+        )
+
+        assert spec.text_payload is not None
+        text = spec.text_payload.decode("ascii")
+
+        assert "ANNUAL FINANCIAL DISCLOSURE REPORT" in text
+        assert "Amendment" in text
+
+    def test_senate_ptr_realistic_text_matches_ptr_report_type(self):
+        spec = make_senate_spec(
+            "SEN-PTR-1",
+            report_type="Periodic Transaction Report",
+            realistic_text=True,
+        )
+
+        assert spec.text_payload is not None
+        text = spec.text_payload.decode("ascii")
+
+        assert "Periodic Transaction Report" in text
+        assert "Part II" in text
+        assert "PART III - ASSETS AND UNEARNED INCOME" not in text
+
+
+# ---------------------------------------------------------------------------
 # build_bundle_fixture — empty bundle
 # ---------------------------------------------------------------------------
 

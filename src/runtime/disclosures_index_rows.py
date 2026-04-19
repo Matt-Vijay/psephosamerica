@@ -16,13 +16,14 @@ fetch_index_rows_for_artifacts(artifacts, *, client=None)
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Optional, Union
+from typing import Any, Optional, cast
 
 from src.parse.disclosures.house_index import HouseIndexRow
+from src.parse.disclosures.index_lookup import Chamber as DisclosureChamber
 from src.parse.disclosures.index_lookup import fetch_disclosure_rows_by_doc_id
 from src.parse.disclosures.senate_index import SenateIndexRow
 
-IndexRow = Union[HouseIndexRow, SenateIndexRow]
+IndexRow = HouseIndexRow | SenateIndexRow
 
 
 @dataclass(frozen=True)
@@ -39,18 +40,20 @@ class ArtifactIndexMatch:
 
 def group_artifacts_by_chamber_year(
     artifacts: list[dict[str, Any]],
-) -> dict[tuple[str, int], list[dict[str, Any]]]:
+) -> dict[tuple[DisclosureChamber, int], list[dict[str, Any]]]:
     """Group artifact rows by (chamber, filing_year).
 
     Rows with a None chamber or filing_year are excluded; they cannot be
     resolved against a year-scoped index.
     """
-    groups: dict[tuple[str, int], list[dict[str, Any]]] = {}
+    groups: dict[tuple[DisclosureChamber, int], list[dict[str, Any]]] = {}
     for row in artifacts:
-        chamber = row.get("chamber")
-        year = row.get("filing_year")
-        if chamber is None or year is None:
+        chamber_value = row.get("chamber")
+        year_value = row.get("filing_year")
+        if chamber_value not in ("house", "senate") or year_value is None:
             continue
+        chamber: DisclosureChamber = chamber_value
+        year = int(year_value)
         key = (chamber, int(year))
         groups.setdefault(key, []).append(row)
     return groups
@@ -70,20 +73,24 @@ def fetch_index_rows_for_artifacts(
     groups = group_artifacts_by_chamber_year(artifacts)
 
     # One live fetch per (chamber, year); filing_kind=None fetches all House kinds.
-    lookups: dict[tuple[str, int], dict[str, IndexRow]] = {}
+    lookups: dict[tuple[DisclosureChamber, int], dict[str, IndexRow]] = {}
     for chamber, year in groups:
-        lookups[(chamber, year)] = fetch_disclosure_rows_by_doc_id(
-            chamber, year, client=client
+        lookups[(chamber, year)] = cast(
+            dict[str, IndexRow],
+            fetch_disclosure_rows_by_doc_id(chamber, year, client=client),
         )
 
     matches: list[ArtifactIndexMatch] = []
     for row in artifacts:
-        chamber = row.get("chamber")
-        year = row.get("filing_year")
-        if chamber is None or year is None:
+        chamber_value = row.get("chamber")
+        year_value = row.get("filing_year")
+        if chamber_value not in ("house", "senate") or year_value is None:
             matches.append(ArtifactIndexMatch(artifact=row, index_row=None))
             continue
-        lookup = lookups.get((chamber, int(year)), {})
-        doc_id = row.get("source_record_id") or ""
+        artifact_chamber: DisclosureChamber = chamber_value
+        year = int(year_value)
+        lookup = lookups.get((artifact_chamber, int(year)), {})
+        source_record_id = row.get("source_record_id")
+        doc_id = "" if source_record_id is None else str(source_record_id)
         matches.append(ArtifactIndexMatch(artifact=row, index_row=lookup.get(doc_id)))
     return matches

@@ -351,13 +351,13 @@ class TestStageWiring:
 
 
 # ---------------------------------------------------------------------------
-# Parse inputs step — auto-build path (parse_inputs=None + local_root set)
+# Parse inputs step — auto-build path (parse_inputs=None)
 # ---------------------------------------------------------------------------
 
 
 class TestParseInputsAutoBuild:
-    """Step 3: when parse_inputs=None and local_root is set, _build_parse_inputs
-    is called with the bundle, staged result, and local_root."""
+    """Step 3: when parse_inputs=None, _build_parse_inputs is used to build
+    explicit parse inputs before parse runs."""
 
     def test_build_parse_inputs_called_when_parse_inputs_none_and_local_root_set(self):
         conn = MagicMock()
@@ -390,11 +390,13 @@ class TestParseInputsAutoBuild:
         args, _ = mocks["build_parse_inputs"].call_args
         assert args[2] == root
 
-    def test_build_parse_inputs_not_called_when_local_root_is_none(self):
+    def test_build_parse_inputs_receives_none_local_root(self):
         conn = MagicMock()
-        with _patch_all() as mocks:
-            run_disclosures_bundle_process(conn, _bundle(), local_root=None)
-        mocks["build_parse_inputs"].assert_not_called()
+        b = _bundle()
+        sr = _stage_result()
+        with _patch_all(stage_result=sr) as mocks:
+            run_disclosures_bundle_process(conn, b, local_root=None)
+        mocks["build_parse_inputs"].assert_called_once_with(b, sr, None)
 
     def test_build_parse_inputs_not_called_when_explicit_inputs_provided(self):
         conn = MagicMock()
@@ -414,13 +416,14 @@ class TestParseInputsAutoBuild:
         _, parse_kwargs = mocks["parse"].call_args
         assert parse_kwargs["parse_inputs"] is built
 
-    def test_none_parse_inputs_forwarded_when_local_root_is_none(self):
-        """When local_root is None and parse_inputs=None, None passes through to parse."""
+    def test_built_inputs_forwarded_to_parse_when_local_root_is_none(self):
+        """Auto-built explicit parse inputs are forwarded even without local_root."""
         conn = MagicMock()
-        with _patch_all() as mocks:
+        built = [MagicMock()]
+        with _patch_all(built_parse_inputs=built) as mocks:
             run_disclosures_bundle_process(conn, _bundle(), local_root=None)
         _, parse_kwargs = mocks["parse"].call_args
-        assert parse_kwargs.get("parse_inputs") is None
+        assert parse_kwargs["parse_inputs"] is built
 
 
 # ---------------------------------------------------------------------------

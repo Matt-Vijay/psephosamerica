@@ -19,7 +19,9 @@ Realistic text payload helpers (generate plain-ASCII text resembling
 extracted disclosure PDF content; no binary blobs):
 
 make_house_ptr_text(source_record_id, ...)  -> bytes
+make_house_annual_text(source_record_id, ...)  -> bytes
 make_senate_annual_text(source_record_id, ...) -> bytes
+make_senate_ptr_text(source_record_id, ...) -> bytes
 
 Convenience multi-artifact fixture:
 
@@ -125,6 +127,8 @@ def make_house_ptr_text(
     state_dst: str = "CA08",
     filing_date: str = "01/15/2024",
     filing_year: int = 2024,
+    is_amended: bool = False,
+    amendment_number: int = 0,
     transactions: list[dict[str, Any]] | None = None,
 ) -> bytes:
     """Generate realistic plain-text content for a House PTR disclosure.
@@ -155,7 +159,13 @@ def make_house_ptr_text(
         f"Filing Date: {filing_date}",
         f"Calendar Year: {filing_year}",
         f"Document ID: {source_record_id}",
-        "Report Type: Periodic Transaction Report (ptr)",
+        (
+            f"Report Type: Periodic Transaction Report Amendment No. {amendment_number}"
+            if is_amended and amendment_number > 0
+            else "Report Type: Periodic Transaction Report Amendment"
+            if is_amended
+            else "Report Type: Periodic Transaction Report (ptr)"
+        ),
         "",
         "TRANSACTIONS",
         "Date       Ticker  Asset Name                       Type      Amount",
@@ -176,6 +186,76 @@ def make_house_ptr_text(
     return "\n".join(lines).encode("ascii", errors="replace")
 
 
+def make_house_annual_text(
+    source_record_id: str,
+    *,
+    last_name: str = "Smith",
+    first_name: str = "John",
+    state_dst: str = "CA08",
+    filing_date: str = "01/15/2024",
+    filing_year: int = 2024,
+    is_amended: bool = False,
+    amendment_number: int = 0,
+    holdings: list[dict[str, Any]] | None = None,
+) -> bytes:
+    """Generate realistic plain-text content for a House annual disclosure."""
+    default_holdings: list[dict[str, Any]] = [
+        {
+            "owner": "Self",
+            "asset_name": "Apple Inc. Common Stock",
+            "value_range": "$15,001 - $50,000",
+            "income_type": "Dividends",
+            "income_amount": "$201 - $1,000",
+        },
+        {
+            "owner": "SP",
+            "asset_name": "U.S. Treasury Notes",
+            "value_range": "$50,001 - $100,000",
+            "income_type": "Interest",
+            "income_amount": "$1,001 - $2,500",
+        },
+    ]
+    holdings_data = holdings if holdings is not None else default_holdings
+
+    district = state_dst[:2]
+    district_number = state_dst[2:]
+    lines: list[str] = [
+        "ANNUAL FINANCIAL DISCLOSURE REPORT",
+        "U.S. House of Representatives",
+        f"For Calendar Year {filing_year}",
+        "",
+        f"Member Name: {last_name}, {first_name}",
+        f"District: {district}-{district_number}",
+        f"Date Filed: {filing_date}",
+    ]
+    if is_amended:
+        if amendment_number > 0:
+            lines.append(f"Amendment No. {amendment_number}")
+        else:
+            lines.append("Amendment")
+    lines += [
+        f"Document ID: {source_record_id}",
+        "",
+        "SCHEDULE A: ASSETS AND UNEARNED INCOME",
+        "",
+        "OWNER  ASSET NAME  VALUE OF ASSET  TYPE OF INCOME  INCOME AMOUNT",
+        "-----  ----------  --------------  --------------  -------------",
+    ]
+    for index, holding in enumerate(holdings_data, start=1):
+        lines.append(
+            f"{index}  {holding['owner']:<5}  {holding['asset_name']:<32}  "
+            f"{holding['value_range']:<18}  {holding['income_type']:<12}  "
+            f"{holding['income_amount']}"
+        )
+    lines += [
+        "",
+        "SCHEDULE D: OUTSIDE POSITIONS",
+        "",
+        "1  Example Community Foundation  Director  01/01/2020  Present",
+    ]
+    return "\n".join(lines).encode("ascii", errors="replace")
+
+
 def make_senate_annual_text(
     source_record_id: str,
     *,
@@ -184,6 +264,8 @@ def make_senate_annual_text(
     office: str = "Senator, TX",
     report_type: str = "Annual Report for CY2023",
     date_filed: str = "01/15/2024",
+    is_amended: bool = False,
+    amendment_number: int = 0,
     holdings: list[dict[str, Any]] | None = None,
 ) -> bytes:
     """Generate realistic plain-text content for a Senate annual disclosure.
@@ -215,6 +297,13 @@ def make_senate_annual_text(
         f"Date Filed: {date_filed}",
         f"Document ID: {source_record_id}",
         "",
+    ]
+    if is_amended:
+        lines.append(
+            f"Amendment No. {amendment_number}" if amendment_number > 0 else "Amendment"
+        )
+        lines.append("")
+    lines += [
         "PART III - ASSETS AND UNEARNED INCOME",
         "Asset Name                    Type                Value Range         Income",
         "-" * 80,
@@ -232,6 +321,66 @@ def make_senate_annual_text(
         f"Signature: {first_name} {last_name}",
         f"Date: {date_filed}",
     ]
+    return "\n".join(lines).encode("ascii", errors="replace")
+
+
+def make_senate_ptr_text(
+    source_record_id: str,
+    *,
+    last_name: str = "Doe",
+    first_name: str = "Jane",
+    office: str = "Senator, TX",
+    report_type: str = "Periodic Transaction Report",
+    date_filed: str = "01/15/2024",
+    is_amended: bool = False,
+    amendment_number: int = 0,
+    transactions: list[dict[str, Any]] | None = None,
+) -> bytes:
+    """Generate realistic plain-text content for a Senate PTR disclosure."""
+    default_txns: list[dict[str, Any]] = [
+        {
+            "date": "01/10/2024",
+            "owner": "self",
+            "ticker": "AAPL",
+            "asset_name": "Apple Inc",
+            "transaction_type": "Purchase",
+            "amount": "$1,001 - $15,000",
+        },
+        {
+            "date": "01/12/2024",
+            "owner": "sp",
+            "ticker": "MSFT",
+            "asset_name": "Microsoft Corp",
+            "transaction_type": "Sale (Full)",
+            "amount": "$15,001 - $50,000",
+        },
+    ]
+    txns = transactions if transactions is not None else default_txns
+
+    lines: list[str] = [
+        "United States Senate",
+        "Financial Disclosure Report",
+        f"Name: {last_name}, {first_name}",
+        f"Office: {office}",
+        (
+            f"{report_type} Amendment No. {amendment_number}"
+            if is_amended and amendment_number > 0
+            else f"{report_type} Amendment"
+            if is_amended
+            else report_type
+        ),
+        f"Date Filed: {date_filed}",
+        f"Document ID: {source_record_id}",
+        "",
+        "Part II",
+        "",
+        "Date        Owner  Ticker  Asset                    Type         Amount",
+    ]
+    for txn in txns:
+        lines.append(
+            f"{txn['date']}  {txn['owner']:<5}  {txn['ticker']:<6}  "
+            f"{txn['asset_name']:<24}  {txn['transaction_type']:<12}  {txn['amount']}"
+        )
     return "\n".join(lines).encode("ascii", errors="replace")
 
 
@@ -277,14 +426,31 @@ def make_house_spec(
     }
     text_payload: bytes | None = None
     if realistic_text:
-        text_payload = make_house_ptr_text(
-            source_record_id,
-            last_name=last_name,
-            first_name=first_name,
-            state_dst=state_dst,
-            filing_date=filing_date.replace("-", "/"),
-            filing_year=filing_year,
-        )
+        is_amended = raw_filing_type.upper() == "A"
+        amendment_number = 1 if is_amended else 0
+        filing_date_text = filing_date.replace("-", "/")
+        if filing_kind == "ptr":
+            text_payload = make_house_ptr_text(
+                source_record_id,
+                last_name=last_name,
+                first_name=first_name,
+                state_dst=state_dst,
+                filing_date=filing_date_text,
+                filing_year=filing_year,
+                is_amended=is_amended,
+                amendment_number=amendment_number,
+            )
+        else:
+            text_payload = make_house_annual_text(
+                source_record_id,
+                last_name=last_name,
+                first_name=first_name,
+                state_dst=state_dst,
+                filing_date=filing_date_text,
+                filing_year=filing_year,
+                is_amended=is_amended,
+                amendment_number=amendment_number,
+            )
     return BundleArtifactSpec(
         source_record_id=source_record_id,
         chamber="house",
@@ -330,14 +496,31 @@ def make_senate_spec(
     }
     text_payload: bytes | None = None
     if realistic_text:
-        text_payload = make_senate_annual_text(
-            source_record_id,
-            last_name=last_name,
-            first_name=first_name,
-            office=office,
-            report_type=report_type,
-            date_filed=date_filed,
-        )
+        report_type_lower = report_type.lower()
+        is_amended = "amend" in report_type_lower
+        amendment_number = 1 if is_amended else 0
+        if "periodic transaction report" in report_type_lower or "ptr" in report_type_lower:
+            text_payload = make_senate_ptr_text(
+                source_record_id,
+                last_name=last_name,
+                first_name=first_name,
+                office=office,
+                report_type=report_type,
+                date_filed=date_filed,
+                is_amended=is_amended,
+                amendment_number=amendment_number,
+            )
+        else:
+            text_payload = make_senate_annual_text(
+                source_record_id,
+                last_name=last_name,
+                first_name=first_name,
+                office=office,
+                report_type=report_type,
+                date_filed=date_filed,
+                is_amended=is_amended,
+                amendment_number=amendment_number,
+            )
     return BundleArtifactSpec(
         source_record_id=source_record_id,
         chamber="senate",

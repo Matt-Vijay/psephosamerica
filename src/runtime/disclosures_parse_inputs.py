@@ -22,7 +22,7 @@ class DisclosureParseInput:
 
 
 def load_unparsed_disclosure_artifacts(
-    conn,
+    conn: Any,
     *,
     local_root: Path,
     chamber: str | None = None,

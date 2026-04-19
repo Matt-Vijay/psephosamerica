@@ -11,6 +11,8 @@ Chamber-specific; do not merge with House logic.
 
 from __future__ import annotations
 
+import httpx
+
 from src.parse.disclosures.senate_index import SenateIndexRow, fetch_senate_index
 
 
@@ -29,7 +31,7 @@ def index_senate_rows_by_doc_id(
 def fetch_senate_rows_by_doc_id(
     year: int,
     *,
-    client=None,
+    client: httpx.Client | None = None,
 ) -> dict[str, SenateIndexRow]:
     """Fetch all Senate EFD rows for *year* and index them by doc_id.
 

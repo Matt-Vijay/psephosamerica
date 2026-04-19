@@ -13,12 +13,15 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from src.query.disclosure_member_rows import fetch_member_rows_for_disclosures
+from src.runtime.disclosures_index_provider import live_index_matches
 from src.runtime.disclosures import (
     DisclosuresLoadRuntimeResult,
     run_disclosures_load_runtime,
 )
 from src.runtime.disclosures_parse import (
     DisclosureParseRuntimeResult,
+    IndexMatchProvider,
     run_disclosure_parse_runtime,
 )
 from src.runtime.disclosures_transform import (
@@ -26,6 +29,26 @@ from src.runtime.disclosures_transform import (
     SkippedSession,
     transform_parse_sessions,
 )
+
+
+# ---------------------------------------------------------------------------
+# Live index provider
+# ---------------------------------------------------------------------------
+
+
+class _LiveIndexProvider:
+    """Live-backed index/membership provider for the non-bundle runtime path."""
+
+    def load_matches(self, artifacts: list[dict[str, Any]]) -> list[Any]:
+        return live_index_matches(artifacts)
+
+    def load_member_rows(
+        self,
+        conn: Any,
+        *,
+        chamber: str,
+    ) -> list[dict[str, Any]]:
+        return fetch_member_rows_for_disclosures(conn, chamber=chamber)
 
 
 # ---------------------------------------------------------------------------
@@ -84,6 +107,8 @@ def run_disclosures_parse_load_runtime(
         parser_name:    Identifier recorded in the parse_run row.
         parser_version: Version string recorded in the parse_run row.
     """
+    index_provider: IndexMatchProvider = _LiveIndexProvider()
+
     parse_result = run_disclosure_parse_runtime(
         conn,
         local_root=local_root,
@@ -91,6 +116,7 @@ def run_disclosures_parse_load_runtime(
         limit=limit,
         parser_name=parser_name,
         parser_version=parser_version,
+        index_provider=index_provider,
     )
 
     batch: BatchTransformResult = transform_parse_sessions(conn, parse_result.parse_sessions)

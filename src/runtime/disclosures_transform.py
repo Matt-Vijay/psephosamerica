@@ -19,6 +19,7 @@ from src.parse.disclosures.transform import (
 SKIP_NO_PARSE_RESULT = "no_parse_result"
 SKIP_NO_PARSED_DOCUMENT = "no_parsed_document"
 SKIP_UNRESOLVED_MEMBER_IDENTITY = "unresolved_member_identity"
+SKIP_OCR_REQUIRED_NOT_IMPLEMENTED = "ocr_required_not_implemented"
 
 
 def build_parse_context(
@@ -76,6 +77,10 @@ def transform_single_session(
     if not isinstance(parse_result, dict):
         return SkippedSession(run_id=run_id, reason_code=SKIP_NO_PARSE_RESULT)
 
+    skip_reason_code = parse_result.get("skip_reason_code")
+    if isinstance(skip_reason_code, str) and skip_reason_code:
+        return SkippedSession(run_id=run_id, reason_code=skip_reason_code)
+
     raw_document = parse_result.get("parsed_document")
     if not isinstance(raw_document, ParseResult):
         return SkippedSession(run_id=run_id, reason_code=SKIP_NO_PARSED_DOCUMENT)
@@ -106,6 +111,8 @@ class SkippedSession:
 
     reason_code is one of the module-level SKIP_* constants:
     - SKIP_NO_PARSE_RESULT            — session.parse_result is not a dict
+    - SKIP_OCR_REQUIRED_NOT_IMPLEMENTED
+                                      — parse step explicitly blocked on OCR
     - SKIP_NO_PARSED_DOCUMENT         — parse_result['parsed_document'] is not a ParseResult
     - SKIP_UNRESOLVED_MEMBER_IDENTITY — member bioguide_id absent and unresolvable
     """

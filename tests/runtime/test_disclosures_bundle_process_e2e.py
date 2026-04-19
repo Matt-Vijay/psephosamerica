@@ -54,6 +54,7 @@ _STAGE = "src.runtime.disclosures_bundle_process.stage_disclosures_bundle"
 _PARSE_SESSION = "src.runtime.disclosures_parse.run_parse_session"
 _LOAD = "src.runtime.disclosures_bundle_process.run_disclosures_load_runtime"
 _FETCH_MEMBERS = "src.runtime.disclosures_bundle_process.fetch_member_rows_for_disclosures"
+_LOAD_UNPARSED = "src.runtime.disclosures_parse.load_unparsed_disclosure_artifacts"
 
 # ---------------------------------------------------------------------------
 # Canonical inline fixture data — generated from deterministic stub bytes
@@ -405,20 +406,32 @@ class TestBundleProcessSha256E2E:
         # parse_session must not have been called — sha256 aborted first
         mocks["parse_session"].assert_not_called()
 
-    def test_no_sha256_check_when_local_root_is_none(self):
-        """When local_root is None the auto-build step is skipped entirely."""
-        bundle = disclosures_bundle_from_dict(_house_bundle_dict())
-        conn = MagicMock()
+    def test_local_root_none_uses_absolute_bundle_storage_uri(self, tmp_path):
+        """When the bundle already carries a resolvable artifact path, parse inputs
+        are built explicitly even with local_root=None.
+        """
+        artifact_path = tmp_path / "house" / "2024" / "12345.pdf"
+        artifact_path.parent.mkdir(parents=True, exist_ok=True)
+        artifact_path.write_bytes(_STUB_BYTES)
 
-        # No local file exists — would raise FileNotFoundError if auto-built.
-        with _E2EPatchContext():
-            result = run_disclosures_bundle_process(
-                conn,
-                bundle,
-                local_root=None,
-            )
+        bundle_dict = _house_bundle_dict()
+        bundle_dict["artifacts"][0]["storage_uri"] = str(artifact_path)
+        bundle = disclosures_bundle_from_dict(bundle_dict)
+        conn = MagicMock()
+        staged_row = _house_artifact_row()
+        staged_row["storage_uri"] = str(artifact_path)
+
+        with _E2EPatchContext(stage_result=_staged_result(staged_row)) as mocks:
+            with patch(_LOAD_UNPARSED, side_effect=AssertionError("db fallback not allowed")) as mock_load:
+                result = run_disclosures_bundle_process(
+                    conn,
+                    bundle,
+                    local_root=None,
+                )
 
         assert isinstance(result, DisclosuresBundleProcessResult)
+        mocks["parse_session"].assert_called_once()
+        mock_load.assert_not_called()
 
     def test_realistic_text_payload_sha256_passes(self, tmp_path):
         """Realistic text content (not a short stub) passes real SHA-256 verification."""
@@ -471,27 +484,14 @@ class TestBundleProcessAutoParseInputsE2E:
         _, parse_kwargs = mocks["parse_session"].call_args
         assert parse_kwargs["source_artifact_id"] == 42
 
-    def test_no_parse_session_when_local_root_is_none(self):
-        """When local_root=None the auto-build produces no inputs; parse queries DB."""
+    def test_local_root_none_rejects_relative_bundle_storage_uri(self):
+        """Without local_root, relative bundle storage paths must fail truthfully."""
         bundle = disclosures_bundle_from_dict(_house_bundle_dict())
         conn = MagicMock()
 
-        # parse_inputs=None + local_root=None → parse runtime queries DB (which
-        # returns nothing because fetch_unparsed is patched at a higher level here).
-        # We patch run_disclosure_parse_runtime itself to avoid the DB call.
-        _PARSE_RT = "src.runtime.disclosures_bundle_process.run_disclosure_parse_runtime"
-        pr = MagicMock()
-        pr.succeeded_count = 0
-        pr.failed_count = 0
-        pr.parse_sessions = ()
-
         with _E2EPatchContext():
-            with patch(_PARSE_RT, return_value=pr) as mock_parse:
-                result = run_disclosures_bundle_process(conn, bundle, local_root=None)
-
-        assert isinstance(result, DisclosuresBundleProcessResult)
-        _, parse_kwargs = mock_parse.call_args
-        assert parse_kwargs.get("parse_inputs") is None
+            with pytest.raises(ValueError, match="local_root is required"):
+                run_disclosures_bundle_process(conn, bundle, local_root=None)
 
     def test_bundle_index_provider_resolves_match_in_auto_build_path(self, tmp_path):
         """The _BundleIndexProvider built inside the pipeline resolves the

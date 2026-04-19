@@ -19,6 +19,7 @@ Flow:
 """
 from __future__ import annotations
 
+import hashlib
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Optional
@@ -28,7 +29,11 @@ from src.runtime.disclosures import (
     DisclosuresLoadRuntimeResult,
     run_disclosures_load_runtime,
 )
-from src.runtime.disclosures_bundle_files import read_and_verify_entry, verify_entry_sha256
+from src.runtime.disclosures_bundle_files import (
+    Sha256Mismatch,
+    read_and_verify_entry,
+    verify_entry_sha256,
+)
 from src.runtime.disclosures_index_rows import ArtifactIndexMatch
 from src.runtime.disclosures_parse import (
     DisclosureParseRuntimeResult,
@@ -91,14 +96,16 @@ def _validate_bundle(bundle: Any) -> None:
 def _build_parse_inputs(
     bundle: Any,
     stage_result: Any,
-    local_root: Path,
+    local_root: Path | None,
 ) -> list[DisclosureParseInput]:
     """Build one DisclosureParseInput per staged artifact.
 
     For each artifact row in stage_result.artifact_rows:
     - locates the matching bundle entry by source_record_id
-    - reads artifact bytes from disk via read_and_verify_entry (SHA-256 check
-      is performed atomically with the byte read)
+    - reads artifact bytes from disk via read_and_verify_entry when local_root
+      is supplied, or directly from entry.storage_uri when it is already an
+      absolute path
+    - validates SHA-256 against the bundle entry's declared digest
     - constructs a DisclosureParseInput carrying the staged DB row, verified
       bytes, chamber, and source_record_id
 
@@ -108,6 +115,7 @@ def _build_parse_inputs(
 
     Raises Sha256Mismatch  if any on-disk digest does not match the bundle.
     Raises FileNotFoundError if a staged artifact file is absent.
+    Raises ValueError if local_root is None and a bundle storage_uri is relative.
     """
     entry_by_id: dict[str, Any] = {
         entry.source_record_id: entry for entry in bundle.artifacts
@@ -118,7 +126,7 @@ def _build_parse_inputs(
         entry = entry_by_id.get(src_id)
         if entry is None:
             continue
-        local_bytes = read_and_verify_entry(entry, local_root)
+        local_bytes = _read_entry_bytes(entry, local_root)
         inputs.append(
             DisclosureParseInput(
                 artifact_row=row,
@@ -128,6 +136,31 @@ def _build_parse_inputs(
             )
         )
     return inputs
+
+
+def _read_entry_bytes(
+    entry: Any,
+    local_root: Path | None,
+) -> bytes:
+    if local_root is not None:
+        return read_and_verify_entry(entry, local_root)
+
+    entry_path = Path(entry.storage_uri)
+    if not entry_path.is_absolute():
+        raise ValueError(
+            "local_root is required to resolve relative bundle storage_uri values"
+        )
+    if not entry_path.exists():
+        raise FileNotFoundError(f"Bundle artifact not found: {entry_path}")
+
+    data = entry_path.read_bytes()
+    actual_sha256 = hashlib.sha256(data).hexdigest()
+    if actual_sha256 != entry.sha256:
+        raise Sha256Mismatch(
+            f"SHA-256 mismatch for {entry.storage_uri!r}: "
+            f"expected {entry.sha256!r}, got {actual_sha256!r}"
+        )
+    return data
 
 
 # ---------------------------------------------------------------------------
@@ -228,10 +261,11 @@ def run_disclosures_bundle_process(
                       provided.
         parse_inputs: Explicit parse inputs passed directly to
                       run_disclosure_parse_runtime, bypassing the auto-build
-                      from staged artifacts.  When None and local_root is
-                      provided, inputs are built automatically from staged
-                      artifact rows.  When None and local_root is also None,
-                      the runtime queries the DB for unparsed artifacts.
+                      from staged artifacts.  When None, inputs are built
+                      automatically from staged artifact rows using the bundle's
+                      own artifact locations.  Relative storage_uri values still
+                      require local_root; absolute storage_uri values are read
+                      directly.
     """
     # 1. validate
     _validate_bundle(bundle)
@@ -241,10 +275,9 @@ def run_disclosures_bundle_process(
 
     # 3. parse inputs — build inputs and/or verify SHA-256 integrity
     if parse_inputs is None:
-        if local_root is not None:
-            # auto-build: read bytes from disk + verify SHA-256 atomically
-            parse_inputs = _build_parse_inputs(bundle, stage_result, local_root)
-        # else: parse_inputs stays None → parse runtime queries DB for unparsed rows
+        # bundle-backed runs always build explicit parse inputs from the staged
+        # bundle entries; there is no DB fallback on this path.
+        parse_inputs = _build_parse_inputs(bundle, stage_result, local_root)
     elif local_root is not None:
         # explicit inputs provided; still verify every bundle entry's SHA-256
         for entry in bundle.artifacts:

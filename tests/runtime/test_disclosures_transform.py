@@ -577,6 +577,17 @@ class TestTransformParseSessionsSkipped:
         assert len(result.skipped) == 1
         assert result.skipped[0].reason_code == "unresolved_member_identity"
 
+    def test_explicit_ocr_skip_reason_is_preserved(self):
+        session = _FakeSession(
+            parse_result={
+                "parsed_document": None,
+                "skip_reason_code": "ocr_required_not_implemented",
+            }
+        )
+        result = transform_parse_sessions(None, [session])
+        assert len(result.skipped) == 1
+        assert result.skipped[0].reason_code == "ocr_required_not_implemented"
+
     def test_skipped_session_captures_run_id(self):
         session = _FakeSession(run_id=42, parse_result=None)
         result = transform_parse_sessions(None, [session])
@@ -680,6 +691,19 @@ class TestTransformSingleSession:
         assert isinstance(result, SkippedSession)
         assert result.reason_code == "unresolved_member_identity"
         assert result.run_id == 7
+
+    def test_explicit_skip_reason_returns_skipped(self):
+        session = _FakeSession(
+            run_id=9,
+            parse_result={
+                "parsed_document": None,
+                "skip_reason_code": "ocr_required_not_implemented",
+            },
+        )
+        result = transform_single_session(session)
+        assert isinstance(result, SkippedSession)
+        assert result.reason_code == "ocr_required_not_implemented"
+        assert result.run_id == 9
 
     def test_skipped_session_captures_run_id(self):
         session = _FakeSession(run_id=55, parse_result=None)

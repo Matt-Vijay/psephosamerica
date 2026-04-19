@@ -2,9 +2,13 @@
 from __future__ import annotations
 
 import contextlib
+from types import SimpleNamespace
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+from src.parse.disclosures.models import Chamber, Filing, FilingType
+from src.parse.disclosures.parse_result import ParseResult, ParserMeta
+from src.runtime.disclosures_parse import IndexMatchProvider
 from src.runtime.disclosures_load_from_parse import (  # noqa: E402
     DisclosuresParseLoadResult,
     run_disclosures_parse_load_runtime,
@@ -55,6 +59,22 @@ def _load_result() -> MagicMock:
     r = MagicMock()
     r.run_id = 42
     return r
+
+
+def _parsed_document(*, member_bioguide_id: str = "") -> ParseResult:
+    return ParseResult(
+        filing=Filing(
+            member_bioguide_id=member_bioguide_id,
+            chamber=Chamber.SENATE,
+            filing_year=2024,
+            filing_type=FilingType.ANNUAL,
+            source_record_id="DOC1",
+        ),
+        holdings=(),
+        transactions=(),
+        outside_positions=(),
+        meta=ParserMeta(parser_name="test_parser"),
+    )
 
 
 def _patch_all(
@@ -257,6 +277,14 @@ class TestParseWiring:
         _, kwargs = mocks["parse"].call_args
         assert kwargs["parser_version"] == "1"
 
+    def test_live_index_provider_forwarded_to_parse(self):
+        conn = MagicMock()
+        with _patch_all() as mocks:
+            run_disclosures_parse_load_runtime(conn, local_root=_LOCAL_ROOT)
+        _, kwargs = mocks["parse"].call_args
+        assert "index_provider" in kwargs
+        assert isinstance(kwargs["index_provider"], IndexMatchProvider)
+
 
 # ---------------------------------------------------------------------------
 # Transform wiring — parse_sessions forwarded to transform_parse_sessions
@@ -458,3 +486,72 @@ class TestSkippedSessions:
         with _patch_all(batch_result=br):
             result = run_disclosures_parse_load_runtime(conn, local_root=_LOCAL_ROOT)
         assert result.skipped_transform_count == len(result.skipped_sessions)
+
+
+# ---------------------------------------------------------------------------
+# Non-bundle entrypoint behaviour with real transform logic
+# ---------------------------------------------------------------------------
+
+
+class TestNonBundleEntrypointBehaviour:
+    def test_resolved_member_identity_reaches_load_payload(self):
+        conn = MagicMock()
+        parse_result = SimpleNamespace(
+            parse_sessions=(
+                SimpleNamespace(
+                    run_id=7,
+                    parse_result={
+                        "parsed_document": _parsed_document(member_bioguide_id=""),
+                        "resolved_member": {"bioguide_id": "S000007"},
+                        "source_artifact_id": 55,
+                    },
+                ),
+            ),
+            succeeded_count=1,
+            failed_count=0,
+            processed_count=1,
+        )
+        load_result = _load_result()
+
+        with (
+            patch(_PARSE, return_value=parse_result),
+            patch(_LOAD, return_value=load_result) as mock_load,
+        ):
+            result = run_disclosures_parse_load_runtime(conn, local_root=_LOCAL_ROOT)
+
+        transformed = mock_load.call_args[0][1]
+        assert len(transformed) == 1
+        assert transformed[0].disclosure.member_bioguide_id == "S000007"
+        assert result.transform_count == 1
+        assert result.skipped_transform_count == 0
+
+    def test_ocr_blocked_session_is_skipped_not_loaded(self):
+        conn = MagicMock()
+        parse_result = SimpleNamespace(
+            parse_sessions=(
+                SimpleNamespace(
+                    run_id=9,
+                    parse_result={
+                        "parsed_document": None,
+                        "skip_reason_code": "ocr_required_not_implemented",
+                    },
+                ),
+            ),
+            succeeded_count=1,
+            failed_count=0,
+            processed_count=1,
+        )
+        load_result = _load_result()
+
+        with (
+            patch(_PARSE, return_value=parse_result),
+            patch(_LOAD, return_value=load_result) as mock_load,
+        ):
+            result = run_disclosures_parse_load_runtime(conn, local_root=_LOCAL_ROOT)
+
+        assert mock_load.call_args[0][1] == []
+        assert result.transform_count == 0
+        assert result.skipped_transform_count == 1
+        assert result.skipped_sessions == (
+            SkippedSession(run_id=9, reason_code="ocr_required_not_implemented"),
+        )

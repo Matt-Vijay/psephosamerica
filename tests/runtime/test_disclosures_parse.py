@@ -16,6 +16,7 @@ other module-level delegate.
 """
 from __future__ import annotations
 
+from datetime import date
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -24,7 +25,9 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from src.parse.disclosures.header_fields import HeaderFields
-from src.parse.disclosures.models import FilingType
+from src.parse.disclosures.house_index import HouseFilingKind, HouseIndexRow
+from src.parse.disclosures.models import Chamber, Filing, FilingType
+from src.parse.disclosures.parse_result import ParseResult, ParserMeta
 from src.parse.disclosures.senate_index import SenateIndexRow
 from src.runtime.disclosures_index_rows import ArtifactIndexMatch
 from src.runtime.disclosures_parse import (
@@ -118,6 +121,26 @@ def _make_senate_index_row(doc_id: str = "DOC1", year: int = 2024) -> SenateInde
         date_filed="01/15/2025",
         doc_id=doc_id,
         filing_year=year,
+    )
+
+
+def _make_house_index_row(
+    doc_id: str = "DOC1",
+    *,
+    filing_kind: HouseFilingKind = HouseFilingKind.ANNUAL,
+    raw_filing_type: str = "O",
+    year: int = 2024,
+) -> HouseIndexRow:
+    return HouseIndexRow(
+        last_name="Smith",
+        first_name="Jane",
+        suffix="",
+        raw_filing_type=raw_filing_type,
+        state_dst="CA08",
+        year=year,
+        filing_date=date(year, 3, 15),
+        doc_id=doc_id,
+        filing_kind=filing_kind,
     )
 
 
@@ -815,6 +838,229 @@ class TestOptionalPipelineStages:
             run_disclosure_parse_runtime(conn, local_root=_LOCAL_ROOT)
         assert results[0]["resolved_member"] is None
 
+    def test_house_index_metadata_overrides_header_for_dispatch(self):
+        conn = MagicMock()
+        inp = _make_input(1, chamber="house")
+        provider = _FakeIndexProvider(
+            matches=[
+                ArtifactIndexMatch(
+                    artifact=inp.artifact_row,
+                    index_row=_make_house_index_row(
+                        filing_kind=HouseFilingKind.PTR,
+                        raw_filing_type="A",
+                    ),
+                )
+            ]
+        )
+        mock_dispatch = MagicMock(return_value={"fields": []})
+        side_effect, _ = _capturing_run_session()
+
+        with (
+            patch(_LOAD, return_value=[inp]),
+            patch(_EXTRACT, return_value=_make_metrics()),
+            patch(
+                _HEADER,
+                return_value=HeaderFields(
+                    member_name="Jane Doe",
+                    chamber=None,
+                    filing_type=FilingType.ANNUAL,
+                    filing_year=1999,
+                    filed_at=date(1999, 12, 31),
+                    amendment_number=0,
+                    is_amended=False,
+                ),
+            ),
+            patch(_DISPATCH, mock_dispatch),
+            patch(_RESOLVE_ARTIFACT, return_value=None),
+            patch(_RUN_SESSION, side_effect=side_effect),
+        ):
+            run_disclosure_parse_runtime(
+                conn, local_root=_LOCAL_ROOT, index_provider=provider
+            )
+
+        filing = mock_dispatch.call_args[0][1]
+        assert filing.filing_type is FilingType.PTR
+        assert filing.is_amended is True
+        assert filing.filing_year == 2024
+        assert filing.filed_at == date(2024, 3, 15)
+
+    def test_senate_index_metadata_overrides_header_for_dispatch(self):
+        conn = MagicMock()
+        inp = _make_input(1, chamber="senate")
+        provider = _FakeIndexProvider(
+            matches=[
+                ArtifactIndexMatch(
+                    artifact=inp.artifact_row,
+                    index_row=SenateIndexRow(
+                        first_name="Jane",
+                        last_name="Smith",
+                        office="Senator, TX",
+                        report_type="Periodic Transaction Report Amendment",
+                        date_filed="01/15/2025",
+                        doc_id="DOC1",
+                        filing_year=2024,
+                    ),
+                )
+            ]
+        )
+        mock_dispatch = MagicMock(return_value={"fields": []})
+        side_effect, _ = _capturing_run_session()
+
+        with (
+            patch(_LOAD, return_value=[inp]),
+            patch(_EXTRACT, return_value=_make_metrics()),
+            patch(
+                _HEADER,
+                return_value=HeaderFields(
+                    member_name="Jane Doe",
+                    chamber=None,
+                    filing_type=FilingType.ANNUAL,
+                    filing_year=1998,
+                    filed_at=date(1998, 6, 1),
+                    amendment_number=0,
+                    is_amended=False,
+                ),
+            ),
+            patch(_DISPATCH, mock_dispatch),
+            patch(_RESOLVE_ARTIFACT, return_value=None),
+            patch(_RUN_SESSION, side_effect=side_effect),
+        ):
+            run_disclosure_parse_runtime(
+                conn, local_root=_LOCAL_ROOT, index_provider=provider
+            )
+
+        filing = mock_dispatch.call_args[0][1]
+        assert filing.filing_type is FilingType.PTR
+        assert filing.is_amended is True
+        assert filing.filing_year == 2024
+        assert filing.filed_at == date(2025, 1, 15)
+
+    def test_official_non_amendment_clears_header_amendment_number(self):
+        conn = MagicMock()
+        inp = _make_input(1, chamber="house")
+        provider = _FakeIndexProvider(
+            matches=[
+                ArtifactIndexMatch(
+                    artifact=inp.artifact_row,
+                    index_row=_make_house_index_row(
+                        filing_kind=HouseFilingKind.ANNUAL,
+                        raw_filing_type="O",
+                    ),
+                )
+            ]
+        )
+        mock_dispatch = MagicMock(return_value={"fields": []})
+        side_effect, _ = _capturing_run_session()
+
+        with (
+            patch(_LOAD, return_value=[inp]),
+            patch(_EXTRACT, return_value=_make_metrics()),
+            patch(
+                _HEADER,
+                return_value=HeaderFields(
+                    member_name="Jane Doe",
+                    chamber=None,
+                    filing_type=FilingType.ANNUAL,
+                    filing_year=2024,
+                    filed_at=None,
+                    amendment_number=2,
+                    is_amended=True,
+                ),
+            ),
+            patch(_DISPATCH, mock_dispatch),
+            patch(_RESOLVE_ARTIFACT, return_value=None),
+            patch(_RUN_SESSION, side_effect=side_effect),
+        ):
+            run_disclosure_parse_runtime(
+                conn, local_root=_LOCAL_ROOT, index_provider=provider
+            )
+
+        filing = mock_dispatch.call_args[0][1]
+        assert filing.filing_type is FilingType.ANNUAL
+        assert filing.is_amended is False
+        assert filing.amendment_number == 0
+
+    def test_parsed_document_filing_is_rewritten_to_official_index_metadata(self):
+        conn = MagicMock()
+        inp = _make_input(1, chamber="house")
+        provider = _FakeIndexProvider(
+            matches=[
+                ArtifactIndexMatch(
+                    artifact=inp.artifact_row,
+                    index_row=_make_house_index_row(
+                        filing_kind=HouseFilingKind.ANNUAL,
+                        raw_filing_type="O",
+                    ),
+                )
+            ]
+        )
+        noisy_parse_result = ParseResult(
+            filing=Filing(
+                member_bioguide_id="",
+                chamber=Chamber.HOUSE,
+                filing_year=1997,
+                filing_type=FilingType.PTR,
+                filed_at=date(1997, 7, 4),
+                amendment_number=4,
+                is_amended=True,
+                source_record_id="WRONG-DOC",
+            ),
+            holdings=(),
+            transactions=(),
+            outside_positions=(),
+            meta=ParserMeta(parser_name="test_parser"),
+        )
+        side_effect, results = _capturing_run_session()
+
+        with (
+            patch(_LOAD, return_value=[inp]),
+            patch(_EXTRACT, return_value=_make_metrics()),
+            patch(
+                _HEADER,
+                return_value=HeaderFields(
+                    member_name="Jane Doe",
+                    chamber=None,
+                    filing_type=FilingType.PTR,
+                    filing_year=1997,
+                    filed_at=date(1997, 7, 4),
+                    amendment_number=4,
+                    is_amended=True,
+                ),
+            ),
+            patch(_DISPATCH, MagicMock(return_value=noisy_parse_result)),
+            patch(_RESOLVE_ARTIFACT, return_value=None),
+            patch(_RUN_SESSION, side_effect=side_effect),
+        ):
+            run_disclosure_parse_runtime(
+                conn, local_root=_LOCAL_ROOT, index_provider=provider
+            )
+
+        filing = results[0]["parsed_document"].filing
+        assert filing.filing_type is FilingType.ANNUAL
+        assert filing.is_amended is False
+        assert filing.amendment_number == 0
+        assert filing.filing_year == 2024
+        assert filing.filed_at == date(2024, 3, 15)
+        assert filing.source_record_id == inp.source_record_id
+
+    def test_ocr_required_returns_explicit_skip_and_avoids_dispatch(self):
+        conn = MagicMock()
+        inp = _make_input(1, chamber="senate")
+        mock_dispatch = MagicMock(return_value={"fields": []})
+        side_effect, results = _capturing_run_session()
+
+        with (
+            patch(_LOAD, return_value=[inp]),
+            patch(_EXTRACT, return_value=_make_metrics(total_pages=4, text_pages=0, avg_chars=0.0)),
+            patch(_DISPATCH, mock_dispatch),
+            patch(_RUN_SESSION, side_effect=side_effect),
+        ):
+            run_disclosure_parse_runtime(conn, local_root=_LOCAL_ROOT)
+
+        assert results[0]["parsed_document"] is None
+        assert results[0]["skip_reason_code"] == "ocr_required_not_implemented"
+        mock_dispatch.assert_not_called()
+
 
 # ---------------------------------------------------------------------------
 # Provider protocol conformance
@@ -1189,6 +1435,13 @@ class TestExplicitParseInputs:
             run_disclosure_parse_runtime(conn, local_root=_LOCAL_ROOT, parse_inputs=None)
         mock_load.assert_called_once()
 
+    def test_local_root_none_rejected_when_parse_inputs_is_none(self):
+        conn = MagicMock()
+        with patch(_LOAD) as mock_load:
+            with pytest.raises(ValueError, match="local_root is required"):
+                run_disclosure_parse_runtime(conn, local_root=None, parse_inputs=None)
+        mock_load.assert_not_called()
+
     def test_explicit_empty_inputs_yields_zero_counts(self):
         conn = MagicMock()
         with patch(_LOAD) as mock_load:
@@ -1201,6 +1454,22 @@ class TestExplicitParseInputs:
         assert result.failed_count == 0
         assert result.parse_sessions == ()
         assert result.parsed_documents == ()
+
+    def test_explicit_inputs_allow_local_root_none(self):
+        conn = MagicMock()
+        inp = _make_input(5)
+        session = _make_session(5)
+        with (
+            patch(_LOAD) as mock_load,
+            patch(_EXTRACT, return_value=_make_metrics()),
+            patch(_RUN_SESSION, return_value=session),
+        ):
+            result = run_disclosure_parse_runtime(
+                conn, local_root=None, parse_inputs=[inp]
+            )
+        mock_load.assert_not_called()
+        assert result.succeeded_count == 1
+        assert result.parse_sessions == (session,)
 
     def test_explicit_inputs_processed_as_normal(self):
         """Inputs supplied via parse_inputs go through the full parse pipeline."""

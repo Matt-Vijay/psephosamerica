@@ -10,6 +10,8 @@ from __future__ import annotations
 
 from typing import Literal, Optional, Union
 
+import httpx
+
 from src.parse.disclosures.house_index import (
     HouseFilingKind,
     HouseIndexRow,
@@ -28,7 +30,7 @@ def fetch_disclosure_rows_by_doc_id(
     year: int,
     *,
     filing_kind: Optional[str] = None,
-    client=None,
+    client: httpx.Client | None = None,
 ) -> Union[dict[str, HouseIndexRow], dict[str, SenateIndexRow]]:
     """Return a doc_id-keyed dict of index rows for *chamber* and *year*.
 
@@ -74,7 +76,7 @@ def _house_lookup(
     year: int,
     *,
     filing_kind: Optional[str],
-    client,
+    client: httpx.Client | None,
 ) -> dict[str, HouseIndexRow]:
     if filing_kind is not None:
         # Delegates validation to HouseFilingKind; raises ValueError on bad input.
@@ -92,7 +94,7 @@ def _house_lookup(
 def _senate_lookup(
     year: int,
     *,
-    client,
+    client: httpx.Client | None,
 ) -> dict[str, SenateIndexRow]:
     rows = fetch_senate_index(year, client=client)
     return {row.doc_id: row for row in rows}

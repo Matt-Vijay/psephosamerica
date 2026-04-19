@@ -7,11 +7,13 @@ from __future__ import annotations
 
 import io
 from dataclasses import dataclass
+from typing import Any
 
+_pypdf: Any | None
 try:
-    import pypdf as _pypdf  # type: ignore[import]
+    import pypdf as _pypdf
 except ImportError:
-    _pypdf = None  # type: ignore[assignment]
+    _pypdf = None
 
 from src.parse.disclosures.text_tokens import DETECTION_HEADERS as _KNOWN_HEADERS
 

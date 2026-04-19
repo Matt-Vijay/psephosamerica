@@ -17,7 +17,10 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from typing import Any, Optional, Sequence, Union
+from typing import TYPE_CHECKING, Any, Optional, Sequence, Union
+
+if TYPE_CHECKING:
+    import httpx
 
 try:
     import httpx as _httpx
@@ -125,7 +128,11 @@ def parse_senate_index(
     return rows
 
 
-def fetch_senate_index(year: int, *, client=None) -> list[SenateIndexRow]:
+def fetch_senate_index(
+    year: int,
+    *,
+    client: httpx.Client | None = None,
+) -> list[SenateIndexRow]:
     """Fetch all Senate EFD disclosure index rows for *year*.
 
     Protocol:
@@ -151,12 +158,13 @@ def fetch_senate_index(year: int, *, client=None) -> list[SenateIndexRow]:
         resp.raise_for_status()
         csrftoken = http.cookies.get("csrftoken", "")
 
-        http.post(
+        agreement_response = http.post(
             _SEARCH_HOME,
             data={"csrfmiddlewaretoken": csrftoken, "action": "agree",
                   "agree_statement": "I agree"},
             headers={"Referer": _SEARCH_HOME},
         )
+        agreement_response.raise_for_status()
 
         all_rows: list[SenateIndexRow] = []
         start = 0
@@ -178,9 +186,16 @@ def fetch_senate_index(year: int, *, client=None) -> list[SenateIndexRow]:
             )
             data_resp.raise_for_status()
             payload = data_resp.json()
+            if not isinstance(payload, dict):
+                raise ValueError(
+                    "Expected Senate EFD DataTables response to be a JSON object"
+                )
             batch = parse_senate_index(payload, year=year)
             all_rows.extend(batch)
-            records_total: int = payload.get("recordsTotal", 0)
+            records_total_raw = payload.get("recordsTotal", 0)
+            records_total = (
+                records_total_raw if isinstance(records_total_raw, int) else 0
+            )
             start += _PAGE_SIZE
             if not batch or start >= records_total:
                 break
