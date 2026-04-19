@@ -15,6 +15,7 @@ fetch_house_vote_index(year, ...)   -> list[HouseVoteIndexRow]
 from __future__ import annotations
 
 import datetime
+import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from xml.etree.ElementTree import fromstring
 
@@ -120,7 +121,7 @@ def fetch_house_vote_index(
 # ---------------------------------------------------------------------------
 
 
-def _required_text(entry, tag: str) -> str:
+def _required_text(entry: ET.Element, tag: str) -> str:
     el = entry.find(tag)
     if el is None or el.text is None:
         raise ValueError(f"Missing required field <{tag}> in <{entry.tag}>")
@@ -130,11 +131,11 @@ def _required_text(entry, tag: str) -> str:
     return value
 
 
-def _required_int(entry, tag: str) -> int:
+def _required_int(entry: ET.Element, tag: str) -> int:
     return int(_required_text(entry, tag))
 
 
-def _optional_text(entry, tag: str) -> str | None:
+def _optional_text(entry: ET.Element, tag: str) -> str | None:
     el = entry.find(tag)
     if el is None or el.text is None:
         return None

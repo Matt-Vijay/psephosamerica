@@ -242,39 +242,29 @@ class _ArchiveFixture:
 
     def write_core(self) -> "_ArchiveFixture":
         """Write members.json, committees.json, bills.json."""
-        (self.root / "members.json").write_text(
-            json.dumps(_members_payload()), encoding="utf-8"
-        )
+        (self.root / "members.json").write_text(json.dumps(_members_payload()), encoding="utf-8")
         (self.root / "committees.json").write_text(
             json.dumps(_committees_payload()), encoding="utf-8"
         )
-        (self.root / "bills.json").write_text(
-            json.dumps(_bills_payload()), encoding="utf-8"
-        )
+        (self.root / "bills.json").write_text(json.dumps(_bills_payload()), encoding="utf-8")
         return self
 
     def write_member_detail(self) -> "_ArchiveFixture":
         d = self.root / "member_details"
         d.mkdir(exist_ok=True)
-        (d / f"{_BIOGUIDE}.json").write_text(
-            json.dumps(_member_detail_payload()), encoding="utf-8"
-        )
+        (d / f"{_BIOGUIDE}.json").write_text(json.dumps(_member_detail_payload()), encoding="utf-8")
         return self
 
     def write_bill_detail(self) -> "_ArchiveFixture":
         d = self.root / "bill_details"
         d.mkdir(exist_ok=True)
-        (d / f"{_BILL_STEM}.json").write_text(
-            json.dumps(_bill_detail_payload()), encoding="utf-8"
-        )
+        (d / f"{_BILL_STEM}.json").write_text(json.dumps(_bill_detail_payload()), encoding="utf-8")
         return self
 
     def write_cosponsors(self) -> "_ArchiveFixture":
         d = self.root / "cosponsors"
         d.mkdir(exist_ok=True)
-        (d / f"{_BILL_STEM}.json").write_text(
-            json.dumps(_cosponsors_payload()), encoding="utf-8"
-        )
+        (d / f"{_BILL_STEM}.json").write_text(json.dumps(_cosponsors_payload()), encoding="utf-8")
         return self
 
     def write_house_votes(self) -> "_ArchiveFixture":
@@ -403,6 +393,34 @@ def _run_with_manifest(
     return captured[0]
 
 
+def _assert_full_archive_payload(inputs: Any) -> None:
+    assert [member.bioguide_id for member in inputs.members] == [_BIOGUIDE]
+    assert [(term.record.bioguide_id, term.congress) for term in inputs.member_terms] == [
+        (_BIOGUIDE, _CONGRESS),
+    ]
+    assert [
+        (membership.bioguide_id, membership.committee_code) for membership in inputs.memberships
+    ] == [
+        (_BIOGUIDE, "hsag00"),
+    ]
+    assert [committee.committee_code for committee in inputs.committees] == ["hsag00"]
+    assert [bill.bill_number for bill in inputs.bills] == [_BILL_NUMBER]
+    assert [
+        (sponsor.record.bill_number, sponsor.bioguide_id) for sponsor in inputs.primary_sponsors
+    ] == [
+        (_BILL_NUMBER, _BIOGUIDE),
+    ]
+    assert [(cosponsor.bill_number, cosponsor.bioguide_id) for cosponsor in inputs.cosponsors] == [
+        (_BILL_NUMBER, _COSPONSOR_BIOGUIDE),
+    ]
+    assert {(event.chamber, event.roll_call_number) for event in inputs.vote_events} == {
+        ("house", 1),
+        ("senate", 1),
+    }
+    assert any(cast.bioguide_id == _BIOGUIDE for cast in inputs.vote_casts)
+    assert any(cast.lis_member_id == "S001" for cast in inputs.vote_casts)
+
+
 # ===========================================================================
 # Directory path input — real temp archive tree
 # ===========================================================================
@@ -477,9 +495,7 @@ class TestDirectoryPathInput:
 
     def test_house_votes_loaded_from_real_xml(self, tmp_path: Path) -> None:
         _ArchiveFixture(tmp_path).write_core().write_house_votes()
-        inputs = _run_with_dir(
-            tmp_path, include_votes=True, house_vote_year=_YEAR
-        )
+        inputs = _run_with_dir(tmp_path, include_votes=True, house_vote_year=_YEAR)
         assert len(inputs.vote_events) == 1
         assert inputs.vote_events[0].chamber == "house"
         assert inputs.vote_events[0].roll_call_number == 1
@@ -488,9 +504,7 @@ class TestDirectoryPathInput:
 
     def test_senate_votes_loaded_from_real_xml(self, tmp_path: Path) -> None:
         _ArchiveFixture(tmp_path).write_core().write_senate_votes()
-        inputs = _run_with_dir(
-            tmp_path, include_votes=True, senate_session=_SESSION
-        )
+        inputs = _run_with_dir(tmp_path, include_votes=True, senate_session=_SESSION)
         assert len(inputs.vote_events) == 1
         assert inputs.vote_events[0].chamber == "senate"
         assert inputs.vote_events[0].roll_call_number == 1
@@ -509,6 +523,18 @@ class TestDirectoryPathInput:
         assert chambers == {"house", "senate"}
         assert len(inputs.vote_events) == 2
 
+    def test_full_archive_chain_preserves_enrichment_and_votes(self, tmp_path: Path) -> None:
+        _ArchiveFixture(
+            tmp_path
+        ).write_core().write_member_detail().write_bill_detail().write_cosponsors().write_house_votes().write_senate_votes()
+        inputs = _run_with_dir(
+            tmp_path,
+            include_votes=True,
+            house_vote_year=_YEAR,
+            senate_session=_SESSION,
+        )
+        _assert_full_archive_payload(inputs)
+
 
 # ===========================================================================
 # Manifest path input — real manifest.json referencing real files
@@ -519,35 +545,65 @@ class TestManifestPathInput:
     """run_congress_archive_load(conn, Path(manifest.json), options) — full validation."""
 
     def test_members_loaded_via_manifest(self, tmp_path: Path) -> None:
-        fix = _ArchiveFixture(tmp_path).write_core().write_member_detail().write_bill_detail().write_cosponsors()
+        fix = (
+            _ArchiveFixture(tmp_path)
+            .write_core()
+            .write_member_detail()
+            .write_bill_detail()
+            .write_cosponsors()
+        )
         manifest_path = fix.write_manifest()
         inputs = _run_with_manifest(manifest_path)
         assert len(inputs.members) == 1
         assert inputs.members[0].bioguide_id == _BIOGUIDE
 
     def test_committees_loaded_via_manifest(self, tmp_path: Path) -> None:
-        fix = _ArchiveFixture(tmp_path).write_core().write_member_detail().write_bill_detail().write_cosponsors()
+        fix = (
+            _ArchiveFixture(tmp_path)
+            .write_core()
+            .write_member_detail()
+            .write_bill_detail()
+            .write_cosponsors()
+        )
         manifest_path = fix.write_manifest()
         inputs = _run_with_manifest(manifest_path)
         assert len(inputs.committees) == 1
         assert inputs.committees[0].committee_code == "hsag00"
 
     def test_bills_loaded_via_manifest(self, tmp_path: Path) -> None:
-        fix = _ArchiveFixture(tmp_path).write_core().write_member_detail().write_bill_detail().write_cosponsors()
+        fix = (
+            _ArchiveFixture(tmp_path)
+            .write_core()
+            .write_member_detail()
+            .write_bill_detail()
+            .write_cosponsors()
+        )
         manifest_path = fix.write_manifest()
         inputs = _run_with_manifest(manifest_path)
         assert len(inputs.bills) == 1
         assert inputs.bills[0].bill_number == _BILL_NUMBER
 
     def test_cosponsors_loaded_via_manifest(self, tmp_path: Path) -> None:
-        fix = _ArchiveFixture(tmp_path).write_core().write_member_detail().write_bill_detail().write_cosponsors()
+        fix = (
+            _ArchiveFixture(tmp_path)
+            .write_core()
+            .write_member_detail()
+            .write_bill_detail()
+            .write_cosponsors()
+        )
         manifest_path = fix.write_manifest()
         inputs = _run_with_manifest(manifest_path)
         assert len(inputs.cosponsors) == 1
         assert inputs.cosponsors[0].bioguide_id == _COSPONSOR_BIOGUIDE
 
     def test_member_terms_from_manifest_detail(self, tmp_path: Path) -> None:
-        fix = _ArchiveFixture(tmp_path).write_core().write_member_detail().write_bill_detail().write_cosponsors()
+        fix = (
+            _ArchiveFixture(tmp_path)
+            .write_core()
+            .write_member_detail()
+            .write_bill_detail()
+            .write_cosponsors()
+        )
         manifest_path = fix.write_manifest()
         inputs = _run_with_manifest(manifest_path)
         assert len(inputs.member_terms) >= 1
@@ -555,11 +611,37 @@ class TestManifestPathInput:
         assert inputs.member_terms[0].record.bioguide_id == _BIOGUIDE
 
     def test_primary_sponsors_from_manifest_bill_detail(self, tmp_path: Path) -> None:
-        fix = _ArchiveFixture(tmp_path).write_core().write_member_detail().write_bill_detail().write_cosponsors()
+        fix = (
+            _ArchiveFixture(tmp_path)
+            .write_core()
+            .write_member_detail()
+            .write_bill_detail()
+            .write_cosponsors()
+        )
         manifest_path = fix.write_manifest()
         inputs = _run_with_manifest(manifest_path)
         assert len(inputs.primary_sponsors) == 1
         assert inputs.primary_sponsors[0].bioguide_id == _BIOGUIDE
+
+    def test_manifest_full_archive_chain_preserves_enrichment_and_votes(
+        self, tmp_path: Path
+    ) -> None:
+        fix = (
+            _ArchiveFixture(tmp_path)
+            .write_core()
+            .write_member_detail()
+            .write_bill_detail()
+            .write_cosponsors()
+            .write_house_votes()
+            .write_senate_votes()
+        )
+        inputs = _run_with_manifest(
+            fix.write_manifest(),
+            include_votes=True,
+            house_vote_year=_YEAR,
+            senate_session=_SESSION,
+        )
+        _assert_full_archive_payload(inputs)
 
     def test_manifest_validation_raises_on_missing_file(self, tmp_path: Path) -> None:
         """Manifest referencing absent member_details file raises ValueError."""
@@ -588,7 +670,13 @@ class TestManifestPathInput:
 
     def test_manifest_archive_root_resolves_to_manifest_parent(self, tmp_path: Path) -> None:
         """The CongressArchive root must equal the manifest file's parent directory."""
-        fix = _ArchiveFixture(tmp_path).write_core().write_member_detail().write_bill_detail().write_cosponsors()
+        fix = (
+            _ArchiveFixture(tmp_path)
+            .write_core()
+            .write_member_detail()
+            .write_bill_detail()
+            .write_cosponsors()
+        )
         manifest_path = fix.write_manifest()
 
         captured_archive: list[CongressArchive] = []

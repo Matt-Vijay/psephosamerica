@@ -9,11 +9,13 @@ Downstream crosswalk resolution (unitedstates/congress-legislators) fills biogui
 from __future__ import annotations
 
 import datetime
+from typing import Literal
 from xml.etree.ElementTree import fromstring
 
 from .models import VoteCastRecord, VoteEventRecord
 
 SENATE_VOTE_BASE = "https://www.senate.gov/legislative/LIS/roll_call_votes"
+VoteOption = Literal["yea", "nay", "present", "not_voting", "paired", "abstain"]
 
 
 def roll_call_url(congress: int, session: int, vote_number: int) -> str:
@@ -27,8 +29,8 @@ def roll_call_list_url(congress: int, session: int) -> str:
     return f"{SENATE_VOTE_BASE}/{prefix}/vote_summary.xml"
 
 
-def _vote_option(raw: str) -> str:
-    mapping = {
+def _vote_option(raw: str) -> VoteOption:
+    mapping: dict[str, VoteOption] = {
         "yea": "yea",
         "aye": "yea",
         "nay": "nay",
@@ -41,6 +43,27 @@ def _vote_option(raw: str) -> str:
     return mapping.get(raw.lower().strip(), "not_voting")
 
 
+def parse_senate_vote_date(raw: str | None) -> datetime.date:
+    value = (raw or "").strip()
+    if not value:
+        raise ValueError("vote_date is required")
+
+    try:
+        return datetime.date.fromisoformat(value[:10])
+    except ValueError:
+        pass
+
+    parts = value.split(",")
+    if len(parts) >= 2:
+        candidate = f"{parts[0].strip()}, {parts[1].strip()}"
+        try:
+            return datetime.datetime.strptime(candidate, "%B %d, %Y").date()
+        except ValueError:
+            pass
+
+    raise ValueError(f"unparseable vote_date: {raw!r}")
+
+
 def parse_senate_vote_xml(xml_text: str) -> tuple[VoteEventRecord, list[VoteCastRecord]]:
     """VoteCastRecord objects carry lis_member_id; bioguide_id is None until crosswalk resolution."""
     root = fromstring(xml_text)
@@ -51,14 +74,7 @@ def parse_senate_vote_xml(xml_text: str) -> tuple[VoteEventRecord, list[VoteCast
     question = root.findtext("vote_question_text", "") or root.findtext("question", "")
     result = root.findtext("vote_result_text") or root.findtext("vote_result")
 
-    vote_date_str = root.findtext("vote_date", "")
-    if vote_date_str:
-        try:
-            vote_date = datetime.date.fromisoformat(vote_date_str[:10])
-        except ValueError:
-            vote_date = datetime.datetime.strptime(vote_date_str.split(",")[0].strip(), "%B %d").replace(year=datetime.date.today().year).date()
-    else:
-        vote_date = datetime.date.today()
+    vote_date = parse_senate_vote_date(root.findtext("vote_date"))
 
     source_url = roll_call_url(congress, session, vote_number)
 

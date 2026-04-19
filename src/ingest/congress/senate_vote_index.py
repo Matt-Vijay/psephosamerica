@@ -14,7 +14,7 @@ from xml.etree.ElementTree import fromstring
 
 import httpx
 
-from .senate_votes import SENATE_VOTE_BASE, roll_call_url
+from .senate_votes import SENATE_VOTE_BASE, parse_senate_vote_date, roll_call_url
 
 
 @dataclass(frozen=True, slots=True)
@@ -53,7 +53,7 @@ def parse_senate_vote_index(
         vote_number = int(number_text)
 
         date_text = (vote_el.findtext("vote_date") or "").strip()
-        vote_date = _parse_senate_date(date_text)
+        vote_date = parse_senate_vote_date(date_text)
 
         question = (vote_el.findtext("question") or "").strip()
         result_text = (vote_el.findtext("vote_result") or "").strip()
@@ -81,29 +81,6 @@ def fetch_senate_vote_index(
     url = senate_vote_index_url(congress, session)
     xml = _get(url, client)
     return parse_senate_vote_index(xml, congress=congress, session=session)
-
-
-def _parse_senate_date(date_text: str) -> datetime.date:
-    """Parse Senate date strings into a date.
-
-    Handles both "January 3, 2023" and "January 3, 2023, 12:15 PM".
-    """
-    if not date_text:
-        return datetime.date.today()
-    try:
-        return datetime.date.fromisoformat(date_text[:10])
-    except ValueError:
-        pass
-    # Strip optional time suffix: "January 3, 2023, 12:15 PM" -> "January 3, 2023"
-    parts = date_text.split(",")
-    if len(parts) >= 2:
-        candidate = f"{parts[0].strip()}, {parts[1].strip()}"
-        try:
-            return datetime.datetime.strptime(candidate, "%B %d, %Y").date()
-        except ValueError:
-            pass
-    return datetime.date.today()
-
 
 def _get(url: str, client: httpx.Client | None) -> str:
     if client is not None:

@@ -92,26 +92,34 @@ def validate_congress_archive_manifest(
     _check(manifest.bills.path, "bills")
 
     # Per-member detail files
-    for src in manifest.member_details:
-        _check(src.path, f"member_details[{src.bioguide_id}]")
+    for member_detail in manifest.member_details:
+        _check(member_detail.path, f"member_details[{member_detail.bioguide_id}]")
 
     # Per-bill cosponsor and detail files
-    for src in manifest.cosponsors:
-        key = f"{src.congress}_{src.bill_type}_{src.bill_number}"
-        _check(src.path, f"cosponsors[{key}]")
+    for cosponsor_source in manifest.cosponsors:
+        key = (
+            f"{cosponsor_source.congress}_"
+            f"{cosponsor_source.bill_type}_"
+            f"{cosponsor_source.bill_number}"
+        )
+        _check(cosponsor_source.path, f"cosponsors[{key}]")
 
-    for src in manifest.bill_details:
-        key = f"{src.congress}_{src.bill_type}_{src.bill_number}"
-        _check(src.path, f"bill_details[{key}]")
+    for bill_detail in manifest.bill_details:
+        key = f"{bill_detail.congress}_{bill_detail.bill_type}_{bill_detail.bill_number}"
+        _check(bill_detail.path, f"bill_details[{key}]")
 
     # Optional vote files
-    for src in manifest.house_votes:
-        label = f"house_votes[{src.year}_{src.roll_call_number:04d}]"
-        _check(src.path, label)
+    for house_vote in manifest.house_votes:
+        label = f"house_votes[{house_vote.year}_{house_vote.roll_call_number:04d}]"
+        _check(house_vote.path, label)
 
-    for src in manifest.senate_votes:
-        label = f"senate_votes[{src.congress}_{src.session_number}_{src.roll_call_number:05d}]"
-        _check(src.path, label)
+    for senate_vote in manifest.senate_votes:
+        label = (
+            f"senate_votes["
+            f"{senate_vote.congress}_{senate_vote.session_number}_"
+            f"{senate_vote.roll_call_number:05d}]"
+        )
+        _check(senate_vote.path, label)
 
     return ArchiveValidationResult(
         valid=len(missing) == 0,

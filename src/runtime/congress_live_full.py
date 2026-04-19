@@ -14,9 +14,37 @@ from src.ingest.congress.live_bill_details import fetch_primary_sponsor_specs
 from src.ingest.congress.live_member_details import (
     fetch_member_detail_specs,
 )
+from src.ingest.congress.models import MemberRecord
 from src.pipeline.congress_load_run import CongressIngestInputs
 from src.runtime.congress import CongressLoadResult, run_congress_load_runtime
+from src.runtime.congress_options import resolve_congress_vote_coverage
 from src.runtime.congress_votes import fetch_congress_vote_records
+
+
+def _ensure_senate_lis_identity_coverage(
+    members: list[MemberRecord],
+    *,
+    congress: int,
+    senate_session: int,
+) -> None:
+    senate_members = [member for member in members if member.chamber == "senate"]
+    missing_lis = [member for member in senate_members if not member.lis_member_id]
+
+    if missing_lis:
+        sample = ", ".join(member.bioguide_id for member in missing_lis[:5])
+        raise RuntimeError(
+            "Senate LIS identity coverage is insufficient "
+            f"for congress {congress} session {senate_session}: "
+            f"{len(missing_lis)} of {len(senate_members)} Senate members are missing "
+            f"lis_member_id values ({sample})."
+        )
+
+    if not senate_members:
+        raise RuntimeError(
+            "Senate LIS identity coverage is insufficient "
+            f"for congress {congress} session {senate_session}: "
+            "no Senate members were fetched."
+        )
 
 
 def run_live_congress_load_full(
@@ -37,11 +65,38 @@ def run_live_congress_load_full(
         cosponsors = fetch_cosponsors_for_bills(client, bills)
 
     if include_votes:
-        vote_result = fetch_congress_vote_records(
-            congress=congress,
+        vote_coverage = resolve_congress_vote_coverage(
+            congress,
             house_vote_year=house_vote_year,
             senate_session=senate_session,
         )
+
+        if vote_coverage.senate_session is not None:
+            _ensure_senate_lis_identity_coverage(
+                members,
+                congress=congress,
+                senate_session=vote_coverage.senate_session,
+            )
+
+        vote_result = fetch_congress_vote_records(
+            congress=congress,
+            house_vote_year=vote_coverage.house_vote_year,
+            senate_session=vote_coverage.senate_session,
+        )
+
+        if (
+            not vote_coverage.explicit_request
+            and not vote_result.vote_events
+            and not vote_result.vote_casts
+        ):
+            raise RuntimeError(
+                "include_votes requested, but no votes were loaded from the derived "
+                f"default coverage for congress {congress} "
+                f"(house_vote_year={vote_coverage.house_vote_year}, "
+                f"senate_session={vote_coverage.senate_session}). "
+                "Pass vote coverage explicitly to allow an empty vote load."
+            )
+
         vote_events = vote_result.vote_events
         vote_casts = vote_result.vote_casts
     else:

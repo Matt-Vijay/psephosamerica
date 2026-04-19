@@ -149,9 +149,10 @@ class CongressArchiveClient:
 # ---------------------------------------------------------------------------
 
 
-def _committee_matches_chamber(raw: dict, chamber: str) -> bool:
+def _committee_matches_chamber(raw: dict[str, object], chamber: str) -> bool:
     """Return True when the raw committee dict matches the requested chamber."""
     raw_chamber = raw.get("chamber", "")
     if isinstance(raw_chamber, dict):
         raw_chamber = raw_chamber.get("name", "")
-    return chamber.lower() in raw_chamber.lower()
+    raw_chamber_text = raw_chamber if isinstance(raw_chamber, str) else ""
+    return chamber.lower() in raw_chamber_text.lower()

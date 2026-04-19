@@ -15,11 +15,12 @@ Phase order:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, cast
 
 from src.db.load_executor import Resolvers, execute_load_plan
+from src.db.lookups import LookupBundle
 from src.db.load_report import LoadSummary, WarnErrorSummary, build_load_summary
-from src.db.repositories import fetch_all
+from src.db.repositories import ConnectionLike, Row, fetch_all
 from src.db.runtime_lookups import load_lookup_bundle
 from src.ingest.congress.models import (
     BillRecord,
@@ -95,9 +96,9 @@ def _fetch_vote_event_map(conn: Any) -> dict[tuple[str, int, int, int], int]:
 
 
 def _build_resolvers(
-    bundle: Any,
-    bill_map: dict | None = None,
-    vote_event_map: dict | None = None,
+    bundle: LookupBundle,
+    bill_map: dict[tuple[int, str, int], int] | None = None,
+    vote_event_map: dict[tuple[str, int, int, int], int] | None = None,
 ) -> Resolvers:
     """Construct executor Resolvers from a LookupBundle and optional FK maps.
 
@@ -109,31 +110,59 @@ def _build_resolvers(
     lis_map = bundle.lis_member_map
     comm_map = bundle.committee_code_map
 
+    def _resolve_member_id(row: Row) -> int | None:
+        bioguide_id = row.get("_bioguide_id")
+        if isinstance(bioguide_id, str):
+            resolved = bio_map.get(bioguide_id)
+            if resolved is not None:
+                return resolved
+        lis_member_id = row.get("_lis_member_id")
+        if isinstance(lis_member_id, str):
+            return lis_map.get(lis_member_id)
+        return None
+
+    def _resolve_committee_id(row: Row) -> int | None:
+        committee_code = row.get("_committee_code")
+        congress = row.get("congress")
+        if congress is None:
+            congress = row.get("_congress")
+        if isinstance(committee_code, str) and isinstance(congress, int):
+            return comm_map.get((committee_code, congress))
+        return None
+
     resolvers: Resolvers = {
         "_bioguide_id": (
             "member_id",
-            lambda row, _b=bio_map, _l=lis_map: (
-                _b.get(row.get("_bioguide_id")) or _l.get(row.get("_lis_member_id"))
-            ),
+            _resolve_member_id,
         ),
         "_committee_code": (
             "committee_id",
-            lambda row, _c=comm_map: _c.get(
-                (row.get("_committee_code"), row.get("congress"))
-            ),
+            _resolve_committee_id,
         ),
     }
     if bill_map is not None:
-        _bm = bill_map
+        def _resolve_bill_id(row: Row) -> int | None:
+            bill_key = row.get("_bill_key")
+            if isinstance(bill_key, tuple) and len(bill_key) == 3:
+                key = cast(tuple[int, str, int], bill_key)
+                return bill_map.get(key)
+            return None
+
         resolvers["_bill_key"] = (
             "bill_id",
-            lambda row, _b=_bm: _b.get(row.get("_bill_key")),
+            _resolve_bill_id,
         )
     if vote_event_map is not None:
-        _vm = vote_event_map
+        def _resolve_vote_event_id(row: Row) -> int | None:
+            vote_event_key = row.get("_vote_event_key")
+            if isinstance(vote_event_key, tuple) and len(vote_event_key) == 4:
+                key = cast(tuple[str, int, int, int], vote_event_key)
+                return vote_event_map.get(key)
+            return None
+
         resolvers["_vote_event_key"] = (
             "vote_event_id",
-            lambda row, _v=_vm: _v.get(row.get("_vote_event_key")),
+            _resolve_vote_event_id,
         )
     return resolvers
 
@@ -160,7 +189,7 @@ def _merge_warn_errors(summaries: list[LoadSummary]) -> WarnErrorSummary:
 
 def run_congress_load(
     inputs: CongressIngestInputs,
-    conn: Any,
+    conn: ConnectionLike,
     *,
     run_id: int | None = None,
 ) -> LoadSummary:

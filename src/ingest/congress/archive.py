@@ -487,7 +487,7 @@ def _int_field(raw: dict[str, Any], field: str, location: str) -> int:
     v = raw[field]
     if isinstance(v, bool) or not isinstance(v, int):
         raise ValueError(f"{location}.{field} must be an integer, got {type(v).__name__}")
-    return v
+    return int(v)
 
 
 def _list_field(

@@ -9,6 +9,8 @@ import datetime
 import textwrap
 from unittest.mock import MagicMock
 
+import pytest
+
 from src.ingest.congress.senate_vote_index import (
     SenateVoteIndexRow,
     fetch_senate_vote_index,
@@ -150,6 +152,38 @@ class TestParseSenateVoteIndex:
         rows = parse_senate_vote_index(xml, congress=118, session=1)
         assert len(rows) == 1
         assert rows[0].vote_number == 5
+
+    def test_missing_vote_date_raises_value_error(self) -> None:
+        xml = textwrap.dedent("""\
+            <vote_summary>
+              <votes>
+                <vote>
+                  <vote_number>5</vote_number>
+                  <vote_date></vote_date>
+                  <question>Missing date</question>
+                  <vote_result>Passed</vote_result>
+                </vote>
+              </votes>
+            </vote_summary>
+        """)
+        with pytest.raises(ValueError, match="vote_date"):
+            parse_senate_vote_index(xml, congress=118, session=1)
+
+    def test_unparseable_vote_date_raises_value_error(self) -> None:
+        xml = textwrap.dedent("""\
+            <vote_summary>
+              <votes>
+                <vote>
+                  <vote_number>5</vote_number>
+                  <vote_date>not-a-date</vote_date>
+                  <question>Bad date</question>
+                  <vote_result>Passed</vote_result>
+                </vote>
+              </votes>
+            </vote_summary>
+        """)
+        with pytest.raises(ValueError, match="vote_date"):
+            parse_senate_vote_index(xml, congress=118, session=1)
 
 
 class TestFetchSenateVoteIndex:

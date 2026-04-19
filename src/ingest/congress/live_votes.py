@@ -48,14 +48,16 @@ def fetch_house_votes(
     *,
     client: httpx.Client | None = None,
 ) -> list[tuple[VoteEventRecord, list[VoteCastRecord]]]:
-    own_client = client is None
-    if own_client:
-        client = httpx.Client()
+    managed_client: httpx.Client | None = None
+    active_client = client
+    if active_client is None:
+        managed_client = httpx.Client()
+        active_client = managed_client
     try:
-        return [fetch_house_vote(year, n, client=client) for n in roll_call_numbers]
+        return [fetch_house_vote(year, n, client=active_client) for n in roll_call_numbers]
     finally:
-        if own_client:
-            client.close()
+        if managed_client is not None:
+            managed_client.close()
 
 
 def fetch_senate_votes(
@@ -65,18 +67,24 @@ def fetch_senate_votes(
     *,
     client: httpx.Client | None = None,
 ) -> list[tuple[VoteEventRecord, list[VoteCastRecord]]]:
-    own_client = client is None
-    if own_client:
-        client = httpx.Client()
+    managed_client: httpx.Client | None = None
+    active_client = client
+    if active_client is None:
+        managed_client = httpx.Client()
+        active_client = managed_client
     try:
-        return [fetch_senate_vote(congress, session, n, client=client) for n in vote_numbers]
+        return [fetch_senate_vote(congress, session, n, client=active_client) for n in vote_numbers]
     finally:
-        if own_client:
-            client.close()
+        if managed_client is not None:
+            managed_client.close()
 
 
 def _get(url: str, client: httpx.Client | None) -> str:
     if client is not None:
-        return client.get(url).raise_for_status().text
+        response = client.get(url)
+        response.raise_for_status()
+        return response.text
     with httpx.Client(timeout=30.0) as c:
-        return c.get(url).raise_for_status().text
+        response = c.get(url)
+        response.raise_for_status()
+        return response.text

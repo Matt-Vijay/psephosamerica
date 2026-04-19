@@ -30,10 +30,11 @@ Fetch sequence (all reads come from the local archive — no network):
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from src.ingest.congress.archive import CongressArchive, CongressArchiveManifest
 from src.ingest.congress.archive_client import CongressArchiveClient
+from src.ingest.congress.congress_api import CongressAPIClient
 from src.ingest.congress.archive_loader import (
     load_bill_detail_payload_map,
     load_member_detail_payload_map,
@@ -103,14 +104,15 @@ def run_congress_archive_load(
         archive = CongressArchive(archive, options.congress)
 
     client = CongressArchiveClient(archive)
+    api_like_client = cast(CongressAPIClient, client)
 
     # ------------------------------------------------------------------
     # List records — compatible with live_api.py fetch helpers
     # ------------------------------------------------------------------
-    members = fetch_members(client, options.congress)
-    committees = fetch_committees(client, options.congress)
-    bills = fetch_bills(client, options.congress)
-    cosponsors = fetch_cosponsors_for_bills(client, bills)
+    members = fetch_members(api_like_client, options.congress)
+    committees = fetch_committees(api_like_client, options.congress)
+    bills = fetch_bills(api_like_client, options.congress)
+    cosponsors = fetch_cosponsors_for_bills(api_like_client, bills)
 
     # ------------------------------------------------------------------
     # Member detail enrichment — same spec builders as the live path
@@ -119,7 +121,7 @@ def run_congress_archive_load(
     member_terms = []
     memberships = []
     for member in members:
-        detail = member_detail_map.get(member.bioguide_id, {})
+        detail: dict[str, Any] = member_detail_map.get(member.bioguide_id) or {}
         member_terms.extend(member_term_specs_from_detail(detail, member))
         memberships.extend(committee_membership_specs_from_detail(detail, member))
 
@@ -129,9 +131,9 @@ def run_congress_archive_load(
     bill_detail_map = load_bill_detail_payload_map(archive)
     primary_sponsors = []
     for bill in bills:
-        detail = bill_detail_map.get((bill.congress, bill.bill_type, bill.bill_number))
-        if detail is not None:
-            spec = primary_sponsor_spec_from_bill_detail(detail, bill)
+        bill_detail = bill_detail_map.get((bill.congress, bill.bill_type, bill.bill_number))
+        if bill_detail is not None:
+            spec = primary_sponsor_spec_from_bill_detail(bill_detail, bill)
             if spec is not None:
                 primary_sponsors.append(spec)
 

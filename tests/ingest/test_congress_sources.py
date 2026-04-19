@@ -125,6 +125,27 @@ class TestNormalizeMember:
         assert rec.chamber == "senate"
         assert rec.lis_member_id == "S270"
 
+    def test_bare_year_terms_parse_to_congress_term_boundaries(self) -> None:
+        raw = {
+            "bioguideId": "A000001",
+            "firstName": "Ada",
+            "lastName": "Lovelace",
+            "directOrderName": "Ada Lovelace",
+            "currentMember": False,
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "startYear": "2023",
+                        "endYear": "2025",
+                    }
+                ]
+            },
+        }
+        rec = normalize_member(raw)
+        assert rec.current_term_start == datetime.date(2023, 1, 3)
+        assert rec.current_term_end == datetime.date(2025, 1, 3)
+
 
 class TestNormalizeBill:
     def test_basic_bill(self) -> None:
@@ -272,7 +293,24 @@ class TestSenateVoteParsing:
         assert event.chamber == "senate"
         assert event.congress == 118
         assert event.roll_call_number == 10
+        assert event.vote_date == datetime.date(2023, 2, 15)
         assert event.result == "Confirmed"
+
+    def test_parse_event_strips_time_suffix_from_vote_date(self) -> None:
+        xml = SENATE_VOTE_XML.replace(
+            "<vote_date>February 15, 2023</vote_date>",
+            "<vote_date>February 15, 2023, 12:15 PM</vote_date>",
+        )
+        event, _ = parse_senate_vote_xml(xml)
+        assert event.vote_date == datetime.date(2023, 2, 15)
+
+    def test_missing_vote_date_raises_value_error(self) -> None:
+        xml = SENATE_VOTE_XML.replace(
+            "<vote_date>February 15, 2023</vote_date>",
+            "<vote_date></vote_date>",
+        )
+        with pytest.raises(ValueError, match="vote_date"):
+            parse_senate_vote_xml(xml)
 
     def test_parse_casts_use_lis_id(self) -> None:
         _, casts = parse_senate_vote_xml(SENATE_VOTE_XML)

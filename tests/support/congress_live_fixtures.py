@@ -35,6 +35,7 @@ Vote XML generators (return str):
 
 from __future__ import annotations
 
+from copy import deepcopy
 import textwrap
 from typing import Any
 
@@ -57,9 +58,7 @@ _DEFAULT_MEMBER: dict[str, Any] = {
     "partyName": "Democratic",
     "state": "CA",
     "currentMember": True,
-    "terms": {
-        "item": [{"chamber": "House of Representatives", "startYear": "2023-01-03"}]
-    },
+    "terms": {"item": [{"chamber": "House of Representatives", "startYear": "2023-01-03"}]},
 }
 
 _DEFAULT_COMMITTEE: dict[str, Any] = {
@@ -84,6 +83,57 @@ _DEFAULT_COSPONSOR: dict[str, Any] = {
     "sponsorshipDate": "2025-01-15",
 }
 
+_DEFAULT_MEMBER_DETAIL: dict[str, Any] = {
+    "bioguideId": "P000197",
+    "firstName": "Nancy",
+    "lastName": "Pelosi",
+    "directOrderName": "Nancy Pelosi",
+    "partyName": "Democratic",
+    "state": "CA",
+    "currentMember": True,
+    "terms": {
+        "item": [
+            {
+                "congress": 119,
+                "chamber": "House of Representatives",
+                "startYear": "2025-01-03",
+                "stateCode": "CA",
+                "district": 11,
+            }
+        ]
+    },
+    "committees": {
+        "item": [
+            {
+                "committee": {
+                    "systemCode": "hswm00",
+                    "url": "https://api.congress.gov/v3/committee/hswm00",
+                },
+                "congress": 119,
+                "role": "Member",
+                "startDate": "2025-01-03",
+                "isCurrent": True,
+            }
+        ]
+    },
+}
+
+_DEFAULT_BILL_DETAIL: dict[str, Any] = {
+    "congress": 119,
+    "type": "HR",
+    "number": 1,
+    "title": "Test Bill One",
+    "introducedDate": "2025-01-09",
+    "latestAction": {"actionDate": "2025-03-01", "text": "Passed"},
+    "sponsors": [
+        {
+            "bioguideId": "P000197",
+            "sponsorshipDate": "2025-01-09",
+            "url": "https://api.congress.gov/v3/member/P000197",
+        }
+    ],
+}
+
 # ---------------------------------------------------------------------------
 # Item constructors
 # ---------------------------------------------------------------------------
@@ -91,28 +141,42 @@ _DEFAULT_COSPONSOR: dict[str, Any] = {
 
 def member_item(**overrides: Any) -> dict[str, Any]:
     """Return a member list-item dict with optional field overrides."""
-    result = dict(_DEFAULT_MEMBER)
+    result = deepcopy(_DEFAULT_MEMBER)
     result.update(overrides)
     return result
 
 
 def committee_item(**overrides: Any) -> dict[str, Any]:
     """Return a committee list-item dict with optional field overrides."""
-    result = dict(_DEFAULT_COMMITTEE)
+    result = deepcopy(_DEFAULT_COMMITTEE)
     result.update(overrides)
     return result
 
 
 def bill_item(**overrides: Any) -> dict[str, Any]:
     """Return a bill list-item dict with optional field overrides."""
-    result = dict(_DEFAULT_BILL)
+    result = deepcopy(_DEFAULT_BILL)
     result.update(overrides)
     return result
 
 
 def cosponsor_item(**overrides: Any) -> dict[str, Any]:
     """Return a cosponsor list-item dict with optional field overrides."""
-    result = dict(_DEFAULT_COSPONSOR)
+    result = deepcopy(_DEFAULT_COSPONSOR)
+    result.update(overrides)
+    return result
+
+
+def member_detail_item(**overrides: Any) -> dict[str, Any]:
+    """Return a realistic member-detail payload with optional field overrides."""
+    result = deepcopy(_DEFAULT_MEMBER_DETAIL)
+    result.update(overrides)
+    return result
+
+
+def bill_detail_item(**overrides: Any) -> dict[str, Any]:
+    """Return a realistic bill-detail payload with optional field overrides."""
+    result = deepcopy(_DEFAULT_BILL_DETAIL)
     result.update(overrides)
     return result
 
@@ -173,14 +237,14 @@ def cosponsors_page(
 def member_detail_response(payload: dict[str, Any] | None = None) -> dict[str, Any]:
     """Return a member detail response body wrapping *payload* under 'member'."""
     if payload is None:
-        payload = dict(_DEFAULT_MEMBER)
+        payload = member_detail_item()
     return {"member": payload}
 
 
 def bill_detail_response(payload: dict[str, Any] | None = None) -> dict[str, Any]:
     """Return a bill detail response body wrapping *payload* under 'bill'."""
     if payload is None:
-        payload = dict(_DEFAULT_BILL)
+        payload = bill_detail_item()
     return {"bill": payload}
 
 
@@ -243,8 +307,8 @@ _HOUSE_VOTE_XML = textwrap.dedent("""\
       </vote-metadata>
       <vote-data>
         <recorded-vote>
-          <legislator name-id="P000197" party="D" state="CA">Pelosi</legislator>
-          <vote>Yea</vote>
+          <legislator name-id="{bioguide_id}" party="{party}" state="{state}">{legislator_name}</legislator>
+          <vote>{vote_option}</vote>
         </recorded-vote>
       </vote-data>
     </rollcall-vote>
@@ -261,9 +325,9 @@ _SENATE_VOTE_XML = textwrap.dedent("""\
       <vote_date>{display_date}</vote_date>
       <members>
         <member>
-          <lis_member_id>S270</lis_member_id>
-          <member_full>Schumer (D-NY)</member_full>
-          <vote_cast>Yea</vote_cast>
+          <lis_member_id>{lis_member_id}</lis_member_id>
+          <member_full>{member_full}</member_full>
+          <vote_cast>{vote_cast}</vote_cast>
         </member>
       </members>
     </roll_call_vote>
@@ -278,6 +342,11 @@ def house_vote_xml(
     *,
     question: str = "On Passage",
     result: str = "Passed",
+    bioguide_id: str = "P000197",
+    legislator_name: str = "Pelosi",
+    party: str = "D",
+    state: str = "CA",
+    vote_option: str = "Yea",
 ) -> str:
     """Return a House roll-call vote XML string."""
     iso_date = f"{year}-01-15"
@@ -290,6 +359,11 @@ def house_vote_xml(
         result=result,
         iso_date=iso_date,
         display_date=display_date,
+        bioguide_id=bioguide_id,
+        legislator_name=legislator_name,
+        party=party,
+        state=state,
+        vote_option=vote_option,
     )
 
 
@@ -301,6 +375,9 @@ def senate_vote_xml(
     question: str = "On the Motion",
     result: str = "Agreed To",
     display_date: str = "January 20, 2025",
+    lis_member_id: str = "S270",
+    member_full: str = "Schumer (D-NY)",
+    vote_cast: str = "Yea",
 ) -> str:
     """Return a Senate roll-call vote XML string."""
     return _SENATE_VOTE_XML.format(
@@ -310,4 +387,7 @@ def senate_vote_xml(
         question=question,
         result=result,
         display_date=display_date,
+        lis_member_id=lis_member_id,
+        member_full=member_full,
+        vote_cast=vote_cast,
     )

@@ -11,6 +11,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from src.ingest.congress.models import VoteCastRecord, VoteEventRecord
+from src.runtime.congress_options import current_congress_for_date, resolve_congress_vote_coverage
 from src.runtime.congress_votes import (
     VoteFetchResult,
     fetch_congress_vote_records,
@@ -102,6 +103,45 @@ class TestVoteFetchResult:
         result = VoteFetchResult(vote_events=[], vote_casts=[])
         with pytest.raises(Exception):
             result.vote_events = []  # type: ignore[misc]
+
+
+class TestResolveCongressVoteCoverage:
+    def test_current_congress_stays_previous_until_january_third_in_odd_years(self) -> None:
+        assert current_congress_for_date(datetime.date(2025, 1, 2)) == 118
+
+    def test_current_congress_turns_over_on_january_third_in_odd_years(self) -> None:
+        assert current_congress_for_date(datetime.date(2025, 1, 3)) == 119
+
+    def test_defaults_historical_congress_to_final_year_and_session(self) -> None:
+        coverage = resolve_congress_vote_coverage(
+            118,
+            today=datetime.date(2026, 4, 18),
+        )
+
+        assert coverage.house_vote_year == 2024
+        assert coverage.senate_session == 2
+        assert coverage.explicit_request is False
+
+    def test_defaults_current_congress_to_current_year_and_session(self) -> None:
+        coverage = resolve_congress_vote_coverage(
+            119,
+            today=datetime.date(2026, 4, 18),
+        )
+
+        assert coverage.house_vote_year == 2026
+        assert coverage.senate_session == 2
+        assert coverage.explicit_request is False
+
+    def test_preserves_explicit_single_chamber_request(self) -> None:
+        coverage = resolve_congress_vote_coverage(
+            119,
+            house_vote_year=2025,
+            today=datetime.date(2026, 4, 18),
+        )
+
+        assert coverage.house_vote_year == 2025
+        assert coverage.senate_session is None
+        assert coverage.explicit_request is True
 
 
 # ---------------------------------------------------------------------------

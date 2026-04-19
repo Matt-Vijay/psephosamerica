@@ -7,11 +7,13 @@ Members are identified by bioguide_id (XML attribute ``bioguideid``).
 from __future__ import annotations
 
 import datetime
+from typing import Literal
 from xml.etree.ElementTree import fromstring
 
 from .models import VoteCastRecord, VoteEventRecord
 
 HOUSE_VOTE_BASE = "https://clerk.house.gov/evs"
+VoteOption = Literal["yea", "nay", "present", "not_voting", "paired", "abstain"]
 
 
 def roll_call_url(year: int, roll_call_number: int) -> str:
@@ -22,8 +24,8 @@ def roll_call_index_url(year: int) -> str:
     return f"{HOUSE_VOTE_BASE}/{year}/index.asp"
 
 
-def _vote_option(raw: str) -> str:
-    mapping = {
+def _vote_option(raw: str) -> VoteOption:
+    mapping: dict[str, VoteOption] = {
         "yea": "yea",
         "aye": "yea",
         "nay": "nay",

@@ -117,4 +117,7 @@ def load_cosponsors_payload_map(
 
 def _read_json(path: Path) -> dict[str, Any]:
     with path.open("r", encoding="utf-8") as fh:
-        return json.load(fh)
+        payload = json.load(fh)
+    if not isinstance(payload, dict):
+        raise ValueError(f"Expected JSON object in {path}, got {type(payload).__name__}")
+    return payload
