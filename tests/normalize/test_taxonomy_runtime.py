@@ -9,6 +9,7 @@ import pytest
 import yaml
 
 from normalize.taxonomy_runtime import (
+    CommitteeMapping,
     TaxonomyRuntime,
     _load_committee_mappings,
     _load_crp_crosswalk,
@@ -152,6 +153,44 @@ class TestSectorById:
 
 
 class TestCommitteeSector:
+    def test_chamber_disambiguates_duplicate_committee_names(self) -> None:
+        runtime = TaxonomyRuntime(
+            sectors=[],
+            committee_mappings=[
+                CommitteeMapping(
+                    congress=119,
+                    chamber="House",
+                    committee_name="Committee on Finance",
+                    subcommittee_name="",
+                    sector_id="health",
+                    mapping_tier="review_required",
+                    jurisdiction_basis="House basis",
+                    basis_source="src",
+                    notes="",
+                ),
+                CommitteeMapping(
+                    congress=119,
+                    chamber="Senate",
+                    committee_name="Committee on Finance",
+                    subcommittee_name="",
+                    sector_id="financial_services",
+                    mapping_tier="review_required",
+                    jurisdiction_basis="Senate basis",
+                    basis_source="src",
+                    notes="",
+                ),
+            ],
+            crp_mappings=[],
+        )
+
+        house = runtime.committee_sector("Committee on Finance", congress=119, chamber="House")
+        senate = runtime.committee_sector("Committee on Finance", congress=119, chamber="Senate")
+
+        assert house is not None
+        assert house.sector_id == "health"
+        assert senate is not None
+        assert senate.sector_id == "financial_services"
+
     def test_full_committee_match(self, runtime: TaxonomyRuntime) -> None:
         m = runtime.committee_sector("Committee on Agriculture", congress=119)
         assert m is not None

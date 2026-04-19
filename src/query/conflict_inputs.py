@@ -14,7 +14,8 @@ from __future__ import annotations
 
 from typing import Any, Callable
 
-from src.db.repositories import fetch_all
+from src.db.repositories import ConnectionLike, fetch_all
+from src.normalize.taxonomy_runtime import CommitteeMapping
 
 
 # ---------------------------------------------------------------------------
@@ -39,7 +40,7 @@ ORDER BY m.bioguide_id, fd.id
 
 
 def fetch_late_or_amended_rows(
-    conn,
+    conn: ConnectionLike,
     *,
     bioguide_ids: list[str],
     filing_year: int,
@@ -61,6 +62,9 @@ SELECT
     c.id                    AS committee_id,
     c.committee_code        AS committee_code,
     c.name                  AS committee_name,
+    c.chamber               AS committee_chamber,
+    c.committee_type        AS committee_type,
+    pc.name                 AS parent_committee_name,
     c.congress              AS congress,
     cm.role                 AS role,
     cm.start_date           AS committee_start_date,
@@ -69,6 +73,7 @@ SELECT
 FROM committee_membership cm
 JOIN member m ON m.id = cm.member_id
 JOIN committee c ON c.id = cm.committee_id
+LEFT JOIN committee pc ON pc.id = c.parent_committee_id
 WHERE m.bioguide_id = ANY(%(bioguide_ids)s)
   AND c.review_tier != 'out_of_scope'
 ORDER BY m.bioguide_id, cm.id
@@ -76,7 +81,7 @@ ORDER BY m.bioguide_id, cm.id
 
 
 def fetch_committee_membership_rows(
-    conn,
+    conn: ConnectionLike,
     *,
     bioguide_ids: list[str],
 ) -> list[dict[str, Any]]:
@@ -115,7 +120,7 @@ ORDER BY m.bioguide_id, fd.id, h.line_number
 
 
 def fetch_holding_rows(
-    conn,
+    conn: ConnectionLike,
     *,
     bioguide_ids: list[str],
     filing_year: int,
@@ -156,7 +161,7 @@ ORDER BY m.bioguide_id, fd.id, t.line_number
 
 
 def fetch_transaction_rows(
-    conn,
+    conn: ConnectionLike,
     *,
     bioguide_ids: list[str],
     filing_year: int,
@@ -174,8 +179,45 @@ def fetch_transaction_rows(
 IssuerSectorResolver = Callable[[str, str | None], str | None]
 """callable(issuer_name, issuer_ticker) -> sector slug or None"""
 
-CommitteeSectorResolver = Callable[[str, int], str | None]
-"""callable(committee_code, congress) -> sector slug or None"""
+CommitteeSectorResolution = CommitteeMapping | str | None
+
+CommitteeSectorResolver = Callable[[str, int], CommitteeSectorResolution]
+"""callable(committee_code, congress) -> committee mapping, sector slug, or None"""
+
+
+def _committee_resolution_fields(
+    row: dict[str, Any],
+    resolution: CommitteeSectorResolution,
+) -> dict[str, Any]:
+    if isinstance(resolution, CommitteeMapping):
+        return {
+            "committee_sector": resolution.sector_id,
+            "committee_mapping_tier": resolution.mapping_tier,
+            "committee_chamber": resolution.chamber,
+            "committee_subcommittee_name": resolution.subcommittee_name,
+        }
+    return {
+        "committee_sector": resolution,
+        "committee_mapping_tier": "deterministic" if resolution is not None else None,
+        "committee_chamber": row.get("committee_chamber"),
+        "committee_subcommittee_name": "",
+    }
+
+
+def _enrich_committee_memberships(
+    membership_rows: list[dict[str, Any]],
+    *,
+    committee_sector_resolver: CommitteeSectorResolver,
+) -> list[dict[str, Any]]:
+    enriched: list[dict[str, Any]] = []
+    for row in membership_rows:
+        resolution = committee_sector_resolver(row["committee_code"], row["congress"])
+        enriched.append({**row, **_committee_resolution_fields(row, resolution)})
+    return enriched
+
+
+def _has_resolved_committee_mapping(row: dict[str, Any]) -> bool:
+    return row.get("committee_sector") is not None
 
 
 def assemble_committee_sector_trade_rows(
@@ -188,13 +230,14 @@ def assemble_committee_sector_trade_rows(
     """Cross-join committee memberships with holdings when sectors match.
 
     Returns one output row per (membership, holding) pair whose resolved
-    sectors are identical and non-None.  Each row is ready for
-    conflict.assemble_committee_sector_trade_bundle.
+    sectors are identical and non-None. Review-required mappings are emitted
+    with their tier metadata intact; callers decide whether to score them or
+    surface them as unscored trace rows.
     """
-    enriched_memberships = [
-        {**r, "committee_sector": committee_sector_resolver(r["committee_code"], r["congress"])}
-        for r in membership_rows
-    ]
+    enriched_memberships = _enrich_committee_memberships(
+        membership_rows,
+        committee_sector_resolver=committee_sector_resolver,
+    )
     enriched_holdings = [
         {**r, "holding_sector": issuer_sector_resolver(r["issuer_name"], r.get("issuer_ticker"))}
         for r in holding_rows
@@ -202,7 +245,7 @@ def assemble_committee_sector_trade_rows(
 
     out: list[dict[str, Any]] = []
     for m in enriched_memberships:
-        if m["committee_sector"] is None:
+        if not _has_resolved_committee_mapping(m):
             continue
         for h in enriched_holdings:
             if h["member_bioguide_id"] != m["member_bioguide_id"]:
@@ -214,6 +257,9 @@ def assemble_committee_sector_trade_rows(
                 "committee_membership_id": m["committee_membership_id"],
                 "committee_name": m["committee_name"],
                 "committee_sector": m["committee_sector"],
+                "committee_mapping_tier": m["committee_mapping_tier"],
+                "committee_chamber": m["committee_chamber"],
+                "committee_subcommittee_name": m["committee_subcommittee_name"],
                 "committee_start_date": m["committee_start_date"],
                 "committee_end_date": m["committee_end_date"],
                 "sector_name": m["committee_sector"],
@@ -229,13 +275,14 @@ def assemble_repeated_committee_linked_trading_rows(
     issuer_sector_resolver: IssuerSectorResolver,
 ) -> list[dict[str, Any]]:
     """One output row per committee membership, carrying all sector-matching
-    transactions as a nested list.  Ready for
-    conflict.assemble_repeated_committee_linked_trading_bundle.
+    transactions as a nested list. Review-required mappings are emitted with
+    their tier metadata intact; callers decide whether to score them or
+    surface them as unscored trace rows.
     """
-    enriched_memberships = [
-        {**r, "committee_sector": committee_sector_resolver(r["committee_code"], r["congress"])}
-        for r in membership_rows
-    ]
+    enriched_memberships = _enrich_committee_memberships(
+        membership_rows,
+        committee_sector_resolver=committee_sector_resolver,
+    )
     enriched_transactions = [
         {**r, "sector": issuer_sector_resolver(r["issuer_name"], r.get("issuer_ticker"))}
         for r in transaction_rows
@@ -243,7 +290,7 @@ def assemble_repeated_committee_linked_trading_rows(
 
     out: list[dict[str, Any]] = []
     for m in enriched_memberships:
-        if m["committee_sector"] is None:
+        if not _has_resolved_committee_mapping(m):
             continue
         member_txns = [
             {"transaction_date": t["transaction_date"], "sector": t["sector"]}
@@ -257,6 +304,9 @@ def assemble_repeated_committee_linked_trading_rows(
             "committee_membership_id": m["committee_membership_id"],
             "committee_name": m["committee_name"],
             "committee_sector": m["committee_sector"],
+            "committee_mapping_tier": m["committee_mapping_tier"],
+            "committee_chamber": m["committee_chamber"],
+            "committee_subcommittee_name": m["committee_subcommittee_name"],
             "committee_start_date": m["committee_start_date"],
             "committee_end_date": m["committee_end_date"],
             "transactions": member_txns,
@@ -272,12 +322,14 @@ def assemble_sector_holdings_overlap_rows(
     issuer_sector_resolver: IssuerSectorResolver,
 ) -> list[dict[str, Any]]:
     """One output row per (membership, holding) pair with matching sectors.
-    Ready for conflict.assemble_sector_holdings_overlap_bundle.
+    Review-required mappings are emitted with their tier metadata intact;
+    callers decide whether to score them or surface them as unscored trace
+    rows.
     """
-    enriched_memberships = [
-        {**r, "committee_sector": committee_sector_resolver(r["committee_code"], r["congress"])}
-        for r in membership_rows
-    ]
+    enriched_memberships = _enrich_committee_memberships(
+        membership_rows,
+        committee_sector_resolver=committee_sector_resolver,
+    )
     enriched_holdings = [
         {**r, "holding_sector": issuer_sector_resolver(r["issuer_name"], r.get("issuer_ticker"))}
         for r in holding_rows
@@ -285,7 +337,7 @@ def assemble_sector_holdings_overlap_rows(
 
     out: list[dict[str, Any]] = []
     for m in enriched_memberships:
-        if m["committee_sector"] is None:
+        if not _has_resolved_committee_mapping(m):
             continue
         for h in enriched_holdings:
             if h["member_bioguide_id"] != m["member_bioguide_id"]:
@@ -297,6 +349,9 @@ def assemble_sector_holdings_overlap_rows(
                 "committee_membership_id": m["committee_membership_id"],
                 "committee_name": m["committee_name"],
                 "committee_sector": m["committee_sector"],
+                "committee_mapping_tier": m["committee_mapping_tier"],
+                "committee_chamber": m["committee_chamber"],
+                "committee_subcommittee_name": m["committee_subcommittee_name"],
                 "committee_start_date": m["committee_start_date"],
                 "committee_end_date": m["committee_end_date"],
                 "sector_name": m["committee_sector"],

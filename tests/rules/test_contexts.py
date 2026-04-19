@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import datetime as dt
 
+import pytest
+
 from src.rules.contexts import (
     build_committee_sector_trade_context,
     build_late_or_amended_disclosure_context,
@@ -93,6 +95,10 @@ class TestOverlapDays:
         # overlap: Feb 1 – Mar 1 = 30 days
         assert result == 30
 
+    def test_both_open_ended_without_reference_date_raises(self):
+        with pytest.raises(ValueError, match="reference_date"):
+            overlap_days(D(2024, 1, 1), None, D(2024, 2, 1), None)
+
 
 # ---------------------------------------------------------------------------
 # overdue_days
@@ -156,6 +162,11 @@ class TestCountMatchingTransactions:
         txns = [{"sector": "finance"}]  # no transaction_date key
         assert count_matching_transactions(txns, "finance", start, end) == 0
 
+    def test_open_ended_service_without_reference_date_raises(self):
+        txns = [txn(D(2023, 6, 1), "finance")]
+        with pytest.raises(ValueError, match="reference_date"):
+            count_matching_transactions(txns, "finance", D(2023, 1, 1), None)
+
 
 class TestCountDistinctTradeDays:
     def _service(self):
@@ -178,6 +189,11 @@ class TestCountDistinctTradeDays:
 
     def test_empty_transactions(self):
         assert count_distinct_trade_days([], "finance", *self._service()) == 0
+
+    def test_open_ended_service_without_reference_date_raises(self):
+        txns = [txn(D(2023, 6, 1), "finance")]
+        with pytest.raises(ValueError, match="reference_date"):
+            count_distinct_trade_days(txns, "finance", D(2023, 1, 1), None)
 
 
 # ---------------------------------------------------------------------------
@@ -280,6 +296,24 @@ class TestBuildCommitteeSectorTradeContext:
         # open-ended committee, but disclosure ends Jun 30
         assert ctx["committee_service_overlap_days"] > 0
 
+    def test_both_open_ranges_require_snapshot_or_reference_date(self):
+        row = self._base_row()
+        row["committee_end_date"] = None
+        row["disclosure_period_end"] = None
+        with pytest.raises(ValueError, match="reference_date"):
+            build_committee_sector_trade_context(row)
+
+    def test_snapshot_date_anchors_both_open_ranges(self):
+        row = self._base_row()
+        row["committee_end_date"] = None
+        row["disclosure_period_end"] = None
+        row["snapshot_date"] = D(2023, 6, 30)
+        ctx = build_committee_sector_trade_context(row)
+        assert ctx["overlap_start"] == D(2023, 3, 1)
+        assert ctx["overlap_end"] == D(2023, 6, 30)
+        assert ctx["committee_service_overlap_days"] == 122
+        assert ctx["holding_overlap_days"] == 122
+
     def test_sector_none_preserved(self):
         row = self._base_row()
         row["committee_sector"] = None
@@ -350,8 +384,29 @@ class TestBuildRepeatedCommitteeLinkedTradingContext:
     def test_open_ended_service(self):
         row = self._base_row()
         row["committee_end_date"] = None
+        row["snapshot_date"] = D(2023, 12, 31)
         ctx = build_repeated_committee_linked_trading_context(row)
         assert ctx["service_overlap_days"] > 0
+
+    def test_open_ended_service_requires_snapshot_or_reference_date(self):
+        row = self._base_row()
+        row["committee_end_date"] = None
+        with pytest.raises(ValueError, match="reference_date"):
+            build_repeated_committee_linked_trading_context(row)
+
+    def test_snapshot_date_anchors_open_service_and_excludes_future_transactions(self):
+        row = self._base_row()
+        row["committee_end_date"] = None
+        row["snapshot_date"] = D(2023, 6, 30)
+        row["transactions"] = [
+            txn(D(2023, 3, 15), "energy"),
+            txn(D(2023, 5, 20), "energy"),
+            txn(D(2023, 7, 15), "energy"),
+        ]
+        ctx = build_repeated_committee_linked_trading_context(row)
+        assert ctx["service_overlap_days"] == 181
+        assert ctx["matching_transaction_count"] == 2
+        assert ctx["distinct_trade_days"] == 2
 
 
 # ---------------------------------------------------------------------------
@@ -506,5 +561,13 @@ class TestBuildSectorHoldingsOverlapContext:
         row = self._base_row()
         row["committee_end_date"] = None
         row["disclosure_period_end"] = None
+        with pytest.raises(ValueError, match="reference_date"):
+            build_sector_holdings_overlap_context(row)
+
+    def test_snapshot_date_anchors_open_service_and_disclosure(self):
+        row = self._base_row()
+        row["committee_end_date"] = None
+        row["disclosure_period_end"] = None
+        row["snapshot_date"] = D(2023, 6, 30)
         ctx = build_sector_holdings_overlap_context(row)
-        assert ctx["overlap_days"] > 0
+        assert ctx["overlap_days"] == 181

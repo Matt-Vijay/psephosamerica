@@ -84,7 +84,11 @@ def build_top_changes(
             [e for e in group_events if e.evidence_card_id],
             key=lambda e: (-e.abs_delta, e.feed_event_id),
         )
-        top_card_ids = [e.evidence_card_id for e in card_events[:_MAX_CARD_IDS_PER_MEMBER]]
+        top_card_ids = [
+            card_id
+            for e in card_events[:_MAX_CARD_IDS_PER_MEMBER]
+            if (card_id := e.evidence_card_id) is not None
+        ]
 
         first = group_events[0]
         summaries.append(

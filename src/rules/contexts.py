@@ -12,6 +12,47 @@ import datetime as dt
 from typing import Any
 
 
+def _coerce_optional_date(value: Any) -> dt.date | None:
+    if value is None:
+        return None
+    if isinstance(value, dt.datetime):
+        return value.date()
+    if isinstance(value, dt.date):
+        return value
+    return dt.date.fromisoformat(str(value)[:10])
+
+
+def _resolve_reference_date(
+    reference_date: dt.date | None,
+    *candidates: Any,
+) -> dt.date:
+    if reference_date is not None:
+        return reference_date
+
+    resolved = [_coerce_optional_date(candidate) for candidate in candidates]
+    known_dates = [candidate for candidate in resolved if candidate is not None]
+    if not known_dates:
+        raise ValueError(
+            "reference_date is required for open-ended ranges without a known closing date"
+        )
+    return max(known_dates)
+
+
+def _row_reference_date(row: dict[str, Any]) -> dt.date | None:
+    return _coerce_optional_date(row.get("reference_date") or row.get("snapshot_date"))
+
+
+def _effective_range_end(
+    end_date: dt.date | None,
+    *,
+    reference_date: dt.date | None = None,
+    fallback_end_dates: tuple[Any, ...] = (),
+) -> dt.date:
+    if end_date is not None:
+        return end_date
+    return _resolve_reference_date(reference_date, *fallback_end_dates)
+
+
 def days_gap(d1: dt.date, d2: dt.date) -> int:
     return abs((d2 - d1).days)
 
@@ -24,10 +65,17 @@ def overlap_days(
     *,
     reference_date: dt.date | None = None,
 ) -> int:
-    """Days two date ranges overlap. Open-ended (None) bounds close at reference_date (today)."""
-    today = reference_date or dt.date.today()
-    e1 = end1 if end1 is not None else today
-    e2 = end2 if end2 is not None else today
+    """Days two date ranges overlap. Open-ended (None) bounds close at reference_date."""
+    e1 = _effective_range_end(
+        end1,
+        reference_date=reference_date,
+        fallback_end_dates=(end2,),
+    )
+    e2 = _effective_range_end(
+        end2,
+        reference_date=reference_date,
+        fallback_end_dates=(end1,),
+    )
 
     overlap_start = max(start1, start2)
     overlap_end = min(e1, e2)
@@ -52,8 +100,7 @@ def count_matching_transactions(
     reference_date: dt.date | None = None,
 ) -> int:
     """Count transactions matching committee_sector within the service window."""
-    today = reference_date or dt.date.today()
-    end = service_end if service_end is not None else today
+    end = _effective_range_end(service_end, reference_date=reference_date)
 
     count = 0
     for txn in transactions:
@@ -76,8 +123,7 @@ def count_distinct_trade_days(
     reference_date: dt.date | None = None,
 ) -> int:
     """Distinct calendar days with matching trades. Uses the same filter as count_matching_transactions."""
-    today = reference_date or dt.date.today()
-    end = service_end if service_end is not None else today
+    end = _effective_range_end(service_end, reference_date=reference_date)
 
     trade_days: set[dt.date] = set()
     for txn in transactions:
@@ -121,8 +167,25 @@ def build_committee_sector_trade_context(row: dict[str, Any]) -> dict[str, Any]:
     committee_end: dt.date | None = row.get("committee_end_date")
     disc_start: dt.date = row["disclosure_period_start"]
     disc_end: dt.date | None = row.get("disclosure_period_end")
+    reference_date = _row_reference_date(row)
+    overlap_committee_end = _effective_range_end(
+        committee_end,
+        reference_date=reference_date,
+        fallback_end_dates=(disc_end,),
+    )
+    overlap_disclosure_end = _effective_range_end(
+        disc_end,
+        reference_date=reference_date,
+        fallback_end_dates=(committee_end,),
+    )
 
-    shared_overlap = overlap_days(committee_start, committee_end, disc_start, disc_end)
+    shared_overlap = overlap_days(
+        committee_start,
+        committee_end,
+        disc_start,
+        disc_end,
+        reference_date=reference_date,
+    )
 
     return {
         "committee_name": row.get("committee_name"),
@@ -132,10 +195,7 @@ def build_committee_sector_trade_context(row: dict[str, Any]) -> dict[str, Any]:
         "committee_service_overlap_days": shared_overlap,
         "holding_overlap_days": shared_overlap,
         "overlap_start": max(committee_start, disc_start),
-        "overlap_end": min(
-            committee_end if committee_end is not None else dt.date.today(),
-            disc_end if disc_end is not None else dt.date.today(),
-        ),
+        "overlap_end": min(overlap_committee_end, overlap_disclosure_end),
     }
 
 
@@ -149,17 +209,26 @@ def build_repeated_committee_linked_trading_context(
     committee_end: dt.date | None = row.get("committee_end_date")
     committee_sector: str | None = row.get("committee_sector")
     transactions: list[dict[str, Any]] = row.get("transactions", [])
+    reference_date = _row_reference_date(row)
 
-    today = dt.date.today()
-    service_end = committee_end if committee_end is not None else today
+    service_end = _effective_range_end(
+        committee_end,
+        reference_date=reference_date,
+    )
     total_service_days = days_gap(committee_start, service_end) + 1  # inclusive
 
     if committee_sector is not None:
         matching = count_matching_transactions(
-            transactions, committee_sector, committee_start, committee_end
+            transactions,
+            committee_sector,
+            committee_start,
+            service_end,
         )
         distinct_days = count_distinct_trade_days(
-            transactions, committee_sector, committee_start, committee_end
+            transactions,
+            committee_sector,
+            committee_start,
+            service_end,
         )
     else:
         matching = 0
@@ -213,13 +282,20 @@ def build_sector_holdings_overlap_context(row: dict[str, Any]) -> dict[str, Any]
     committee_end: dt.date | None = row.get("committee_end_date")
     disc_start: dt.date = row["disclosure_period_start"]
     disc_end: dt.date | None = row.get("disclosure_period_end")
+    reference_date = _row_reference_date(row)
 
     holding_value = midpoint_value(
         row.get("holding_value_min"),
         row.get("holding_value_max"),
     )
 
-    shared_overlap = overlap_days(committee_start, committee_end, disc_start, disc_end)
+    shared_overlap = overlap_days(
+        committee_start,
+        committee_end,
+        disc_start,
+        disc_end,
+        reference_date=reference_date,
+    )
 
     return {
         "committee_name": row.get("committee_name"),

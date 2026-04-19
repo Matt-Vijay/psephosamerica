@@ -6,7 +6,7 @@ No file or network I/O.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, List, Literal, Optional, Sequence, Union
+from typing import Dict, List, Literal, Optional, Sequence, TypeAlias, Union
 
 # ---------------------------------------------------------------------------
 # Typed record
@@ -51,6 +51,12 @@ class AmbiguousMatch:
 
 
 LookupResult = Union[CrosswalkRecord, NotFound, AmbiguousMatch]
+CrosswalkRow: TypeAlias = dict[str, str | None]
+_LOOKUP_FIELDS: tuple[LookupField, ...] = (
+    "bioguide_id",
+    "lis_member_id",
+    "fec_candidate_id",
+)
 
 
 # ---------------------------------------------------------------------------
@@ -110,16 +116,19 @@ def _resolve(
 # ---------------------------------------------------------------------------
 
 
-def build_index(rows: Sequence[Union[CrosswalkRecord, dict]]) -> CrosswalkIndex:
+def build_index(rows: Sequence[Union[CrosswalkRecord, CrosswalkRow]]) -> CrosswalkIndex:
     """Accepts CrosswalkRecords or raw dicts; dicts are coerced via same field names."""
     records: List[CrosswalkRecord] = []
     for row in rows:
         if isinstance(row, CrosswalkRecord):
             records.append(row)
         else:
+            bioguide_id = row.get("bioguide_id")
+            if bioguide_id is None:
+                raise KeyError("bioguide_id")
             records.append(
                 CrosswalkRecord(
-                    bioguide_id=row["bioguide_id"],
+                    bioguide_id=bioguide_id,
                     lis_member_id=row.get("lis_member_id"),
                     fec_candidate_id=row.get("fec_candidate_id"),
                 )
@@ -168,8 +177,8 @@ def validate_one_to_one(records: Sequence[CrosswalkRecord]) -> List[MappingConfl
     """
     conflicts: List[MappingConflict] = []
 
-    for field in ("bioguide_id", "lis_member_id", "fec_candidate_id"):
-        idx = _index_by(records, field)  # type: ignore[arg-type]
+    for field in _LOOKUP_FIELDS:
+        idx = _index_by(records, field)
         for value, hits in idx.items():
             bioguide_ids = [r.bioguide_id for r in hits]
             # For non-bioguide fields, "many bioguides -> same secondary ID" is
@@ -180,7 +189,7 @@ def validate_one_to_one(records: Sequence[CrosswalkRecord]) -> List[MappingConfl
             ):
                 conflicts.append(
                     MappingConflict(
-                        field=field,  # type: ignore[arg-type]
+                        field=field,
                         value=value,
                         bioguide_ids=unique_bioguides,
                     )

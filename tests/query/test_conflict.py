@@ -98,6 +98,27 @@ class TestCommitteeSectorTrade:
         bundle = assemble_committee_sector_trade_bundle(row)
         assert bundle.context["committee_service_overlap_days"] >= 0
 
+    def test_both_open_ranges_require_snapshot_or_reference_date(self):
+        row = {
+            **BASE_COMMITTEE_ROW,
+            "committee_end_date": None,
+            "disclosure_period_end": None,
+        }
+        with pytest.raises(ValueError, match="reference_date"):
+            assemble_committee_sector_trade_bundle(row)
+
+    def test_snapshot_date_anchors_both_open_ranges(self):
+        row = {
+            **BASE_COMMITTEE_ROW,
+            "committee_end_date": None,
+            "disclosure_period_end": None,
+            "snapshot_date": dt.date(2022, 6, 30),
+        }
+        bundle = assemble_committee_sector_trade_bundle(row)
+        assert bundle.context["overlap_end"] == dt.date(2022, 6, 30)
+        assert bundle.context["committee_service_overlap_days"] == 179
+        assert bundle.context["holding_overlap_days"] == 179
+
 
 # ---------------------------------------------------------------------------
 # repeated_committee_linked_trading
@@ -168,6 +189,27 @@ class TestRepeatedCommitteeLinkedTrading:
         bundle = assemble_repeated_committee_linked_trading_bundle(TRADING_ROW)
         types = {a.source_type for a in bundle.source_anchors}
         assert types == {"financial_disclosure", "committee_membership"}
+
+    def test_open_ended_service_requires_snapshot_or_reference_date(self):
+        row = {**TRADING_ROW, "committee_end_date": None}
+        with pytest.raises(ValueError, match="reference_date"):
+            assemble_repeated_committee_linked_trading_bundle(row)
+
+    def test_snapshot_date_anchors_open_service(self):
+        row = {
+            **TRADING_ROW,
+            "committee_end_date": None,
+            "transactions": [
+                {"transaction_date": dt.date(2022, 3, 10), "sector": "energy"},
+                {"transaction_date": dt.date(2022, 6, 15), "sector": "energy"},
+                {"transaction_date": dt.date(2022, 9, 1), "sector": "energy"},
+            ],
+            "snapshot_date": dt.date(2022, 6, 30),
+        }
+        bundle = assemble_repeated_committee_linked_trading_bundle(row)
+        assert bundle.context["service_overlap_days"] == 179
+        assert bundle.context["matching_transaction_count"] == 2
+        assert bundle.context["distinct_trade_days"] == 2
 
 
 # ---------------------------------------------------------------------------
@@ -326,3 +368,22 @@ class TestSectorHoldingsOverlap:
         row = {**HOLDINGS_ROW, "committee_end_date": None}
         bundle = assemble_sector_holdings_overlap_bundle(row)
         assert bundle.context["overlap_days"] >= 0
+
+    def test_both_open_ranges_require_snapshot_or_reference_date(self):
+        row = {
+            **HOLDINGS_ROW,
+            "committee_end_date": None,
+            "disclosure_period_end": None,
+        }
+        with pytest.raises(ValueError, match="reference_date"):
+            assemble_sector_holdings_overlap_bundle(row)
+
+    def test_snapshot_date_anchors_both_open_ranges(self):
+        row = {
+            **HOLDINGS_ROW,
+            "committee_end_date": None,
+            "disclosure_period_end": None,
+            "snapshot_date": dt.date(2022, 6, 30),
+        }
+        bundle = assemble_sector_holdings_overlap_bundle(row)
+        assert bundle.context["overlap_days"] == 179

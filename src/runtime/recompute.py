@@ -50,6 +50,10 @@ class RuntimeRecomputeResult:
     run_id: int
     recompute_result: RecomputeRunResult
 
+    @property
+    def unresolved_committee_matches(self) -> list[Any]:
+        return self.recompute_result.unresolved_committee_matches
+
 
 # ---------------------------------------------------------------------------
 # Public API

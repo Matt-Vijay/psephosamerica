@@ -14,7 +14,9 @@ from __future__ import annotations
 import datetime as dt
 from typing import Any
 
-_SCORE_START: float = 100.0
+from src.scoring.semantics import BASELINE_SCORE, baseline_dimension_scores
+
+_SCORE_START: float = BASELINE_SCORE
 _SCORE_MIN: float = 0.0
 _SCORE_MAX: float = 100.0
 
@@ -79,7 +81,7 @@ def build_snapshot_row(
     Provenance columns (source_artifact_id, published_manifest_sha256, etc.)
     are omitted — the batch loader fills those in.
 
-    Empty *delta_rows* → baseline snapshot (score_total = 100, dimension_scores = {}).
+    Empty *delta_rows* → baseline snapshot with an explicit dimension score.
     """
     member_id: int = member["id"]
 
@@ -89,7 +91,7 @@ def build_snapshot_row(
             "snapshot_at": snapshot_at,
             "recompute_run_id": recompute_run_id,
             "score_total": round(_SCORE_START, 2),
-            "dimension_scores": {},
+            "dimension_scores": baseline_dimension_scores(),
         }
 
     grouped = group_deltas_by_dimension(delta_rows)

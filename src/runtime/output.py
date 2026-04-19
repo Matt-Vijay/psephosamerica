@@ -60,8 +60,15 @@ def summarize_recompute_result(result: RuntimeRecomputeResult) -> dict[str, Any]
         "evidence_cards": len(recompute.evidence_cards),
     }
 
-    if load is not None:
-        out["load"] = status_dict(load)
+    unresolved_committee_matches = recompute.unresolved_committee_matches
+    if load is not None or unresolved_committee_matches:
+        load_out = status_dict(load) if load is not None else {}
+        if unresolved_committee_matches:
+            load_out["unresolved_committee_matches"] = {
+                "count": len(unresolved_committee_matches),
+                "items": [asdict(match) for match in unresolved_committee_matches],
+            }
+        out["load"] = load_out
 
     return out
 

@@ -6,9 +6,11 @@ No live DB.  fetch_all is mocked; all other logic is exercised in-memory.
 from __future__ import annotations
 
 import datetime as dt
+from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock, patch
 
+from src.normalize.taxonomy_runtime import CommitteeMapping
 from src.query.conflict_inputs import (
     assemble_committee_sector_trade_rows,
     assemble_repeated_committee_linked_trading_rows,
@@ -18,6 +20,9 @@ from src.query.conflict_inputs import (
     fetch_late_or_amended_rows,
     fetch_transaction_rows,
 )
+from src.rules.contexts import build_late_or_amended_disclosure_context
+from src.rules.evaluator import evaluate_rule
+from src.rules.loader import load_rule
 
 
 # ---------------------------------------------------------------------------
@@ -106,6 +111,45 @@ def _issuer_sector(issuer_name: str, issuer_ticker: str | None) -> str | None:
     return "energy" if "Exxon" in issuer_name else None
 
 
+def _committee_mapping(
+    *,
+    sector_id: str = "energy",
+    mapping_tier: str = "deterministic",
+    chamber: str = "House",
+    committee_name: str = "Committee on Energy",
+    subcommittee_name: str = "",
+) -> CommitteeMapping:
+    return CommitteeMapping(
+        congress=118,
+        chamber=chamber,
+        committee_name=committee_name,
+        subcommittee_name=subcommittee_name,
+        sector_id=sector_id,
+        mapping_tier=mapping_tier,
+        jurisdiction_basis="Test basis",
+        basis_source="test",
+        notes="",
+    )
+
+
+def _committee_mapping_resolver(
+    committee_code: str,
+    congress: int,
+) -> CommitteeMapping | None:
+    if committee_code != "HSEN":
+        return None
+    return _committee_mapping()
+
+
+_LATE_RULE_PATH = (
+    Path(__file__).resolve().parents[2]
+    / "src"
+    / "rules"
+    / "conflict_of_interest"
+    / "late_or_amended_disclosure.yaml"
+)
+
+
 # ---------------------------------------------------------------------------
 # fetch_late_or_amended_rows
 # ---------------------------------------------------------------------------
@@ -134,6 +178,38 @@ class TestFetchLateOrAmendedRows:
         assert result == []
 
 
+class TestLateOrAmendedRuleRealFilingKinds:
+    def test_late_annual_filing_still_fires(self):
+        rule = load_rule(_LATE_RULE_PATH)
+        facts = build_late_or_amended_disclosure_context(
+            {**_LATE_ROW, "filing_id": "fd-annual-1"}
+        )
+
+        fire = evaluate_rule(
+            rule,
+            {**facts, "parameters.late_threshold_days": rule.parameters["late_threshold_days"]},
+            BIOGUIDE_A,
+            "run-1",
+        )
+
+        assert fire is not None
+
+    def test_late_ptr_filing_still_fires(self):
+        rule = load_rule(_LATE_RULE_PATH)
+        facts = build_late_or_amended_disclosure_context(
+            {**_LATE_ROW, "filing_id": "fd-ptr-1", "filing_kind": "ptr"}
+        )
+
+        fire = evaluate_rule(
+            rule,
+            {**facts, "parameters.late_threshold_days": rule.parameters["late_threshold_days"]},
+            BIOGUIDE_A,
+            "run-1",
+        )
+
+        assert fire is not None
+
+
 # ---------------------------------------------------------------------------
 # fetch_committee_membership_rows
 # ---------------------------------------------------------------------------
@@ -153,6 +229,15 @@ class TestFetchCommitteeMembershipRows:
             fetch_committee_membership_rows(conn, bioguide_ids=[BIOGUIDE_A])
         _, _, params = mock_fa.call_args[0]
         assert params["bioguide_ids"] == [BIOGUIDE_A]
+
+    def test_sql_selects_committee_resolution_context(self):
+        conn = MagicMock()
+        with patch("src.query.conflict_inputs.fetch_all", return_value=[]) as mock_fa:
+            fetch_committee_membership_rows(conn, bioguide_ids=[BIOGUIDE_A])
+        _, sql, _ = mock_fa.call_args[0]
+        assert "AS committee_chamber" in sql
+        assert "AS committee_type" in sql
+        assert "AS parent_committee_name" in sql
 
 
 # ---------------------------------------------------------------------------
@@ -251,6 +336,36 @@ class TestAssembleCommitteeSectorTradeRows:
         rows = self._run(holdings=[_HOLDING_ROW, holding2])
         assert len(rows) == 2
 
+    def test_output_row_carries_committee_mapping_metadata(self):
+        rows = assemble_committee_sector_trade_rows(
+            [_MEMBERSHIP_ROW],
+            [_HOLDING_ROW],
+            committee_sector_resolver=_committee_mapping_resolver,
+            issuer_sector_resolver=_issuer_sector,
+        )
+
+        assert rows[0]["committee_sector"] == "energy"
+        assert rows[0]["committee_mapping_tier"] == "deterministic"
+        assert rows[0]["committee_chamber"] == "House"
+        assert rows[0]["committee_subcommittee_name"] == ""
+
+    def test_review_required_mapping_is_emitted_with_review_required_tier(self):
+        def review_required_mapping(committee_code: str, congress: int) -> CommitteeMapping | None:
+            if committee_code != "HSEN":
+                return None
+            return _committee_mapping(mapping_tier="review_required")
+
+        rows = assemble_committee_sector_trade_rows(
+            [_MEMBERSHIP_ROW],
+            [_HOLDING_ROW],
+            committee_sector_resolver=review_required_mapping,
+            issuer_sector_resolver=_issuer_sector,
+        )
+
+        assert len(rows) == 1
+        assert rows[0]["committee_sector"] == "energy"
+        assert rows[0]["committee_mapping_tier"] == "review_required"
+
 
 # ---------------------------------------------------------------------------
 # assemble_repeated_committee_linked_trading_rows
@@ -303,6 +418,24 @@ class TestAssembleRepeatedCommitteeLinkedTradingRows:
         rows = self._run(transactions=[_TRANSACTION_ROW, txn2])
         assert len(rows[0]["transactions"]) == 2
 
+    def test_review_required_mapping_is_emitted_with_review_required_tier(self):
+        def review_required_mapping(committee_code: str, congress: int) -> CommitteeMapping | None:
+            if committee_code != "HSEN":
+                return None
+            return _committee_mapping(mapping_tier="review_required")
+
+        rows = assemble_repeated_committee_linked_trading_rows(
+            [_MEMBERSHIP_ROW],
+            [_TRANSACTION_ROW],
+            committee_sector_resolver=review_required_mapping,
+            issuer_sector_resolver=_issuer_sector,
+        )
+
+        assert len(rows) == 1
+        assert rows[0]["committee_sector"] == "energy"
+        assert rows[0]["committee_mapping_tier"] == "review_required"
+        assert len(rows[0]["transactions"]) == 1
+
 
 # ---------------------------------------------------------------------------
 # assemble_sector_holdings_overlap_rows
@@ -347,6 +480,23 @@ class TestAssembleSectorHoldingsOverlapRows:
         holding_b = {**_HOLDING_ROW, "member_bioguide_id": BIOGUIDE_B}
         rows = self._run(holdings=[holding_b])
         assert rows == []
+
+    def test_review_required_mapping_is_emitted_with_review_required_tier(self):
+        def review_required_mapping(committee_code: str, congress: int) -> CommitteeMapping | None:
+            if committee_code != "HSEN":
+                return None
+            return _committee_mapping(mapping_tier="review_required")
+
+        rows = assemble_sector_holdings_overlap_rows(
+            [_MEMBERSHIP_ROW],
+            [_HOLDING_ROW],
+            committee_sector_resolver=review_required_mapping,
+            issuer_sector_resolver=_issuer_sector,
+        )
+
+        assert len(rows) == 1
+        assert rows[0]["committee_sector"] == "energy"
+        assert rows[0]["committee_mapping_tier"] == "review_required"
 
 
 # ---------------------------------------------------------------------------

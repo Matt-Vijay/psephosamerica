@@ -23,6 +23,7 @@ from src.query.conflict import (
 from src.rules.engine import filter_rules, load_canonical_rules
 from src.rules.evaluator import evaluate_rule
 from src.rules.models import RuleDefinition, RuleFire, Severity
+from src.scoring.semantics import severity_score_delta
 
 
 # ---------------------------------------------------------------------------
@@ -59,14 +60,6 @@ class RecomputeResult:
 # Constants
 # ---------------------------------------------------------------------------
 
-#: Severity → score delta mapping for evidence card payloads.
-_SEVERITY_SCORE: dict[Severity, float] = {
-    Severity.low: 1.0,
-    Severity.medium: 2.0,
-    Severity.high: 4.0,
-    Severity.critical: 8.0,
-}
-
 #: Maps each launch rule family to its ConflictBundle assembler.
 _FAMILY_ASSEMBLERS: dict[str, Callable[[dict[str, Any]], ConflictBundle]] = {
     "committee_sector_trade": assemble_committee_sector_trade_bundle,
@@ -84,12 +77,23 @@ _FAMILY_ASSEMBLERS: dict[str, Callable[[dict[str, Any]], ConflictBundle]] = {
 def _assemble_bundles(
     family: str,
     rows: list[dict[str, Any]],
+    *,
+    snapshot_date: dt.date,
 ) -> list[ConflictBundle]:
     """Unknown families silently return [] so callers can pass extra families."""
     assembler = _FAMILY_ASSEMBLERS.get(family)
     if assembler is None:
         return []
-    return [assembler(row) for row in rows]
+    return [
+        assembler(
+            {
+                **row,
+                "snapshot_date": row.get("snapshot_date", snapshot_date),
+                "reference_date": row.get("reference_date", snapshot_date),
+            }
+        )
+        for row in rows
+    ]
 
 
 def _build_card_from_fire(
@@ -100,7 +104,7 @@ def _build_card_from_fire(
     id_generator: EvidenceCardIdGenerator,
 ) -> EvidenceCardPayload:
     card_id = id_generator(fire)
-    score_delta = _SEVERITY_SCORE.get(fire.severity, 1.0)
+    score_delta = severity_score_delta(fire.severity)
     fact_texts = [fire.explanation] if fire.explanation else []
 
     return build_evidence_card_payload(
@@ -173,7 +177,7 @@ def recompute_conflicts(
         if not family_rules:
             continue
 
-        bundles = _assemble_bundles(family, rows)
+        bundles = _assemble_bundles(family, rows, snapshot_date=snapshot_date)
 
         for bundle in bundles:
             bioguide_id = bundle.member_bioguide_id

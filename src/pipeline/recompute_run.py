@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import datetime as dt
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import Any
 
 from src.db.load_executor import Resolvers, execute_load_plan
 from src.db.load_report import LoadSummary
@@ -23,6 +23,7 @@ from src.load.recompute import recompute_load_plan
 from src.normalize.taxonomy_runtime import TaxonomyRuntime
 from src.pipeline.conflict_recompute import recompute_conflicts
 from src.query.conflict_inputs import (
+    CommitteeSectorResolver,
     IssuerSectorResolver,
     assemble_committee_sector_trade_rows,
     assemble_repeated_committee_linked_trading_rows,
@@ -45,11 +46,36 @@ from src.rules.models import RuleFire
 # ---------------------------------------------------------------------------
 
 
+@dataclass(frozen=True)
+class UnresolvedCommitteeMatch:
+    family: str
+    member_bioguide_id: str
+    committee_name: str | None
+    committee_membership_id: int | None
+    financial_disclosure_id: int | None
+    committee_sector: str | None
+    committee_mapping_tier: str
+    committee_chamber: str | None
+    committee_subcommittee_name: str | None
+    signal_count: int
+    status: str = "unresolved_review_required"
+    scored: bool = False
+    deterministic: bool = False
+
+
 @dataclass
 class RecomputeRunResult:
     rule_fires: list[RuleFire] = field(default_factory=list)
     evidence_cards: list[EvidenceCardPayload] = field(default_factory=list)
     load_summary: LoadSummary | None = None
+    review_required_rows_by_family: dict[str, list[dict[str, Any]]] = field(default_factory=dict)
+    unresolved_committee_matches: list[UnresolvedCommitteeMatch] = field(default_factory=list)
+
+    def __post_init__(self) -> None:
+        if not self.unresolved_committee_matches and self.review_required_rows_by_family:
+            self.unresolved_committee_matches = _build_unresolved_committee_matches(
+                self.review_required_rows_by_family
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -60,23 +86,86 @@ class RecomputeRunResult:
 def _build_committee_sector_resolver(
     membership_rows: list[dict[str, Any]],
     taxonomy: TaxonomyRuntime,
-) -> Callable[[str, int], str | None]:
-    """Build a (committee_code, congress) → sector_id resolver from pre-fetched rows.
+) -> CommitteeSectorResolver:
+    """Build a (committee_code, congress) → committee mapping resolver from pre-fetched rows.
 
-    Pure: no DB access.  committee_name is already present on each row from
-    the JOIN in fetch_committee_membership_rows.
+    Pure: no DB access.  committee_name plus optional parent/chamber metadata
+    are already present on each row from fetch_committee_membership_rows.
     """
-    sector_map: dict[tuple[str, int], str | None] = {}
+    sector_map: dict[tuple[str, int], Any] = {}
     for row in membership_rows:
         key = (row["committee_code"], row["congress"])
         if key not in sector_map:
-            mapping = taxonomy.committee_sector(row["committee_name"], congress=row["congress"])
-            sector_map[key] = mapping.sector_id if mapping else None
+            committee_name = row["committee_name"]
+            subcommittee_name = ""
+            if row.get("committee_type") == "subcommittee":
+                subcommittee_name = committee_name
+                committee_name = row.get("parent_committee_name") or committee_name
+            sector_map[key] = taxonomy.committee_sector(
+                committee_name,
+                subcommittee_name,
+                congress=row["congress"],
+                chamber=row.get("committee_chamber"),
+            )
 
-    def resolve(committee_code: str, congress: int) -> str | None:
+    def resolve(committee_code: str, congress: int) -> Any:
         return sector_map.get((committee_code, congress))
 
     return resolve
+
+
+def _partition_rows_by_scoreability(
+    rows_by_family: dict[str, list[dict[str, Any]]],
+) -> tuple[dict[str, list[dict[str, Any]]], dict[str, list[dict[str, Any]]]]:
+    """Split assembled rows into scoreable rows and explicit review traces."""
+    scoreable_rows_by_family: dict[str, list[dict[str, Any]]] = {}
+    review_required_rows_by_family: dict[str, list[dict[str, Any]]] = {}
+
+    for family, rows in rows_by_family.items():
+        scoreable_rows: list[dict[str, Any]] = []
+        review_rows: list[dict[str, Any]] = []
+        for row in rows:
+            if row.get("committee_mapping_tier") == "review_required":
+                review_rows.append(row)
+            else:
+                scoreable_rows.append(row)
+        scoreable_rows_by_family[family] = scoreable_rows
+        if review_rows:
+            review_required_rows_by_family[family] = review_rows
+
+    return scoreable_rows_by_family, review_required_rows_by_family
+
+
+def _review_required_signal_count(
+    family: str,
+    row: dict[str, Any],
+) -> int:
+    if family == "repeated_committee_linked_trading":
+        return len(row.get("transactions") or [])
+    return 1
+
+
+def _build_unresolved_committee_matches(
+    review_required_rows_by_family: dict[str, list[dict[str, Any]]],
+) -> list[UnresolvedCommitteeMatch]:
+    matches: list[UnresolvedCommitteeMatch] = []
+    for family, rows in review_required_rows_by_family.items():
+        for row in rows:
+            matches.append(
+                UnresolvedCommitteeMatch(
+                    family=family,
+                    member_bioguide_id=row["member_bioguide_id"],
+                    committee_name=row.get("committee_name"),
+                    committee_membership_id=row.get("committee_membership_id"),
+                    financial_disclosure_id=row.get("financial_disclosure_id"),
+                    committee_sector=row.get("committee_sector"),
+                    committee_mapping_tier=row.get("committee_mapping_tier", "review_required"),
+                    committee_chamber=row.get("committee_chamber"),
+                    committee_subcommittee_name=row.get("committee_subcommittee_name"),
+                    signal_count=_review_required_signal_count(family, row),
+                )
+            )
+    return matches
 
 
 def _build_recompute_resolvers(bioguide_map: dict[str, int]) -> Resolvers:
@@ -169,7 +258,7 @@ def run_recompute(
     # Assemble per-family input rows with sector enrichment.
     committee_sector_resolver = _build_committee_sector_resolver(membership_rows, taxonomy)
 
-    rows_by_family: dict[str, list[dict[str, Any]]] = {
+    assembled_rows_by_family: dict[str, list[dict[str, Any]]] = {
         "late_or_amended_disclosure": late_rows,
         "committee_sector_trade": assemble_committee_sector_trade_rows(
             membership_rows,
@@ -190,6 +279,12 @@ def run_recompute(
             issuer_sector_resolver=issuer_sector_resolver,
         ),
     }
+    rows_by_family, review_required_rows_by_family = _partition_rows_by_scoreability(
+        assembled_rows_by_family
+    )
+    unresolved_committee_matches = _build_unresolved_committee_matches(
+        review_required_rows_by_family
+    )
 
     # ------------------------------------------------------------------ 4. --
     # Recompute conflicts → rule fires + evidence cards.
@@ -227,4 +322,6 @@ def run_recompute(
         rule_fires=conflict_result.rule_fires,
         evidence_cards=conflict_result.evidence_cards,
         load_summary=load_summary,
+        review_required_rows_by_family=review_required_rows_by_family,
+        unresolved_committee_matches=unresolved_committee_matches,
     )

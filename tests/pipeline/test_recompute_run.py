@@ -11,6 +11,7 @@ from typing import Any
 from unittest.mock import MagicMock, patch
 
 from src.db.load_report import LoadSummary, WarnErrorSummary, build_load_summary
+from src.normalize.taxonomy_runtime import CommitteeMapping
 from src.pipeline.conflict_recompute import RecomputeResult
 from src.pipeline.recompute_run import (
     RecomputeRunResult,
@@ -63,6 +64,60 @@ def _make_taxonomy(sector_id: str | None = None) -> Any:
 
 def _null_issuer_resolver(issuer_name: str, issuer_ticker: str | None) -> str | None:
     return None
+
+
+def _energy_issuer_resolver(issuer_name: str, issuer_ticker: str | None) -> str | None:
+    return "energy" if "Exxon" in issuer_name else None
+
+
+def _committee_mapping(
+    *,
+    sector_id: str = "energy",
+    mapping_tier: str = "deterministic",
+) -> CommitteeMapping:
+    return CommitteeMapping(
+        congress=119,
+        chamber="House",
+        committee_name="Committee on Energy",
+        subcommittee_name="",
+        sector_id=sector_id,
+        mapping_tier=mapping_tier,
+        jurisdiction_basis="Test basis",
+        basis_source="test",
+        notes="",
+    )
+
+
+_MEMBERSHIP_ROW = {
+    "committee_membership_id": 10,
+    "member_bioguide_id": "A000001",
+    "committee_code": "HSEN",
+    "committee_name": "Committee on Energy",
+    "congress": 119,
+    "committee_start_date": dt.date(2024, 1, 1),
+    "committee_end_date": None,
+}
+
+_HOLDING_ROW = {
+    "holding_id": 20,
+    "financial_disclosure_id": 100,
+    "member_bioguide_id": "A000001",
+    "disclosure_period_start": dt.date(2024, 1, 1),
+    "disclosure_period_end": dt.date(2024, 12, 31),
+    "issuer_name": "Exxon Corp",
+    "issuer_ticker": "XOM",
+    "holding_value_min": 15_001.0,
+    "holding_value_max": 50_000.0,
+}
+
+_TRANSACTION_ROW = {
+    "transaction_id": 30,
+    "financial_disclosure_id": 100,
+    "member_bioguide_id": "A000001",
+    "transaction_date": dt.date(2024, 6, 1),
+    "issuer_name": "Exxon Corp",
+    "issuer_ticker": "XOM",
+}
 
 
 # ---------------------------------------------------------------------------
@@ -139,7 +194,7 @@ class TestBuildCommitteeSectorResolver:
         ]
         taxonomy = _make_taxonomy(sector_id="finance")
         resolve = _build_committee_sector_resolver(rows, taxonomy)
-        assert resolve("HFSC", 119) == "finance"
+        assert resolve("HFSC", 119).sector_id == "finance"
 
     def test_unknown_committee_returns_none(self) -> None:
         rows = [
@@ -170,6 +225,31 @@ class TestBuildCommitteeSectorResolver:
         taxonomy = _make_taxonomy()
         _build_committee_sector_resolver(rows, taxonomy)
         assert taxonomy.committee_sector.call_count == 2
+
+    def test_subcommittee_resolution_uses_parent_name_and_chamber(self) -> None:
+        rows = [
+            {
+                "committee_code": "HSIF15",
+                "congress": 119,
+                "committee_name": "Subcommittee on Health",
+                "committee_chamber": "House",
+                "committee_type": "subcommittee",
+                "parent_committee_name": "Committee on Energy and Commerce",
+            }
+        ]
+        mapping = MagicMock()
+        taxonomy = MagicMock()
+        taxonomy.committee_sector.return_value = mapping
+
+        resolve = _build_committee_sector_resolver(rows, taxonomy)
+
+        assert resolve("HSIF15", 119) is mapping
+        taxonomy.committee_sector.assert_called_once_with(
+            "Committee on Energy and Commerce",
+            "Subcommittee on Health",
+            congress=119,
+            chamber="House",
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -423,6 +503,78 @@ class TestRunRecomputeConflictWiring:
             "repeated_committee_linked_trading",
             "sector_holdings_overlap",
         }
+
+    def test_deterministic_rows_reach_conflict_engine(self) -> None:
+        conn = MagicMock()
+        taxonomy = MagicMock()
+        taxonomy.committee_sector.return_value = _committee_mapping()
+        conflict_spy = MagicMock(return_value=_empty_recompute_result())
+        patches = _all_fetch_patches(
+            membership_rows=[_MEMBERSHIP_ROW],
+            holding_rows=[_HOLDING_ROW],
+            transaction_rows=[_TRANSACTION_ROW],
+        )
+        with contextlib.ExitStack() as stack:
+            for p in patches:
+                stack.enter_context(p)
+            stack.enter_context(patch(f"{_MODULE}.recompute_conflicts", conflict_spy))
+            result = run_recompute(
+                conn,
+                recompute_run_id=_RUN_ID,
+                snapshot_date=_SNAPSHOT_DATE,
+                taxonomy=taxonomy,
+                issuer_sector_resolver=_energy_issuer_resolver,
+            )
+
+        rows_by_family = conflict_spy.call_args.kwargs["rows_by_family"]
+        assert len(rows_by_family["committee_sector_trade"]) == 1
+        assert len(rows_by_family["repeated_committee_linked_trading"]) == 1
+        assert len(rows_by_family["sector_holdings_overlap"]) == 1
+        assert result.review_required_rows_by_family == {}
+        assert result.unresolved_committee_matches == []
+
+    def test_review_required_rows_are_traced_but_not_scored(self) -> None:
+        conn = MagicMock()
+        taxonomy = MagicMock()
+        taxonomy.committee_sector.return_value = _committee_mapping(mapping_tier="review_required")
+        conflict_spy = MagicMock(return_value=_empty_recompute_result())
+        patches = _all_fetch_patches(
+            membership_rows=[_MEMBERSHIP_ROW],
+            holding_rows=[_HOLDING_ROW],
+            transaction_rows=[_TRANSACTION_ROW],
+        )
+        with contextlib.ExitStack() as stack:
+            for p in patches:
+                stack.enter_context(p)
+            stack.enter_context(patch(f"{_MODULE}.recompute_conflicts", conflict_spy))
+            result = run_recompute(
+                conn,
+                recompute_run_id=_RUN_ID,
+                snapshot_date=_SNAPSHOT_DATE,
+                taxonomy=taxonomy,
+                issuer_sector_resolver=_energy_issuer_resolver,
+            )
+
+        rows_by_family = conflict_spy.call_args.kwargs["rows_by_family"]
+        assert rows_by_family["committee_sector_trade"] == []
+        assert rows_by_family["repeated_committee_linked_trading"] == []
+        assert rows_by_family["sector_holdings_overlap"] == []
+        assert len(result.review_required_rows_by_family["committee_sector_trade"]) == 1
+        assert len(result.review_required_rows_by_family["repeated_committee_linked_trading"]) == 1
+        assert len(result.review_required_rows_by_family["sector_holdings_overlap"]) == 1
+        assert result.review_required_rows_by_family["committee_sector_trade"][0]["committee_mapping_tier"] == "review_required"
+        assert len(result.unresolved_committee_matches) == 3
+
+        matches_by_family = {
+            match.family: match for match in result.unresolved_committee_matches
+        }
+        assert matches_by_family["committee_sector_trade"].status == "unresolved_review_required"
+        assert matches_by_family["committee_sector_trade"].scored is False
+        assert matches_by_family["committee_sector_trade"].deterministic is False
+        assert matches_by_family["committee_sector_trade"].financial_disclosure_id == 100
+        assert matches_by_family["committee_sector_trade"].committee_mapping_tier == "review_required"
+        assert matches_by_family["repeated_committee_linked_trading"].signal_count == 1
+        assert matches_by_family["sector_holdings_overlap"].signal_count == 1
 
 
 class TestRunRecomputePersistPhase:

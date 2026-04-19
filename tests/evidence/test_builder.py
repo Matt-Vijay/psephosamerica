@@ -7,6 +7,8 @@ from __future__ import annotations
 
 import datetime as dt
 
+import pytest
+
 from src.evidence.builder import (
     assemble_blocks,
     build_evidence_block,
@@ -289,8 +291,33 @@ class TestBuildEvidenceCardPayload:
         assert payload.source_anchors == []
 
     def test_no_blocks_when_all_sections_empty(self):
-        payload = self._build(fact_texts=[], inference_texts=[], normative_texts=[])
+        payload = self._build(
+            fact_texts=[],
+            inference_texts=[],
+            normative_texts=[],
+            score_delta=0.0,
+        )
         assert payload.blocks == []
+
+    def test_nonzero_score_delta_requires_fact_block(self):
+        with pytest.raises(ValueError, match="fact block"):
+            self._build(
+                fact_texts=[],
+                inference_texts=["Inference only."],
+                normative_texts=["Normative only."],
+            )
+
+    def test_zero_score_delta_allows_no_fact_block(self):
+        payload = self._build(
+            fact_texts=[],
+            inference_texts=["Inference only."],
+            normative_texts=["Normative only."],
+            score_delta=0.0,
+        )
+        assert [block.section for block in payload.blocks] == [
+            EvidenceSection.INFERENCE,
+            EvidenceSection.NORMATIVE_JUDGMENT,
+        ]
 
     def test_evidence_card_id_set(self):
         payload = self._build(evidence_card_id="ec-unique-99")

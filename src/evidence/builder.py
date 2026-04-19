@@ -93,6 +93,8 @@ def build_evidence_card_payload(
     or ``name``.
     """
     blocks = assemble_blocks(fact_texts, inference_texts, normative_texts)
+    if score_delta != 0 and not any(block.section is EvidenceSection.FACT for block in blocks):
+        raise ValueError("Nonzero public evidence cards require at least one fact block")
     member_name = member.get("full_name") or member.get("name", "")
 
     return EvidenceCardPayload(

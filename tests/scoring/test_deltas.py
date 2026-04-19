@@ -210,12 +210,14 @@ class TestDiffOneMemberIdentity:
         row = diff_one_member(curr, prev)[0]
         assert row["member_bioguide_id"] == "A000001"
 
-    def test_empty_dimension_scores_returns_empty(self):
+    def test_empty_dimension_scores_are_treated_as_explicit_baseline(self):
         curr = _snap("A000001", coi=70.0)
         curr["dimension_scores"] = {}
         prev = _snap("A000001", SNAP_PREV, coi=80.0)
         result = diff_one_member(curr, prev)
-        assert result == []
+        assert len(result) == 1
+        assert result[0]["dimension"] == DIM
+        assert result[0]["delta"] == pytest.approx(20.0)
 
 
 # ---------------------------------------------------------------------------

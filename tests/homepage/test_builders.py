@@ -135,6 +135,15 @@ class TestBuildTopChanges:
         assert ids[1] == "almost"
         assert ids[2] == "medium"
 
+    def test_top_card_ids_skip_events_without_card_ids(self):
+        events = [
+            _make_event("A000001", delta=-30.0, card_id="card-1", discriminator="1"),
+            _make_event("A000001", delta=-20.0, discriminator="2"),
+            _make_event("A000001", delta=-10.0, card_id="card-2", discriminator="3"),
+        ]
+        result = build_top_changes(events, _MEMBER_META, n=10)
+        assert result[0].top_evidence_card_ids == ["card-1", "card-2"]
+
     def test_sorted_by_abs_delta_descending(self):
         events = [
             _make_event("A000001", delta=-5.0),
@@ -173,6 +182,16 @@ class TestBuildTopChanges:
         )
         assert len(result) == 1
         assert result[0].bioguide_id == "A000001"
+
+    def test_positive_recovery_delta_remains_visible_in_top_changes(self):
+        events = [
+            _make_event("A000001", delta=20.0, card_id="card-1", discriminator="recover"),
+            _make_event("B000002", delta=-15.0, card_id="card-2", discriminator="penalty"),
+        ]
+        result = build_top_changes(events, _MEMBER_META, n=10)
+        assert result[0].bioguide_id == "A000001"
+        assert result[0].score_delta == 20.0
+        assert result[0].abs_delta == 20.0
 
     def test_member_meta_fields_populated(self):
         events = [_make_event("A000001", delta=-10.0)]

@@ -8,6 +8,8 @@ from __future__ import annotations
 import datetime as dt
 from typing import Any
 
+from src.scoring.semantics import normalize_dimension_scores
+
 
 def _coerce_date(value: Any) -> dt.date:
     if isinstance(value, dt.datetime):
@@ -18,8 +20,7 @@ def _coerce_date(value: Any) -> dt.date:
 
 
 def _dimension_scores(row: dict[str, Any]) -> dict[str, float]:
-    raw = row.get("dimension_scores") or {}
-    return {str(k): float(v) for k, v in raw.items()}
+    return normalize_dimension_scores(row.get("dimension_scores"))
 
 
 def _bioguide_id(row: dict[str, Any]) -> str:

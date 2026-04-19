@@ -22,7 +22,7 @@ class MemberMovementSummary(BaseModel):
     party: str
     state: str
     dimension: str
-    score_delta: float  # net signed change; negative = penalty
+    score_delta: float  # net signed score movement; negative = penalty, positive = recovery
     abs_delta: float    # always >= 0; used for ordering
     event_count: int = Field(ge=1)
     top_evidence_card_ids: list[str] = Field(

@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Sequence
+from typing import Any, Sequence, cast
 
-import yaml
+import yaml  # type: ignore[import-untyped]
 from pydantic import ValidationError
 
 from src.rules.models import RuleDefinition
@@ -34,7 +34,7 @@ def load_rule(path: Path) -> RuleDefinition:
         raise RuleLoadError(path, "expected a YAML mapping at the top level")
 
     try:
-        return RuleDefinition.model_validate(raw)
+        return RuleDefinition.model_validate(cast(dict[str, Any], raw))
     except ValidationError as exc:
         raise RuleLoadError(path, f"validation error: {exc}") from exc
 

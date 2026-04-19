@@ -43,19 +43,19 @@ def evaluate_condition(
         cmp_value = condition.value
 
     if op is Operator.equals:
-        return fact_value == cmp_value
+        return bool(fact_value == cmp_value)
     if op is Operator.not_equals:
-        return fact_value != cmp_value
+        return bool(fact_value != cmp_value)
     if op is Operator.gt:
-        return fact_value > cmp_value
+        return bool(fact_value > cmp_value)
     if op is Operator.gte:
-        return fact_value >= cmp_value
+        return bool(fact_value >= cmp_value)
     if op is Operator.lt:
-        return fact_value < cmp_value
+        return bool(fact_value < cmp_value)
     if op is Operator.lte:
-        return fact_value <= cmp_value
+        return bool(fact_value <= cmp_value)
     if op is Operator.in_set:
-        return fact_value in cmp_value
+        return bool(fact_value in cmp_value)
 
     raise ValueError(f"Unhandled operator: {op}")  # pragma: no cover
 

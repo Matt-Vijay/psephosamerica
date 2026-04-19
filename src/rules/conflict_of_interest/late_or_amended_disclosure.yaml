@@ -20,9 +20,9 @@ conditions:
         - fact: days_late
           operator: gt
           value_ref: parameters.late_threshold_days
-        - fact: filing_kind
+        - fact: filing_is_amendment
           operator: equals
-          value: original
+          value: false
     - all_of:
         - fact: filing_is_amendment
           operator: equals

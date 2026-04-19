@@ -234,7 +234,7 @@ class TestBuildSnapshotRow:
         assert row["snapshot_at"] == DATE
         assert row["recompute_run_id"] == RUN_ID
         assert row["score_total"] == 100.0
-        assert row["dimension_scores"] == {}
+        assert row["dimension_scores"] == {DIM: 100.0}
 
     def test_single_dimension_delta(self):
         row = build_snapshot_row(_member(1), [_delta(DIM, -20.0)], DATE, RUN_ID)
@@ -301,6 +301,7 @@ class TestBuildSnapshotRows:
         rows = build_snapshot_rows([_member(1)], {}, DATE, RUN_ID)
         assert len(rows) == 1
         assert rows[0]["score_total"] == 100.0
+        assert rows[0]["dimension_scores"] == {DIM: 100.0}
 
     def test_one_member_with_deltas(self):
         rows = build_snapshot_rows(
@@ -327,6 +328,7 @@ class TestBuildSnapshotRows:
         rows = build_snapshot_rows(members, delta_map, DATE, RUN_ID)
         assert rows[0]["score_total"] == 90.0
         assert rows[1]["score_total"] == 100.0
+        assert rows[1]["dimension_scores"] == {DIM: 100.0}
 
     def test_shared_snapshot_at_and_run_id(self):
         members = [_member(1), _member(2)]

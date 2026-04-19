@@ -7,13 +7,41 @@ from __future__ import annotations
 
 import contextlib
 import datetime as dt
+from pathlib import Path
+import sys
+import types
 from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
 
+_RUNTIME_PACKAGE = types.ModuleType("src.runtime")
+_RUNTIME_PACKAGE.__path__ = [str(Path(__file__).resolve().parents[2] / "src" / "runtime")]
+sys.modules.setdefault("src.runtime", _RUNTIME_PACKAGE)
+
+
+def _stub_module(name: str, **attrs: Any) -> None:
+    module = types.ModuleType(name)
+    for key, value in attrs.items():
+        setattr(module, key, value)
+    sys.modules.setdefault(name, module)
+
+
+_Dummy = type("_Dummy", (), {})
+_stub_module("src.runtime.congress", CongressLoadResult=_Dummy)
+_stub_module("src.runtime.disclosures", DisclosuresLoadRuntimeResult=_Dummy)
+_stub_module("src.runtime.disclosures_artifacts", DisclosureArtifactIngestResult=_Dummy)
+_stub_module("src.runtime.disclosures_bundle_process", DisclosuresBundleProcessResult=_Dummy)
+_stub_module("src.runtime.disclosures_load_from_parse", DisclosuresParseLoadResult=_Dummy)
+_stub_module("src.runtime.disclosures_parse", DisclosureParseRuntimeResult=_Dummy)
+_stub_module("src.runtime.oracle_contracts", LocalOracleRunResult=_Dummy)
+_stub_module("src.runtime.publish", PublishRuntimeResult=_Dummy)
+_stub_module("src.runtime.publish_roundtrip_types", PublishRoundtripResult=_Dummy)
+_stub_module("src.runtime.publish_verify_types", PublishVerifyResult=_Dummy)
+
 from src.db.load_report import LoadSummary, WarnErrorSummary, build_load_summary
 from src.pipeline.recompute_run import RecomputeRunResult
+from src.runtime.output import summarize_recompute_result
 from src.runtime.recompute import (
     RuntimeRecomputeResult,
     _null_issuer_sector_resolver,
@@ -164,6 +192,69 @@ def test_finish_receives_combined_record_count() -> None:
         run_recompute_runtime(conn, _SNAPSHOT_DATE, taxonomy=_taxonomy())
 
     mocks["finish"].assert_called_once_with(conn, _RUN_ID, record_count=3)
+
+
+def test_runtime_result_exposes_unresolved_committee_matches() -> None:
+    conn = MagicMock()
+    run_result = RecomputeRunResult(
+        rule_fires=[],
+        evidence_cards=[],
+        load_summary=_load_summary(),
+        review_required_rows_by_family={
+            "committee_sector_trade": [
+                {
+                    "member_bioguide_id": "A000001",
+                    "committee_name": "Committee on Energy",
+                    "committee_membership_id": 10,
+                    "committee_sector": "energy",
+                    "committee_mapping_tier": "review_required",
+                    "financial_disclosure_id": 100,
+                }
+            ]
+        },
+    )
+
+    with _patched_runtime(run_result=run_result):
+        result = run_recompute_runtime(conn, _SNAPSHOT_DATE, taxonomy=_taxonomy())
+
+    assert len(result.unresolved_committee_matches) == 1
+    assert result.unresolved_committee_matches[0].family == "committee_sector_trade"
+    assert result.unresolved_committee_matches[0].status == "unresolved_review_required"
+    assert result.unresolved_committee_matches[0].scored is False
+    assert result.unresolved_committee_matches[0].deterministic is False
+
+
+def test_summary_surfaces_unresolved_committee_matches() -> None:
+    conn = MagicMock()
+    run_result = RecomputeRunResult(
+        rule_fires=[],
+        evidence_cards=[],
+        load_summary=_load_summary(),
+        review_required_rows_by_family={
+            "committee_sector_trade": [
+                {
+                    "member_bioguide_id": "A000001",
+                    "committee_name": "Committee on Energy",
+                    "committee_membership_id": 10,
+                    "committee_sector": "energy",
+                    "committee_mapping_tier": "review_required",
+                    "financial_disclosure_id": 100,
+                }
+            ]
+        },
+    )
+
+    with _patched_runtime(run_result=run_result):
+        result = run_recompute_runtime(conn, _SNAPSHOT_DATE, taxonomy=_taxonomy())
+
+    summary = summarize_recompute_result(result)
+
+    assert summary["load"]["unresolved_committee_matches"]["count"] == 1
+    item = summary["load"]["unresolved_committee_matches"]["items"][0]
+    assert item["family"] == "committee_sector_trade"
+    assert item["status"] == "unresolved_review_required"
+    assert item["scored"] is False
+    assert item["deterministic"] is False
 
 
 # ---------------------------------------------------------------------------

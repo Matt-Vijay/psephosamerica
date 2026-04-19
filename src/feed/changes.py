@@ -27,6 +27,8 @@ from enum import Enum
 from typing import Any, Protocol
 
 from pydantic import BaseModel, Field
+from src.rules.models import Severity
+from src.scoring.semantics import severity_score_delta
 
 
 # ---------------------------------------------------------------------------
@@ -77,7 +79,9 @@ class FeedEvent(BaseModel):
     member_name: str
     member_slug: str
     dimension: str
-    score_delta: float = Field(description="Signed; negative means a penalty was applied.")
+    score_delta: float = Field(
+        description="Signed score movement; negative = penalty, positive = recovery."
+    )
     abs_delta: float = Field(description="Always >= 0; used for ranking.")
     short_explanation: str
     evidence_card_id: str | None = None
@@ -132,16 +136,8 @@ def events_from_rule_fires(
     ``dimension``, ``severity`` (low|medium|high|critical), ``explanation``,
     ``snapshot_date``.  Optional: ``score_delta`` (overrides severity default).
 
-    Severity defaults: low=-5, medium=-15, high=-30, critical=-50.
+    Severity defaults use the canonical signed score semantics.
     """
-    default_deltas: dict[str, float] = {
-        "low": -5.0,
-        "medium": -15.0,
-        "high": -30.0,
-        "critical": -50.0,
-    }
-    delta_map = {**default_deltas, **(score_delta_by_severity or {})}
-
     _build_id = id_builder if id_builder is not None else make_feed_event_id
     events: list[FeedEvent] = []
     for rf in rule_fires:
@@ -154,7 +150,16 @@ def events_from_rule_fires(
         if isinstance(snap, str):
             snap = dt.date.fromisoformat(snap)
 
-        delta = float(rf.get("score_delta") or delta_map.get(rf.get("severity", "low"), -5.0))
+        if "score_delta" in rf and rf["score_delta"] is not None:
+            delta = float(rf["score_delta"])
+        else:
+            severity = rf.get("severity")
+            if not isinstance(severity, (Severity, str)):
+                raise ValueError("severity is required when score_delta is not provided")
+            delta = severity_score_delta(
+                severity,
+                overrides=score_delta_by_severity,
+            )
 
         events.append(
             FeedEvent(
@@ -190,7 +195,8 @@ def events_from_evidence_cards(
     """Build FeedEvents from evidence-card dicts.
 
     Each dict needs: ``public_id``, ``member_bioguide_id``, ``dimension``,
-    ``score_delta``, ``short_explanation``, ``snapshot_date``.
+    ``score_delta`` (signed score movement), ``short_explanation``,
+    ``snapshot_date``.
     Optional: ``rendered_at`` (used as ``occurred_at`` when present).
     """
     _build_id = id_builder if id_builder is not None else make_feed_event_id
@@ -248,8 +254,8 @@ def events_from_score_deltas(
 ) -> list[FeedEvent]:
     """Build FeedEvents from per-member per-dimension score deltas.
 
-    Each dict needs: ``member_bioguide_id``, ``dimension``, ``delta``,
-    ``snapshot_date``.  Optional: ``explanation``.
+    Each dict needs: ``member_bioguide_id``, ``dimension``, ``delta``
+    (signed score movement), ``snapshot_date``.  Optional: ``explanation``.
     """
     _build_id = id_builder if id_builder is not None else make_feed_event_id
     events: list[FeedEvent] = []

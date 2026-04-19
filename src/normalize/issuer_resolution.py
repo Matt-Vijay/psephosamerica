@@ -46,7 +46,7 @@ class IssuerCandidate:
     score: float  # 0.0–1.0; higher is better
     matched_name: str | None = None  # canonical name that triggered the match
 
-    def as_dict(self) -> dict:
+    def as_dict(self) -> dict[str, str | float | None]:
         return {
             "ticker": self.ticker,
             "cik": self.cik,
@@ -76,17 +76,24 @@ class _RefIndex:
 
         for rec in records:
             ticker_key = rec.ticker.upper()
-            if ticker_key and ticker_key not in by_ticker:
-                by_ticker[ticker_key] = rec
+            _bind_unique_record_key(by_ticker, ticker_key, rec, "ticker")
 
             norm = _normalize_name(rec.name)
-            if norm and norm not in by_norm_name:
-                by_norm_name[norm] = rec
+            existing_alias = by_alias.get(norm)
+            if norm and existing_alias is not None and existing_alias != rec:
+                raise ValueError(
+                    f"duplicate normalized name collides with alias: {norm}"
+                )
+            _bind_unique_record_key(by_norm_name, norm, rec, "normalized name")
 
             for alias in rec.aliases:
                 norm_alias = _normalize_name(alias)
-                if norm_alias and norm_alias not in by_alias:
-                    by_alias[norm_alias] = rec
+                existing_name = by_norm_name.get(norm_alias)
+                if norm_alias and existing_name is not None and existing_name != rec:
+                    raise ValueError(
+                        f"duplicate alias collides with canonical name: {norm_alias}"
+                    )
+                _bind_unique_record_key(by_alias, norm_alias, rec, "alias")
 
         return _RefIndex(
             by_ticker=by_ticker,
@@ -94,6 +101,20 @@ class _RefIndex:
             by_alias=by_alias,
             all_records=list(records),
         )
+
+
+def _bind_unique_record_key(
+    index: dict[str, IssuerRecord],
+    key: str,
+    record: IssuerRecord,
+    label: str,
+) -> None:
+    if not key:
+        return
+    existing = index.get(key)
+    if existing is not None and existing != record:
+        raise ValueError(f"duplicate {label}: {key}")
+    index[key] = record
 
 
 # ---------------------------------------------------------------------------
@@ -305,7 +326,7 @@ def resolve_best(
     issuer_name: str,
     issuer_ticker_hint: str | None,
     index: _RefIndex,
-    **kwargs,
+    **kwargs: float,
 ) -> IssuerCandidate:
     """Convenience wrapper – returns only the top candidate."""
     return resolve_issuer(issuer_name, issuer_ticker_hint, index, **kwargs)[0]

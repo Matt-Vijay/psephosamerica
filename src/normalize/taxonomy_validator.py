@@ -6,7 +6,7 @@ import csv
 from pathlib import Path
 from typing import Any
 
-import yaml
+import yaml  # type: ignore[import-untyped]
 
 ALLOWED_MAPPING_TIERS = {"deterministic", "review_required", "out_of_scope"}
 

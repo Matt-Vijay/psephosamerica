@@ -150,17 +150,24 @@ class TestEventsFromRuleFires:
         low = _rf("f_low", "A000001", severity="low")
         med = _rf("f_med", "A000001", severity="medium")
         high = _rf("f_high", "A000001", severity="high")
-        events = events_from_rule_fires([low, med, high], MEMBERS)
-        # All three fires are for the same member; get all three
+        critical = _rf("f_critical", "A000001", severity="critical")
+        events = events_from_rule_fires([low, med, high, critical], MEMBERS)
         all_deltas = [e.score_delta for e in events]
-        assert -5.0 in all_deltas
-        assert -15.0 in all_deltas
-        assert -30.0 in all_deltas
+        assert -1.0 in all_deltas
+        assert -2.0 in all_deltas
+        assert -4.0 in all_deltas
+        assert -8.0 in all_deltas
 
     def test_explicit_score_delta_overrides_severity(self):
         fires = [_rf("f1", "A000001", severity="low", score_delta=-99.0)]
         events = events_from_rule_fires(fires, MEMBERS)
         assert events[0].score_delta == -99.0
+
+    def test_explicit_zero_score_delta_is_preserved(self):
+        fires = [_rf("f1", "A000001", severity="critical", score_delta=0.0)]
+        events = events_from_rule_fires(fires, MEMBERS)
+        assert events[0].score_delta == 0.0
+        assert events[0].abs_delta == 0.0
 
     def test_abs_delta_always_nonnegative(self):
         fires = [_rf("f1", "A000001", score_delta=-25.0)]
@@ -181,6 +188,15 @@ class TestEventsFromRuleFires:
         fires = [_rf("f1", "A000001", severity="high")]
         events = events_from_rule_fires(fires, MEMBERS, score_delta_by_severity={"high": -99.0})
         assert events[0].score_delta == -99.0
+
+    def test_missing_severity_raises_when_score_delta_missing(self):
+        fires = [_rf("f1", "A000001")]
+        del fires[0]["severity"]
+        try:
+            events_from_rule_fires(fires, MEMBERS)
+            assert False, "expected ValueError for missing severity"
+        except ValueError as exc:
+            assert "severity is required" in str(exc)
 
     def test_feed_event_id_stable(self):
         fires = [_rf("f1", "A000001")]
@@ -210,6 +226,13 @@ class TestEventsFromEvidenceCards:
         assert e.evidence_card_id == "card-1"
         assert e.score_delta == -18.0
         assert e.abs_delta == 18.0
+
+    def test_positive_delta_allowed_for_recovery_cards(self):
+        cards = [_card("card-1", "B000002", score_delta=18.0)]
+        events = events_from_evidence_cards(cards, MEMBERS)
+        assert len(events) == 1
+        assert events[0].score_delta == 18.0
+        assert events[0].abs_delta == 18.0
 
     def test_occurred_at_falls_back_to_snapshot(self):
         cards = [_card("card-1", "A000001")]

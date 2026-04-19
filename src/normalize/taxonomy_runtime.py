@@ -6,7 +6,7 @@ import csv
 from dataclasses import dataclass, field
 from pathlib import Path
 
-import yaml
+import yaml  # type: ignore[import-untyped]
 
 from .taxonomy_validator import validate_all
 
@@ -50,12 +50,17 @@ class TaxonomyRuntime:
     # Computed indices — not part of public constructor, not compared or repr'd
     _sector_index: dict[str, Sector] = field(default_factory=dict, init=False, repr=False, compare=False)
     _committee_index: dict[tuple[int, str, str], CommitteeMapping] = field(default_factory=dict, init=False, repr=False, compare=False)
+    _committee_index_by_chamber: dict[tuple[int, str, str, str], CommitteeMapping] = field(default_factory=dict, init=False, repr=False, compare=False)
     _crp_index: dict[str, CrpMapping] = field(default_factory=dict, init=False, repr=False, compare=False)
 
     def __post_init__(self) -> None:
         self._sector_index = {s.sector_id: s for s in self.sectors}
         self._committee_index = {
             (m.congress, m.committee_name, m.subcommittee_name): m
+            for m in self.committee_mappings
+        }
+        self._committee_index_by_chamber = {
+            (m.congress, m.chamber.strip().lower(), m.committee_name, m.subcommittee_name): m
             for m in self.committee_mappings
         }
         self._crp_index = {m.crp_category: m for m in self.crp_mappings}
@@ -68,12 +73,26 @@ class TaxonomyRuntime:
         committee_name: str,
         subcommittee_name: str = "",
         congress: int = 119,
+        chamber: str | None = None,
     ) -> CommitteeMapping | None:
         """Return the mapping for a committee (and optionally its subcommittee).
 
         Falls back to the parent committee row when the subcommittee is not mapped.
         Returns None when neither the subcommittee nor the parent committee is found.
         """
+        if chamber is not None:
+            chamber_key = chamber.strip().lower()
+            hit = self._committee_index_by_chamber.get(
+                (congress, chamber_key, committee_name, subcommittee_name)
+            )
+            if hit is not None:
+                return hit
+            if subcommittee_name:
+                return self._committee_index_by_chamber.get(
+                    (congress, chamber_key, committee_name, "")
+                )
+            return None
+
         hit = self._committee_index.get((congress, committee_name, subcommittee_name))
         if hit is not None:
             return hit

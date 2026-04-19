@@ -9,6 +9,8 @@ from __future__ import annotations
 import datetime as dt
 from typing import Any
 
+import pytest
+
 from src.export.contracts import ConfidenceLabel, EvidenceCardPayload
 from src.pipeline.conflict_recompute import (
     _default_id_generator,
@@ -262,7 +264,7 @@ class TestRuleFireAttributes:
             rules=[_make_rule(severity=Severity.medium)],
             id_generator=_seq_id_gen(),
         )
-        assert result.evidence_cards[0].score_delta == 2.0
+        assert result.evidence_cards[0].score_delta == -2.0
 
     def test_score_delta_reflects_severity_high(self) -> None:
         row = _cst_row()
@@ -274,7 +276,7 @@ class TestRuleFireAttributes:
             rules=[_make_rule(severity=Severity.high)],
             id_generator=_seq_id_gen(),
         )
-        assert result.evidence_cards[0].score_delta == 4.0
+        assert result.evidence_cards[0].score_delta == -4.0
 
     def test_evidence_card_confidence_is_high(self) -> None:
         row = _cst_row()
@@ -301,6 +303,89 @@ class TestRuleFireAttributes:
         anchor_ids = {a.source_id for a in result.evidence_cards[0].source_anchors}
         assert "fd-999" in anchor_ids
         assert "cm-999" in anchor_ids
+
+    def test_open_ended_rows_produce_stable_score_outputs_across_wall_clock_dates(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        import src.evidence.builder as evidence_builder
+        import src.rules.evaluator as rule_evaluator
+        import src.rules.models as rule_models
+
+        row = _cst_row()
+        row["committee_end_date"] = None
+        row["disclosure_period_end"] = None
+
+        def freeze_now(target: dt.datetime) -> None:
+            class FrozenDateTime(dt.datetime):
+                @classmethod
+                def now(cls, tz=None):
+                    if tz is None:
+                        return target.replace(tzinfo=None)
+                    return target.astimezone(tz)
+
+            monkeypatch.setattr(rule_models.dt, "datetime", FrozenDateTime)
+            monkeypatch.setattr(evidence_builder.dt, "datetime", FrozenDateTime)
+
+        monkeypatch.setattr(
+            rule_evaluator.uuid,
+            "uuid4",
+            lambda: "00000000-0000-0000-0000-000000000001",
+        )
+
+        def project(result) -> dict[str, Any]:
+            fire = result.rule_fires[0]
+            card = result.evidence_cards[0]
+            return {
+                "overlap_days": fire.sourced_facts["committee_service_overlap_days"],
+                "holding_overlap_days": fire.sourced_facts["holding_overlap_days"],
+                "overlap_end": fire.sourced_facts["overlap_end"],
+                "explanation": fire.explanation,
+                "score_delta": card.score_delta,
+                "short_explanation": card.short_explanation,
+                "snapshot_date": card.snapshot_date,
+                "evidence_card_id": card.evidence_card_id,
+            }
+
+        freeze_now(dt.datetime(2026, 1, 15, tzinfo=dt.timezone.utc))
+        first = recompute_conflicts(
+            rows_by_family={"committee_sector_trade": [row]},
+            members_by_bioguide={"A000001": _member()},
+            recompute_run_id=_RUN_ID,
+            snapshot_date=_SNAPSHOT_DATE,
+            rules=[_make_rule()],
+            id_generator=lambda _fire: "stable-card-id",
+        )
+
+        freeze_now(dt.datetime(2031, 9, 10, tzinfo=dt.timezone.utc))
+        second = recompute_conflicts(
+            rows_by_family={"committee_sector_trade": [row]},
+            members_by_bioguide={"A000001": _member()},
+            recompute_run_id=_RUN_ID,
+            snapshot_date=_SNAPSHOT_DATE,
+            rules=[_make_rule()],
+            id_generator=lambda _fire: "stable-card-id",
+        )
+
+        expected = {
+            "overlap_days": 518,
+            "holding_overlap_days": 518,
+            "overlap_end": _SNAPSHOT_DATE,
+            "explanation": (
+                "Member served on Energy Committee while disclosing a holding "
+                "in Energy; overlap was 518 day(s)."
+            ),
+            "score_delta": -2.0,
+            "short_explanation": (
+                "Member served on Energy Committee while disclosing a holding "
+                "in Energy; overlap was 518 day(s)."
+            ),
+            "snapshot_date": _SNAPSHOT_DATE,
+            "evidence_card_id": "stable-card-id",
+        }
+
+        assert project(first) == expected
+        assert project(second) == expected
 
 
 # ---------------------------------------------------------------------------

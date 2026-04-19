@@ -232,7 +232,7 @@ def test_plan_score_snapshots_row_fields(
 
 
 def test_plan_score_snapshots_baseline_member(member: dict) -> None:
-    """Member with no delta rows gets baseline score of 100."""
+    """Member with no delta rows gets an explicit baseline dimension score."""
     row = plan_score_snapshots(
         members=[member],
         delta_rows_by_member_id={},
@@ -240,7 +240,7 @@ def test_plan_score_snapshots_baseline_member(member: dict) -> None:
         recompute_run_id=42,
     )["rows"][0]
     assert row["score_total"] == 100.0
-    assert row["dimension_scores"] == {}
+    assert row["dimension_scores"] == {"conflict_of_interest_risk": 100.0}
 
 
 def test_plan_score_snapshots_multiple_members() -> None:

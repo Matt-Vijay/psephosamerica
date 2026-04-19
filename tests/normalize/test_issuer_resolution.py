@@ -294,13 +294,17 @@ class TestEdgeCases:
         top = resolve_best("Apple Inc.", "AAPL", idx)
         assert top.match_method == "unresolved"
 
-    def test_duplicate_tickers_in_dataset_first_wins(self):
+    def test_duplicate_tickers_raise_value_error(self):
         rec1 = IssuerRecord(ticker="DUPE", name="First Company", cik="0000000001")
         rec2 = IssuerRecord(ticker="DUPE", name="Second Company", cik="0000000002")
-        idx = build_index([rec1, rec2])
-        top = resolve_best("First Company", "DUPE", idx)
-        assert top.ticker == "DUPE"
-        assert top.cik == "0000000001"  # first record wins
+        with pytest.raises(ValueError, match="duplicate ticker"):
+            build_index([rec1, rec2])
+
+    def test_duplicate_aliases_raise_value_error(self):
+        rec1 = IssuerRecord(ticker="DUPE1", name="First Company", cik="0000000001", aliases=("shared alias",))
+        rec2 = IssuerRecord(ticker="DUPE2", name="Second Company", cik="0000000002", aliases=("shared alias",))
+        with pytest.raises(ValueError, match="duplicate alias"):
+            build_index([rec1, rec2])
 
     def test_none_cik_propagated(self, index):
         rec = IssuerRecord(ticker="NOCIK", name="No Cik Corp", cik=None)
