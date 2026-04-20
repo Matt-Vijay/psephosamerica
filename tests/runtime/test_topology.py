@@ -23,6 +23,12 @@ import pytest
 
 import src.runtime as runtime
 from src.export.manifest import manifest_root_sha256
+from src.runtime.history_verify_types import (
+    HISTORY_VERIFY_STAGES,
+    HistoryVerifyIssue,
+    HistoryVerifyResult,
+    HistoryVerifyStageResult,
+)
 from src.runtime.publish_roundtrip_types import (
     ROUNDTRIP_STAGES,
     PublishRoundtripIssue,
@@ -1062,6 +1068,76 @@ class TestRoundtripVerifyTopology:
             result = runtime.verify_publish_roundtrip_local(MagicMock(), tmp_path)
 
         assert result.stage_result("does-not-exist") is None
+
+
+# ---------------------------------------------------------------------------
+# 14b. History aggregate verify topology: local aggregate -> verify
+# ---------------------------------------------------------------------------
+
+
+class TestHistoryAggregateVerifyTopology:
+    _MOD = "src.runtime.commands"
+
+    def _ok_history_verify_result(self) -> HistoryVerifyResult:
+        stages = tuple(
+            HistoryVerifyStageResult(stage=name, checked=1, issues=())
+            for name in HISTORY_VERIFY_STAGES
+        )
+        return HistoryVerifyResult(stages=stages)
+
+    def _error_history_verify_result(self) -> HistoryVerifyResult:
+        issue = HistoryVerifyIssue(
+            stage="snapshot_index",
+            message="missing",
+            severity="error",
+        )
+        error_stage = HistoryVerifyStageResult(
+            stage="snapshot_index",
+            checked=0,
+            issues=(issue,),
+        )
+        ok_stages = tuple(
+            HistoryVerifyStageResult(stage=name, checked=0, issues=())
+            for name in HISTORY_VERIFY_STAGES[1:]
+        )
+        return HistoryVerifyResult(stages=(error_stage, *ok_stages))
+
+    def test_verify_history_aggregate_local_callable(self):
+        assert callable(runtime.verify_history_aggregate_local)
+
+    def test_result_is_history_verify_result(self, tmp_path: Path):
+        ok_result = self._ok_history_verify_result()
+
+        with patch(f"{self._MOD}._verify_local_history_aggregate", return_value=ok_result):
+            result = runtime.verify_history_aggregate_local(tmp_path)
+
+        assert isinstance(result, HistoryVerifyResult)
+
+    def test_verify_history_aggregate_called_once(self, tmp_path: Path):
+        ok_result = self._ok_history_verify_result()
+
+        with patch(f"{self._MOD}._verify_local_history_aggregate", return_value=ok_result) as mock_verify:
+            runtime.verify_history_aggregate_local(tmp_path)
+
+        mock_verify.assert_called_once_with(tmp_path)
+
+    def test_stage_order_matches_history_verify_stages(self, tmp_path: Path):
+        ok_result = self._ok_history_verify_result()
+
+        with patch(f"{self._MOD}._verify_local_history_aggregate", return_value=ok_result):
+            result = runtime.verify_history_aggregate_local(tmp_path)
+
+        assert len(result.stages) == len(HISTORY_VERIFY_STAGES)
+        for stage_result, expected_name in zip(result.stages, HISTORY_VERIFY_STAGES):
+            assert stage_result.stage == expected_name
+
+    def test_not_ok_when_snapshot_index_stage_fails(self, tmp_path: Path):
+        error_result = self._error_history_verify_result()
+
+        with patch(f"{self._MOD}._verify_local_history_aggregate", return_value=error_result):
+            result = runtime.verify_history_aggregate_local(tmp_path)
+
+        assert not result.ok
 
 
 # ---------------------------------------------------------------------------

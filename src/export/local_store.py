@@ -1,15 +1,57 @@
 from __future__ import annotations
 
 import json
+from datetime import date, datetime
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-from src.homepage.contracts import HomepageFeedPayload
-from .contracts import EvidenceCardPayload, MemberProfilePayload, ZipFeedPayload
+from src.identity.current_member_lookup import (
+    CurrentMemberLookupPayload,
+    validate_current_member_lookup,
+)
+from .contracts import EvidenceCardPayload, MemberHistoryPayload, MemberProfilePayload, ZipFeedPayload
 from .manifest import SnapshotManifest
-from .writer import evidence_path, manifest_path, member_path, zip_path
+from .writer import (
+    current_member_lookup_path,
+    evidence_path,
+    history_bootstrap_path,
+    history_preset_range_path,
+    homepage_bootstrap_path,
+    manifest_path,
+    member_change_summary_path,
+    member_history_chart_path,
+    member_history_page_path,
+    member_history_path,
+    member_page_payload_path,
+    member_preset_compare_path,
+    member_path,
+    member_trend_summary_path,
+    movement_window_path,
+    snapshot_preset_compare_path,
+    snapshot_index_path,
+    zip_entry_path,
+    zip_path,
+)
+
+if TYPE_CHECKING:
+    from src.api.contracts import HistoryBootstrapPayload
+    from src.api.contracts import HistoryPresetRangePayload
+    from src.api.contracts import HomepageBootstrapPayload
+    from src.api.contracts import MemberHistoryPagePayload
+    from src.api.contracts import MemberPagePayload
+    from src.api.contracts import MemberWindowComparePayload
+    from src.export.contracts import MemberChangeSummaryPayload
+    from src.export.contracts import MemberHistoryChartPayload
+    from src.export.contracts import MemberTrendSummaryPayload
+    from src.api.contracts import SnapshotIndexPayload
+    from src.api.contracts import ZipEntryPayload
+    from src.homepage.contracts import HomepageFeedPayload
+    from src.homepage.contracts import MovementWindowPayload
+    from src.homepage.contracts import SnapshotComparePayload
 
 
 HOMEPAGE_FEED_PATH = "homepage/feed.json"
+_SNAPSHOT_PRESET_KEYS = frozenset({"latest", "4w", "12w", "cycle"})
 
 
 # ── Path safety ────────────────────────────────────────────────────
@@ -54,10 +96,139 @@ def load_member_profile(snapshot_root: Path, slug: str) -> MemberProfilePayload:
     return MemberProfilePayload.model_validate(data)
 
 
+def load_member_page(
+    snapshot_root: Path,
+    slug: str,
+) -> MemberPagePayload:
+    from src.api.contracts import MemberPagePayload
+
+    file = _safe_subpath(snapshot_root, member_page_payload_path(slug))
+    data = _load_json(file)
+    return MemberPagePayload.model_validate(data)
+
+
 def load_evidence_card(snapshot_root: Path, evidence_card_id: str) -> EvidenceCardPayload:
     file = _safe_subpath(snapshot_root, evidence_path(evidence_card_id))
     data = _load_json(file)
     return EvidenceCardPayload.model_validate(data)
+
+
+def load_member_history(snapshot_root: Path, slug: str) -> MemberHistoryPayload:
+    file = _safe_subpath(snapshot_root, member_history_path(slug))
+    data = _load_json(file)
+    return MemberHistoryPayload.model_validate(data)
+
+
+def load_member_change_summary(
+    snapshot_root: Path,
+    slug: str,
+) -> MemberChangeSummaryPayload:
+    from src.export.contracts import MemberChangeSummaryPayload
+
+    file = _safe_subpath(snapshot_root, member_change_summary_path(slug))
+    data = _load_json(file)
+    return MemberChangeSummaryPayload.model_validate(data)
+
+
+def load_member_history_chart(
+    snapshot_root: Path,
+    slug: str,
+) -> MemberHistoryChartPayload:
+    from src.export.contracts import MemberHistoryChartPayload
+
+    file = _safe_subpath(snapshot_root, member_history_chart_path(slug))
+    data = _load_json(file)
+    return MemberHistoryChartPayload.model_validate(data)
+
+
+def load_member_history_page(
+    snapshot_root: Path,
+    slug: str,
+) -> MemberHistoryPagePayload:
+    from src.api.contracts import MemberHistoryPagePayload
+
+    file = _safe_subpath(snapshot_root, member_history_page_path(slug))
+    data = _load_json(file)
+    return MemberHistoryPagePayload.model_validate(data)
+
+
+def load_member_preset_compare(
+    snapshot_root: Path,
+    slug: str,
+    preset_key: str,
+) -> MemberWindowComparePayload:
+    from src.api.contracts import MemberWindowComparePayload
+
+    file = _safe_subpath(snapshot_root, member_preset_compare_path(slug, preset_key))
+    data = _load_json(file)
+    return MemberWindowComparePayload.model_validate(data)
+
+
+def load_member_trend_summary(
+    snapshot_root: Path,
+    slug: str,
+) -> MemberTrendSummaryPayload:
+    from src.export.contracts import MemberTrendSummaryPayload
+
+    file = _safe_subpath(snapshot_root, member_trend_summary_path(slug))
+    data = _load_json(file)
+    return MemberTrendSummaryPayload.model_validate(data)
+
+
+def load_snapshot_index(snapshot_root: Path) -> SnapshotIndexPayload:
+    from src.api.contracts import SnapshotIndexPayload
+
+    file = _safe_subpath(snapshot_root, snapshot_index_path())
+    data = _load_json(file)
+    return SnapshotIndexPayload.model_validate(data)
+
+
+def load_history_bootstrap(snapshot_root: Path) -> HistoryBootstrapPayload:
+    from src.api.contracts import HistoryBootstrapPayload
+
+    file = _safe_subpath(snapshot_root, history_bootstrap_path())
+    data = _load_json(file)
+    return HistoryBootstrapPayload.model_validate(data)
+
+
+def load_history_preset_range(
+    snapshot_root: Path,
+    preset_key: str,
+) -> HistoryPresetRangePayload:
+    from src.api.contracts import HistoryPresetRangePayload
+
+    file = _safe_subpath(snapshot_root, history_preset_range_path(preset_key))
+    data = _load_json(file)
+    return HistoryPresetRangePayload.model_validate(data)
+
+
+def load_homepage_bootstrap(snapshot_root: Path) -> HomepageBootstrapPayload:
+    from src.api.contracts import HomepageBootstrapPayload
+
+    file = _safe_subpath(snapshot_root, homepage_bootstrap_path())
+    data = _load_json(file)
+    return HomepageBootstrapPayload.model_validate(_normalize_homepage_bootstrap(data))
+
+
+def load_snapshot_preset_compare(
+    snapshot_root: Path,
+    preset_key: str,
+) -> SnapshotComparePayload:
+    from src.homepage.contracts import SnapshotComparePayload
+
+    if preset_key not in _SNAPSHOT_PRESET_KEYS:
+        raise ValueError(f"Unknown snapshot preset key: {preset_key}")
+    file = _safe_subpath(snapshot_root, snapshot_preset_compare_path(preset_key))
+    data = _load_json(file)
+    return SnapshotComparePayload.model_validate(data)
+
+
+def load_movement_window(snapshot_root: Path, name: str = "latest") -> MovementWindowPayload:
+    from src.homepage.contracts import MovementWindowPayload
+
+    file = _safe_subpath(snapshot_root, movement_window_path(name))
+    data = _load_json(file)
+    return MovementWindowPayload.model_validate(data)
 
 
 def load_zip_feed(snapshot_root: Path, zip_code: str) -> ZipFeedPayload:
@@ -66,11 +237,102 @@ def load_zip_feed(snapshot_root: Path, zip_code: str) -> ZipFeedPayload:
     return ZipFeedPayload.model_validate(data)
 
 
+def load_zip_entry(snapshot_root: Path, zip_code: str) -> ZipEntryPayload:
+    from src.api.contracts import ZipEntryPayload
+
+    file = _safe_subpath(snapshot_root, zip_entry_path(zip_code))
+    data = _load_json(file)
+    return ZipEntryPayload.model_validate(_normalize_zip_entry(data))
+
+
 def load_homepage_feed(root: Path) -> HomepageFeedPayload:
+    from src.homepage.contracts import HomepageFeedPayload
+
     """Load the pre-rendered homepage feed artifact from the publish tree."""
     file = _safe_subpath(root, HOMEPAGE_FEED_PATH)
     data = _load_json(file)
     return HomepageFeedPayload.model_validate(data)
+
+
+def load_current_member_lookup(root: Path) -> CurrentMemberLookupPayload:
+    """Load the pre-rendered current-member lookup artifact from the publish tree."""
+    file = _safe_subpath(root, current_member_lookup_path())
+    data = _load_json(file)
+    payload = CurrentMemberLookupPayload.model_validate(_normalize_current_member_lookup(data))
+    return validate_current_member_lookup(payload)
+
+
+def _normalize_current_member_lookup_entries(
+    members: object,
+) -> object:
+    if not isinstance(members, list):
+        return members
+
+    normalized_members: list[object] = []
+    for member in members:
+        if not isinstance(member, dict):
+            normalized_members.append(member)
+            continue
+        if not any(key in member for key in ("b", "s", "n", "q", "st", "d", "c")):
+            normalized_members.append(member)
+            continue
+        normalized_members.append(
+            {
+                "bioguide_id": member.get("b"),
+                "slug": member.get("s"),
+                "name": member.get("n"),
+                "search_name": member.get("q"),
+                "state": member.get("st"),
+                "district": member.get("d"),
+                "chamber": member.get("c"),
+            }
+        )
+    return normalized_members
+
+
+def _normalize_current_member_lookup(data: object) -> object:
+    """Map the compact on-disk aliases back to the model field names.
+
+    The writer serialises the lookup artifact using aliases for compactness.
+    ``CurrentMemberLookupPayload`` itself does not enable alias-based input
+    population, so we translate the published JSON shape back to the model's
+    field names here before validation.
+    """
+    if not isinstance(data, dict):
+        return data
+
+    if "v" not in data and "sd" not in data and "m" not in data:
+        return data
+
+    return {
+        "version": data.get("v"),
+        "snapshot_date": data.get("sd"),
+        "members": _normalize_current_member_lookup_entries(data.get("m", [])),
+    }
+
+
+def _normalize_homepage_bootstrap(data: object) -> object:
+    if not isinstance(data, dict):
+        return data
+    featured_lookup_entries = data.get("featured_lookup_entries")
+    if not isinstance(featured_lookup_entries, list):
+        return data
+    return {
+        **data,
+        "featured_lookup_entries": _normalize_current_member_lookup_entries(featured_lookup_entries),
+    }
+
+
+def _normalize_zip_entry(data: object) -> object:
+    if not isinstance(data, dict):
+        return data
+    member_lookup_entries = data.get("member_lookup_entries")
+    if not isinstance(member_lookup_entries, list):
+        return data
+    return {
+        **data,
+        "member_lookup_entries": _normalize_current_member_lookup_entries(member_lookup_entries),
+    }
 
 
 # ── Manifest loaders ──────────────────────────────────────────────
@@ -84,6 +346,19 @@ def load_manifest(snapshot_root: Path, snapshot_id: str) -> SnapshotManifest:
 
 def list_artifact_paths(manifest: SnapshotManifest) -> list[str]:
     return [entry.path for entry in manifest.entries]
+
+
+def manifest_snapshot_date(manifest: SnapshotManifest) -> date:
+    """Resolve a stable snapshot date from manifest metadata."""
+    try:
+        return date.fromisoformat(manifest.snapshot_id)
+    except ValueError:
+        return manifest.created_at.date()
+
+
+def manifest_published_at(manifest: SnapshotManifest) -> datetime:
+    """Resolve the manifest publication timestamp for API metadata."""
+    return manifest.created_at
 
 
 # ── Snapshot resolution ───────────────────────────────────────────
@@ -108,7 +383,21 @@ def latest_snapshot_id(root: Path) -> str:
     return candidates[-1]
 
 
+def list_snapshot_ids(root: Path) -> list[str]:
+    """Return all published snapshot ids sorted ascending."""
+    snapshots_dir = root / "snapshots"
+    if not snapshots_dir.exists():
+        return []
+    return sorted(d.name for d in snapshots_dir.iterdir() if d.is_dir())
+
+
 def load_latest_manifest(root: Path) -> SnapshotManifest:
     """Load the manifest for the most recent published snapshot."""
     snapshot_id = latest_snapshot_id(root)
     return load_manifest(root, snapshot_id)
+
+
+def load_latest_snapshot_metadata(root: Path) -> tuple[date, datetime]:
+    """Return stable batch metadata for the most recent published snapshot."""
+    manifest = load_latest_manifest(root)
+    return (manifest_snapshot_date(manifest), manifest_published_at(manifest))

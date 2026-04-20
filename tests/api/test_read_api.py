@@ -7,7 +7,9 @@ from src.api.read_api import (
     make_batch_meta,
     make_headers,
     not_found,
+    wrap_current_member_lookup,
     wrap_evidence,
+    wrap_homepage,
     wrap_last_updated,
     wrap_member,
     wrap_zip,
@@ -23,6 +25,8 @@ from src.export.contracts import (
     ZipFeedPayload,
     ZipMemberSummary,
 )
+from src.homepage.contracts import HomepageFeedPayload, MemberMovementSummary, RecentEventSummary
+from src.identity.current_member_lookup import CurrentMemberLookupEntry, CurrentMemberLookupPayload
 
 SNAPSHOT_DATE = date(2026, 4, 13)
 PUBLISHED_AT = datetime(2026, 4, 13, 0, 0, 0, tzinfo=UTC)
@@ -74,6 +78,7 @@ def _member_payload() -> MemberProfilePayload:
             )
         ],
         recent_rule_fires=[],
+        top_evidence_card_ids=["ec-001", "ec-002"],
         committees=[],
         total_evidence_cards=5,
         snapshot_date=SNAPSHOT_DATE,
@@ -102,6 +107,69 @@ def _evidence_payload() -> EvidenceCardPayload:
         confidence=ConfidenceLabel.HIGH,
         snapshot_date=SNAPSHOT_DATE,
         created_at=PUBLISHED_AT,
+    )
+
+
+def _homepage_payload() -> HomepageFeedPayload:
+    return HomepageFeedPayload(
+        snapshot_date=SNAPSHOT_DATE,
+        top_changes=[
+            MemberMovementSummary(
+                bioguide_id="S000148",
+                name="Charles Schumer",
+                slug="charles-schumer",
+                chamber="senate",
+                party="Democrat",
+                state="NY",
+                dimension="conflict_of_interest_risk",
+                score_delta=-5.0,
+                abs_delta=5.0,
+                event_count=2,
+                top_evidence_card_ids=["ec-001", "ec-002"],
+            )
+        ],
+        recent_events=[
+            RecentEventSummary(
+                feed_event_id="event-002",
+                member_bioguide_id="S000148",
+                member_name="Charles Schumer",
+                member_slug="charles-schumer",
+                dimension="conflict_of_interest_risk",
+                score_delta=-2.0,
+                short_explanation="Sold sector ETF while on committee.",
+                evidence_card_id="ec-002",
+                occurred_at=SNAPSHOT_DATE,
+            ),
+            RecentEventSummary(
+                feed_event_id="event-001",
+                member_bioguide_id="S000148",
+                member_name="Charles Schumer",
+                member_slug="charles-schumer",
+                dimension="conflict_of_interest_risk",
+                score_delta=-3.0,
+                short_explanation="Purchased AAPL.",
+                evidence_card_id="ec-001",
+                occurred_at=SNAPSHOT_DATE,
+            ),
+        ],
+        recent_evidence_card_ids=["ec-002", "ec-001"],
+    )
+
+
+def _current_member_lookup_payload() -> CurrentMemberLookupPayload:
+    return CurrentMemberLookupPayload(
+        snapshot_date=SNAPSHOT_DATE,
+        members=[
+            CurrentMemberLookupEntry(
+                bioguide_id="S000148",
+                slug="charles-schumer",
+                name="Charles Schumer",
+                search_name="charles schumer",
+                state="NY",
+                district=None,
+                chamber="senate",
+            )
+        ],
     )
 
 
@@ -177,6 +245,7 @@ def test_wrap_member_data_preserved():
     assert resp.data.bioguide_id == "S000148"
     assert resp.data.chamber == "senate"
     assert resp.data.total_evidence_cards == 5
+    assert resp.data.top_evidence_card_ids == ["ec-001", "ec-002"]
 
 
 def test_wrap_member_roundtrip_json():
@@ -212,6 +281,58 @@ def test_wrap_evidence_roundtrip_json():
     assert d["ok"] is True
     assert d["data"]["rule_id"] == "committee_sector_trade"
     assert d["meta"]["snapshot_date"] == "2026-04-13"
+
+
+# ── wrap_homepage ──────────────────────────────────────────────────
+
+
+def test_wrap_homepage_ok_true():
+    meta = make_batch_meta(SNAPSHOT_DATE, PUBLISHED_AT)
+    resp = wrap_homepage(_homepage_payload(), meta)
+    assert resp.ok is True
+
+
+def test_wrap_homepage_preserves_ranked_lists():
+    meta = make_batch_meta(SNAPSHOT_DATE, PUBLISHED_AT)
+    resp = wrap_homepage(_homepage_payload(), meta)
+    assert resp.data.top_changes[0].top_evidence_card_ids == ["ec-001", "ec-002"]
+    assert [event.feed_event_id for event in resp.data.recent_events] == ["event-002", "event-001"]
+    assert resp.data.recent_evidence_card_ids == ["ec-002", "ec-001"]
+
+
+def test_wrap_homepage_roundtrip_json():
+    meta = make_batch_meta(SNAPSHOT_DATE, PUBLISHED_AT)
+    resp = wrap_homepage(_homepage_payload(), meta)
+    d = resp.model_dump(mode="json")
+    assert d["ok"] is True
+    assert d["data"]["top_changes"][0]["event_count"] == 2
+    assert d["data"]["recent_events"][0]["evidence_card_id"] == "ec-002"
+    assert d["meta"]["published_at"] == "2026-04-13T00:00:00Z"
+
+
+# ── wrap_current_member_lookup ─────────────────────────────────────
+
+
+def test_wrap_current_member_lookup_ok_true():
+    meta = make_batch_meta(SNAPSHOT_DATE, PUBLISHED_AT)
+    resp = wrap_current_member_lookup(_current_member_lookup_payload(), meta)
+    assert resp.ok is True
+
+
+def test_wrap_current_member_lookup_data_preserved():
+    meta = make_batch_meta(SNAPSHOT_DATE, PUBLISHED_AT)
+    resp = wrap_current_member_lookup(_current_member_lookup_payload(), meta)
+    assert resp.data.members[0].bioguide_id == "S000148"
+    assert resp.data.members[0].search_name == "charles schumer"
+
+
+def test_wrap_current_member_lookup_roundtrip_json():
+    meta = make_batch_meta(SNAPSHOT_DATE, PUBLISHED_AT)
+    resp = wrap_current_member_lookup(_current_member_lookup_payload(), meta)
+    d = resp.model_dump(mode="json", by_alias=True)
+    assert d["ok"] is True
+    assert d["data"]["sd"] == "2026-04-13"
+    assert d["data"]["m"][0]["b"] == "S000148"
 
 
 # ── wrap_last_updated ──────────────────────────────────────────────
@@ -276,6 +397,11 @@ def test_make_headers_etag_already_quoted_not_doubled():
     h = make_headers(SNAPSHOT_DATE, etag='"already-quoted"')
     assert h["ETag"] == '"already-quoted"'
     assert h["ETag"].count('"') == 2
+
+
+def test_make_headers_weak_etag_preserved():
+    h = make_headers(SNAPSHOT_DATE, etag='W/"weak-value"')
+    assert h["ETag"] == 'W/"weak-value"'
 
 
 def test_make_headers_returns_fresh_copy():

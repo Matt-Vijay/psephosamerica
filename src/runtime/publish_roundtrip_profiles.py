@@ -2,6 +2,9 @@
 
 Loads each published member profile referenced in the manifest, re-assembles
 the profile from canonical DB rows, and compares typed payloads field-by-field.
+When present, the paired ``member-pages/{slug}.json`` aggregate is also
+reconstructed from the DB-backed profile plus evidence cards and verified in
+the same stage.
 
 Public surface
 --------------
@@ -21,11 +24,15 @@ import re
 from pathlib import Path
 from typing import Any
 
-from src.export.contracts import MemberProfilePayload
-from src.export.local_store import load_member_profile
+from src.api.contracts import MemberPagePayload
+from src.export.contracts import EvidenceCardPayload, MemberProfilePayload
+from src.export.local_store import load_member_page, load_member_profile
 from src.export.manifest import SnapshotManifest
+from src.export.writer import build_member_page_payload
+from src.query.evidence_card import assemble_evidence_card
 from src.query.member_profile import assemble_member_profile
 from src.query.published_rows import (
+    fetch_all_evidence_card_rows,
     fetch_member_committee_rows,
     fetch_member_rule_fire_rows,
     fetch_member_row_by_slug,
@@ -41,6 +48,7 @@ _STAGE = "profiles"
 
 # Matches paths emitted by src/export/writer.member_path()
 _MEMBER_PATH_RE = re.compile(r"^members/(?P<slug>[^/]+)\.json$")
+_MEMBER_PAGE_PATH_RE = re.compile(r"^member-pages/(?P<slug>[^/]+)\.json$")
 
 
 def _issue(
@@ -139,64 +147,105 @@ def _compare_payloads(
     return issues
 
 
+def _compare_member_page_payloads(
+    published: MemberPagePayload,
+    reassembled: MemberPagePayload,
+    path: str,
+) -> list[PublishRoundtripIssue]:
+    issues: list[PublishRoundtripIssue] = []
+
+    if published.profile.model_dump(mode="json") != reassembled.profile.model_dump(mode="json"):
+        issues.append(
+            _issue(
+                "member page profile mismatch between published artifact and DB assembly",
+                path=path,
+            )
+        )
+
+    pub_top = [card.model_dump(mode="json") for card in published.top_evidence_cards]
+    rea_top = [card.model_dump(mode="json") for card in reassembled.top_evidence_cards]
+    if pub_top != rea_top:
+        issues.append(
+            _issue(
+                f"member page top_evidence_cards mismatch: "
+                f"published={[card['evidence_card_id'] for card in pub_top]!r} "
+                f"db={[card['evidence_card_id'] for card in rea_top]!r}",
+                path=path,
+            )
+        )
+
+    pub_recent = [card.model_dump(mode="json") for card in published.recent_evidence_cards]
+    rea_recent = [card.model_dump(mode="json") for card in reassembled.recent_evidence_cards]
+    if pub_recent != rea_recent:
+        issues.append(
+            _issue(
+                f"member page recent_evidence_cards mismatch: "
+                f"published={[card['evidence_card_id'] for card in pub_recent]!r} "
+                f"db={[card['evidence_card_id'] for card in rea_recent]!r}",
+                path=path,
+            )
+        )
+
+    return issues
+
+
 def verify_published_member_profiles_roundtrip(
     conn: Any,
     root: Path,
     manifest_payload: SnapshotManifest,
 ) -> PublishRoundtripStageResult:
-    """Verify that every published member profile matches its DB-assembled counterpart.
+    """Verify manifest-backed member profiles and current-state member pages."""
+    member_paths: dict[str, str] = {}
+    member_page_paths: dict[str, str] = {}
+    for entry in manifest_payload.entries:
+        member_match = _MEMBER_PATH_RE.match(entry.path)
+        if member_match is not None:
+            member_paths[member_match.group("slug")] = entry.path
+            continue
+        page_match = _MEMBER_PAGE_PATH_RE.match(entry.path)
+        if page_match is not None:
+            member_page_paths[page_match.group("slug")] = entry.path
 
-    For each member-profile path in *manifest_payload*:
+    slugs = sorted(set(member_paths) | set(member_page_paths))
+    if not slugs:
+        return PublishRoundtripStageResult(stage=_STAGE, checked=0, issues=())
 
-    1. Discover the member slug from the manifest entry path.
-    2. Load the published :class:`~src.export.contracts.MemberProfilePayload`
-       from *root*.
-    3. Fetch the canonical DB rows (member, score_snapshot, rule_fire,
-       committee_membership) via :mod:`src.query.published_rows`.
-    4. Re-assemble a fresh payload from those rows using
-       :func:`~src.query.member_profile.assemble_member_profile`.
-    5. Compare typed payloads field-by-field and record any mismatches as
-       ``"error"`` issues.
+    evidence_cards_by_id: dict[str, EvidenceCardPayload] = {}
+    for row in fetch_all_evidence_card_rows(conn):
+        public_id = row.get("public_id")
+        if not public_id:
+            continue
+        try:
+            evidence_cards_by_id[str(public_id)] = assemble_evidence_card(row)
+        except Exception:
+            continue
 
-    Args:
-        conn:             Live DB connection used for read-only row fetches.
-        root:             Root directory of the published snapshot tree.
-        manifest_payload: Parsed snapshot manifest whose entries are inspected.
-
-    Returns:
-        A :class:`~src.runtime.publish_roundtrip_types.PublishRoundtripStageResult`
-        for the ``"profiles"`` stage.  ``ok`` is ``True`` when every referenced
-        profile matches its DB-assembled payload exactly.
-    """
     issues: list[PublishRoundtripIssue] = []
     checked = 0
 
-    for entry in manifest_payload.entries:
-        m = _MEMBER_PATH_RE.match(entry.path)
-        if m is None:
+    for slug in slugs:
+        entry_path = member_paths.get(slug) or member_page_paths.get(slug)
+        if entry_path is None:
             continue
-
-        slug = m.group("slug")
         checked += 1
 
-        # Step 2: Load the published profile ─────────────────────────────────
-        try:
-            published = load_member_profile(root, slug)
-        except Exception as exc:
-            issues.append(
-                _issue(
-                    f"cannot load published profile for '{slug}': {exc}",
-                    path=entry.path,
+        member_path = member_paths.get(slug)
+        published: MemberProfilePayload | None = None
+        if member_path is not None:
+            try:
+                published = load_member_profile(root, slug)
+            except Exception as exc:
+                issues.append(
+                    _issue(
+                        f"cannot load published profile for '{slug}': {exc}",
+                        path=member_path,
+                    )
                 )
-            )
-            continue
+                continue
 
-        # Step 3: Fetch canonical DB rows ────────────────────────────────────
         member_row = fetch_member_row_by_slug(conn, slug)
         if member_row is None:
-            issues.append(
-                _issue(f"member '{slug}' not found in DB", path=entry.path)
-            )
+            issues.append(_issue(f"member '{slug}' not found in DB", path=entry_path))
             continue
 
         member_id: int = member_row["id"]
@@ -204,7 +253,6 @@ def verify_published_member_profiles_roundtrip(
         rule_fire_rows = fetch_member_rule_fire_rows(conn, member_id)
         committee_rows = fetch_member_committee_rows(conn, member_id)
 
-        # Step 4: Re-assemble typed payload ──────────────────────────────────
         try:
             reassembled = assemble_member_profile(
                 member_row=member_row,
@@ -216,13 +264,35 @@ def verify_published_member_profiles_roundtrip(
             issues.append(
                 _issue(
                     f"failed to assemble profile for '{slug}' from DB: {exc}",
-                    path=entry.path,
+                    path=entry_path,
                 )
             )
             continue
 
-        # Step 5: Compare typed payloads ─────────────────────────────────────
-        issues.extend(_compare_payloads(published, reassembled, entry.path))
+        if published is not None and member_path is not None:
+            issues.extend(_compare_payloads(published, reassembled, member_path))
+
+        member_page_path = member_page_paths.get(slug)
+        if member_page_path is not None:
+            try:
+                published_page = load_member_page(root, slug)
+            except Exception as exc:
+                issues.append(
+                    _issue(
+                        f"cannot load published member page for '{slug}': {exc}",
+                        path=member_page_path,
+                    )
+                )
+                continue
+
+            reassembled_page = build_member_page_payload(reassembled, evidence_cards_by_id)
+            issues.extend(
+                _compare_member_page_payloads(
+                    published_page,
+                    reassembled_page,
+                    member_page_path,
+                )
+            )
 
     return PublishRoundtripStageResult(
         stage=_STAGE,

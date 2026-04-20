@@ -13,23 +13,35 @@ from src.export.contracts import (
     ZipFeedPayload,
 )
 from src.export.filesystem import write_planned_files
+from src.identity.current_member_lookup import CurrentMemberLookupEntry, CurrentMemberLookupPayload
 from src.export.manifest import ManifestEntry, SnapshotManifest, manifest_root_sha256
 from src.export.writer import (
     PlannedFile,
+    current_member_lookup_path,
     evidence_path,
+    homepage_bootstrap_path,
     manifest_path,
+    member_page_payload_path,
     member_path,
+    zip_entry_path,
     zip_path,
 )
 from src.export.local_store import HOMEPAGE_FEED_PATH
 from src.homepage.contracts import HomepageFeedPayload
+from src.api.contracts import HomepageBootstrapPayload, MemberPagePayload, ZipEntryPayload
 from src.runtime.inspect import (
     load_latest_local_manifest,
+    load_latest_local_snapshot_metadata,
+    load_local_current_member_lookup,
     load_local_evidence_card,
+    load_local_homepage_bootstrap,
     load_local_homepage_feed,
     load_local_manifest,
+    load_local_member_page,
     load_local_member_profile,
+    load_local_zip_entry,
     load_local_zip_feed,
+    search_local_current_member_lookup,
 )
 from src.homepage.contracts import MemberMovementSummary, RecentEventSummary
 
@@ -150,6 +162,23 @@ def _write_homepage_feed(root: Path, payload: HomepageFeedPayload | None = None)
     dest.write_bytes(_serialise(feed))
 
 
+def _current_member_lookup() -> CurrentMemberLookupPayload:
+    return CurrentMemberLookupPayload(
+        snapshot_date=SNAPSHOT_DATE,
+        members=[
+            CurrentMemberLookupEntry(
+                bioguide_id="P000197",
+                slug="nancy-pelosi",
+                name="Nancy Pelosi",
+                search_name="nancy pelosi",
+                state="CA",
+                district="CA-11",
+                chamber="house",
+            )
+        ],
+    )
+
+
 def _write_snapshot(root: Path, *, snapshot_id: str = SNAPSHOT_ID) -> None:
     member = _member()
     evidence = _evidence()
@@ -158,6 +187,7 @@ def _write_snapshot(root: Path, *, snapshot_id: str = SNAPSHOT_ID) -> None:
         PlannedFile.from_bytes(member_path(member.slug), _serialise(member)),
         PlannedFile.from_bytes(evidence_path(evidence.evidence_card_id), _serialise(evidence)),
         PlannedFile.from_bytes(zip_path(feed.zip_code), _serialise(feed)),
+        PlannedFile.from_bytes(current_member_lookup_path(), _serialise(_current_member_lookup())),
     ]
     manifest = _manifest(files)
     if snapshot_id != SNAPSHOT_ID:
@@ -204,6 +234,40 @@ def test_load_local_member_profile_default_root_is_publish_dir() -> None:
             assert called_root == local_publish_root()
 
 
+# ── load_local_member_page ────────────────────────────────────────
+
+
+def test_load_local_member_page_explicit_root(tmp_path: Path) -> None:
+    payload = MemberPagePayload(
+        profile=_member().model_copy(
+            update={
+                "top_evidence_card_ids": ["ec-inspect-001"],
+                "total_evidence_cards": 1,
+            }
+        ),
+        top_evidence_cards=[_evidence()],
+        recent_evidence_cards=[_evidence()],
+    )
+    write_planned_files(
+        [
+            PlannedFile.from_bytes(
+                member_page_payload_path("nancy-pelosi"),
+                _serialise(payload),
+            )
+        ],
+        tmp_path,
+    )
+
+    result = load_local_member_page("nancy-pelosi", snapshot_root=tmp_path)
+    assert result.profile.slug == "nancy-pelosi"
+    assert result.top_evidence_cards[0].evidence_card_id == "ec-inspect-001"
+
+
+def test_load_local_member_page_missing(tmp_path: Path) -> None:
+    with pytest.raises(FileNotFoundError):
+        load_local_member_page("ghost-member", snapshot_root=tmp_path)
+
+
 # ── load_local_evidence_card ───────────────────────────────────────
 
 
@@ -235,6 +299,41 @@ def test_load_local_zip_feed_missing(tmp_path: Path) -> None:
         load_local_zip_feed("00000", snapshot_root=tmp_path)
 
 
+def test_load_local_zip_entry_explicit_root(tmp_path: Path) -> None:
+    payload = ZipEntryPayload(
+        zip_feed=_zip_feed(),
+        member_lookup_entries=_current_member_lookup().members,
+        snapshot={
+            "snapshot_id": SNAPSHOT_ID,
+            "snapshot_date": SNAPSHOT_DATE.isoformat(),
+            "published_at": "2026-04-14T00:00:00Z",
+            "root_sha256": "d" * 64,
+            "total_files": 4,
+            "total_bytes": 1200,
+            "artifact_counts": {
+                "members": 1,
+                "evidence": 1,
+                "zip_feeds": 1,
+                "homepage_feeds": 1,
+                "current_member_lookups": 1,
+            },
+        },
+    )
+    write_planned_files(
+        [PlannedFile.from_bytes(zip_entry_path("94102"), _serialise(payload))],
+        tmp_path,
+    )
+
+    result = load_local_zip_entry("94102", snapshot_root=tmp_path)
+    assert result.zip_feed.zip_code == "94102"
+    assert result.member_lookup_entries[0].slug == "nancy-pelosi"
+
+
+def test_load_local_zip_entry_missing(tmp_path: Path) -> None:
+    with pytest.raises(FileNotFoundError):
+        load_local_zip_entry("00000", snapshot_root=tmp_path)
+
+
 # ── load_local_homepage_feed ──────────────────────────────────────
 
 
@@ -252,20 +351,62 @@ def test_load_local_homepage_feed_missing(tmp_path: Path) -> None:
         load_local_homepage_feed(snapshot_root=tmp_path)
 
 
+def test_load_local_homepage_bootstrap_roundtrip(tmp_path: Path) -> None:
+    payload = HomepageBootstrapPayload(
+        snapshot={
+            "snapshot_id": SNAPSHOT_ID,
+            "snapshot_date": SNAPSHOT_DATE.isoformat(),
+            "published_at": "2026-04-14T00:00:00Z",
+            "root_sha256": "d" * 64,
+            "total_files": 4,
+            "total_bytes": 1200,
+            "artifact_counts": {
+                "members": 1,
+                "evidence": 1,
+                "zip_feeds": 0,
+                "homepage_feeds": 1,
+                "current_member_lookups": 1,
+            },
+        },
+        movement={
+            "snapshot_date": SNAPSHOT_DATE.isoformat(),
+            "top_changes": _homepage_feed().top_changes,
+            "recent_events": _homepage_feed().recent_events,
+            "recent_evidence_card_ids": ["ec-inspect-001"],
+        },
+        featured_lookup_entries=_current_member_lookup().members,
+    )
+    write_planned_files(
+        [
+            PlannedFile.from_bytes(
+                homepage_bootstrap_path(),
+                _serialise(payload),
+            )
+        ],
+        tmp_path,
+    )
+
+    result = load_local_homepage_bootstrap(snapshot_root=tmp_path)
+    assert result.snapshot.snapshot_id == SNAPSHOT_ID
+    assert result.featured_lookup_entries[0].slug == "nancy-pelosi"
+
+
+def test_load_local_homepage_bootstrap_missing(tmp_path: Path) -> None:
+    with pytest.raises(FileNotFoundError):
+        load_local_homepage_bootstrap(snapshot_root=tmp_path)
+
+
 def test_load_local_homepage_feed_default_root_is_publish_dir() -> None:
     import unittest.mock as mock
 
     from src.runtime.paths import local_publish_root
 
-    with mock.patch("src.runtime.inspect.load_homepage_feed") as patched:
-        patched.return_value = object()
-        try:
-            load_local_homepage_feed()
-        except Exception:
-            pass
-        if patched.called:
-            called_root = patched.call_args[0][0]
-            assert called_root == local_publish_root()
+    sentinel = object()
+    with mock.patch("src.runtime.inspect.load_homepage_feed", return_value=sentinel) as patched:
+        result = load_local_homepage_feed()
+    called_root = patched.call_args[0][0]
+    assert called_root == local_publish_root()
+    assert result is sentinel
 
 
 # ── load_local_manifest ────────────────────────────────────────────
@@ -276,7 +417,7 @@ def test_load_local_manifest_explicit_root(tmp_path: Path) -> None:
     result = load_local_manifest(SNAPSHOT_ID, snapshot_root=tmp_path)
     assert result.snapshot_id == SNAPSHOT_ID
     assert result.verify_counts() is True
-    assert result.total_files == 3
+    assert result.total_files == 4
     assert result.root_sha256 == manifest_root_sha256(result.entries)
 
 
@@ -301,7 +442,7 @@ def test_load_latest_local_manifest_single_snapshot(tmp_path: Path) -> None:
     result = load_latest_local_manifest(snapshot_root=tmp_path)
     assert result.snapshot_id == SNAPSHOT_ID
     assert result.verify_counts() is True
-    assert result.total_files == 3
+    assert result.total_files == 4
     assert result.root_sha256 == manifest_root_sha256(result.entries)
 
 
@@ -322,15 +463,83 @@ def test_load_latest_local_manifest_default_root_is_publish_dir() -> None:
 
     from src.runtime.paths import local_publish_root
 
-    with mock.patch("src.runtime.inspect.load_latest_manifest") as patched:
-        patched.return_value = object()
-        try:
-            load_latest_local_manifest()
-        except Exception:
-            pass
-        if patched.called:
-            called_root = patched.call_args[0][0]
-            assert called_root == local_publish_root()
+    sentinel = object()
+    with mock.patch("src.runtime.inspect.load_latest_manifest", return_value=sentinel) as patched:
+        result = load_latest_local_manifest()
+    called_root = patched.call_args[0][0]
+    assert called_root == local_publish_root()
+    assert result is sentinel
+
+
+def test_load_latest_local_snapshot_metadata_explicit_root(tmp_path: Path) -> None:
+    _write_snapshot(tmp_path)
+    snapshot_date, published_at = load_latest_local_snapshot_metadata(snapshot_root=tmp_path)
+    assert snapshot_date == SNAPSHOT_DATE
+    assert published_at == datetime(2026, 4, 14, 0, 0, 0)
+
+
+def test_load_latest_local_snapshot_metadata_missing_snapshot(tmp_path: Path) -> None:
+    with pytest.raises(FileNotFoundError):
+        load_latest_local_snapshot_metadata(snapshot_root=tmp_path)
+
+
+def test_load_latest_local_snapshot_metadata_default_root_is_publish_dir() -> None:
+    import unittest.mock as mock
+
+    from src.runtime.paths import local_publish_root
+
+    with mock.patch("src.runtime.inspect.load_latest_snapshot_metadata") as patched:
+        patched.return_value = (SNAPSHOT_DATE, datetime(2026, 4, 14, 0, 0, 0))
+        load_latest_local_snapshot_metadata()
+        called_root = patched.call_args[0][0]
+        assert called_root == local_publish_root()
+
+
+# ── load_local_current_member_lookup ───────────────────────────────
+
+
+def test_load_local_current_member_lookup_explicit_root(tmp_path: Path) -> None:
+    _write_snapshot(tmp_path)
+    result = load_local_current_member_lookup(snapshot_root=tmp_path)
+    assert result.members[0].bioguide_id == "P000197"
+    assert result.members[0].search_name == "nancy pelosi"
+
+
+def test_load_local_current_member_lookup_missing(tmp_path: Path) -> None:
+    with pytest.raises(FileNotFoundError):
+        load_local_current_member_lookup(snapshot_root=tmp_path)
+
+
+def test_load_local_current_member_lookup_default_root_is_publish_dir() -> None:
+    import unittest.mock as mock
+
+    from src.runtime.paths import local_publish_root
+
+    sentinel = object()
+    with mock.patch("src.runtime.inspect.load_current_member_lookup", return_value=sentinel) as patched:
+        result = load_local_current_member_lookup()
+    called_root = patched.call_args[0][0]
+    assert called_root == local_publish_root()
+    assert result is sentinel
+
+
+def test_search_local_current_member_lookup_explicit_root(tmp_path: Path) -> None:
+    _write_snapshot(tmp_path)
+    result = search_local_current_member_lookup("nancy pelosi", snapshot_root=tmp_path)
+    assert [member.slug for member in result.members] == ["nancy-pelosi"]
+
+
+def test_search_local_current_member_lookup_default_root_is_publish_dir() -> None:
+    import unittest.mock as mock
+
+    from src.runtime.paths import local_publish_root
+
+    payload = _current_member_lookup()
+    with mock.patch("src.runtime.inspect.load_current_member_lookup", return_value=payload) as patched:
+        result = search_local_current_member_lookup("nancy pelosi")
+    called_root = patched.call_args[0][0]
+    assert called_root == local_publish_root()
+    assert [member.slug for member in result.members] == ["nancy-pelosi"]
 
 
 # ── Integration: all helpers from one publish tree ─────────────────

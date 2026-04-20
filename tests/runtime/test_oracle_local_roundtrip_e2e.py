@@ -92,6 +92,7 @@ _FETCH_MEMBER_BY_SLUG = "src.runtime.publish_roundtrip_profiles.fetch_member_row
 _FETCH_SCORE_ROWS = "src.runtime.publish_roundtrip_profiles.fetch_member_score_snapshot_rows"
 _FETCH_RULE_FIRES = "src.runtime.publish_roundtrip_profiles.fetch_member_rule_fire_rows"
 _FETCH_COMMITTEES = "src.runtime.publish_roundtrip_profiles.fetch_member_committee_rows"
+_FETCH_PROFILE_CARDS = "src.runtime.publish_roundtrip_profiles.fetch_all_evidence_card_rows"
 _FETCH_ALL_CARDS = "src.runtime.publish_roundtrip_evidence.fetch_all_evidence_card_rows"
 
 _VERIFY_ZIP = "src.runtime.publish_roundtrip.verify_published_zip_roundtrip"
@@ -393,6 +394,7 @@ def _run_oracle_with_roundtrip(
         patch(_FETCH_SCORE_ROWS, side_effect=_score_rows),
         patch(_FETCH_RULE_FIRES, side_effect=_rule_fires),
         patch(_FETCH_COMMITTEES, side_effect=_committees),
+        patch(_FETCH_PROFILE_CARDS, side_effect=_all_cards),
         patch(_FETCH_ALL_CARDS, side_effect=_all_cards),
         patch(_VERIFY_ZIP, side_effect=_zip_stub),
         patch(_VERIFY_HOMEPAGE, side_effect=_homepage_stub),
@@ -405,6 +407,7 @@ def _run_oracle_with_roundtrip(
         patch(_FETCH_SCORE_ROWS, side_effect=_score_rows),
         patch(_FETCH_RULE_FIRES, side_effect=_rule_fires),
         patch(_FETCH_COMMITTEES, side_effect=_committees),
+        patch(_FETCH_PROFILE_CARDS, side_effect=_all_cards),
         patch(_FETCH_ALL_CARDS, side_effect=_all_cards),
         patch(_VERIFY_ZIP, side_effect=_zip_stub),
         patch(_VERIFY_HOMEPAGE, side_effect=_homepage_stub),
@@ -474,12 +477,12 @@ class TestOracleLocalRoundtripResultShape:
         oracle_result, _ = _run_oracle_with_roundtrip(tmp_path, archive, bundle, opts)
         assert isinstance(oracle_result.verify, PublishVerifyResult)
 
-    def test_roundtrip_has_five_stages(self, tmp_path: Path) -> None:
+    def test_roundtrip_has_six_stages(self, tmp_path: Path) -> None:
         archive = _make_congress_archive(tmp_path)
         bundle = _make_disclosures_bundle()
         opts = _options(tmp_path / "publish")
         _, rt_result = _run_oracle_with_roundtrip(tmp_path, archive, bundle, opts)
-        assert len(rt_result.stages) == 5
+        assert len(rt_result.stages) == 6
 
     def test_roundtrip_stage_names(self, tmp_path: Path) -> None:
         archive = _make_congress_archive(tmp_path)
@@ -487,7 +490,7 @@ class TestOracleLocalRoundtripResultShape:
         opts = _options(tmp_path / "publish")
         _, rt_result = _run_oracle_with_roundtrip(tmp_path, archive, bundle, opts)
         names = {s.stage for s in rt_result.stages}
-        assert {"snapshot", "profiles", "evidence", "zip", "homepage"} == names
+        assert {"snapshot", "profiles", "evidence", "zip", "homepage", "lookup"} == names
 
 
 # ---------------------------------------------------------------------------
@@ -580,6 +583,7 @@ class TestOracleRoundtripBrokenTree:
             patch(_FETCH_SCORE_ROWS, side_effect=_score_rows),
             patch(_FETCH_RULE_FIRES, side_effect=_rule_fires),
             patch(_FETCH_COMMITTEES, side_effect=_committees),
+            patch(_FETCH_PROFILE_CARDS, side_effect=_all_cards),
             patch(_FETCH_ALL_CARDS, side_effect=_all_cards),
             patch(_VERIFY_ZIP, side_effect=_zip_stub),
             patch(_VERIFY_HOMEPAGE, side_effect=_homepage_stub),
@@ -679,6 +683,7 @@ class TestStageOrderingOracleThenRoundtrip:
             patch(_FETCH_SCORE_ROWS, side_effect=_score_rows),
             patch(_FETCH_RULE_FIRES, side_effect=_rule_fires),
             patch(_FETCH_COMMITTEES, side_effect=_committees),
+            patch(_FETCH_PROFILE_CARDS, side_effect=_all_cards),
             patch(_FETCH_ALL_CARDS, side_effect=_all_cards),
             patch(_VERIFY_ZIP, side_effect=_zip_stub),
             patch(_VERIFY_HOMEPAGE, side_effect=_homepage_stub),
@@ -694,6 +699,7 @@ class TestStageOrderingOracleThenRoundtrip:
             patch(_FETCH_SCORE_ROWS, side_effect=_score_rows),
             patch(_FETCH_RULE_FIRES, side_effect=_rule_fires),
             patch(_FETCH_COMMITTEES, side_effect=_committees),
+            patch(_FETCH_PROFILE_CARDS, side_effect=_all_cards),
             patch(_FETCH_ALL_CARDS, side_effect=_all_cards),
             patch(_VERIFY_ZIP, side_effect=_zip_stub),
             patch(_VERIFY_HOMEPAGE, side_effect=_homepage_stub),

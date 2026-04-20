@@ -5,6 +5,7 @@ All tests are deterministic and make no network calls.
 
 from __future__ import annotations
 
+import datetime as dt
 from typing import Any
 
 from src.rules.evaluator import (
@@ -254,6 +255,13 @@ class TestEvaluateRule:
         fire2 = evaluate_rule(rule, {"x": 5}, MEMBER, RUN)
         assert fire1 is not None and fire2 is not None
         assert fire1.fire_id != fire2.fire_id
+
+    def test_fired_at_override_is_preserved(self):
+        rule = _make_rule(_all_of(_cond("x", Operator.gte, 1)))
+        fired_at = dt.datetime(2024, 6, 1, tzinfo=dt.UTC)
+        fire = evaluate_rule(rule, {"x": 5}, MEMBER, RUN, fired_at=fired_at)
+        assert fire is not None
+        assert fire.fired_at == fired_at
 
     def test_sourced_facts_snapshot_is_independent(self):
         facts = {"x": 5}

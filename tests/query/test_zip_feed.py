@@ -214,6 +214,16 @@ class TestScoresAndEvidence:
         sen2 = payload.members[2]
         assert sen2.top_evidence_card_ids == []
 
+    def test_evidence_card_ids_deduplicated_before_capping(self):
+        bundle = _make_bundle(ZIP_SINGLE, DISTRICT_ROWS_SINGLE)
+        payload = assemble_zip_feed(
+            bundle,
+            SCORE_ROWS,
+            {"H000001": ["ec-h1", "ec-h1", "ec-h2", "ec-h3", "ec-h4"]},
+            SNAPSHOT,
+        )
+        assert payload.members[0].top_evidence_card_ids == ["ec-h1", "ec-h2", "ec-h3"]
+
     def test_member_with_no_score_rows_gets_empty_scores(self):
         bundle = _make_bundle(ZIP_SINGLE, DISTRICT_ROWS_SINGLE)
         payload = assemble_zip_feed(bundle, [], {}, SNAPSHOT)
@@ -233,9 +243,10 @@ class TestScoresAndEvidence:
         payload = assemble_zip_feed(bundle, extra_rows, EVIDENCE_IDS, SNAPSHOT)
         house = payload.members[0]
         assert len(house.scores) == 2
-        dimensions = {s.dimension for s in house.scores}
-        assert "conflict_of_interest_risk" in dimensions
-        assert "late_disclosure_risk" in dimensions
+        assert [s.dimension for s in house.scores] == [
+            "conflict_of_interest_risk",
+            "late_disclosure_risk",
+        ]
 
     def test_score_rows_for_other_members_not_leaked(self):
         bundle = _make_bundle(ZIP_SINGLE, DISTRICT_ROWS_SINGLE)

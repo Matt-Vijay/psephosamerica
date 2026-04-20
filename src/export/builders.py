@@ -33,6 +33,42 @@ def _req(row: dict[str, Any], key: str, context: str) -> Any:
     return row[key]
 
 
+def _normalized_card_ids(card_ids: list[str] | None, *, limit: int = 3) -> list[str]:
+    if not card_ids:
+        return []
+
+    seen: set[str] = set()
+    normalized: list[str] = []
+    for card_id in card_ids:
+        if not card_id or card_id in seen:
+            continue
+        seen.add(card_id)
+        normalized.append(card_id)
+
+    return normalized[:limit]
+
+
+def _anchor_sort_key(anchor: SourceAnchor) -> tuple[str, str, str, str]:
+    return (anchor.source_type, anchor.source_id, anchor.label, anchor.url or "")
+
+
+def _normalize_source_anchors(anchors: list[SourceAnchor]) -> list[SourceAnchor]:
+    best_by_identity: dict[tuple[str, str], SourceAnchor] = {}
+    for anchor in anchors:
+        identity = (anchor.source_type, anchor.source_id)
+        existing = best_by_identity.get(identity)
+        if existing is None:
+            best_by_identity[identity] = anchor
+            continue
+
+        existing_key = (existing.url is None, -len(existing.label), existing.label, existing.url or "")
+        candidate_key = (anchor.url is None, -len(anchor.label), anchor.label, anchor.url or "")
+        if candidate_key < existing_key:
+            best_by_identity[identity] = anchor
+
+    return sorted(best_by_identity.values(), key=_anchor_sort_key)
+
+
 # ── Evidence Card ──────────────────────────────────────────────────
 
 
@@ -50,7 +86,7 @@ def build_evidence_card(
         )
         for b in raw_blocks
     ]
-    anchors = [
+    anchors = _normalize_source_anchors([
         SourceAnchor(
             source_type=_req(s, "source_type", "source"),
             source_id=_req(s, "source_id", "source"),
@@ -58,7 +94,7 @@ def build_evidence_card(
             label=_req(s, "label", "source"),
         )
         for s in source_rows
-    ]
+    ])
     return EvidenceCardPayload(
         evidence_card_id=_req(rule_fire, "evidence_card_id", "rule_fire"),
         member_bioguide_id=_req(member, "bioguide_id", "member"),
@@ -87,6 +123,7 @@ def build_member_profile(
     committee_rows: list[dict[str, Any]],
     total_evidence_cards: int,
     snapshot_date: date,
+    top_evidence_card_ids: list[str] | None = None,
 ) -> MemberProfilePayload:
     scores = [
         ScoreSummary(
@@ -123,6 +160,7 @@ def build_member_profile(
         party=_req(member, "party", "member"),
         scores=scores,
         recent_rule_fires=fires,
+        top_evidence_card_ids=_normalized_card_ids(top_evidence_card_ids),
         committees=committees,
         total_evidence_cards=total_evidence_cards,
         snapshot_date=snapshot_date,
@@ -152,9 +190,12 @@ def build_zip_feed(
                     current_score=_req(s, "current_score", "score"),
                     rule_fire_count=_req(s, "rule_fire_count", "score"),
                 )
-                for s in m.get("scores", [])
+                for s in sorted(
+                    m.get("scores", []),
+                    key=lambda score: (_req(score, "dimension", "score"),),
+                )
             ],
-            top_evidence_card_ids=m.get("top_evidence_card_ids", []),
+            top_evidence_card_ids=_normalized_card_ids(m.get("top_evidence_card_ids")),
         )
         for m in member_rows
     ]

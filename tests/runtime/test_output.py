@@ -24,11 +24,22 @@ from src.runtime.disclosures_artifacts import DisclosureArtifactIngestResult
 from src.runtime.disclosures_bundle_process import DisclosuresBundleProcessResult
 from src.runtime.disclosures_load_from_parse import DisclosuresParseLoadResult
 from src.runtime.disclosures_parse import DisclosureParseRuntimeResult
+from src.runtime.history_backfill import (
+    CongressDateWindow,
+    HistoryBackfillAttempt,
+    HistoryBackfillExecutionResult,
+    HistoryBackfillPlan,
+    HistoricalSnapshotTarget,
+    LocalHistoryAggregateSummary,
+    LocalHistoryBackfillResult,
+)
 from src.runtime.oracle_contracts import CongressStageSummary, LocalOracleRunResult
 from src.runtime.output import (
     as_json,
     summarize_disclosure_artifact_ingest_result,
+    summarize_history_verify_result,
     summarize_disclosures_bundle_process_result,
+    summarize_local_history_backfill_result,
     summarize_load_result,
     summarize_local_oracle_run_result,
     summarize_parse_disclosures_result,
@@ -43,6 +54,11 @@ from src.runtime.publish_roundtrip_types import (
     PublishRoundtripIssue,
     PublishRoundtripResult,
     PublishRoundtripStageResult,
+)
+from src.runtime.history_verify_types import (
+    HistoryVerifyIssue,
+    HistoryVerifyResult,
+    HistoryVerifyStageResult,
 )
 from src.runtime.publish_verify_types import (
     PublishVerifyIssue,
@@ -986,6 +1002,101 @@ class TestSummarizeLocalOracleRunResult:
         assert r1 == r2
 
 
+def _history_backfill_result() -> LocalHistoryBackfillResult:
+    plan = HistoryBackfillPlan(
+        congress=119,
+        date_window=CongressDateWindow(
+            congress=119,
+            start_date=dt.date(2025, 1, 3),
+            end_date=dt.date(2025, 1, 13),
+            bounded_by_today=True,
+        ),
+        cadence="weekly:monday",
+        targets=[
+            HistoricalSnapshotTarget(
+                congress=119,
+                snapshot_date=dt.date(2025, 1, 6),
+                snapshot_id="2025-01-06",
+                publish_root=Path("/tmp/history/2025-01-06"),
+            ),
+            HistoricalSnapshotTarget(
+                congress=119,
+                snapshot_date=dt.date(2025, 1, 13),
+                snapshot_id="2025-01-13",
+                publish_root=Path("/tmp/history/2025-01-13"),
+            ),
+        ],
+    )
+    execution = HistoryBackfillExecutionResult(
+        plan=plan,
+        attempts=[
+            HistoryBackfillAttempt(
+                snapshot_id="2025-01-06",
+                snapshot_date=dt.date(2025, 1, 6),
+                publish_root=Path("/tmp/history/2025-01-06"),
+                status="completed",
+            ),
+            HistoryBackfillAttempt(
+                snapshot_id="2025-01-13",
+                snapshot_date=dt.date(2025, 1, 13),
+                publish_root=Path("/tmp/history/2025-01-13"),
+                status="skipped_existing",
+                reason="existing_manifest",
+            ),
+        ],
+    )
+    return LocalHistoryBackfillResult(
+        execution=execution,
+        snapshot_results={
+            "2025-01-06": _local_oracle_run_result(snapshot_id="2025-01-06"),
+        },
+        aggregate_source_roots=[
+            Path("/tmp/history/2025-01-06"),
+            Path("/tmp/history/2025-01-13"),
+        ],
+        target_root=Path("/tmp/history"),
+        overwrite=False,
+        continue_on_error=True,
+        aggregate=LocalHistoryAggregateSummary(
+            latest_snapshot_id="2025-01-13",
+            snapshot_count=2,
+            member_history_count=5,
+            target_root=Path("/tmp/history-aggregate"),
+            verify=HistoryVerifyResult(
+                stages=(
+                    HistoryVerifyStageResult(stage="snapshot_index", checked=2, issues=()),
+                )
+            ),
+        ),
+    )
+
+
+class TestSummarizeLocalHistoryBackfillResult:
+    def test_includes_plan_and_execution_policy(self) -> None:
+        result = summarize_local_history_backfill_result(_history_backfill_result())
+        assert result["congress"] == 119
+        assert result["cadence"] == "weekly:monday"
+        assert result["target_root"] == "/tmp/history"
+        assert result["overwrite"] is False
+        assert result["continue_on_error"] is True
+
+    def test_attempts_include_structural_reason_and_nested_oracle_summary(self) -> None:
+        result = summarize_local_history_backfill_result(_history_backfill_result())
+        assert result["attempts"][0]["ok"] is True
+        assert result["attempts"][0]["oracle"]["snapshot_id"] == "2025-01-06"
+        assert result["attempts"][1]["ok"] is None
+        assert result["attempts"][1]["reason"] == "existing_manifest"
+
+    def test_aggregate_summary_and_counts_forwarded(self) -> None:
+        result = summarize_local_history_backfill_result(_history_backfill_result())
+        assert result["planned_count"] == 2
+        assert result["attempted_count"] == 2
+        assert result["completed_count"] == 1
+        assert result["aggregate_source_count"] == 2
+        assert result["aggregate"]["member_history_count"] == 5
+        assert result["aggregate"]["verify"]["ok"] is True
+
+
 # ---------------------------------------------------------------------------
 # summarize_publish_verify_result
 # ---------------------------------------------------------------------------
@@ -1133,6 +1244,7 @@ def _roundtrip_result() -> PublishRoundtripResult:
             _roundtrip_stage("evidence", checked=7),
             _roundtrip_stage("zip", checked=4),
             _roundtrip_stage("homepage", checked=1),
+            _roundtrip_stage("lookup", checked=1),
         )
     )
 
@@ -1150,7 +1262,7 @@ class TestSummarizePublishRoundtripResult:
 
     def test_total_checked_sums_stages(self):
         result = summarize_publish_roundtrip_result(_roundtrip_result())
-        assert result["total_checked"] == 23
+        assert result["total_checked"] == 24
 
     def test_total_errors_zero_when_clean(self):
         result = summarize_publish_roundtrip_result(_roundtrip_result())
@@ -1176,7 +1288,7 @@ class TestSummarizePublishRoundtripResult:
 
     def test_stages_list_length(self):
         result = summarize_publish_roundtrip_result(_roundtrip_result())
-        assert len(result["stages"]) == 5
+        assert len(result["stages"]) == 6
 
     def test_stage_entry_keys(self):
         result = summarize_publish_roundtrip_result(_roundtrip_result())
@@ -1186,7 +1298,7 @@ class TestSummarizePublishRoundtripResult:
     def test_stage_names_forwarded(self):
         result = summarize_publish_roundtrip_result(_roundtrip_result())
         names = [s["stage"] for s in result["stages"]]
-        assert names == ["snapshot", "profiles", "evidence", "zip", "homepage"]
+        assert names == ["snapshot", "profiles", "evidence", "zip", "homepage", "lookup"]
 
     def test_stage_checked_forwarded(self):
         result = summarize_publish_roundtrip_result(_roundtrip_result())
@@ -1228,9 +1340,69 @@ class TestSummarizePublishRoundtripResult:
         result = summarize_publish_roundtrip_result(_roundtrip_result())
         obj = json.loads(as_json(result))
         assert obj["ok"] is True
-        assert obj["total_checked"] == 23
-        assert len(obj["stages"]) == 5
+        assert obj["total_checked"] == 24
+        assert len(obj["stages"]) == 6
 
     def test_pure_same_inputs_same_output(self):
         r = _roundtrip_result()
         assert summarize_publish_roundtrip_result(r) == summarize_publish_roundtrip_result(r)
+
+
+# ---------------------------------------------------------------------------
+# summarize_history_verify_result
+# ---------------------------------------------------------------------------
+
+
+def _history_verify_stage(
+    stage: str,
+    checked: int = 0,
+    issues: tuple[HistoryVerifyIssue, ...] = (),
+) -> HistoryVerifyStageResult:
+    return HistoryVerifyStageResult(stage=stage, checked=checked, issues=issues)
+
+
+def _history_verify_result() -> HistoryVerifyResult:
+    return HistoryVerifyResult(
+        stages=(
+            _history_verify_stage("snapshot_index", checked=5),
+            _history_verify_stage("bootstrap", checked=2),
+            _history_verify_stage("current_aggregates", checked=3),
+            _history_verify_stage("snapshot_presets", checked=4),
+            _history_verify_stage("members", checked=8),
+            _history_verify_stage("member_pages", checked=1),
+        )
+    )
+
+
+class TestSummarizeHistoryVerifyResult:
+    def test_ok_true_when_no_errors(self):
+        result = summarize_history_verify_result(_history_verify_result())
+        assert result["ok"] is True
+
+    def test_ok_false_when_error_present(self):
+        err = HistoryVerifyIssue(stage="bootstrap", message="missing file", severity="error")
+        stage = _history_verify_stage("bootstrap", checked=1, issues=(err,))
+        result = summarize_history_verify_result(HistoryVerifyResult(stages=(stage,)))
+        assert result["ok"] is False
+
+    def test_total_checked_sums_stages(self):
+        result = summarize_history_verify_result(_history_verify_result())
+        assert result["total_checked"] == 23
+
+    def test_stage_names_forwarded(self):
+        result = summarize_history_verify_result(_history_verify_result())
+        names = [s["stage"] for s in result["stages"]]
+        assert names == [
+            "snapshot_index",
+            "bootstrap",
+            "current_aggregates",
+            "snapshot_presets",
+            "members",
+            "member_pages",
+        ]
+
+    def test_json_serializable(self):
+        result = summarize_history_verify_result(_history_verify_result())
+        obj = json.loads(as_json(result))
+        assert obj["ok"] is True
+        assert obj["total_checked"] == 23

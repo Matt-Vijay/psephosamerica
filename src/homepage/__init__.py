@@ -4,6 +4,7 @@ Exports the small public surface for v1 homepage/feed payload construction.
 """
 
 from src.homepage.builders import (
+    build_featured_lookup_entries,
     build_homepage_feed,
     build_recent_events,
     build_top_changes,
@@ -19,6 +20,7 @@ __all__ = [
     "HomepageFeedPayload",
     "MemberMovementSummary",
     "RecentEventSummary",
+    "build_featured_lookup_entries",
     "build_homepage_feed",
     "build_recent_events",
     "build_top_changes",

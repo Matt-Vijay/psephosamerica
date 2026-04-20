@@ -54,8 +54,12 @@ Current commands:
 - `load-congress-local`
 - `process-disclosures-local`
 - `run-oracle-local`
+- `plan-history-backfill`
+- `run-history-backfill-local`
+- `aggregate-history`
 - `verify-publish`
 - `verify-publish-roundtrip`
+- `verify-history-aggregate`
 
 Examples:
 
@@ -68,8 +72,12 @@ python3 -m src.runtime.main process-disclosures --chamber both --local-root data
 python3 -m src.runtime.main recompute --snapshot-date 2026-04-14
 python3 -m src.runtime.main publish --snapshot-date 2026-04-14 --zip-bundle data/zip_bundle.json
 python3 -m src.runtime.main process-disclosures-local --bundle data/disclosures_bundle.json
+python3 -m src.runtime.main plan-history-backfill --congress 119 --target-root out/history
+python3 -m src.runtime.main run-history-backfill-local --congress-archive data/congress_119 --disclosures-bundle data/disclosures_bundle.json --congress 119 --target-root out/history --aggregate-root out/history-aggregate
+python3 -m src.runtime.main aggregate-history --source-root out/history/2025-01-06 --source-root out/history/2025-01-13 --target-root out/history-aggregate
 python3 -m src.runtime.main verify-publish --publish-root out/publish
 python3 -m src.runtime.main verify-publish-roundtrip --publish-root out/publish
+python3 -m src.runtime.main verify-history-aggregate --publish-root out/history-aggregate
 ```
 
 Notes:
@@ -80,6 +88,8 @@ Notes:
 - `publish` requires `--zip-bundle`; there is no implicit default.
 - `process-disclosures-local` only accepts `--bundle`; unused `--chamber` and `--limit` flags are gone.
 - verification commands still emit structured JSON on stdout, print a one-line failure summary to stderr when checks fail, and exit nonzero on verification failure.
+- `aggregate-history` now verifies the aggregate root it just wrote and returns the nested history-verify summary.
+- `run-history-backfill-local` now verifies the aggregate root when `--aggregate-root` is provided; a failed aggregate verify keeps the overall run non-green even if snapshot replays succeeded.
 
 ## Repository Layout
 

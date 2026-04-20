@@ -80,15 +80,29 @@ def _blocks_from_columns(
 def _parse_anchors(raw: list[dict[str, Any]] | None) -> list[SourceAnchor]:
     if not raw:
         return []
-    return [
-        SourceAnchor(
-            source_type=a["source_type"],
-            source_id=a["source_id"],
-            url=a.get("url"),
-            label=a["label"],
+    best_by_identity: dict[tuple[str, str], SourceAnchor] = {}
+    for anchor_row in raw:
+        anchor = SourceAnchor(
+            source_type=anchor_row["source_type"],
+            source_id=anchor_row["source_id"],
+            url=anchor_row.get("url"),
+            label=anchor_row["label"],
         )
-        for a in raw
-    ]
+        identity = (anchor.source_type, anchor.source_id)
+        existing = best_by_identity.get(identity)
+        if existing is None:
+            best_by_identity[identity] = anchor
+            continue
+
+        existing_key = (existing.url is None, -len(existing.label), existing.label, existing.url or "")
+        candidate_key = (anchor.url is None, -len(anchor.label), anchor.label, anchor.url or "")
+        if candidate_key < existing_key:
+            best_by_identity[identity] = anchor
+
+    return sorted(
+        best_by_identity.values(),
+        key=lambda anchor: (anchor.source_type, anchor.source_id, anchor.label, anchor.url or ""),
+    )
 
 
 def _snapshot_date(row: dict[str, Any]) -> date:

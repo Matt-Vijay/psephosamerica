@@ -10,7 +10,8 @@ stages are defined:
     profiles   – per-member profile JSON was emitted for every member
     evidence   – evidence-card JSON was emitted for every card
     zip        – per-ZIP feed JSON was emitted for every mapped ZIP
-    homepage   – the homepage/feed JSON was written and is non-empty
+    homepage   – the homepage/feed JSON matches the read model
+    lookup     – the compact current-member lookup matches member profiles
 
 These types surface issue counts and ok/failure state at both the stage
 and aggregate levels.
@@ -29,7 +30,7 @@ from typing import Literal
 IssueSeverity = Literal["error", "warning"]
 
 # Ordered stage names for the publish roundtrip pipeline.
-ROUNDTRIP_STAGES = ("snapshot", "profiles", "evidence", "zip", "homepage")
+ROUNDTRIP_STAGES = ("snapshot", "profiles", "evidence", "zip", "homepage", "lookup")
 
 
 # ---------------------------------------------------------------------------
@@ -42,7 +43,7 @@ class PublishRoundtripIssue:
     """A single problem found during one roundtrip stage.
 
     Attributes:
-        stage:    Which stage produced this issue (snapshot/profiles/evidence/zip/homepage).
+        stage:    Which stage produced this issue (snapshot/profiles/evidence/zip/homepage/lookup).
         message:  Human-readable description of the problem.
         severity: ``"error"`` blocks ok; ``"warning"`` is informational only.
         path:     Relative path within the publish tree, when applicable.

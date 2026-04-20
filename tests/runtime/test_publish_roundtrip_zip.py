@@ -10,10 +10,12 @@ from datetime import date, datetime
 from pathlib import Path
 from unittest.mock import patch
 
+from src.api.contracts import ArtifactCounts, SnapshotSummaryPayload, ZipEntryPayload
 from src.export.contracts import ScoreSummary, ZipFeedPayload, ZipMemberSummary
 from src.export.filesystem import write_planned_files
 from src.export.manifest import ManifestEntry, SnapshotManifest, manifest_root_sha256
-from src.export.writer import PlannedFile, serialize_payload, zip_path
+from src.export.writer import PlannedFile, current_member_lookup_path, serialize_payload, zip_entry_path, zip_path
+from src.identity.current_member_lookup import CurrentMemberLookupEntry, CurrentMemberLookupPayload, normalize_lookup_name
 from src.runtime.publish_roundtrip_types import PublishRoundtripStageResult
 from src.runtime.publish_roundtrip_zip import verify_published_zip_roundtrip
 
@@ -71,6 +73,52 @@ def _planned(feed: ZipFeedPayload) -> PlannedFile:
     return PlannedFile.from_bytes(zip_path(feed.zip_code), serialize_payload(feed))
 
 
+def _lookup_payload(feed: ZipFeedPayload) -> CurrentMemberLookupPayload:
+    members = [
+        CurrentMemberLookupEntry(
+            bioguide_id=member.bioguide_id,
+            slug=member.slug,
+            name=member.name,
+            search_name=normalize_lookup_name(member.name),
+            state="MO",
+            district=None,
+            chamber=member.chamber,
+        )
+        for member in feed.members
+    ]
+    return CurrentMemberLookupPayload(snapshot_date=feed.snapshot_date, members=members)
+
+
+def _zip_entry_payload(feed: ZipFeedPayload, manifest: SnapshotManifest) -> ZipEntryPayload:
+    lookup = _lookup_payload(feed)
+    lookup_by_bioguide = {entry.bioguide_id: entry for entry in lookup.members}
+    return ZipEntryPayload(
+        zip_feed=feed,
+        member_lookup_entries=[
+            lookup_by_bioguide[member.bioguide_id]
+            for member in feed.members
+            if member.bioguide_id in lookup_by_bioguide
+        ],
+        snapshot=SnapshotSummaryPayload(
+            snapshot_id=manifest.snapshot_id,
+            snapshot_date=feed.snapshot_date,
+            published_at=manifest.created_at,
+            root_sha256=manifest.root_sha256,
+            total_files=manifest.total_files,
+            total_bytes=manifest.total_bytes,
+            artifact_counts=ArtifactCounts(
+                members=0,
+                evidence=0,
+                zip_feeds=sum(1 for entry in manifest.entries if entry.path.startswith("zip/")),
+                homepage_feeds=1,
+                current_member_lookups=sum(
+                    1 for entry in manifest.entries if entry.path == current_member_lookup_path()
+                ),
+            ),
+        ),
+    )
+
+
 def _manifest(files: list[PlannedFile]) -> SnapshotManifest:
     entries = [ManifestEntry(path=f.path, sha256=f.sha256, size_bytes=f.size_bytes) for f in files]
     return SnapshotManifest(
@@ -107,13 +155,26 @@ def _manifest_from_entries(entries: list[ManifestEntry]) -> SnapshotManifest:
 
 
 def _write_feed(root: Path, feed: ZipFeedPayload) -> tuple[PlannedFile, SnapshotManifest]:
-    """Write a single feed to *root* and return the planned file and manifest."""
+    """Write a single feed plus zip-entry prerequisites to *root*."""
     pf = _planned(feed)
-    write_planned_files([pf], root)
-    return pf, _manifest([pf])
+    lookup_file = PlannedFile.from_bytes(
+        current_member_lookup_path(),
+        serialize_payload(_lookup_payload(feed)),
+    )
+    manifest = _manifest([pf, lookup_file])
+    zip_entry_file = PlannedFile.from_bytes(
+        zip_entry_path(feed.zip_code),
+        serialize_payload(_zip_entry_payload(feed, manifest)),
+    )
+    manifest_file = PlannedFile.from_bytes(
+        f"snapshots/{manifest.snapshot_id}/manifest.json",
+        serialize_payload(manifest),
+    )
+    write_planned_files([pf, lookup_file, manifest_file, zip_entry_file], root)
+    return pf, manifest
 
 
-def _score_rows(bioguide_id: str, scores: list[ScoreSummary]) -> list[dict]:
+def _score_rows(bioguide_id: str, scores: list[ScoreSummary]) -> list[dict[str, object]]:
     """Convert ScoreSummary objects to the row shape expected by assemble_zip_feed."""
     return [
         {
@@ -124,6 +185,48 @@ def _score_rows(bioguide_id: str, scores: list[ScoreSummary]) -> list[dict]:
         }
         for s in scores
     ]
+
+
+def _write_feeds(root: Path, feeds: list[ZipFeedPayload]) -> SnapshotManifest:
+    files: list[PlannedFile] = [_planned(feed) for feed in feeds]
+    all_lookup_members: list[CurrentMemberLookupEntry] = []
+    seen_ids: set[str] = set()
+    for feed in feeds:
+        for entry in _lookup_payload(feed).members:
+            if entry.bioguide_id in seen_ids:
+                continue
+            seen_ids.add(entry.bioguide_id)
+            all_lookup_members.append(entry)
+    lookup_file = PlannedFile.from_bytes(
+        current_member_lookup_path(),
+        serialize_payload(
+            CurrentMemberLookupPayload(snapshot_date=_SNAPSHOT_DATE, members=all_lookup_members)
+        ),
+    )
+    files.append(lookup_file)
+    manifests = [
+        ManifestEntry(path=file.path, sha256=file.sha256, size_bytes=file.size_bytes)
+        for file in files
+    ]
+
+    manifest = SnapshotManifest(
+        snapshot_id=_SNAPSHOT_ID,
+        created_at=datetime(2026, 4, 14, 0, 0, 0),
+        entries=manifests,
+        total_files=len(manifests),
+        total_bytes=sum(entry.size_bytes for entry in manifests),
+        root_sha256=manifest_root_sha256(manifests),
+    )
+    zip_entry_files = [
+        PlannedFile.from_bytes(zip_entry_path(feed.zip_code), serialize_payload(_zip_entry_payload(feed, manifest)))
+        for feed in feeds
+    ]
+    manifest_file = PlannedFile.from_bytes(
+        f"snapshots/{manifest.snapshot_id}/manifest.json",
+        serialize_payload(manifest),
+    )
+    write_planned_files([*files, manifest_file, *zip_entry_files], root)
+    return manifest
 
 
 # ---------------------------------------------------------------------------
@@ -255,7 +358,7 @@ class TestScoreMismatch:
         _, manifest = _write_feed(tmp_path, feed)
         return mem, manifest
 
-    def _db_rows_with_different_score(self, bioguide_id: str) -> list[dict]:
+    def _db_rows_with_different_score(self, bioguide_id: str) -> list[dict[str, object]]:
         return _score_rows(bioguide_id, [
             ScoreSummary(dimension="conflict_of_interest_risk", current_score=9.0, rule_fire_count=7),
         ])
@@ -328,6 +431,49 @@ class TestEvidenceMismatch:
 
 
 # ---------------------------------------------------------------------------
+# Geography and composition mismatch
+# ---------------------------------------------------------------------------
+
+
+class TestGeographyAndCompositionMismatch:
+    def test_payload_zip_code_mismatch_vs_manifest_path_is_error(self, tmp_path: Path) -> None:
+        feed = _feed(zip_code="99999")
+        pf = PlannedFile.from_bytes("zip/63101.json", serialize_payload(feed))
+        write_planned_files([pf], tmp_path)
+        manifest = _manifest([pf])
+
+        with patch(_PATCH_SCORE_ROWS, return_value=[]), patch(_PATCH_EVIDENCE_IDS, return_value={}):
+            result = verify_published_zip_roundtrip(None, tmp_path, manifest, _SNAPSHOT_DATE)
+
+        assert result.ok is False
+        assert any("zip_code" in issue.message for issue in result.issues)
+
+    def test_duplicate_house_members_is_error(self, tmp_path: Path) -> None:
+        first_house = _member(
+            bioguide_id="A000001",
+            name="Alpha House",
+            slug="alpha-house",
+            chamber="house",
+            party="Democrat",
+        )
+        second_house = _member(
+            bioguide_id="A000002",
+            name="Beta House",
+            slug="beta-house",
+            chamber="house",
+            party="Republican",
+        )
+        feed = _feed(members=[first_house, second_house])
+        _, manifest = _write_feed(tmp_path, feed)
+
+        with patch(_PATCH_SCORE_ROWS, return_value=[]), patch(_PATCH_EVIDENCE_IDS, return_value={}):
+            result = verify_published_zip_roundtrip(None, tmp_path, manifest, _SNAPSHOT_DATE)
+
+        assert result.ok is False
+        assert any("members" in issue.message for issue in result.issues)
+
+
+# ---------------------------------------------------------------------------
 # Missing file
 # ---------------------------------------------------------------------------
 
@@ -359,6 +505,17 @@ class TestMissingFile:
             result = verify_published_zip_roundtrip(None, tmp_path, self._manifest_missing(), _SNAPSHOT_DATE)
         assert result.checked == 1
 
+    def test_missing_zip_entry_is_error(self, tmp_path: Path) -> None:
+        feed = _feed("63101", "MO-02")
+        _, manifest = _write_feed(tmp_path, feed)
+        (tmp_path / zip_entry_path("63101")).unlink()
+
+        with patch(_PATCH_SCORE_ROWS, return_value=[]), patch(_PATCH_EVIDENCE_IDS, return_value={}):
+            result = verify_published_zip_roundtrip(None, tmp_path, manifest, _SNAPSHOT_DATE)
+
+        assert result.ok is False
+        assert any(issue.path == "zip-entry/63101.json" for issue in result.issues)
+
 
 # ---------------------------------------------------------------------------
 # Multiple feeds
@@ -368,9 +525,7 @@ class TestMissingFile:
 class TestMultipleFeeds:
     def test_all_ok(self, tmp_path: Path) -> None:
         feeds = [_feed("10001", "NY-12"), _feed("90210", "CA-30"), _feed("73301", "TX-21")]
-        files = [_planned(f) for f in feeds]
-        write_planned_files(files, tmp_path)
-        manifest = _manifest(files)
+        manifest = _write_feeds(tmp_path, feeds)
 
         with patch(_PATCH_SCORE_ROWS, return_value=[]), patch(_PATCH_EVIDENCE_IDS, return_value={}):
             result = verify_published_zip_roundtrip(None, tmp_path, manifest, _SNAPSHOT_DATE)
@@ -379,21 +534,19 @@ class TestMultipleFeeds:
 
     def test_all_ok_no_issues(self, tmp_path: Path) -> None:
         feeds = [_feed("10001", "NY-12"), _feed("90210", "CA-30")]
-        files = [_planned(f) for f in feeds]
-        write_planned_files(files, tmp_path)
-        manifest = _manifest(files)
+        manifest = _write_feeds(tmp_path, feeds)
 
         with patch(_PATCH_SCORE_ROWS, return_value=[]), patch(_PATCH_EVIDENCE_IDS, return_value={}):
             result = verify_published_zip_roundtrip(None, tmp_path, manifest, _SNAPSHOT_DATE)
         assert result.issues == ()
 
     def test_one_missing_one_ok(self, tmp_path: Path) -> None:
-        good_pf = _planned(_feed("10001", "NY-12"))
-        write_planned_files([good_pf], tmp_path)
+        good_feed = _feed("10001", "NY-12")
+        manifest_good = _write_feeds(tmp_path, [good_feed])
 
         missing_entry = ManifestEntry(path="zip/99998.json", sha256="b" * 64, size_bytes=50)
         manifest = _manifest_from_entries([
-            ManifestEntry(path=good_pf.path, sha256=good_pf.sha256, size_bytes=good_pf.size_bytes),
+            *manifest_good.entries,
             missing_entry,
         ])
 
@@ -401,15 +554,15 @@ class TestMultipleFeeds:
             result = verify_published_zip_roundtrip(None, tmp_path, manifest, _SNAPSHOT_DATE)
         assert result.ok is False
         assert result.checked == 2
-        assert result.error_count == 1
+        assert result.error_count == 2
 
     def test_missing_error_path_identifies_file(self, tmp_path: Path) -> None:
-        good_pf = _planned(_feed("10001", "NY-12"))
-        write_planned_files([good_pf], tmp_path)
+        good_feed = _feed("10001", "NY-12")
+        manifest_good = _write_feeds(tmp_path, [good_feed])
 
         missing_entry = ManifestEntry(path="zip/99998.json", sha256="b" * 64, size_bytes=50)
         manifest = _manifest_from_entries([
-            ManifestEntry(path=good_pf.path, sha256=good_pf.sha256, size_bytes=good_pf.size_bytes),
+            *manifest_good.entries,
             missing_entry,
         ])
 

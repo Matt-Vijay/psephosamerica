@@ -1247,6 +1247,15 @@ class TestRunOracleLocalCommand:
         options = o.mock_oracle.call_args.args[3]
         assert options.congress_options.limit == 5
 
+    def test_explicit_congress_and_artifact_root_forwarded(self) -> None:
+        with _run_harness():
+            with self._oracle_env() as o:
+                run(self._argv(["--congress", "118", "--artifact-root", "/tmp/artifacts"]))
+        options = o.mock_oracle.call_args.args[3]
+        assert options.congress_options.congress == 118
+        assert options.congress_options.congress_source == "explicit-arg"
+        assert options.artifact_root == Path("/tmp/artifacts")
+
     def test_explicit_snapshot_id_in_options(self) -> None:
         with _run_harness():
             with self._oracle_env() as o:
@@ -1681,8 +1690,12 @@ class TestCommandRegistry:
         "load-congress-local",
         "process-disclosures-local",
         "run-oracle-local",
+        "plan-history-backfill",
+        "run-history-backfill-local",
+        "aggregate-history",
         "verify-publish",
         "verify-publish-roundtrip",
+        "verify-history-aggregate",
     })
 
     def test_registry_contains_all_commands(self) -> None:
@@ -1749,6 +1762,30 @@ class TestModuleEntrypoint:
             patch(
                 "src.runtime.commands.dispatch_command",
                 return_value={"ok": False, "command": "verify-publish-roundtrip", "roundtrip": {"ok": False}},
+            ),
+            patch("src.runtime.output.as_json", side_effect=lambda obj: obj),
+            patch("builtins.print"),
+            _run_module_as_main(),
+            pytest.raises(SystemExit) as excinfo,
+        ):
+            runpy.run_module("src.runtime.main", run_name="__main__", alter_sys=True)
+
+        assert excinfo.value.code == 1
+
+    def test_module_invocation_exits_nonzero_for_verify_history_aggregate_failures(self) -> None:
+        with (
+            patch.object(
+                sys,
+                "argv",
+                ["python3", "verify-history-aggregate", "--publish-root", "/tmp/history"],
+            ),
+            patch(
+                "src.runtime.cli.parse_args",
+                return_value=SimpleNamespace(command="verify-history-aggregate"),
+            ),
+            patch(
+                "src.runtime.commands.dispatch_command",
+                return_value={"ok": False, "command": "verify-history-aggregate", "total_errors": 1},
             ),
             patch("src.runtime.output.as_json", side_effect=lambda obj: obj),
             patch("builtins.print"),

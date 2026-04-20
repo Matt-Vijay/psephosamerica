@@ -186,6 +186,7 @@ def _default_homepage_feed_rows() -> list[dict[str, Any]]:
             "short_explanation": "Traded energy stocks while serving on energy committee.",
             "confidence_label": "high",
             "rendered_at": _SNAPSHOT_DATE,
+            "member_bioguide_id": _BIOGUIDE_ID,
             "member_full_name": "Nancy Pelosi",
             "member_slug": _SLUG,
             "state": "CA",
@@ -246,7 +247,8 @@ class HomepageFeedRowSet:
 
     ``rows`` follows the ``published_rows.fetch_homepage_feed_rows`` column shape:
     public_id, dimension, score_delta, short_explanation, confidence_label,
-    rendered_at, member_full_name, member_slug, state, chamber, party.
+    rendered_at, member_bioguide_id, member_full_name, member_slug, state,
+    chamber, party.
     """
 
     rows: list[dict[str, Any]]
@@ -615,6 +617,7 @@ def make_zip_feed_row_set(
 def make_homepage_feed_row_set(
     *,
     public_id: str = "ec-0001",
+    bioguide_id: str = _BIOGUIDE_ID,
     member_slug: str = _SLUG,
     member_full_name: str = "Nancy Pelosi",
     dimension: str = "conflict_of_interest_risk",
@@ -633,6 +636,7 @@ def make_homepage_feed_row_set(
             "short_explanation": "Test explanation.",
             "confidence_label": "high",
             "rendered_at": snapshot_date,
+            "member_bioguide_id": bioguide_id,
             "member_full_name": member_full_name,
             "member_slug": member_slug,
             "state": state,

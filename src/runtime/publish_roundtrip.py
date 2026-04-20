@@ -2,21 +2,21 @@
 
 Entry point: verify_publish_roundtrip(conn, root)
 
-Composes five verification stages in the fixed order:
-    snapshot -> profiles -> evidence -> zip -> homepage
+Composes six verification stages in the fixed order:
+    snapshot -> profiles -> evidence -> zip -> homepage -> lookup
 
 The snapshot stage is implemented locally: it scans for the manifest,
 validates its internal consistency, and loads it for the downstream stages.
-The remaining four stages delegate to their dedicated modules, each
+The remaining five stages delegate to their dedicated modules, each
 receiving the live DB connection, the publish root, and the loaded
 manifest.
 
 The snapshot stage is limited to the manifest-backed artifact set. Homepage
 coverage is established separately by the dedicated homepage stage.
 
-If the manifest cannot be loaded after the snapshot stage, the four
+If the manifest cannot be loaded after the snapshot stage, the five
 downstream stages are each returned as an error result so the caller
-always receives a complete five-stage PublishRoundtripResult.
+always receives a complete six-stage PublishRoundtripResult.
 
 No CLI here.  No lazy imports.
 """
@@ -30,6 +30,9 @@ from src.export.local_store import list_artifact_paths
 from src.export.manifest import SnapshotManifest
 from src.runtime.publish_roundtrip_evidence import verify_published_evidence_roundtrip
 from src.runtime.publish_roundtrip_homepage import verify_published_homepage_roundtrip
+from src.runtime.publish_roundtrip_lookup import (
+    verify_published_current_member_lookup_roundtrip,
+)
 from src.runtime.publish_roundtrip_profiles import (
     verify_published_member_profiles_roundtrip,
 )
@@ -46,6 +49,7 @@ _STAGE_PROFILES = "profiles"
 _STAGE_EVIDENCE = "evidence"
 _STAGE_ZIP = "zip"
 _STAGE_HOMEPAGE = "homepage"
+_STAGE_LOOKUP = "lookup"
 
 
 # ---------------------------------------------------------------------------
@@ -136,13 +140,13 @@ def _snapshot_date_from_manifest(manifest: SnapshotManifest) -> date:
 
 
 def verify_publish_roundtrip(conn: Any, root: Path) -> PublishRoundtripResult:
-    """Run all five roundtrip stages against a local publish tree.
+    """Run all six roundtrip stages against a local publish tree.
 
-    Stage order is fixed: snapshot -> profiles -> evidence -> zip -> homepage.
+    Stage order is fixed: snapshot -> profiles -> evidence -> zip -> homepage -> lookup.
 
-    If the manifest cannot be loaded after the snapshot stage the four
+    If the manifest cannot be loaded after the snapshot stage the five
     downstream stages are each returned as an error result so the caller
-    always receives a complete five-stage :class:`PublishRoundtripResult`.
+    always receives a complete six-stage :class:`PublishRoundtripResult`.
 
     Args:
         conn: Live database connection forwarded to each stage verifier.
@@ -165,6 +169,7 @@ def verify_publish_roundtrip(conn: Any, root: Path) -> PublishRoundtripResult:
                 _unavailable_stage(_STAGE_EVIDENCE, _NO_MANIFEST),
                 _unavailable_stage(_STAGE_ZIP, _NO_MANIFEST),
                 _unavailable_stage(_STAGE_HOMEPAGE, _NO_MANIFEST),
+                _unavailable_stage(_STAGE_LOOKUP, _NO_MANIFEST),
             )
         )
 
@@ -182,6 +187,9 @@ def verify_publish_roundtrip(conn: Any, root: Path) -> PublishRoundtripResult:
     # Stage 5: homepage
     homepage_stage = verify_published_homepage_roundtrip(conn, root, snapshot_date)
 
+    # Stage 6: current-member lookup
+    lookup_stage = verify_published_current_member_lookup_roundtrip(root, manifest)
+
     return PublishRoundtripResult(
         stages=(
             snapshot_stage,
@@ -189,6 +197,7 @@ def verify_publish_roundtrip(conn: Any, root: Path) -> PublishRoundtripResult:
             evidence_stage,
             zip_stage,
             homepage_stage,
+            lookup_stage,
         )
     )
 

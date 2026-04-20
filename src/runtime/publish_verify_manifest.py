@@ -63,7 +63,10 @@ def _is_manifest_path(path: str) -> bool:
 
 def _is_locally_managed_artifact_path(path: str) -> bool:
     pure = PurePosixPath(path)
-    return bool(pure.parts) and pure.parts[0] in {"members", "evidence", "zip"}
+    return (
+        (bool(pure.parts) and pure.parts[0] in {"members", "evidence", "zip"})
+        or pure == PurePosixPath("identity/current-member-lookup.json")
+    )
 
 
 def _actual_manifest_records(

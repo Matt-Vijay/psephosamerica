@@ -13,6 +13,7 @@ import pytest
 
 from src.feed.changes import FeedEvent, FeedEventKind, make_feed_event_id
 from src.homepage.builders import (
+    build_featured_lookup_entries,
     build_homepage_feed,
     build_recent_events,
     build_top_changes,
@@ -22,6 +23,7 @@ from src.homepage.contracts import (
     HomepageFeedPayload,
     RecentEventSummary,
 )
+from src.identity.current_member_lookup import CurrentMemberLookupEntry
 
 # ---------------------------------------------------------------------------
 # Fixtures / factories
@@ -144,6 +146,15 @@ class TestBuildTopChanges:
         result = build_top_changes(events, _MEMBER_META, n=10)
         assert result[0].top_evidence_card_ids == ["card-1", "card-2"]
 
+    def test_top_card_ids_are_deduped(self):
+        events = [
+            _make_event("A000001", delta=-30.0, card_id="card-1", discriminator="1"),
+            _make_event("A000001", delta=-20.0, card_id="card-1", discriminator="2"),
+            _make_event("A000001", delta=-10.0, card_id="card-2", discriminator="3"),
+        ]
+        result = build_top_changes(events, _MEMBER_META, n=10)
+        assert result[0].top_evidence_card_ids == ["card-1", "card-2"]
+
     def test_sorted_by_abs_delta_descending(self):
         events = [
             _make_event("A000001", delta=-5.0),
@@ -209,6 +220,76 @@ class TestBuildTopChanges:
         assert s.chamber == ""
         assert s.party == ""
         assert s.state == ""
+
+
+class TestBuildFeaturedLookupEntries:
+    def test_prefers_top_changes_then_recent_events(self):
+        lookup_entries = [
+            CurrentMemberLookupEntry(
+                bioguide_id="A000001",
+                slug="alice-smith",
+                name="Alice Smith",
+                search_name="alice smith",
+                state="CA",
+                district="CA-12",
+                chamber="house",
+            ),
+            CurrentMemberLookupEntry(
+                bioguide_id="B000002",
+                slug="bob-jones",
+                name="Bob Jones",
+                search_name="bob jones",
+                state="TX",
+                district=None,
+                chamber="senate",
+            ),
+        ]
+        top_changes = [
+            build_top_changes(
+                [_make_event("A000001", delta=-10.0, card_id="card-a")],
+                _MEMBER_META,
+                n=10,
+            )[0]
+        ]
+        recent_events = [
+            build_recent_events(
+                [_make_event("B000002", delta=-5.0, card_id="card-b")],
+                n=10,
+            )[0]
+        ]
+
+        result = build_featured_lookup_entries(top_changes, recent_events, lookup_entries)
+
+        assert [entry.bioguide_id for entry in result] == ["A000001", "B000002"]
+
+    def test_dedupes_members_across_surfaces_and_skips_missing_lookup(self):
+        lookup_entries = [
+            CurrentMemberLookupEntry(
+                bioguide_id="A000001",
+                slug="alice-smith",
+                name="Alice Smith",
+                search_name="alice smith",
+                state="CA",
+                district="CA-12",
+                chamber="house",
+            )
+        ]
+        top_changes = build_top_changes(
+            [_make_event("A000001", delta=-10.0, card_id="card-a")],
+            _MEMBER_META,
+            n=10,
+        )
+        recent_events = build_recent_events(
+            [
+                _make_event("A000001", delta=-7.0, card_id="card-a2", discriminator="a2"),
+                _make_event("B000002", delta=-5.0, card_id="card-b"),
+            ],
+            n=10,
+        )
+
+        result = build_featured_lookup_entries(top_changes, recent_events, lookup_entries)
+
+        assert [entry.bioguide_id for entry in result] == ["A000001"]
 
     def test_deterministic_across_calls(self):
         import random

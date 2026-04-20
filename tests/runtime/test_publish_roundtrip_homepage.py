@@ -16,7 +16,12 @@ from pathlib import Path
 from typing import Any
 from unittest.mock import patch
 
-from src.export.writer import serialize_payload
+from src.api.contracts import ArtifactCounts, HomepageBootstrapPayload, MovementFeedPayload, SnapshotSummaryPayload
+from src.export.filesystem import write_planned_files
+from src.export.manifest import ManifestEntry, SnapshotManifest, manifest_root_sha256
+from src.export.writer import PlannedFile, current_member_lookup_path, homepage_bootstrap_path, serialize_payload
+from src.homepage.builders import build_featured_lookup_entries
+from src.identity.current_member_lookup import CurrentMemberLookupEntry, CurrentMemberLookupPayload, normalize_lookup_name
 from src.homepage.contracts import HomepageFeedPayload
 from src.query.homepage_feed import assemble_homepage_payload
 from src.runtime.publish_roundtrip_homepage import verify_published_homepage_roundtrip
@@ -24,6 +29,7 @@ from src.runtime.publish_roundtrip_types import PublishRoundtripStageResult
 
 _SNAP = dt.date(2026, 1, 1)
 _HOMEPAGE_PATH = "homepage/feed.json"
+_BOOTSTRAP_PATH = "homepage/bootstrap.json"
 _PATCH_TARGET = "src.runtime.publish_roundtrip_homepage.fetch_homepage_feed_rows"
 
 
@@ -36,6 +42,7 @@ def _row(
     public_id: str,
     slug: str,
     *,
+    bioguide_id: str = "A000001",
     score_delta: float = -10.0,
     dimension: str = "conflict_of_interest_risk",
     short_explanation: str = "Test explanation.",
@@ -47,6 +54,7 @@ def _row(
 ) -> dict[str, Any]:
     return {
         "public_id": public_id,
+        "member_bioguide_id": bioguide_id,
         "member_slug": slug,
         "dimension": dimension,
         "score_delta": score_delta,
@@ -60,21 +68,123 @@ def _row(
     }
 
 
-def _payload(rows: list[dict], snapshot_date: dt.date = _SNAP) -> HomepageFeedPayload:
+def _payload(rows: list[dict[str, Any]], snapshot_date: dt.date = _SNAP) -> HomepageFeedPayload:
     """Build a HomepageFeedPayload from rows using the production assembler."""
     return assemble_homepage_payload(rows, snapshot_date=snapshot_date)
 
 
+def _lookup_payload(rows: list[dict[str, Any]], snapshot_date: dt.date = _SNAP) -> CurrentMemberLookupPayload:
+    seen: dict[str, CurrentMemberLookupEntry] = {}
+    for row in rows:
+        bioguide_id = str(row["member_bioguide_id"])
+        if bioguide_id in seen:
+            continue
+        name = str(row["member_full_name"])
+        seen[bioguide_id] = CurrentMemberLookupEntry(
+            bioguide_id=bioguide_id,
+            slug=str(row["member_slug"]),
+            name=name,
+            search_name=normalize_lookup_name(name),
+            state=str(row["state"]).upper(),
+            district=None,
+            chamber=str(row["chamber"]),  # type: ignore[arg-type]
+        )
+    return CurrentMemberLookupPayload(snapshot_date=snapshot_date, members=list(seen.values()))
+
+
+def _bootstrap_payload(
+    homepage_feed: HomepageFeedPayload,
+    lookup_payload: CurrentMemberLookupPayload,
+    manifest: SnapshotManifest,
+) -> HomepageBootstrapPayload:
+    return HomepageBootstrapPayload(
+        snapshot=SnapshotSummaryPayload(
+            snapshot_id=manifest.snapshot_id,
+            snapshot_date=homepage_feed.snapshot_date,
+            published_at=manifest.created_at,
+            root_sha256=manifest.root_sha256,
+            total_files=manifest.total_files,
+            total_bytes=manifest.total_bytes,
+            artifact_counts=ArtifactCounts(
+                members=0,
+                evidence=0,
+                zip_feeds=0,
+                homepage_feeds=1,
+                current_member_lookups=1,
+            ),
+        ),
+        movement=MovementFeedPayload(
+            snapshot_date=homepage_feed.snapshot_date,
+            top_changes=homepage_feed.top_changes,
+            recent_events=homepage_feed.recent_events,
+            recent_evidence_card_ids=homepage_feed.recent_evidence_card_ids,
+        ),
+        featured_lookup_entries=build_featured_lookup_entries(
+            homepage_feed.top_changes,
+            homepage_feed.recent_events,
+            lookup_payload.members,
+        ),
+    )
+
+
 def _write_homepage(root: Path, payload: HomepageFeedPayload) -> None:
-    """Write *payload* to ``homepage/feed.json`` under *root* using production serialization."""
-    dest = root / _HOMEPAGE_PATH
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    dest.write_bytes(serialize_payload(payload))
+    """Write homepage feed plus required bootstrap prerequisites under *root*."""
+    lookup_payload = _lookup_payload(
+        [
+            {
+                "member_bioguide_id": change.bioguide_id,
+                "member_slug": change.slug,
+                "member_full_name": change.name,
+                "state": change.state,
+                "chamber": change.chamber,
+            }
+            for change in payload.top_changes
+        ]
+        + [
+            {
+                "member_bioguide_id": event.member_bioguide_id,
+                "member_slug": event.member_slug,
+                "member_full_name": event.member_name,
+                "state": "CA",
+                "chamber": "house",
+            }
+            for event in payload.recent_events
+        ],
+        payload.snapshot_date,
+    )
+    lookup_file = PlannedFile.from_bytes(
+        current_member_lookup_path(),
+        serialize_payload(lookup_payload),
+    )
+    manifest_entries = [
+        ManifestEntry(path=lookup_file.path, sha256=lookup_file.sha256, size_bytes=lookup_file.size_bytes)
+    ]
+    manifest = SnapshotManifest(
+        snapshot_id=payload.snapshot_date.isoformat(),
+        created_at=dt.datetime(2026, 1, 1, 0, 0, 0),
+        entries=manifest_entries,
+        total_files=len(manifest_entries),
+        total_bytes=sum(entry.size_bytes for entry in manifest_entries),
+        root_sha256=manifest_root_sha256(manifest_entries),
+    )
+    bootstrap_payload = _bootstrap_payload(payload, lookup_payload, manifest)
+    write_planned_files(
+        [
+            PlannedFile.from_bytes(_HOMEPAGE_PATH, serialize_payload(payload)),
+            lookup_file,
+            PlannedFile.from_bytes(
+                f"snapshots/{manifest.snapshot_id}/manifest.json",
+                serialize_payload(manifest),
+            ),
+            PlannedFile.from_bytes(_BOOTSTRAP_PATH, serialize_payload(bootstrap_payload)),
+        ],
+        root,
+    )
 
 
 def _run(
     root: Path,
-    db_rows: list[dict],
+    db_rows: list[dict[str, Any]],
     snapshot_date: dt.date = _SNAP,
 ) -> PublishRoundtripStageResult:
     """Call verify_published_homepage_roundtrip with patched DB fetch."""
@@ -116,7 +226,7 @@ class TestMatchingPayloads:
         assert result.issues == ()
 
     def test_empty_feed_ok(self, tmp_path: Path) -> None:
-        rows: list[dict] = []
+        rows: list[dict[str, Any]] = []
         _write_homepage(tmp_path, _payload(rows))
         result = _run(tmp_path, rows)
         assert result.ok is True
@@ -174,6 +284,17 @@ class TestMissingOrCorruptFile:
         assert result.ok is False
         assert result.checked == 0
 
+    def test_missing_bootstrap_is_error(self, tmp_path: Path) -> None:
+        rows = [_row("card-1", "alice-smith")]
+        _write_homepage(tmp_path, _payload(rows))
+        (tmp_path / _BOOTSTRAP_PATH).unlink()
+
+        result = _run(tmp_path, rows)
+
+        assert result.ok is False
+        assert result.checked == 0
+        assert any(issue.path == _BOOTSTRAP_PATH for issue in result.issues)
+
 
 # ---------------------------------------------------------------------------
 # Stage ordering: file load happens before DB query
@@ -185,7 +306,7 @@ class TestStageOrdering:
         """When the published file is absent the DB must not be queried."""
         call_log: list[int] = []
 
-        def tracking_fetch(conn, *, limit: int) -> list:
+        def tracking_fetch(conn: object | None, *, limit: int) -> list[dict[str, Any]]:
             call_log.append(1)
             return []
 
@@ -238,6 +359,22 @@ class TestPayloadMismatches:
         result = _run(tmp_path, db_rows)
         assert result.ok is False
         assert any("recent_evidence_card_ids" in i.message for i in result.issues)
+
+    def test_top_changes_member_metadata_drift_is_error(self, tmp_path: Path) -> None:
+        pub_rows = [_row("card-1", "alice-smith", party="D", state="CA")]
+        db_rows = [_row("card-1", "alice-smith", party="R", state="NV")]
+        _write_homepage(tmp_path, _payload(pub_rows))
+        result = _run(tmp_path, db_rows)
+        assert result.ok is False
+        assert any("top_changes" in i.message for i in result.issues)
+
+    def test_recent_events_text_drift_with_same_event_id_is_error(self, tmp_path: Path) -> None:
+        pub_rows = [_row("card-1", "alice-smith", short_explanation="Published explanation.")]
+        db_rows = [_row("card-1", "alice-smith", short_explanation="DB explanation.")]
+        _write_homepage(tmp_path, _payload(pub_rows))
+        result = _run(tmp_path, db_rows)
+        assert result.ok is False
+        assert any("recent_events" in i.message for i in result.issues)
 
     def test_checked_is_1_when_payloads_differ(self, tmp_path: Path) -> None:
         pub_rows = [_row("card-1", "alice-smith")]

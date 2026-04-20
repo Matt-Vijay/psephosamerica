@@ -17,10 +17,17 @@ from datetime import date, datetime
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from src.export.contracts import MemberProfilePayload
+from src.export.contracts import EvidenceCardPayload, MemberProfilePayload, RecentRuleFire
 from src.export.filesystem import write_planned_files
 from src.export.manifest import ManifestEntry, SnapshotManifest, manifest_root_sha256
-from src.export.writer import PlannedFile, member_path, serialize_payload
+from src.export.writer import (
+    PlannedFile,
+    build_member_page_payload,
+    member_page_payload_path,
+    member_path,
+    serialize_payload,
+)
+from src.query.evidence_card import assemble_evidence_card
 from src.runtime.publish_roundtrip_profiles import verify_published_member_profiles_roundtrip
 from src.runtime.publish_roundtrip_types import PublishRoundtripStageResult
 
@@ -118,6 +125,55 @@ def _write_profile(root: Path, profile: MemberProfilePayload) -> PlannedFile:
     return planned
 
 
+def _card_row(
+    *,
+    evidence_card_id: str = "ec-001",
+    bioguide_id: str = "P000197",
+    member_name: str = "Nancy Pelosi",
+    member_slug: str = "nancy-pelosi",
+    snapshot_date: date = SNAPSHOT_DATE,
+    score_delta: float = 5.0,
+) -> dict:
+    return {
+        "public_id": evidence_card_id,
+        "member_bioguide_id": bioguide_id,
+        "member_full_name": member_name,
+        "member_slug": member_slug,
+        "dimension": "conflict_of_interest_risk",
+        "rule_id": "committee_sector_trade",
+        "rule_version": 1,
+        "score_delta": score_delta,
+        "short_explanation": "Trade overlapping committee jurisdiction.",
+        "facts": ["PTR discloses sale of XYZ Energy stock on 2026-04-01."],
+        "inferences": ["Member served on the committee at the time of the trade."],
+        "normative_judgments": None,
+        "source_anchors": [
+            {
+                "source_type": "financial_disclosure",
+                "source_id": "fd-001",
+                "url": None,
+                "label": "2026 PTR filing",
+            }
+        ],
+        "confidence_label": "HIGH",
+        "rendered_at": snapshot_date,
+        "created_at": datetime(2026, 4, 14, 12, 0, 0),
+    }
+
+
+def _card_payload(row: dict) -> EvidenceCardPayload:
+    return assemble_evidence_card(row)
+
+
+def _write_member_page(root: Path, slug: str, payload: object) -> PlannedFile:
+    planned = PlannedFile.from_bytes(
+        member_page_payload_path(slug),
+        serialize_payload(payload),
+    )
+    write_planned_files([planned], root)
+    return planned
+
+
 def _run_roundtrip(
     root: Path,
     manifest: SnapshotManifest,
@@ -126,6 +182,7 @@ def _run_roundtrip(
     score_rows: list | None = None,
     fire_rows: list | None = None,
     committee_rows: list | None = None,
+    all_card_rows: list[dict] | None = None,
 ) -> PublishRoundtripStageResult:
     """Run the function under test with all four DB fetches patched."""
     conn = MagicMock()
@@ -141,6 +198,13 @@ def _run_roundtrip(
         )
         stack.enter_context(
             patch(f"{_DB_MODULE}.fetch_member_committee_rows", return_value=committee_rows or [])
+        )
+        stack.enter_context(
+            patch(
+                f"{_DB_MODULE}.fetch_all_evidence_card_rows",
+                return_value=all_card_rows or [],
+                create=True,
+            )
         )
         return verify_published_member_profiles_roundtrip(conn, root, manifest)
 
@@ -269,6 +333,51 @@ def test_profile_with_district_passes(tmp_path: Path) -> None:
     assert result.ok is True
 
 
+def test_matching_member_page_passes(tmp_path: Path) -> None:
+    profile = _profile().model_copy(
+        update={
+            "top_evidence_card_ids": ["ec-001"],
+            "recent_rule_fires": [
+                RecentRuleFire(
+                    rule_id="committee_sector_trade",
+                    evidence_card_id="ec-001",
+                    short_explanation="Trade overlapping committee jurisdiction.",
+                    score_delta=5.0,
+                    snapshot_date=SNAPSHOT_DATE,
+                )
+            ],
+            "total_evidence_cards": 1,
+        }
+    )
+    card_row = _card_row()
+    card = _card_payload(card_row)
+    pf = _write_profile(tmp_path, profile)
+    page = _write_member_page(
+        tmp_path,
+        profile.slug,
+        build_member_page_payload(profile, {card.evidence_card_id: card}),
+    )
+    manifest = _manifest_from_files([pf, page])
+    result = _run_roundtrip(
+        tmp_path,
+        manifest,
+        member_row_val=_member_row(profile),
+        score_rows=[_score_snapshot_row()],
+        fire_rows=[
+            {
+                "rule_id": "committee_sector_trade",
+                "dimension": "conflict_of_interest_risk",
+                "evidence_card_id": "ec-001",
+                "short_explanation": "Trade overlapping committee jurisdiction.",
+                "score_delta": 5.0,
+                "snapshot_date": SNAPSHOT_DATE,
+            }
+        ],
+        all_card_rows=[card_row],
+    )
+    assert result.ok is True
+
+
 # ---------------------------------------------------------------------------
 # Missing published file
 # ---------------------------------------------------------------------------
@@ -284,6 +393,24 @@ def test_missing_published_file_is_error(tmp_path: Path) -> None:
     assert result.checked == 1
     assert result.error_count == 1
     assert any("cannot load" in i.message for i in result.issues)
+
+
+def test_missing_published_member_page_is_error(tmp_path: Path) -> None:
+    profile = _profile()
+    pf = _write_profile(tmp_path, profile)
+    missing_page = PlannedFile.from_bytes(
+        member_page_payload_path(profile.slug),
+        b"{}",
+    )
+    manifest = _manifest_from_files([pf, missing_page])
+    result = _run_roundtrip(
+        tmp_path,
+        manifest,
+        member_row_val=_member_row(profile),
+        score_rows=[_score_snapshot_row()],
+    )
+    assert result.ok is False
+    assert any("member page" in i.message.lower() for i in result.issues)
 
 
 # ---------------------------------------------------------------------------
@@ -314,6 +441,54 @@ def test_member_not_found_in_db_is_error(tmp_path: Path) -> None:
     assert result.ok is False
     assert result.error_count == 1
     assert any("not found in DB" in i.message for i in result.issues)
+
+
+def test_member_page_mismatch_is_error(tmp_path: Path) -> None:
+    profile = _profile().model_copy(
+        update={
+            "top_evidence_card_ids": ["ec-001"],
+            "recent_rule_fires": [
+                RecentRuleFire(
+                    rule_id="committee_sector_trade",
+                    evidence_card_id="ec-001",
+                    short_explanation="Trade overlapping committee jurisdiction.",
+                    score_delta=5.0,
+                    snapshot_date=SNAPSHOT_DATE,
+                )
+            ],
+            "total_evidence_cards": 1,
+        }
+    )
+    card_row = _card_row()
+    card = _card_payload(card_row)
+    pf = _write_profile(tmp_path, profile)
+    page = _write_member_page(
+        tmp_path,
+        profile.slug,
+        build_member_page_payload(profile, {card.evidence_card_id: card}).model_copy(
+            update={"recent_evidence_cards": []}
+        ),
+    )
+    manifest = _manifest_from_files([pf, page])
+    result = _run_roundtrip(
+        tmp_path,
+        manifest,
+        member_row_val=_member_row(profile),
+        score_rows=[_score_snapshot_row()],
+        fire_rows=[
+            {
+                "rule_id": "committee_sector_trade",
+                "dimension": "conflict_of_interest_risk",
+                "evidence_card_id": "ec-001",
+                "short_explanation": "Trade overlapping committee jurisdiction.",
+                "score_delta": 5.0,
+                "snapshot_date": SNAPSHOT_DATE,
+            }
+        ],
+        all_card_rows=[card_row],
+    )
+    assert result.ok is False
+    assert any("member page" in i.message.lower() for i in result.issues)
 
 
 # ---------------------------------------------------------------------------

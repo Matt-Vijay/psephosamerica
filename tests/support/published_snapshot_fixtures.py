@@ -31,6 +31,10 @@ from src.export.contracts import (
     EvidenceBlock,
     EvidenceCardPayload,
     EvidenceSection,
+    HistoricalCommitteeMembership,
+    MemberHistoryEvent,
+    MemberHistoryPayload,
+    MemberHistorySnapshot,
     MemberProfilePayload,
     RecentRuleFire,
     ScoreSummary,
@@ -95,6 +99,7 @@ _DEFAULT_MEMBER_PROFILE = MemberProfilePayload(
             snapshot_date=_SNAPSHOT_DATE,
         )
     ],
+    top_evidence_card_ids=["ec-0001"],
     committees=[
         CommitteeMembership(committee_name="Energy and Commerce", role="Member")
     ],
@@ -117,6 +122,44 @@ _DEFAULT_ZIP_MEMBER_SUMMARY = ZipMemberSummary(
     ],
     top_evidence_card_ids=["ec-0001"],
 )
+
+
+def _snapshot_date_from_id(snapshot_id: str) -> date:
+    return date.fromisoformat(snapshot_id)
+
+
+def _snapshot_timestamp(snapshot_date: date) -> datetime:
+    return datetime.combine(snapshot_date, datetime.min.time(), tzinfo=UTC)
+
+
+def _default_evidence_card_for_snapshot(snapshot_date: date) -> EvidenceCardPayload:
+    return _DEFAULT_EVIDENCE_CARD.model_copy(
+        update={
+            "snapshot_date": snapshot_date,
+            "created_at": _snapshot_timestamp(snapshot_date),
+        }
+    )
+
+
+def _default_member_profile_for_snapshot(snapshot_date: date) -> MemberProfilePayload:
+    return _DEFAULT_MEMBER_PROFILE.model_copy(
+        update={
+            "snapshot_date": snapshot_date,
+            "recent_rule_fires": [
+                recent_fire.model_copy(update={"snapshot_date": snapshot_date})
+                for recent_fire in _DEFAULT_MEMBER_PROFILE.recent_rule_fires
+            ],
+        }
+    )
+
+
+def _default_member_history_for_snapshot(snapshot_date: date) -> MemberHistoryPayload:
+    timestamp = _snapshot_timestamp(snapshot_date)
+    return make_member_history(
+        snapshot_date=snapshot_date,
+        published_at=timestamp,
+        fired_at=timestamp,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -155,8 +198,16 @@ class PublishedSnapshotBuilder:
     def __init__(self, root: Path, snapshot_id: str = "2026-01-01") -> None:
         self._root = root
         self._snapshot_id = snapshot_id
-        self._member_profiles: list[MemberProfilePayload] = [_DEFAULT_MEMBER_PROFILE]
-        self._evidence_cards: list[EvidenceCardPayload] = [_DEFAULT_EVIDENCE_CARD]
+        snapshot_date = _snapshot_date_from_id(snapshot_id)
+        self._member_profiles: list[MemberProfilePayload] = [
+            _default_member_profile_for_snapshot(snapshot_date)
+        ]
+        self._member_histories: list[MemberHistoryPayload] = [
+            _default_member_history_for_snapshot(snapshot_date)
+        ]
+        self._evidence_cards: list[EvidenceCardPayload] = [
+            _default_evidence_card_for_snapshot(snapshot_date)
+        ]
         self._zip_feeds: list[ZipFeedPayload] = []
 
     # ------------------------------------------------------------------
@@ -173,6 +224,12 @@ class PublishedSnapshotBuilder:
         self, cards: list[EvidenceCardPayload]
     ) -> "PublishedSnapshotBuilder":
         self._evidence_cards = cards
+        return self
+
+    def with_member_histories(
+        self, histories: list[MemberHistoryPayload]
+    ) -> "PublishedSnapshotBuilder":
+        self._member_histories = histories
         return self
 
     def with_zip_feeds(
@@ -197,6 +254,12 @@ class PublishedSnapshotBuilder:
             member_profiles=self._member_profiles,
             zip_feeds=self._zip_feeds,
             evidence_cards=self._evidence_cards,
+            member_histories=self._member_histories,
+            snapshot_date=(
+                self._member_profiles[0].snapshot_date
+                if self._member_profiles
+                else _SNAPSHOT_DATE
+            ),
         )
         write_planned_files(planned, self._root)
         return self
@@ -216,6 +279,7 @@ def make_snapshot(
     *,
     snapshot_id: str = "2026-01-01",
     member_profiles: list[MemberProfilePayload] | None = None,
+    member_histories: list[MemberHistoryPayload] | None = None,
     evidence_cards: list[EvidenceCardPayload] | None = None,
     zip_feeds: list[ZipFeedPayload] | None = None,
 ) -> PublishedSnapshot:
@@ -235,6 +299,8 @@ def make_snapshot(
 
     if member_profiles is not None:
         builder.with_member_profiles(member_profiles)
+    if member_histories is not None:
+        builder.with_member_histories(member_histories)
     if evidence_cards is not None:
         builder.with_evidence_cards(evidence_cards)
     if zip_feeds is not None:
@@ -257,6 +323,7 @@ def make_evidence_card(
     member_name: str = "Nancy Pelosi",
     score_delta: float = 5.0,
     snapshot_date: date = _SNAPSHOT_DATE,
+    created_at: datetime | None = None,
 ) -> EvidenceCardPayload:
     """Return a minimal EvidenceCardPayload with caller-controlled key fields."""
     return EvidenceCardPayload(
@@ -275,7 +342,7 @@ def make_evidence_card(
         ],
         confidence=ConfidenceLabel.HIGH,
         snapshot_date=snapshot_date,
-        created_at=_CREATED_AT,
+        created_at=created_at or _CREATED_AT,
     )
 
 
@@ -302,6 +369,62 @@ def make_member_profile(
         committees=[],
         total_evidence_cards=0,
         snapshot_date=snapshot_date,
+    )
+
+
+def make_member_history(
+    *,
+    bioguide_id: str = "P000197",
+    slug: str = "nancy-pelosi",
+    name: str = "Nancy Pelosi",
+    chamber: Literal["house", "senate"] = "house",
+    state: str = "CA",
+    snapshot_date: date = _SNAPSHOT_DATE,
+    published_at: datetime | None = None,
+    fired_at: datetime | None = None,
+) -> MemberHistoryPayload:
+    resolved_published_at = published_at or _CREATED_AT
+    resolved_fired_at = fired_at or _CREATED_AT
+    return MemberHistoryPayload(
+        bioguide_id=bioguide_id,
+        name=name,
+        slug=slug,
+        state=state,
+        district=None,
+        chamber=chamber,
+        party="Democrat",
+        snapshots=[
+            MemberHistorySnapshot(
+                snapshot_date=snapshot_date,
+                score_total=5.0,
+                score_total_delta=None,
+                dimension_scores={"conflict_of_interest_risk": 5.0},
+                published_at=resolved_published_at,
+            )
+        ],
+        events=[
+            MemberHistoryEvent(
+                rule_id="committee_sector_trade",
+                dimension="conflict_of_interest_risk",
+                severity="high",
+                evidence_card_id="ec-0001",
+                short_explanation="Test explanation.",
+                score_delta=5.0,
+                snapshot_date=snapshot_date,
+                fired_at=resolved_fired_at,
+            )
+        ],
+        committee_history=[
+            HistoricalCommitteeMembership(
+                committee_name="Energy and Commerce",
+                role="Member",
+                start_date=snapshot_date,
+                end_date=None,
+                is_current=True,
+                chamber=chamber,
+                committee_type="standing",
+            )
+        ],
     )
 
 

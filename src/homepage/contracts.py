@@ -11,6 +11,8 @@ from datetime import date
 
 from pydantic import BaseModel, Field
 
+from src.export.contracts import MemberChangeSummaryPayload
+
 
 class MemberMovementSummary(BaseModel):
     """Per-member aggregate of score movement within a snapshot window."""
@@ -64,3 +66,30 @@ class HomepageFeedPayload(BaseModel):
     top_changes: list[MemberMovementSummary]
     recent_events: list[RecentEventSummary]
     recent_evidence_card_ids: list[str] = Field(default_factory=list)
+
+
+class MovementWindowPayload(BaseModel):
+    """Historical movement payload spanning the latest published window."""
+
+    window_key: str = "latest"
+    has_full_window: bool = True
+    latest_snapshot_id: str
+    latest_snapshot_date: date
+    previous_snapshot_id: str | None = None
+    previous_snapshot_date: date | None = None
+    top_changes: list[MemberMovementSummary]
+    recent_events: list[RecentEventSummary]
+    recent_evidence_card_ids: list[str] = Field(default_factory=list)
+
+
+class SnapshotComparePayload(BaseModel):
+    """Compare two published snapshots across the historical aggregate root."""
+
+    start_snapshot_id: str
+    start_snapshot_date: date
+    end_snapshot_id: str
+    end_snapshot_date: date
+    top_changes: list[MemberMovementSummary] = Field(default_factory=list)
+    recent_events: list[RecentEventSummary] = Field(default_factory=list)
+    recent_evidence_card_ids: list[str] = Field(default_factory=list)
+    featured_member_changes: list[MemberChangeSummaryPayload] = Field(default_factory=list)

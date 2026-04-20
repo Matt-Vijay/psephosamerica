@@ -203,6 +203,7 @@ class TestFetchHomepageFeedRows:
         "short_explanation": "Sold tech stock while on tech committee.",
         "confidence_label": "HIGH",
         "rendered_at": datetime(2024, 2, 14, 15, 0),
+        "member_bioguide_id": "A000001",
         "member_full_name": "Jane Doe",
         "member_slug": "jane-doe",
         "state": "CA",
@@ -237,8 +238,20 @@ class TestFetchHomepageFeedRows:
         sql = mock_fa.call_args[0][1]
         assert "rendered_at DESC" in sql
 
+    def test_orders_by_rendered_at_desc_then_public_id(self):
+        with patch(MODULE, return_value=[]) as mock_fa:
+            fetch_homepage_feed_rows(CONN)
+        sql = mock_fa.call_args[0][1]
+        assert "ORDER BY ec.rendered_at DESC, ec.public_id" in sql
+
     def test_joins_member(self):
         with patch(MODULE, return_value=[]) as mock_fa:
             fetch_homepage_feed_rows(CONN)
         sql = mock_fa.call_args[0][1]
         assert "member" in sql
+
+    def test_selects_member_bioguide_id(self):
+        with patch(MODULE, return_value=[]) as mock_fa:
+            fetch_homepage_feed_rows(CONN)
+        sql = mock_fa.call_args[0][1]
+        assert "m.bioguide_id AS member_bioguide_id" in sql

@@ -128,6 +128,18 @@ class TestValidManifest:
         assert result.checked == 2
         assert any("expected exactly one manifest" in issue.message for issue in result.issues)
 
+    def test_identity_lookup_missing_from_manifest_is_error(self, tmp_path: Path) -> None:
+        planned = _root_file("identity/current-member-lookup.json", b'{"v":1,"sd":"2026-04-14","m":[]}')
+        _write_planned(tmp_path, planned)
+        _write_manifest(tmp_path, _minimal_manifest())
+        result = verify_local_manifest(tmp_path)
+        assert result.ok is False
+        assert any(
+            issue.path == "identity/current-member-lookup.json"
+            and "managed file not listed in manifest" in issue.message
+            for issue in result.issues
+        )
+
 
 # ---------------------------------------------------------------------------
 # Invalid JSON

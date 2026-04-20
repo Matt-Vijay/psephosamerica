@@ -118,6 +118,7 @@ def _build_card_from_fire(
         score_delta=score_delta,
         confidence=ConfidenceLabel.HIGH,
         snapshot_date=snapshot_date,
+        created_at=fire.fired_at,
     )
 
 
@@ -125,6 +126,7 @@ def _fires_for_bundle(
     bundle: ConflictBundle,
     family_rules: list[RuleDefinition],
     recompute_run_id: str,
+    fired_at: dt.datetime,
 ) -> list[RuleFire]:
     # Rule parameters are injected as ``parameters.<name>`` so that
     # ``value_ref`` conditions in the YAML rule definitions resolve correctly.
@@ -139,6 +141,7 @@ def _fires_for_bundle(
             enriched,
             bundle.member_bioguide_id,
             recompute_run_id,
+            fired_at=fired_at,
             superseded_filing_id=bundle.superseded_filing_id,
         )
         if fire is not None:
@@ -171,6 +174,7 @@ def recompute_conflicts(
     all_fires: list[RuleFire] = []
     all_cards: list[EvidenceCardPayload] = []
     member_buckets: dict[str, MemberRecomputeResult] = {}
+    fired_at = dt.datetime.combine(snapshot_date, dt.time.min, tzinfo=dt.UTC)
 
     for family, rows in rows_by_family.items():
         family_rules = filter_rules(rules, family=family)
@@ -194,7 +198,7 @@ def recompute_conflicts(
                 )
             bucket = member_buckets[bioguide_id]
 
-            fires = _fires_for_bundle(bundle, family_rules, recompute_run_id)
+            fires = _fires_for_bundle(bundle, family_rules, recompute_run_id, fired_at)
 
             for fire in fires:
                 card = _build_card_from_fire(

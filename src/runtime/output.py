@@ -11,6 +11,8 @@ from src.runtime.disclosures_artifacts import DisclosureArtifactIngestResult
 from src.runtime.disclosures_bundle_process import DisclosuresBundleProcessResult
 from src.runtime.disclosures_load_from_parse import DisclosuresParseLoadResult
 from src.runtime.disclosures_parse import DisclosureParseRuntimeResult
+from src.runtime.history_backfill import LocalHistoryBackfillResult
+from src.runtime.history_verify_types import HistoryVerifyResult
 from src.runtime.oracle_contracts import LocalOracleRunResult
 from src.runtime.publish import PublishRuntimeResult
 from src.runtime.publish_roundtrip_types import PublishRoundtripResult
@@ -162,6 +164,69 @@ def summarize_local_oracle_run_result(result: LocalOracleRunResult) -> dict[str,
     }
 
 
+def summarize_local_history_backfill_result(result: LocalHistoryBackfillResult) -> dict[str, Any]:
+    attempts: list[dict[str, Any]] = []
+    for attempt in result.attempts:
+        attempt_out: dict[str, Any] = {
+            "snapshot_id": attempt.snapshot_id,
+            "snapshot_date": attempt.snapshot_date.isoformat(),
+            "publish_root": str(attempt.publish_root),
+            "status": attempt.status,
+            "reason": attempt.reason,
+            "error": attempt.error,
+        }
+        oracle_result = result.snapshot_results.get(attempt.snapshot_id)
+        if oracle_result is not None:
+            attempt_out["oracle"] = summarize_local_oracle_run_result(oracle_result)
+            attempt_out["ok"] = (
+                oracle_result.congress.load_ok
+                and bool(oracle_result.disclosures.get("load_ok", True))
+                and bool(oracle_result.publish.get("succeeded", True))
+                and oracle_result.verify.ok
+                and oracle_result.roundtrip.ok
+            )
+        else:
+            attempt_out["ok"] = None
+        attempts.append(attempt_out)
+
+    aggregate_out: dict[str, Any] | None = None
+    if result.aggregate is not None:
+        aggregate_out = {
+            "latest_snapshot_id": result.aggregate.latest_snapshot_id,
+            "snapshot_count": result.aggregate.snapshot_count,
+            "member_history_count": result.aggregate.member_history_count,
+            "target_root": str(result.aggregate.target_root),
+            "verify": (
+                summarize_history_verify_result(result.aggregate.verify)
+                if result.aggregate.verify is not None
+                else None
+            ),
+        }
+
+    return {
+        "congress": result.plan.congress,
+        "cadence": result.plan.cadence,
+        "target_root": str(result.target_root),
+        "overwrite": result.overwrite,
+        "continue_on_error": result.continue_on_error,
+        "date_window": {
+            "start_date": result.plan.date_window.start_date.isoformat(),
+            "end_date": result.plan.date_window.end_date.isoformat(),
+            "bounded_by_today": result.plan.date_window.bounded_by_today,
+        },
+        "planned_count": len(result.plan.targets),
+        "attempted_count": result.attempted_count,
+        "completed_count": result.completed_count,
+        "skipped_count": result.skipped_count,
+        "failed_count": result.failed_count,
+        "remaining_count": result.remaining_count,
+        "aggregate_source_count": len(result.aggregate_source_roots),
+        "aggregate_error": result.aggregate_error,
+        "attempts": attempts,
+        "aggregate": aggregate_out,
+    }
+
+
 def summarize_publish_verify_result(result: PublishVerifyResult) -> dict[str, Any]:
     """Compact summary of a publish verification outcome."""
     return {
@@ -184,6 +249,26 @@ def summarize_publish_verify_result(result: PublishVerifyResult) -> dict[str, An
 
 def summarize_publish_roundtrip_result(result: PublishRoundtripResult) -> dict[str, Any]:
     """Compact summary of a publish roundtrip verification outcome."""
+    return {
+        "ok": result.ok,
+        "total_checked": result.total_checked,
+        "total_errors": result.total_errors,
+        "total_warnings": result.total_warnings,
+        "stages": [
+            {
+                "stage": s.stage,
+                "checked": s.checked,
+                "ok": s.ok,
+                "errors": s.error_count,
+                "warnings": s.warning_count,
+            }
+            for s in result.stages
+        ],
+    }
+
+
+def summarize_history_verify_result(result: HistoryVerifyResult) -> dict[str, Any]:
+    """Compact summary of a history aggregate verification outcome."""
     return {
         "ok": result.ok,
         "total_checked": result.total_checked,

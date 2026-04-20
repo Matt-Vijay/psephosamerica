@@ -31,6 +31,7 @@ def _row(
     public_id: str,
     slug: str,
     *,
+    member_bioguide_id: str = "A000001",
     score_delta: float = -20.0,
     dimension: str = "conflict_of_interest_risk",
     short_explanation: str = "Test",
@@ -42,6 +43,7 @@ def _row(
 ) -> dict[str, Any]:
     return {
         "public_id": public_id,
+        "member_bioguide_id": member_bioguide_id,
         "member_slug": slug,
         "dimension": dimension,
         "score_delta": score_delta,
@@ -74,10 +76,10 @@ class TestRowsToFeedEvents:
         ev = rows_to_feed_events(rows, snapshot_date=_SNAP)[0]
         assert ev.kind == FeedEventKind.EVIDENCE_CARD
 
-    def test_member_slug_used_as_bioguide_id(self):
-        rows = [_row("card-1", "bob-jones")]
+    def test_member_bioguide_id_uses_real_bioguide_identity(self):
+        rows = [_row("card-1", "bob-jones", member_bioguide_id="B000002")]
         ev = rows_to_feed_events(rows, snapshot_date=_SNAP)[0]
-        assert ev.member_bioguide_id == "bob-jones"
+        assert ev.member_bioguide_id == "B000002"
         assert ev.member_slug == "bob-jones"
 
     def test_member_name_populated(self):
@@ -159,12 +161,12 @@ class TestRowsToFeedEvents:
         assert len(events) == 2
 
     def test_injectable_id_builder_used(self):
-        def fixed_builder(kind, slug, dimension, snap, *discriminators):
-            return f"custom-{slug}"
+        def fixed_builder(kind, member_bioguide_id, dimension, snap, *discriminators):
+            return f"custom-{member_bioguide_id}"
 
         rows = [_row("card-1", "alice-smith")]
         ev = rows_to_feed_events(rows, snapshot_date=_SNAP, id_builder=fixed_builder)[0]
-        assert ev.feed_event_id == "custom-alice-smith"
+        assert ev.feed_event_id == "custom-A000001"
 
     def test_injectable_id_builder_receives_public_id_as_discriminator(self):
         seen_discriminators: list[tuple] = []
@@ -196,38 +198,58 @@ class TestMemberMetaFromRows:
         assert member_meta_from_rows([]) == {}
 
     def test_single_row_produces_entry(self):
-        rows = [_row("card-1", "alice-smith", chamber="house", party="D", state="CA")]
+        rows = [
+            _row(
+                "card-1",
+                "alice-smith",
+                member_bioguide_id="A000001",
+                chamber="house",
+                party="D",
+                state="CA",
+            )
+        ]
         meta = member_meta_from_rows(rows)
-        assert "alice-smith" in meta
-        assert meta["alice-smith"]["chamber"] == "house"
-        assert meta["alice-smith"]["party"] == "D"
-        assert meta["alice-smith"]["state"] == "CA"
+        assert "A000001" in meta
+        assert meta["A000001"]["chamber"] == "house"
+        assert meta["A000001"]["party"] == "D"
+        assert meta["A000001"]["state"] == "CA"
 
     def test_multiple_slugs_produce_separate_entries(self):
         rows = [
-            _row("card-1", "alice-smith"),
-            _row("card-2", "bob-jones", member_full_name="Bob Jones", chamber="senate"),
+            _row("card-1", "alice-smith", member_bioguide_id="A000001"),
+            _row(
+                "card-2",
+                "bob-jones",
+                member_bioguide_id="B000002",
+                member_full_name="Bob Jones",
+                chamber="senate",
+            ),
         ]
         meta = member_meta_from_rows(rows)
-        assert "alice-smith" in meta
-        assert "bob-jones" in meta
+        assert "A000001" in meta
+        assert "B000002" in meta
 
     def test_duplicate_slug_uses_first_occurrence(self):
         # Two rows for the same member; only the first should set chamber
         rows = [
-            _row("card-1", "alice-smith", chamber="house"),
-            _row("card-2", "alice-smith", chamber="senate"),
+            _row("card-1", "alice-smith", member_bioguide_id="A000001", chamber="house"),
+            _row("card-2", "alice-smith", member_bioguide_id="A000001", chamber="senate"),
         ]
         meta = member_meta_from_rows(rows)
-        assert meta["alice-smith"]["chamber"] == "house"
+        assert meta["A000001"]["chamber"] == "house"
 
     def test_missing_fields_default_to_empty_string(self):
-        row: dict[str, Any] = {"member_slug": "bare-slug", "public_id": "x",
-                                "dimension": "coi", "score_delta": -5.0}
+        row: dict[str, Any] = {
+            "member_bioguide_id": "Z000999",
+            "member_slug": "bare-slug",
+            "public_id": "x",
+            "dimension": "coi",
+            "score_delta": -5.0,
+        }
         meta = member_meta_from_rows([row])
-        assert meta["bare-slug"]["chamber"] == ""
-        assert meta["bare-slug"]["party"] == ""
-        assert meta["bare-slug"]["state"] == ""
+        assert meta["Z000999"]["chamber"] == ""
+        assert meta["Z000999"]["party"] == ""
+        assert meta["Z000999"]["state"] == ""
 
 
 # ---------------------------------------------------------------------------
@@ -238,12 +260,12 @@ class TestMemberMetaFromRows:
 class TestAssembleHomepagePayload:
     def _rows(self) -> list[dict[str, Any]]:
         return [
-            _row("card-a", "alice-smith", score_delta=-30.0,
+            _row("card-a", "alice-smith", member_bioguide_id="A000001", score_delta=-30.0,
                  rendered_at=dt.date(2025, 2, 25), chamber="house", party="D", state="CA"),
-            _row("card-b", "bob-jones", score_delta=-15.0,
+            _row("card-b", "bob-jones", member_bioguide_id="B000002", score_delta=-15.0,
                  rendered_at=dt.date(2025, 2, 20),
                  member_full_name="Bob Jones", chamber="senate", party="R", state="TX"),
-            _row("card-c", "carol-lee", score_delta=-5.0,
+            _row("card-c", "carol-lee", member_bioguide_id="C000003", score_delta=-5.0,
                  rendered_at=None,
                  member_full_name="Carol Lee", chamber="house", party="R", state="FL"),
         ]
@@ -318,9 +340,41 @@ class TestAssembleHomepagePayload:
     def test_member_meta_chamber_party_state_in_top_changes(self):
         result = assemble_homepage_payload(self._rows(), snapshot_date=_SNAP)
         alice = next(s for s in result.top_changes if s.slug == "alice-smith")
+        assert alice.bioguide_id == "A000001"
         assert alice.chamber == "house"
         assert alice.party == "D"
         assert alice.state == "CA"
+
+    def test_recent_events_carry_real_member_bioguide_id(self):
+        result = assemble_homepage_payload(self._rows(), snapshot_date=_SNAP)
+        alice = next(e for e in result.recent_events if e.member_slug == "alice-smith")
+        assert alice.member_bioguide_id == "A000001"
+
+    def test_recent_events_preserve_same_day_timestamp_order(self):
+        rows = [
+            _row(
+                "card-early",
+                "alice-smith",
+                member_bioguide_id="A000001",
+                rendered_at=dt.datetime(2025, 2, 20, 9, 0, 0),
+            ),
+            _row(
+                "card-late",
+                "bob-jones",
+                member_bioguide_id="B000002",
+                member_full_name="Bob Jones",
+                rendered_at=dt.datetime(2025, 2, 20, 17, 30, 0),
+            ),
+        ]
+        result = assemble_homepage_payload(
+            rows,
+            snapshot_date=_SNAP,
+            id_builder=lambda kind, member_bioguide_id, dimension, snap, *discriminators: (
+                f"id-{member_bioguide_id}"
+            ),
+        )
+        assert [e.evidence_card_id for e in result.recent_events] == ["card-late", "card-early"]
+        assert all(e.occurred_at == dt.date(2025, 2, 20) for e in result.recent_events)
 
     def test_deterministic_across_input_orderings(self):
         import random

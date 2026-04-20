@@ -70,11 +70,14 @@ def _normalize_recent_fires(
     fire_rows: list[dict[str, Any]],
     limit: int = 5,
 ) -> list[dict[str, Any]]:
-    # Sort most-recent-first; break snapshot_date ties by rule_id ascending.
+    # Sort most-recent-first; break ties by evidence/rule identity ascending.
     sorted_fires = sorted(
         fire_rows,
-        key=lambda r: (r.get("snapshot_date") or date.min, r.get("rule_id") or ""),
-        reverse=True,
+        key=lambda r: (
+            -(r.get("snapshot_date") or date.min).toordinal(),
+            r.get("evidence_card_id") or "",
+            r.get("rule_id") or "",
+        ),
     )
     return [
         {
@@ -86,6 +89,23 @@ def _normalize_recent_fires(
         }
         for f in sorted_fires[:limit]
     ]
+
+
+def _top_evidence_card_ids(
+    fire_rows: list[dict[str, Any]],
+    limit: int = 3,
+) -> list[str]:
+    seen: set[str] = set()
+    top_ids: list[str] = []
+    for fire in _normalize_recent_fires(fire_rows, limit=len(fire_rows)):
+        card_id = fire.get("evidence_card_id")
+        if not card_id or card_id in seen:
+            continue
+        seen.add(card_id)
+        top_ids.append(card_id)
+        if len(top_ids) >= limit:
+            break
+    return top_ids
 
 
 def _normalize_committees(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -123,6 +143,7 @@ def assemble_member_profile(
         member=_normalize_member(member_row),
         score_rows=_extract_score_summaries(score_snapshot_rows, rule_fire_rows),
         recent_fires=_normalize_recent_fires(rule_fire_rows),
+        top_evidence_card_ids=_top_evidence_card_ids(rule_fire_rows),
         committee_rows=_normalize_committees(committee_rows),
         total_evidence_cards=_count_distinct_evidence_cards(rule_fire_rows),
         snapshot_date=_latest_snapshot_date(score_snapshot_rows),

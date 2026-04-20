@@ -187,15 +187,16 @@ def fetch_homepage_feed_rows(
                ec.short_explanation,
                ec.confidence_label,
                ec.rendered_at,
+               m.bioguide_id AS member_bioguide_id,
                m.full_name  AS member_full_name,
                m.slug       AS member_slug,
                m.state,
                m.chamber,
                m.party
-          FROM evidence_card ec
+         FROM evidence_card ec
           JOIN member m ON m.id = ec.member_id
          WHERE ec.rendered_at IS NOT NULL
-         ORDER BY ec.rendered_at DESC
+         ORDER BY ec.rendered_at DESC, ec.public_id
          LIMIT %s
         """,
         (limit,),

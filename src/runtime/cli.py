@@ -30,8 +30,12 @@ def build_parser() -> argparse.ArgumentParser:
     _add_load_congress_local(sub)
     _add_process_disclosures_local(sub)
     _add_run_oracle_local(sub)
+    _add_plan_history_backfill(sub)
+    _add_run_history_backfill_local(sub)
+    _add_aggregate_history(sub)
     _add_verify_publish(sub)
     _add_verify_publish_roundtrip(sub)
+    _add_verify_history_aggregate(sub)
 
     return parser
 
@@ -339,6 +343,149 @@ def _add_run_oracle_local(sub: argparse._SubParsersAction) -> None:  # type: ign
         metavar="ID",
         help="Explicit snapshot identifier; defaults to snapshot-date ISO string.",
     )
+    p.add_argument(
+        "--artifact-root",
+        default=None,
+        metavar="PATH",
+        help="Directory containing bundled disclosure artifacts when bundle storage paths are relative.",
+    )
+
+
+def _add_plan_history_backfill(sub: argparse._SubParsersAction) -> None:  # type: ignore[type-arg]
+    p = sub.add_parser(
+        "plan-history-backfill",
+        help="Plan weekly historical snapshot dates for a Congress and target root.",
+    )
+    p.add_argument(
+        "--congress",
+        required=True,
+        type=int,
+        metavar="NUMBER",
+        help="Congress number to plan historical weekly snapshots for.",
+    )
+    p.add_argument(
+        "--target-root",
+        required=True,
+        metavar="PATH",
+        help="Directory that will hold one per-snapshot publish root per planned week.",
+    )
+    p.add_argument(
+        "--start-date",
+        type=_parse_date,
+        default=None,
+        metavar="YYYY-MM-DD",
+        help="Optional lower bound; clamped to the Congress term.",
+    )
+    p.add_argument(
+        "--end-date",
+        type=_parse_date,
+        default=None,
+        metavar="YYYY-MM-DD",
+        help="Optional upper bound; capped at today for the active Congress.",
+    )
+
+
+def _add_run_history_backfill_local(sub: argparse._SubParsersAction) -> None:  # type: ignore[type-arg]
+    p = sub.add_parser(
+        "run-history-backfill-local",
+        help="Replay the local oracle weekly across a Congress window and optionally aggregate the results.",
+    )
+    p.add_argument(
+        "--congress-archive",
+        required=True,
+        metavar="PATH",
+        help="Path to the local congress archive directory or manifest JSON.",
+    )
+    p.add_argument(
+        "--disclosures-bundle",
+        required=True,
+        metavar="PATH",
+        help="Path to the prebuilt local disclosure bundle (directory or archive).",
+    )
+    p.add_argument(
+        "--congress",
+        required=True,
+        type=int,
+        metavar="NUMBER",
+        help="Congress number to replay historically.",
+    )
+    p.add_argument(
+        "--target-root",
+        required=True,
+        metavar="PATH",
+        help="Directory that will hold one per-snapshot publish root per planned week.",
+    )
+    p.add_argument(
+        "--aggregate-root",
+        default=None,
+        metavar="PATH",
+        help="Optional directory to write the merged history-serving publish root into.",
+    )
+    p.add_argument(
+        "--start-date",
+        type=_parse_date,
+        default=None,
+        metavar="YYYY-MM-DD",
+        help="Optional lower bound; clamped to the Congress term.",
+    )
+    p.add_argument(
+        "--end-date",
+        type=_parse_date,
+        default=None,
+        metavar="YYYY-MM-DD",
+        help="Optional upper bound; capped at today for the active Congress.",
+    )
+    p.add_argument(
+        "--chamber",
+        choices=["house", "senate", "both"],
+        default="both",
+        help="Chamber to process in disclosure replay steps (default: both).",
+    )
+    p.add_argument(
+        "--limit",
+        type=int,
+        default=None,
+        metavar="N",
+        help="Maximum number of disclosure artifacts to process per snapshot (default: no limit).",
+    )
+    p.add_argument(
+        "--artifact-root",
+        default=None,
+        metavar="PATH",
+        help="Directory containing bundled disclosure artifacts when bundle storage paths are relative.",
+    )
+    p.add_argument(
+        "--overwrite",
+        action="store_true",
+        default=False,
+        help="Replace existing per-snapshot publish roots instead of skipping them.",
+    )
+    p.add_argument(
+        "--continue-on-error",
+        action="store_true",
+        default=False,
+        help="Continue attempting later snapshots after a failure.",
+    )
+
+
+def _add_aggregate_history(sub: argparse._SubParsersAction) -> None:  # type: ignore[type-arg]
+    p = sub.add_parser(
+        "aggregate-history",
+        help="Merge many per-snapshot publish roots into one history-serving publish root.",
+    )
+    p.add_argument(
+        "--source-root",
+        required=True,
+        action="append",
+        metavar="PATH",
+        help="Per-snapshot publish root to aggregate. Repeat for multiple snapshots.",
+    )
+    p.add_argument(
+        "--target-root",
+        required=True,
+        metavar="PATH",
+        help="Directory to write the aggregated history-serving publish root into.",
+    )
 
 
 def _add_verify_publish(sub: argparse._SubParsersAction) -> None:  # type: ignore[type-arg]
@@ -364,6 +511,19 @@ def _add_verify_publish_roundtrip(sub: argparse._SubParsersAction) -> None:  # t
         required=True,
         metavar="PATH",
         help="Root directory of the published snapshot tree to verify.",
+    )
+
+
+def _add_verify_history_aggregate(sub: argparse._SubParsersAction) -> None:  # type: ignore[type-arg]
+    p = sub.add_parser(
+        "verify-history-aggregate",
+        help="Verify the internal consistency of a locally aggregated history-serving publish root.",
+    )
+    p.add_argument(
+        "--publish-root",
+        required=True,
+        metavar="PATH",
+        help="Root directory of the history aggregate publish tree to verify.",
     )
 
 

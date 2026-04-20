@@ -27,6 +27,7 @@ from src.runtime.publish_roundtrip_types import (
     PublishRoundtripResult,
     PublishRoundtripStageResult,
 )
+from src.export.writer import current_member_lookup_path
 from tests.support.published_snapshot_fixtures import PublishedSnapshotBuilder
 
 # ---------------------------------------------------------------------------
@@ -41,6 +42,7 @@ _VERIFY_EVIDENCE = (
 )
 _VERIFY_ZIP = "src.runtime.publish_roundtrip.verify_published_zip_roundtrip"
 _VERIFY_HOMEPAGE = "src.runtime.publish_roundtrip.verify_published_homepage_roundtrip"
+_VERIFY_LOOKUP = "src.runtime.publish_roundtrip.verify_published_current_member_lookup_roundtrip"
 _VERIFY_SNAPSHOT = "src.runtime.publish_roundtrip._verify_snapshot"
 
 
@@ -70,11 +72,10 @@ _FAKE_CONN = object()
 
 
 def _real_manifest(tmp_path: Path):
-    """Write a real publish tree and return the manifest loaded from it."""
+    """Return the manifest already written into a real publish tree."""
     from src.export.manifest import SnapshotManifest
 
-    snap = PublishedSnapshotBuilder(tmp_path, snapshot_id="2026-01-01").build().snapshot()
-    manifest_file = next((snap.root / "snapshots").glob("*/manifest.json"))
+    manifest_file = next((tmp_path / "snapshots").glob("*/manifest.json"))
     return SnapshotManifest.model_validate(json.loads(manifest_file.read_bytes()))
 
 
@@ -92,7 +93,20 @@ def _all_ok_patches(manifest_obj=None):
         patch(_VERIFY_EVIDENCE, return_value=_ok_stage("evidence")),
         patch(_VERIFY_ZIP, return_value=_ok_stage("zip")),
         patch(_VERIFY_HOMEPAGE, return_value=_ok_stage("homepage")),
+        patch(_VERIFY_LOOKUP, return_value=_ok_stage("lookup")),
     )
+
+
+def _lookup_stage():
+    from src.runtime import publish_roundtrip as module
+
+    stage = getattr(module, "verify_published_current_member_lookup_roundtrip", None)
+    assert stage is not None
+    return stage
+
+
+def _lookup_file(root: Path) -> Path:
+    return root / current_member_lookup_path()
 
 
 # ---------------------------------------------------------------------------
@@ -108,26 +122,28 @@ class TestVerifyPublishRoundtripShape:
             patch(_VERIFY_EVIDENCE, return_value=_ok_stage("evidence")),
             patch(_VERIFY_ZIP, return_value=_ok_stage("zip")),
             patch(_VERIFY_HOMEPAGE, return_value=_ok_stage("homepage")),
+            patch(_VERIFY_LOOKUP, return_value=_ok_stage("lookup")),
         ):
             result = verify_publish_roundtrip(_FAKE_CONN, tmp_path)
 
         assert isinstance(result, PublishRoundtripResult)
 
-    def test_stages_tuple_has_five_entries(self, tmp_path: Path) -> None:
+    def test_stages_tuple_has_six_entries(self, tmp_path: Path) -> None:
         with (
             patch(_VERIFY_SNAPSHOT, return_value=(_ok_stage("snapshot"), _manifest_stub())),
             patch(_VERIFY_PROFILES, return_value=_ok_stage("profiles")),
             patch(_VERIFY_EVIDENCE, return_value=_ok_stage("evidence")),
             patch(_VERIFY_ZIP, return_value=_ok_stage("zip")),
             patch(_VERIFY_HOMEPAGE, return_value=_ok_stage("homepage")),
+            patch(_VERIFY_LOOKUP, return_value=_ok_stage("lookup")),
         ):
             result = verify_publish_roundtrip(_FAKE_CONN, tmp_path)
 
-        assert len(result.stages) == 5
+        assert len(result.stages) == 6
 
 
 # ---------------------------------------------------------------------------
-# Stage order is snapshot -> profiles -> evidence -> zip -> homepage
+# Stage order is snapshot -> profiles -> evidence -> zip -> homepage -> lookup
 # ---------------------------------------------------------------------------
 
 
@@ -139,6 +155,7 @@ class TestVerifyPublishRoundtripStageOrder:
             patch(_VERIFY_EVIDENCE, return_value=_ok_stage("evidence")),
             patch(_VERIFY_ZIP, return_value=_ok_stage("zip")),
             patch(_VERIFY_HOMEPAGE, return_value=_ok_stage("homepage")),
+            patch(_VERIFY_LOOKUP, return_value=_ok_stage("lookup")),
         ):
             result = verify_publish_roundtrip(_FAKE_CONN, tmp_path)
 
@@ -148,6 +165,7 @@ class TestVerifyPublishRoundtripStageOrder:
             "evidence",
             "zip",
             "homepage",
+            "lookup",
         ]
 
     def test_stage_result_objects_are_preserved(self, tmp_path: Path) -> None:
@@ -156,6 +174,7 @@ class TestVerifyPublishRoundtripStageOrder:
         evidence_r = _ok_stage("evidence", checked=30)
         zip_r = _ok_stage("zip", checked=40)
         homepage_r = _ok_stage("homepage", checked=50)
+        lookup_r = _ok_stage("lookup", checked=60)
 
         with (
             patch(_VERIFY_SNAPSHOT, return_value=(snapshot_r, _manifest_stub())),
@@ -163,6 +182,7 @@ class TestVerifyPublishRoundtripStageOrder:
             patch(_VERIFY_EVIDENCE, return_value=evidence_r),
             patch(_VERIFY_ZIP, return_value=zip_r),
             patch(_VERIFY_HOMEPAGE, return_value=homepage_r),
+            patch(_VERIFY_LOOKUP, return_value=lookup_r),
         ):
             result = verify_publish_roundtrip(_FAKE_CONN, tmp_path)
 
@@ -171,6 +191,7 @@ class TestVerifyPublishRoundtripStageOrder:
         assert result.stages[2] is evidence_r
         assert result.stages[3] is zip_r
         assert result.stages[4] is homepage_r
+        assert result.stages[5] is lookup_r
 
 
 # ---------------------------------------------------------------------------
@@ -188,6 +209,7 @@ class TestVerifyPublishRoundtripCallArgs:
             patch(_VERIFY_EVIDENCE, return_value=_ok_stage("evidence")),
             patch(_VERIFY_ZIP, return_value=_ok_stage("zip")),
             patch(_VERIFY_HOMEPAGE, return_value=_ok_stage("homepage")),
+            patch(_VERIFY_LOOKUP, return_value=_ok_stage("lookup")),
         ):
             verify_publish_roundtrip(sentinel_conn, tmp_path)
 
@@ -202,6 +224,7 @@ class TestVerifyPublishRoundtripCallArgs:
             patch(_VERIFY_EVIDENCE, return_value=_ok_stage("evidence")) as m,
             patch(_VERIFY_ZIP, return_value=_ok_stage("zip")),
             patch(_VERIFY_HOMEPAGE, return_value=_ok_stage("homepage")),
+            patch(_VERIFY_LOOKUP, return_value=_ok_stage("lookup")),
         ):
             verify_publish_roundtrip(sentinel_conn, tmp_path)
 
@@ -216,6 +239,7 @@ class TestVerifyPublishRoundtripCallArgs:
             patch(_VERIFY_EVIDENCE, return_value=_ok_stage("evidence")),
             patch(_VERIFY_ZIP, return_value=_ok_stage("zip")) as m,
             patch(_VERIFY_HOMEPAGE, return_value=_ok_stage("homepage")),
+            patch(_VERIFY_LOOKUP, return_value=_ok_stage("lookup")),
         ):
             verify_publish_roundtrip(sentinel_conn, tmp_path)
 
@@ -235,10 +259,25 @@ class TestVerifyPublishRoundtripCallArgs:
             patch(_VERIFY_EVIDENCE, return_value=_ok_stage("evidence")),
             patch(_VERIFY_ZIP, return_value=_ok_stage("zip")),
             patch(_VERIFY_HOMEPAGE, return_value=_ok_stage("homepage")) as m,
+            patch(_VERIFY_LOOKUP, return_value=_ok_stage("lookup")),
         ):
             verify_publish_roundtrip(sentinel_conn, tmp_path)
 
         m.assert_called_once_with(sentinel_conn, tmp_path, dt.date(2026, 2, 3))
+
+    def test_root_and_manifest_forwarded_to_lookup_verifier(self, tmp_path: Path) -> None:
+        sentinel_manifest = _manifest_stub("2026-02-03")
+        with (
+            patch(_VERIFY_SNAPSHOT, return_value=(_ok_stage("snapshot"), sentinel_manifest)),
+            patch(_VERIFY_PROFILES, return_value=_ok_stage("profiles")),
+            patch(_VERIFY_EVIDENCE, return_value=_ok_stage("evidence")),
+            patch(_VERIFY_ZIP, return_value=_ok_stage("zip")),
+            patch(_VERIFY_HOMEPAGE, return_value=_ok_stage("homepage")),
+            patch(_VERIFY_LOOKUP, return_value=_ok_stage("lookup")) as m,
+        ):
+            verify_publish_roundtrip(_FAKE_CONN, tmp_path)
+
+        m.assert_called_once_with(tmp_path, sentinel_manifest)
 
     def test_root_forwarded_to_profiles_verifier(self, tmp_path: Path) -> None:
         sentinel_manifest = _manifest_stub()
@@ -248,6 +287,7 @@ class TestVerifyPublishRoundtripCallArgs:
             patch(_VERIFY_EVIDENCE, return_value=_ok_stage("evidence")),
             patch(_VERIFY_ZIP, return_value=_ok_stage("zip")),
             patch(_VERIFY_HOMEPAGE, return_value=_ok_stage("homepage")),
+            patch(_VERIFY_LOOKUP, return_value=_ok_stage("lookup")),
         ):
             verify_publish_roundtrip(_FAKE_CONN, tmp_path)
 
@@ -267,6 +307,7 @@ class TestVerifyPublishRoundtripManifestUnavailable:
             patch(_VERIFY_EVIDENCE, return_value=_ok_stage("evidence")) as m_ev,
             patch(_VERIFY_ZIP, return_value=_ok_stage("zip")) as m_zip,
             patch(_VERIFY_HOMEPAGE, return_value=_ok_stage("homepage")) as m_home,
+            patch(_VERIFY_LOOKUP, return_value=_ok_stage("lookup")) as m_lookup,
         ):
             result = verify_publish_roundtrip(_FAKE_CONN, tmp_path)
         # Downstream verifiers must not be called when manifest is None.
@@ -274,16 +315,17 @@ class TestVerifyPublishRoundtripManifestUnavailable:
         m_ev.assert_not_called()
         m_zip.assert_not_called()
         m_home.assert_not_called()
+        m_lookup.assert_not_called()
         return result
 
-    def test_still_returns_five_stages_when_manifest_missing(self, tmp_path: Path) -> None:
+    def test_still_returns_six_stages_when_manifest_missing(self, tmp_path: Path) -> None:
         result = self._run_no_manifest(tmp_path)
-        assert len(result.stages) == 5
+        assert len(result.stages) == 6
 
     def test_stage_order_preserved_when_manifest_missing(self, tmp_path: Path) -> None:
         result = self._run_no_manifest(tmp_path)
         assert [s.stage for s in result.stages] == [
-            "snapshot", "profiles", "evidence", "zip", "homepage"
+            "snapshot", "profiles", "evidence", "zip", "homepage", "lookup"
         ]
 
     def test_profiles_stage_is_error_when_manifest_missing(self, tmp_path: Path) -> None:
@@ -301,6 +343,10 @@ class TestVerifyPublishRoundtripManifestUnavailable:
     def test_homepage_stage_is_error_when_manifest_missing(self, tmp_path: Path) -> None:
         result = self._run_no_manifest(tmp_path)
         assert not result.stages[4].ok
+
+    def test_lookup_stage_is_error_when_manifest_missing(self, tmp_path: Path) -> None:
+        result = self._run_no_manifest(tmp_path)
+        assert not result.stages[5].ok
 
     def test_aggregate_not_ok_when_manifest_missing(self, tmp_path: Path) -> None:
         result = self._run_no_manifest(tmp_path)
@@ -320,6 +366,7 @@ class TestVerifyPublishRoundtripOkFlag:
             patch(_VERIFY_EVIDENCE, return_value=_ok_stage("evidence")),
             patch(_VERIFY_ZIP, return_value=_ok_stage("zip")),
             patch(_VERIFY_HOMEPAGE, return_value=_ok_stage("homepage")),
+            patch(_VERIFY_LOOKUP, return_value=_ok_stage("lookup")),
         ):
             result = verify_publish_roundtrip(_FAKE_CONN, tmp_path)
 
@@ -332,6 +379,7 @@ class TestVerifyPublishRoundtripOkFlag:
             patch(_VERIFY_EVIDENCE, return_value=_ok_stage("evidence")),
             patch(_VERIFY_ZIP, return_value=_ok_stage("zip")),
             patch(_VERIFY_HOMEPAGE, return_value=_ok_stage("homepage")),
+            patch(_VERIFY_LOOKUP, return_value=_ok_stage("lookup")),
         ):
             result = verify_publish_roundtrip(_FAKE_CONN, tmp_path)
 
@@ -344,6 +392,7 @@ class TestVerifyPublishRoundtripOkFlag:
             patch(_VERIFY_EVIDENCE, return_value=_ok_stage("evidence")),
             patch(_VERIFY_ZIP, return_value=_ok_stage("zip")),
             patch(_VERIFY_HOMEPAGE, return_value=_error_stage("homepage")),
+            patch(_VERIFY_LOOKUP, return_value=_ok_stage("lookup")),
         ):
             result = verify_publish_roundtrip(_FAKE_CONN, tmp_path)
 
@@ -356,6 +405,7 @@ class TestVerifyPublishRoundtripOkFlag:
             patch(_VERIFY_EVIDENCE, return_value=_ok_stage("evidence")),
             patch(_VERIFY_ZIP, return_value=_ok_stage("zip")),
             patch(_VERIFY_HOMEPAGE, return_value=_ok_stage("homepage")),
+            patch(_VERIFY_LOOKUP, return_value=_ok_stage("lookup")),
         ):
             result = verify_publish_roundtrip(_FAKE_CONN, tmp_path)
 
@@ -368,17 +418,18 @@ class TestVerifyPublishRoundtripOkFlag:
 
 
 class TestVerifyPublishRoundtripAggregateCounts:
-    def test_total_checked_sums_across_five_stages(self, tmp_path: Path) -> None:
+    def test_total_checked_sums_across_six_stages(self, tmp_path: Path) -> None:
         with (
             patch(_VERIFY_SNAPSHOT, return_value=(_ok_stage("snapshot", checked=5), _manifest_stub())),
             patch(_VERIFY_PROFILES, return_value=_ok_stage("profiles", checked=10)),
             patch(_VERIFY_EVIDENCE, return_value=_ok_stage("evidence", checked=15)),
             patch(_VERIFY_ZIP, return_value=_ok_stage("zip", checked=20)),
             patch(_VERIFY_HOMEPAGE, return_value=_ok_stage("homepage", checked=25)),
+            patch(_VERIFY_LOOKUP, return_value=_ok_stage("lookup", checked=1)),
         ):
             result = verify_publish_roundtrip(_FAKE_CONN, tmp_path)
 
-        assert result.total_checked == 75
+        assert result.total_checked == 76
 
     def test_total_errors_sums_across_stages(self, tmp_path: Path) -> None:
         with (
@@ -387,6 +438,7 @@ class TestVerifyPublishRoundtripAggregateCounts:
             patch(_VERIFY_EVIDENCE, return_value=_ok_stage("evidence")),
             patch(_VERIFY_ZIP, return_value=_ok_stage("zip")),
             patch(_VERIFY_HOMEPAGE, return_value=_ok_stage("homepage")),
+            patch(_VERIFY_LOOKUP, return_value=_ok_stage("lookup")),
         ):
             result = verify_publish_roundtrip(_FAKE_CONN, tmp_path)
 
@@ -399,6 +451,7 @@ class TestVerifyPublishRoundtripAggregateCounts:
             patch(_VERIFY_EVIDENCE, return_value=_warning_stage("evidence")),
             patch(_VERIFY_ZIP, return_value=_ok_stage("zip")),
             patch(_VERIFY_HOMEPAGE, return_value=_warning_stage("homepage")),
+            patch(_VERIFY_LOOKUP, return_value=_ok_stage("lookup")),
         ):
             result = verify_publish_roundtrip(_FAKE_CONN, tmp_path)
 
@@ -411,6 +464,7 @@ class TestVerifyPublishRoundtripAggregateCounts:
             patch(_VERIFY_EVIDENCE, return_value=_warning_stage("evidence", "ev-warn")),
             patch(_VERIFY_ZIP, return_value=_ok_stage("zip")),
             patch(_VERIFY_HOMEPAGE, return_value=_error_stage("homepage", "home-err")),
+            patch(_VERIFY_LOOKUP, return_value=_ok_stage("lookup")),
         ):
             result = verify_publish_roundtrip(_FAKE_CONN, tmp_path)
 
@@ -429,6 +483,7 @@ class TestVerifyPublishRoundtripAggregateCounts:
 class TestVerifyPublishRoundtripStageLookup:
     def test_stage_result_lookup_by_name(self, tmp_path: Path) -> None:
         evidence_r = _ok_stage("evidence", checked=7)
+        lookup_r = _ok_stage("lookup", checked=9)
 
         with (
             patch(_VERIFY_SNAPSHOT, return_value=(_ok_stage("snapshot"), _manifest_stub())),
@@ -436,10 +491,12 @@ class TestVerifyPublishRoundtripStageLookup:
             patch(_VERIFY_EVIDENCE, return_value=evidence_r),
             patch(_VERIFY_ZIP, return_value=_ok_stage("zip")),
             patch(_VERIFY_HOMEPAGE, return_value=_ok_stage("homepage")),
+            patch(_VERIFY_LOOKUP, return_value=lookup_r),
         ):
             result = verify_publish_roundtrip(_FAKE_CONN, tmp_path)
 
         assert result.stage_result("evidence") is evidence_r
+        assert result.stage_result("lookup") is lookup_r
 
     def test_stage_result_returns_none_for_unknown_name(self, tmp_path: Path) -> None:
         with (
@@ -448,10 +505,72 @@ class TestVerifyPublishRoundtripStageLookup:
             patch(_VERIFY_EVIDENCE, return_value=_ok_stage("evidence")),
             patch(_VERIFY_ZIP, return_value=_ok_stage("zip")),
             patch(_VERIFY_HOMEPAGE, return_value=_ok_stage("homepage")),
+            patch(_VERIFY_LOOKUP, return_value=_ok_stage("lookup")),
         ):
             result = verify_publish_roundtrip(_FAKE_CONN, tmp_path)
 
         assert result.stage_result("nonexistent") is None
+
+
+# ---------------------------------------------------------------------------
+# Current-member lookup roundtrip: source-backed compare from published profiles
+# ---------------------------------------------------------------------------
+
+
+class TestVerifyPublishedCurrentMemberLookupRoundtrip:
+    def test_ok_when_lookup_matches_published_member_profiles(
+        self, tmp_path: Path
+    ) -> None:
+        PublishedSnapshotBuilder(tmp_path, snapshot_id="2026-01-01").build()
+        stage = _lookup_stage()
+        manifest = _real_manifest(tmp_path)
+
+        result = stage(tmp_path, manifest)
+
+        assert result.ok is True
+        assert result.stage == "lookup"
+        assert result.checked == 1
+
+    def test_missing_lookup_file_is_reported(self, tmp_path: Path) -> None:
+        PublishedSnapshotBuilder(tmp_path, snapshot_id="2026-01-01").build()
+        _lookup_file(tmp_path).unlink()
+        stage = _lookup_stage()
+        manifest = _real_manifest(tmp_path)
+
+        result = stage(tmp_path, manifest)
+
+        assert result.ok is False
+        assert any("missing" in issue.message for issue in result.issues)
+
+    def test_invalid_lookup_json_is_reported(self, tmp_path: Path) -> None:
+        PublishedSnapshotBuilder(tmp_path, snapshot_id="2026-01-01").build()
+        _lookup_file(tmp_path).write_text("{not-json", encoding="utf-8")
+        stage = _lookup_stage()
+        manifest = _real_manifest(tmp_path)
+
+        result = stage(tmp_path, manifest)
+
+        assert result.ok is False
+        assert any("parse" in issue.message or "Invalid JSON" in issue.message for issue in result.issues)
+
+    def test_mismatched_lookup_payload_is_reported(self, tmp_path: Path) -> None:
+        PublishedSnapshotBuilder(tmp_path, snapshot_id="2026-01-01").build()
+        lookup_file = _lookup_file(tmp_path)
+        payload = json.loads(lookup_file.read_bytes())
+        payload["m"][0]["n"] = "Someone Else"
+        lookup_file.write_bytes(
+            json.dumps(payload, sort_keys=True, ensure_ascii=False).encode("utf-8")
+        )
+        stage = _lookup_stage()
+        manifest = _real_manifest(tmp_path)
+
+        result = stage(tmp_path, manifest)
+
+        assert result.ok is False
+        assert any(
+            "stale search_name" in issue.message or "mismatch" in issue.message
+            for issue in result.issues
+        )
 
 
 # ---------------------------------------------------------------------------

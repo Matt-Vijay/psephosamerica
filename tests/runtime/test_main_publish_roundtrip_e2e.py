@@ -13,9 +13,9 @@ import json
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+from src.api.read_service import get_homepage_bootstrap, get_zip_entry
 from src.export.filesystem import write_planned_files
-from src.export.writer import PlannedFile, finalize_publish_plan
-from src.export.writer import serialize_payload
+from src.export.writer import PlannedFile, homepage_bootstrap_path, serialize_payload, zip_entry_path
 from src.runtime.main import run
 from tests.support.published_roundtrip_fixtures import (
     PublishedRoundtrip,
@@ -31,6 +31,7 @@ _FETCH_MEMBER_BY_SLUG = "src.runtime.publish_roundtrip_profiles.fetch_member_row
 _FETCH_SCORE_ROWS = "src.runtime.publish_roundtrip_profiles.fetch_member_score_snapshot_rows"
 _FETCH_RULE_FIRES = "src.runtime.publish_roundtrip_profiles.fetch_member_rule_fire_rows"
 _FETCH_COMMITTEES = "src.runtime.publish_roundtrip_profiles.fetch_member_committee_rows"
+_FETCH_PROFILE_CARDS = "src.runtime.publish_roundtrip_profiles.fetch_all_evidence_card_rows"
 _FETCH_ALL_CARDS = "src.runtime.publish_roundtrip_evidence.fetch_all_evidence_card_rows"
 _FETCH_ZIP_ROWS = "src.runtime.publish_roundtrip_zip.fetch_zip_member_summary_rows"
 _FETCH_ZIP_EVIDENCE = "src.runtime.publish_roundtrip_zip.fetch_recent_evidence_ids_by_bioguide"
@@ -49,19 +50,26 @@ def _write_homepage_feed(root: Path, rt: PublishedRoundtrip) -> None:
     feed_file = root / "homepage" / "feed.json"
     feed_file.parent.mkdir(parents=True, exist_ok=True)
     feed_file.write_bytes(serialize_payload(payload))
-    _reanchor_manifest(root)
-
-
-def _reanchor_manifest(root: Path) -> None:
-    manifest_files = sorted((root / "snapshots").glob("*/manifest.json"))
-    assert len(manifest_files) == 1
-    snapshot_id = manifest_files[0].parent.name
+    homepage_bootstrap = get_homepage_bootstrap(snapshot_root=root)
+    assert not isinstance(homepage_bootstrap, dict)
+    assert getattr(homepage_bootstrap, "ok", False) is True
     planned = [
-        PlannedFile.from_bytes(file.relative_to(root).as_posix(), file.read_bytes())
-        for file in sorted(root.rglob("*"))
-        if file.is_file()
+        PlannedFile.from_bytes(
+            homepage_bootstrap_path(),
+            serialize_payload(homepage_bootstrap.data),
+        )
     ]
-    write_planned_files(finalize_publish_plan(snapshot_id, planned), root)
+    for zip_feed in rt.zip_feed_row_sets:
+        zip_entry = get_zip_entry(zip_feed.zip_code, snapshot_root=root)
+        assert not isinstance(zip_entry, dict)
+        assert getattr(zip_entry, "ok", False) is True
+        planned.append(
+            PlannedFile.from_bytes(
+                zip_entry_path(zip_feed.zip_code),
+                serialize_payload(zip_entry.data),
+            )
+        )
+    write_planned_files(planned, root)
 
 
 def _make_profile_side_effects(rt: PublishedRoundtrip):
@@ -149,6 +157,7 @@ def _run_and_parse(
         patch(_FETCH_SCORE_ROWS, side_effect=score_rows),
         patch(_FETCH_RULE_FIRES, side_effect=rule_fires),
         patch(_FETCH_COMMITTEES, side_effect=committees),
+        patch(_FETCH_PROFILE_CARDS, return_value=all_cards),
         patch(_FETCH_ALL_CARDS, return_value=all_cards),
         patch(_FETCH_ZIP_ROWS, return_value=zip_rows),
         patch(_FETCH_ZIP_EVIDENCE, return_value=zip_evidence),
@@ -193,7 +202,7 @@ class TestRunVerifyPublishRoundtripValidTree:
         rt = _make_valid_tree(tmp_path)
         _, out = _run_and_parse(tmp_path, capsys, roundtrip=rt)
         names = [stage["stage"] for stage in out["roundtrip"]["stages"]]
-        assert names == ["snapshot", "profiles", "evidence", "zip", "homepage"]
+        assert names == ["snapshot", "profiles", "evidence", "zip", "homepage", "lookup"]
 
     def test_multiple_members_and_cards_ok(self, tmp_path: Path, capsys) -> None:
         member_sets = [
@@ -226,6 +235,15 @@ class TestRunVerifyPublishRoundtripValidTree:
         _write_homepage_feed(tmp_path, rt)
         _, out = _run_and_parse(tmp_path, capsys, roundtrip=rt)
         assert out["ok"] is True
+
+    def test_missing_lookup_file_sets_ok_false(self, tmp_path: Path, capsys) -> None:
+        rt = _make_valid_tree(tmp_path)
+        lookup_files = list((tmp_path / "identity").glob("current-member-lookup.json"))
+        assert lookup_files
+        lookup_files[0].unlink()
+        code, out = _run_and_parse(tmp_path, capsys, roundtrip=rt)
+        assert code == 1
+        assert out["ok"] is False
 
 
 class TestRunVerifyPublishRoundtripBrokenTree:

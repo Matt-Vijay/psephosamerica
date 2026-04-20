@@ -39,7 +39,9 @@ _COMMAND_SURFACE = {
     "process_disclosures_local",
     "publish_snapshot",
     "recompute_snapshot",
+    "run_history_backfill_local_command",
     "run_oracle_local_command",
+    "verify_history_aggregate_local",
     "verify_publish_local",
     "verify_publish_roundtrip_local",
 }
@@ -52,10 +54,44 @@ _CONTEXT_SURFACE = {
 }
 
 _INSPECT_SURFACE = {
+    "load_local_current_member_lookup",
     "load_local_evidence_card",
+    "load_local_homepage_bootstrap",
+    "load_local_history_bootstrap",
+    "load_local_history_preset_range",
+    "load_local_homepage_feed",
     "load_local_manifest",
+    "load_local_member_change_summary",
+    "load_local_member_history_chart",
+    "load_local_member_history",
+    "load_local_member_history_page",
+    "load_local_member_page",
+    "load_local_member_preset_compare",
     "load_local_member_profile",
+    "load_local_snapshot_preset_compare",
+    "load_local_member_trend_summary",
+    "load_local_movement_window",
+    "load_local_snapshot_index",
+    "load_local_zip_entry",
     "load_local_zip_feed",
+    "list_local_snapshot_ids",
+    "search_local_current_member_lookup",
+}
+
+_HISTORY_BACKFILL_SURFACE = {
+    "CongressDateWindow",
+    "HistoryBackfillAttempt",
+    "LocalHistoryAggregateSummary",
+    "LocalHistoryBackfillResult",
+    "HistoryBackfillExecutionResult",
+    "HistoricalSnapshotTarget",
+    "HistoryBackfillPlan",
+    "congress_term_bounds",
+    "execute_history_backfill",
+    "derive_weekly_snapshot_dates",
+    "plan_congress_history_backfill",
+    "resolve_congress_date_window",
+    "run_local_history_backfill",
 }
 
 _PATHS_SURFACE = {
@@ -109,6 +145,7 @@ _EXPECTED = (
     | _COMMAND_SURFACE
     | _CONTEXT_SURFACE
     | _INSPECT_SURFACE
+    | _HISTORY_BACKFILL_SURFACE
     | _PATHS_SURFACE
     | _SOURCE_SURFACE
     | _RESULT_SURFACE
@@ -145,6 +182,12 @@ def test_paths_surface_exported():
     exported = set(runtime.__all__)
     missing = _PATHS_SURFACE - exported
     assert not missing, f"paths surface missing from __all__: {missing}"
+
+
+def test_history_backfill_surface_exported():
+    exported = set(runtime.__all__)
+    missing = _HISTORY_BACKFILL_SURFACE - exported
+    assert not missing, f"history backfill surface missing from __all__: {missing}"
 
 
 def test_source_surface_exported():

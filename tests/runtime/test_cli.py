@@ -465,6 +465,20 @@ def test_run_oracle_local_command():
     assert ns.snapshot_id is None
 
 
+def test_run_oracle_local_explicit_congress_and_artifact_root() -> None:
+    ns = parse_args([
+        "run-oracle-local",
+        "--congress-archive", "/data/congress_118.json",
+        "--disclosures-bundle", "/data/disclosures.zip",
+        "--congress", "118",
+        "--snapshot-date", "2025-03-01",
+        "--target-dir", "/out/snap",
+        "--artifact-root", "/data/artifacts",
+    ])
+    assert ns.congress == 118
+    assert ns.artifact_root == "/data/artifacts"
+
+
 def test_run_oracle_local_missing_congress_archive_exits():
     with pytest.raises(SystemExit):
         parse_args([
@@ -601,6 +615,86 @@ def test_run_oracle_local_all_args():
     assert ns.snapshot_id == "2025-06-15-senate"
 
 
+def test_plan_history_backfill_command() -> None:
+    ns = parse_args([
+        "plan-history-backfill",
+        "--congress",
+        "119",
+        "--target-root",
+        "/out/history",
+        "--start-date",
+        "2025-01-03",
+        "--end-date",
+        "2025-02-01",
+    ])
+    assert ns.command == "plan-history-backfill"
+    assert ns.congress == 119
+    assert ns.target_root == "/out/history"
+    assert ns.start_date == datetime.date(2025, 1, 3)
+    assert ns.end_date == datetime.date(2025, 2, 1)
+
+
+def test_plan_history_backfill_requires_congress() -> None:
+    with pytest.raises(SystemExit):
+        parse_args(["plan-history-backfill", "--target-root", "/out/history"])
+
+
+def test_aggregate_history_command() -> None:
+    ns = parse_args([
+        "aggregate-history",
+        "--source-root",
+        "/out/history/2025-01-06",
+        "--source-root",
+        "/out/history/2025-01-13",
+        "--target-root",
+        "/out/aggregate",
+    ])
+    assert ns.command == "aggregate-history"
+    assert ns.source_root == ["/out/history/2025-01-06", "/out/history/2025-01-13"]
+    assert ns.target_root == "/out/aggregate"
+
+
+def test_aggregate_history_requires_source_root() -> None:
+    with pytest.raises(SystemExit):
+        parse_args(["aggregate-history", "--target-root", "/out/aggregate"])
+
+
+def test_run_history_backfill_local_command() -> None:
+    ns = parse_args([
+        "run-history-backfill-local",
+        "--congress-archive", "/data/congress_119.json",
+        "--disclosures-bundle", "/data/disclosures.zip",
+        "--congress", "119",
+        "--target-root", "/out/history",
+        "--aggregate-root", "/out/history-aggregate",
+        "--start-date", "2025-01-03",
+        "--end-date", "2025-02-01",
+        "--chamber", "senate",
+        "--limit", "25",
+        "--artifact-root", "/data/artifacts",
+        "--overwrite",
+        "--continue-on-error",
+    ])
+    assert ns.command == "run-history-backfill-local"
+    assert ns.congress_archive == "/data/congress_119.json"
+    assert ns.disclosures_bundle == "/data/disclosures.zip"
+    assert ns.congress == 119
+    assert ns.target_root == "/out/history"
+    assert ns.aggregate_root == "/out/history-aggregate"
+    assert ns.start_date == datetime.date(2025, 1, 3)
+    assert ns.end_date == datetime.date(2025, 2, 1)
+    assert ns.chamber == "senate"
+    assert ns.limit == 25
+    assert ns.artifact_root == "/data/artifacts"
+    assert ns.overwrite is True
+    assert ns.continue_on_error is True
+
+
+def test_run_history_backfill_local_requires_required_args() -> None:
+    with pytest.raises(SystemExit):
+        parse_args(["run-history-backfill-local", "--congress", "119"])
+
+
 # ---------------------------------------------------------------------------
 # verify-publish
 # ---------------------------------------------------------------------------
@@ -651,6 +745,22 @@ def test_verify_publish_roundtrip_absolute_path():
 def test_verify_publish_roundtrip_relative_path():
     ns = parse_args(["verify-publish-roundtrip", "--publish-root", "out/snap"])
     assert ns.publish_root == "out/snap"
+
+
+# ---------------------------------------------------------------------------
+# verify-history-aggregate
+# ---------------------------------------------------------------------------
+
+
+def test_verify_history_aggregate_command():
+    ns = parse_args(["verify-history-aggregate", "--publish-root", "/out/history"])
+    assert ns.command == "verify-history-aggregate"
+    assert ns.publish_root == "/out/history"
+
+
+def test_verify_history_aggregate_missing_publish_root_exits():
+    with pytest.raises(SystemExit):
+        parse_args(["verify-history-aggregate"])
 
 
 # ---------------------------------------------------------------------------

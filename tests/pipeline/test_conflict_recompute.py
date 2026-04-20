@@ -241,6 +241,26 @@ class TestRuleFireAttributes:
             id_generator=_seq_id_gen(),
         )
         assert result.evidence_cards[0].snapshot_date == snap
+        assert result.rule_fires[0].fired_at == dt.datetime(2024, 12, 31, tzinfo=dt.UTC)
+        assert result.evidence_cards[0].created_at == dt.datetime(2024, 12, 31, tzinfo=dt.UTC)
+
+    def test_default_evidence_card_id_is_stable_for_same_snapshot_date(self) -> None:
+        row = _cst_row()
+        first = recompute_conflicts(
+            rows_by_family={"committee_sector_trade": [row]},
+            members_by_bioguide={"A000001": _member()},
+            recompute_run_id=_RUN_ID,
+            snapshot_date=_SNAPSHOT_DATE,
+            rules=[_make_rule()],
+        )
+        second = recompute_conflicts(
+            rows_by_family={"committee_sector_trade": [row]},
+            members_by_bioguide={"A000001": _member()},
+            recompute_run_id="run-test-002",
+            snapshot_date=_SNAPSHOT_DATE,
+            rules=[_make_rule()],
+        )
+        assert first.evidence_cards[0].evidence_card_id == second.evidence_cards[0].evidence_card_id
 
     def test_evidence_card_id_uses_injected_generator(self) -> None:
         row = _cst_row()

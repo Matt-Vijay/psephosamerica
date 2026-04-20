@@ -16,6 +16,7 @@ from src.query.member_profile import (
     _normalize_committees,
     _normalize_member,
     _normalize_recent_fires,
+    _top_evidence_card_ids,
     assemble_member_profile,
 )
 
@@ -235,9 +236,8 @@ class TestNormalizeRecentFires:
             },
         ]
         result = _normalize_recent_fires(fires)
-        # both on the same date; after reversing, larger rule_id comes first
-        assert result[0]["rule_id"] == "zzz.v1"
-        assert result[1]["rule_id"] == "aaa.v1"
+        assert result[0]["rule_id"] == "aaa.v1"
+        assert result[1]["rule_id"] == "zzz.v1"
 
     def test_none_snapshot_date_sorts_last(self):
         fires = [
@@ -252,6 +252,52 @@ class TestNormalizeRecentFires:
         ]
         result = _normalize_recent_fires(fires, limit=10)
         assert result[-1]["evidence_card_id"] == "ec-none"
+
+
+# ---------------------------------------------------------------------------
+# _top_evidence_card_ids
+# ---------------------------------------------------------------------------
+
+
+class TestTopEvidenceCardIds:
+    def test_returns_three_most_recent_distinct_ids(self):
+        rows = FIRE_ROWS + [
+            {
+                "rule_id": "later_rule.v1",
+                "dimension": "conflict_of_interest_risk",
+                "evidence_card_id": "ec-004",
+                "short_explanation": "Latest card.",
+                "score_delta": 2.0,
+                "snapshot_date": dt.date(2024, 6, 1),
+            }
+        ]
+        assert _top_evidence_card_ids(rows) == ["ec-004", "ec-002", "ec-001"]
+
+    def test_deduplicates_card_ids(self):
+        rows = FIRE_ROWS + [
+            {
+                "rule_id": "duplicate_rule.v1",
+                "dimension": "conflict_of_interest_risk",
+                "evidence_card_id": "ec-002",
+                "short_explanation": "Duplicate card.",
+                "score_delta": 1.0,
+                "snapshot_date": dt.date(2024, 5, 20),
+            }
+        ]
+        assert _top_evidence_card_ids(rows) == ["ec-002", "ec-001", "ec-003"]
+
+    def test_ignores_missing_card_ids(self):
+        rows = FIRE_ROWS + [
+            {
+                "rule_id": "missing_card.v1",
+                "dimension": "conflict_of_interest_risk",
+                "evidence_card_id": None,
+                "short_explanation": "No card id.",
+                "score_delta": 1.0,
+                "snapshot_date": dt.date(2024, 7, 1),
+            }
+        ]
+        assert _top_evidence_card_ids(rows) == ["ec-002", "ec-001", "ec-003"]
 
 
 # ---------------------------------------------------------------------------
@@ -369,6 +415,12 @@ class TestAssembleMemberProfile:
             MEMBER_ROW, SNAPSHOT_ROWS, FIRE_ROWS, COMMITTEE_ROWS
         )
         assert result.total_evidence_cards == 3
+
+    def test_top_evidence_card_ids_surface_recent_cards(self):
+        result = assemble_member_profile(
+            MEMBER_ROW, SNAPSHOT_ROWS, FIRE_ROWS, COMMITTEE_ROWS
+        )
+        assert result.top_evidence_card_ids == ["ec-002", "ec-001", "ec-003"]
 
     def test_scores_sorted_by_dimension(self):
         snapshot = [

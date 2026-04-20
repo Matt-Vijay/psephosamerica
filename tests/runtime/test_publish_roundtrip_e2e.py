@@ -69,6 +69,7 @@ _FETCH_MEMBER_BY_SLUG = "src.runtime.publish_roundtrip_profiles.fetch_member_row
 _FETCH_SCORE_ROWS = "src.runtime.publish_roundtrip_profiles.fetch_member_score_snapshot_rows"
 _FETCH_RULE_FIRES = "src.runtime.publish_roundtrip_profiles.fetch_member_rule_fire_rows"
 _FETCH_COMMITTEES = "src.runtime.publish_roundtrip_profiles.fetch_member_committee_rows"
+_FETCH_PROFILE_CARDS = "src.runtime.publish_roundtrip_profiles.fetch_all_evidence_card_rows"
 _FETCH_ALL_CARDS = "src.runtime.publish_roundtrip_evidence.fetch_all_evidence_card_rows"
 
 _VERIFY_ZIP = "src.runtime.publish_roundtrip.verify_published_zip_roundtrip"
@@ -214,6 +215,7 @@ def _run_roundtrip(root: Path, rt: PublishedRoundtrip) -> PublishRoundtripResult
         patch(_FETCH_SCORE_ROWS, side_effect=_score_rows),
         patch(_FETCH_RULE_FIRES, side_effect=_rule_fires),
         patch(_FETCH_COMMITTEES, side_effect=_committees),
+        patch(_FETCH_PROFILE_CARDS, side_effect=_all_cards),
         patch(_FETCH_ALL_CARDS, side_effect=_all_cards),
         patch(_VERIFY_ZIP, side_effect=_zip_stub),
         patch(_VERIFY_HOMEPAGE, side_effect=_homepage_stub),
@@ -222,14 +224,14 @@ def _run_roundtrip(root: Path, rt: PublishedRoundtrip) -> PublishRoundtripResult
 
 
 def _make_valid_tree(tmp_path: Path) -> PublishedRoundtrip:
-    """Build a complete publish tree (all five stages pass) and return roundtrip."""
+    """Build a complete publish tree (all six stages pass) and return roundtrip."""
     rt = make_roundtrip(tmp_path)
     _write_feed_json(tmp_path)
     return rt
 
 
 # ---------------------------------------------------------------------------
-# Valid trees — should pass all five stages
+# Valid trees — should pass all six stages
 # ---------------------------------------------------------------------------
 
 
@@ -255,7 +257,7 @@ class TestVerifyRoundtripValidTree:
         rt = _make_valid_tree(tmp_path)
         result = _run_roundtrip(tmp_path, rt)
         stage_names = {s.stage for s in result.stages}
-        assert {"snapshot", "profiles", "evidence", "zip", "homepage"} == stage_names
+        assert {"snapshot", "profiles", "evidence", "zip", "homepage", "lookup"} == stage_names
 
     def test_all_stages_ok_for_valid_tree(self, tmp_path: Path) -> None:
         rt = _make_valid_tree(tmp_path)
@@ -420,6 +422,7 @@ class TestVerifyRoundtripProfilesStage:
             patch(_FETCH_SCORE_ROWS, return_value=[]),
             patch(_FETCH_RULE_FIRES, return_value=[]),
             patch(_FETCH_COMMITTEES, return_value=[]),
+            patch(_FETCH_PROFILE_CARDS, side_effect=lambda c: [rs.row for rs in rt.evidence_card_row_sets]),
             patch(_FETCH_ALL_CARDS, side_effect=lambda c: [rs.row for rs in rt.evidence_card_row_sets]),
             patch(_VERIFY_ZIP, side_effect=_zip_stub),
             patch(_VERIFY_HOMEPAGE, side_effect=_homepage_stub),
@@ -493,6 +496,7 @@ class TestVerifyRoundtripEvidenceStage:
             patch(_FETCH_SCORE_ROWS, side_effect=_score_rows),
             patch(_FETCH_RULE_FIRES, side_effect=_rule_fires),
             patch(_FETCH_COMMITTEES, side_effect=_committees),
+            patch(_FETCH_PROFILE_CARDS, return_value=[]),
             patch(_FETCH_ALL_CARDS, return_value=[]),
             patch(_VERIFY_ZIP, side_effect=_zip_stub),
             patch(_VERIFY_HOMEPAGE, side_effect=_homepage_stub),
@@ -600,7 +604,7 @@ class TestVerifyRoundtripResultShape:
     def test_stage_result_by_name_returns_correct_stage(self, tmp_path: Path) -> None:
         rt = _make_valid_tree(tmp_path)
         result = _run_roundtrip(tmp_path, rt)
-        for name in ("snapshot", "profiles", "evidence", "zip", "homepage"):
+        for name in ("snapshot", "profiles", "evidence", "zip", "homepage", "lookup"):
             stage = result.stage_result(name)
             assert stage is not None, f"stage {name!r} missing"
 
@@ -641,18 +645,18 @@ class TestVerifyRoundtripResultShape:
         stage_names_with_issues = {i.stage for i in issues}
         assert "profiles" in stage_names_with_issues or "homepage" in stage_names_with_issues
 
-    def test_five_stages_in_result(self, tmp_path: Path) -> None:
+    def test_six_stages_in_result(self, tmp_path: Path) -> None:
         rt = _make_valid_tree(tmp_path)
         result = _run_roundtrip(tmp_path, rt)
-        assert len(result.stages) == 5
+        assert len(result.stages) == 6
 
-    def test_stage_order_is_snapshot_profiles_evidence_zip_homepage(
+    def test_stage_order_is_snapshot_profiles_evidence_zip_homepage_lookup(
         self, tmp_path: Path
     ) -> None:
         rt = _make_valid_tree(tmp_path)
         result = _run_roundtrip(tmp_path, rt)
         names = [s.stage for s in result.stages]
-        assert names == ["snapshot", "profiles", "evidence", "zip", "homepage"]
+        assert names == ["snapshot", "profiles", "evidence", "zip", "homepage", "lookup"]
 
 
 # ---------------------------------------------------------------------------
@@ -680,6 +684,7 @@ class TestConnForwarding:
             patch(_FETCH_SCORE_ROWS, side_effect=_score_rows),
             patch(_FETCH_RULE_FIRES, side_effect=_rule_fires),
             patch(_FETCH_COMMITTEES, side_effect=_committees),
+            patch(_FETCH_PROFILE_CARDS, side_effect=_all_cards),
             patch(_FETCH_ALL_CARDS, side_effect=_all_cards),
             patch(_VERIFY_ZIP, side_effect=_zip_stub),
             patch(_VERIFY_HOMEPAGE, side_effect=_homepage_stub),
@@ -706,14 +711,15 @@ class TestConnForwarding:
             patch(_FETCH_SCORE_ROWS, side_effect=_score_rows),
             patch(_FETCH_RULE_FIRES, side_effect=_rule_fires),
             patch(_FETCH_COMMITTEES, side_effect=_committees),
+            patch(_FETCH_PROFILE_CARDS, side_effect=_capture_cards),
             patch(_FETCH_ALL_CARDS, side_effect=_capture_cards),
             patch(_VERIFY_ZIP, side_effect=_zip_stub),
             patch(_VERIFY_HOMEPAGE, side_effect=_homepage_stub),
         ):
             verify_roundtrip(sentinel_conn, tmp_path)
 
-        assert len(captured_conns) == 1
-        assert captured_conns[0] is sentinel_conn
+        assert len(captured_conns) == 2
+        assert all(conn is sentinel_conn for conn in captured_conns)
 
     def test_each_boundary_called_at_least_once(self, tmp_path: Path) -> None:
         rt = make_roundtrip(tmp_path)
@@ -726,6 +732,7 @@ class TestConnForwarding:
             patch(_FETCH_SCORE_ROWS, side_effect=_score_rows) as p_scores,
             patch(_FETCH_RULE_FIRES, side_effect=_rule_fires) as p_fires,
             patch(_FETCH_COMMITTEES, side_effect=_committees) as p_committees,
+            patch(_FETCH_PROFILE_CARDS, side_effect=_all_cards) as p_profile_cards,
             patch(_FETCH_ALL_CARDS, side_effect=_all_cards) as p_cards,
             patch(_VERIFY_ZIP, side_effect=_zip_stub),
             patch(_VERIFY_HOMEPAGE, side_effect=_homepage_stub),
@@ -736,4 +743,5 @@ class TestConnForwarding:
         p_scores.assert_called_once()
         p_fires.assert_called_once()
         p_committees.assert_called_once()
+        p_profile_cards.assert_called_once()
         p_cards.assert_called_once()

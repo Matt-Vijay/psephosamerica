@@ -19,6 +19,7 @@ from src.homepage.contracts import (
     MemberMovementSummary,
     RecentEventSummary,
 )
+from src.identity.current_member_lookup import CurrentMemberLookupEntry
 
 _DEFAULT_TOP_N = 10
 _DEFAULT_RECENT_N = 20
@@ -34,6 +35,13 @@ def _coerce_date(value: dt.date | str) -> dt.date:
     if isinstance(value, str):
         return dt.date.fromisoformat(value)
     return value
+
+
+def _occurred_at_rank(value: dt.date) -> float:
+    rank = getattr(value, "_rank", None)
+    if isinstance(rank, (int, float)):
+        return float(rank)
+    return float(value.toordinal())
 
 
 def _member_chamber(meta: dict[str, Any]) -> str:
@@ -84,11 +92,16 @@ def build_top_changes(
             [e for e in group_events if e.evidence_card_id],
             key=lambda e: (-e.abs_delta, e.feed_event_id),
         )
-        top_card_ids = [
-            card_id
-            for e in card_events[:_MAX_CARD_IDS_PER_MEMBER]
-            if (card_id := e.evidence_card_id) is not None
-        ]
+        top_card_ids: list[str] = []
+        seen_card_ids: set[str] = set()
+        for event in card_events:
+            card_id = event.evidence_card_id
+            if card_id is None or card_id in seen_card_ids:
+                continue
+            seen_card_ids.add(card_id)
+            top_card_ids.append(card_id)
+            if len(top_card_ids) >= _MAX_CARD_IDS_PER_MEMBER:
+                break
 
         first = group_events[0]
         summaries.append(
@@ -127,7 +140,7 @@ def build_recent_events(
         return []
 
     pool = events if since is None else [e for e in events if e.occurred_at >= since]
-    pool = sorted(pool, key=lambda e: (-e.occurred_at.toordinal(), e.feed_event_id))
+    pool = sorted(pool, key=lambda e: (-_occurred_at_rank(e.occurred_at), e.feed_event_id))
 
     return [
         RecentEventSummary(
@@ -158,6 +171,38 @@ def extract_recent_evidence_card_ids(recent_events: list[RecentEventSummary]) ->
         if ev.evidence_card_id and ev.evidence_card_id not in seen:
             seen.add(ev.evidence_card_id)
             result.append(ev.evidence_card_id)
+    return result
+
+
+def build_featured_lookup_entries(
+    top_changes: list[MemberMovementSummary],
+    recent_events: list[RecentEventSummary],
+    lookup_entries: list[CurrentMemberLookupEntry],
+) -> list[CurrentMemberLookupEntry]:
+    """Select ordered, deduped lookup entries visible in the homepage bootstrap."""
+
+    lookup_by_bioguide_id = {entry.bioguide_id: entry for entry in lookup_entries}
+    result: list[CurrentMemberLookupEntry] = []
+    seen_ids: set[str] = set()
+
+    for change in top_changes:
+        if change.bioguide_id in seen_ids:
+            continue
+        entry = lookup_by_bioguide_id.get(change.bioguide_id)
+        if entry is None:
+            continue
+        seen_ids.add(change.bioguide_id)
+        result.append(entry)
+
+    for event in recent_events:
+        if event.member_bioguide_id in seen_ids:
+            continue
+        entry = lookup_by_bioguide_id.get(event.member_bioguide_id)
+        if entry is None:
+            continue
+        seen_ids.add(event.member_bioguide_id)
+        result.append(entry)
+
     return result
 
 

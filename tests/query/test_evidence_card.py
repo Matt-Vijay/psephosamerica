@@ -199,6 +199,34 @@ class TestParseAnchors:
         result = _parse_anchors(raw)
         assert [a.label for a in result] == ["first", "second"]
 
+    def test_duplicate_source_identity_deduplicated(self):
+        raw = [
+            {"source_type": "financial_disclosure", "source_id": "fd_001", "label": "Short label"},
+            {
+                "source_type": "financial_disclosure",
+                "source_id": "fd_001",
+                "url": "https://example.gov/fd/001",
+                "label": "Longer disclosure label",
+            },
+        ]
+        result = _parse_anchors(raw)
+        assert len(result) == 1
+        assert result[0].label == "Longer disclosure label"
+        assert result[0].url == "https://example.gov/fd/001"
+
+    def test_anchors_sorted_by_source_identity(self):
+        raw = [
+            {"source_type": "z_type", "source_id": "9", "label": "z"},
+            {"source_type": "a_type", "source_id": "2", "label": "a2"},
+            {"source_type": "a_type", "source_id": "1", "label": "a1"},
+        ]
+        result = _parse_anchors(raw)
+        assert [(anchor.source_type, anchor.source_id) for anchor in result] == [
+            ("a_type", "1"),
+            ("a_type", "2"),
+            ("z_type", "9"),
+        ]
+
 
 # ---------------------------------------------------------------------------
 # _snapshot_date
@@ -351,6 +379,27 @@ class TestAssembleEvidenceCard:
         row = {**BASE_ROW, "source_anchors": []}
         result = assemble_evidence_card(row)
         assert result.source_anchors == []
+
+    def test_source_anchors_deduplicated_and_sorted(self):
+        row = {
+            **BASE_ROW,
+            "source_anchors": [
+                {"source_type": "b_type", "source_id": "2", "label": "second"},
+                {
+                    "source_type": "a_type",
+                    "source_id": "1",
+                    "url": "https://example.gov/a/1",
+                    "label": "primary anchor",
+                },
+                {"source_type": "a_type", "source_id": "1", "label": "duplicate anchor"},
+            ],
+        }
+        result = assemble_evidence_card(row)
+        assert [(anchor.source_type, anchor.source_id) for anchor in result.source_anchors] == [
+            ("a_type", "1"),
+            ("b_type", "2"),
+        ]
+        assert result.source_anchors[0].url == "https://example.gov/a/1"
 
     def test_confidence_high(self):
         result = assemble_evidence_card(BASE_ROW)

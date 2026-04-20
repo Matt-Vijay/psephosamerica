@@ -6,16 +6,42 @@ closure is a pure data-capture callable with no live I/O.
 """
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 from typing import Any
 
-from src.export.contracts import EvidenceCardPayload, MemberProfilePayload, ZipFeedPayload
-from src.export.writer import PlannedFile, plan_snapshot, serialize_payload
+from src.api.contracts import (
+    ArtifactCounts,
+    HomepageBootstrapPayload,
+    MovementFeedPayload,
+    SnapshotSummaryPayload,
+    ZipEntryPayload,
+)
+from src.export.contracts import (
+    EvidenceCardPayload,
+    MemberHistoryPayload,
+    MemberProfilePayload,
+    ZipFeedPayload,
+)
+from src.export.manifest import SnapshotManifest
+from src.export.writer import (
+    PlannedFile,
+    current_member_lookup_path,
+    homepage_bootstrap_path,
+    plan_snapshot,
+    serialize_payload,
+    zip_entry_path,
+)
+from src.homepage.builders import build_featured_lookup_entries
+from src.homepage.contracts import HomepageFeedPayload
+from src.identity.current_member_lookup import build_current_member_lookup
+from src.identity.current_member_lookup import CurrentMemberLookupPayload
 from src.pipeline.publish_pipeline import Planner, PublishConfig, PublishResult, run_publish
 from src.query.evidence_card import assemble_evidence_card
 from src.query.homepage_feed import assemble_homepage_payload
+from src.query.member_history import assemble_member_history
 from src.query.member_profile import assemble_member_profile
 from src.query.published_rows import (
     fetch_all_evidence_card_rows,
@@ -92,6 +118,25 @@ def _build_evidence_cards(conn: Any) -> list[EvidenceCardPayload]:
     return [assemble_evidence_card(row) for row in card_rows]
 
 
+def _build_member_histories(
+    conn: Any,
+    member_slugs: list[str],
+) -> list[MemberHistoryPayload]:
+    histories: list[MemberHistoryPayload] = []
+    for slug in member_slugs:
+        member_row = fetch_member_row_by_slug(conn, slug)
+        if member_row is None:
+            continue
+        member_id: int = member_row["id"]
+        snapshot_rows = fetch_member_score_snapshot_rows(conn, member_id)
+        fire_rows = fetch_member_rule_fire_rows(conn, member_id)
+        committee_rows = fetch_member_committee_rows(conn, member_id)
+        histories.append(
+            assemble_member_history(member_row, snapshot_rows, fire_rows, committee_rows)
+        )
+    return histories
+
+
 def _build_zip_feeds(
     conn: Any,
     inputs: ZipBundleInputs,
@@ -122,9 +167,108 @@ def _build_zip_feeds(
 
 
 def _build_homepage_file(conn: Any, snapshot_date: date) -> PlannedFile:
+    payload = _build_homepage_payload(conn, snapshot_date)
+    return _build_homepage_file_from_payload(payload)
+
+
+def _build_homepage_payload(conn: Any, snapshot_date: date) -> HomepageFeedPayload:
     feed_rows = fetch_homepage_feed_rows(conn, limit=_HOMEPAGE_FEED_LIMIT)
-    payload = assemble_homepage_payload(feed_rows, snapshot_date=snapshot_date)
+    return assemble_homepage_payload(feed_rows, snapshot_date=snapshot_date)
+
+
+def _build_homepage_file_from_payload(payload: HomepageFeedPayload) -> PlannedFile:
     return PlannedFile.from_bytes(_HOMEPAGE_PATH, serialize_payload(payload))
+
+
+def _build_current_member_lookup_payload(
+    member_profiles: list[MemberProfilePayload],
+    snapshot_date: date,
+) -> CurrentMemberLookupPayload:
+    return build_current_member_lookup(member_profiles, snapshot_date=snapshot_date)
+
+
+def _build_current_member_lookup_file(
+    member_profiles: list[MemberProfilePayload],
+    snapshot_date: date,
+) -> PlannedFile:
+    payload = _build_current_member_lookup_payload(member_profiles, snapshot_date=snapshot_date)
+    return PlannedFile.from_bytes(current_member_lookup_path(), serialize_payload(payload))
+
+
+def _build_homepage_bootstrap_file(
+    homepage_payload: HomepageFeedPayload,
+    current_member_lookup_payload: CurrentMemberLookupPayload,
+    manifest: SnapshotManifest,
+) -> PlannedFile:
+    payload = HomepageBootstrapPayload(
+        snapshot=_build_snapshot_summary_payload(
+            manifest,
+            snapshot_date=homepage_payload.snapshot_date,
+        ),
+        movement=MovementFeedPayload(
+            snapshot_date=homepage_payload.snapshot_date,
+            top_changes=homepage_payload.top_changes,
+            recent_events=homepage_payload.recent_events,
+            recent_evidence_card_ids=homepage_payload.recent_evidence_card_ids,
+        ),
+        featured_lookup_entries=build_featured_lookup_entries(
+            homepage_payload.top_changes,
+            homepage_payload.recent_events,
+            current_member_lookup_payload.members,
+        ),
+    )
+    return PlannedFile.from_bytes(homepage_bootstrap_path(), serialize_payload(payload))
+
+
+def _build_artifact_counts(manifest: SnapshotManifest) -> ArtifactCounts:
+    return ArtifactCounts(
+        members=sum(1 for entry in manifest.entries if entry.path.startswith("members/")),
+        evidence=sum(1 for entry in manifest.entries if entry.path.startswith("evidence/")),
+        zip_feeds=sum(1 for entry in manifest.entries if entry.path.startswith("zip/")),
+        homepage_feeds=1,
+        current_member_lookups=sum(
+            1 for entry in manifest.entries if entry.path == "identity/current-member-lookup.json"
+        ),
+    )
+
+
+def _build_snapshot_summary_payload(
+    manifest: SnapshotManifest,
+    *,
+    snapshot_date: date,
+) -> SnapshotSummaryPayload:
+    return SnapshotSummaryPayload(
+        snapshot_id=manifest.snapshot_id,
+        snapshot_date=snapshot_date,
+        published_at=manifest.created_at,
+        root_sha256=manifest.root_sha256,
+        total_files=manifest.total_files,
+        total_bytes=manifest.total_bytes,
+        artifact_counts=_build_artifact_counts(manifest),
+    )
+
+
+def _build_zip_entry_file(
+    zip_feed: ZipFeedPayload,
+    current_member_lookup_payload: CurrentMemberLookupPayload,
+    manifest: SnapshotManifest,
+) -> PlannedFile:
+    lookup_by_bioguide_id = {
+        entry.bioguide_id: entry for entry in current_member_lookup_payload.members
+    }
+    zip_entry = ZipEntryPayload(
+        zip_feed=zip_feed,
+        member_lookup_entries=[
+            lookup_by_bioguide_id[member.bioguide_id]
+            for member in zip_feed.members
+            if member.bioguide_id in lookup_by_bioguide_id
+        ],
+        snapshot=_build_snapshot_summary_payload(
+            manifest,
+            snapshot_date=zip_feed.snapshot_date,
+        ),
+    )
+    return PlannedFile.from_bytes(zip_entry_path(zip_feed.zip_code), serialize_payload(zip_entry))
 
 
 # ---------------------------------------------------------------------------
@@ -135,9 +279,14 @@ def _build_homepage_file(conn: Any, snapshot_date: date) -> PlannedFile:
 def _make_planner(
     snapshot_id: str,
     member_profiles: list[MemberProfilePayload],
+    member_histories: list[MemberHistoryPayload],
     zip_feeds: list[ZipFeedPayload],
     evidence_cards: list[EvidenceCardPayload],
+    current_member_lookup_file: PlannedFile,
     homepage_file: PlannedFile,
+    *,
+    current_member_lookup_payload: CurrentMemberLookupPayload | None = None,
+    homepage_payload: HomepageFeedPayload | None = None,
 ) -> Planner:
     """Capture pre-assembled payloads; return a zero-arg planner for run_publish.
 
@@ -147,8 +296,35 @@ def _make_planner(
     """
 
     def planner() -> list[PlannedFile]:
-        snapshot_files = plan_snapshot(snapshot_id, member_profiles, zip_feeds, evidence_cards)
-        return snapshot_files + [homepage_file]
+        snapshot_files = plan_snapshot(
+            snapshot_id,
+            member_profiles,
+            zip_feeds,
+            evidence_cards,
+            member_histories=member_histories,
+            current_member_lookup_file=current_member_lookup_file,
+        )
+        feed_payload = (
+            homepage_payload
+            if homepage_payload is not None
+            else HomepageFeedPayload.model_validate(json.loads(homepage_file.content))
+        )
+        lookup_payload = (
+            current_member_lookup_payload
+            if current_member_lookup_payload is not None
+            else _build_current_member_lookup_payload(member_profiles, feed_payload.snapshot_date)
+        )
+        manifest = SnapshotManifest.model_validate(json.loads(snapshot_files[-1].content))
+        zip_entry_files = [
+            _build_zip_entry_file(feed, lookup_payload, manifest)
+            for feed in zip_feeds
+        ]
+        homepage_bootstrap_file = _build_homepage_bootstrap_file(
+            feed_payload,
+            lookup_payload,
+            manifest,
+        )
+        return snapshot_files + [homepage_file, *zip_entry_files, homepage_bootstrap_file]
 
     return planner
 
@@ -174,16 +350,30 @@ def publish_snapshot_run(
     member_slugs = fetch_current_member_slugs(conn)
 
     member_profiles = _build_member_profiles(conn, member_slugs)
+    member_histories = _build_member_histories(conn, member_slugs)
     evidence_cards = _build_evidence_cards(conn)
     zip_feeds = _build_zip_feeds(conn, zip_bundle_inputs, snapshot_date)
-    homepage_file = _build_homepage_file(conn, snapshot_date)
+    current_member_lookup_payload = _build_current_member_lookup_payload(
+        member_profiles,
+        snapshot_date,
+    )
+    current_member_lookup_file = PlannedFile.from_bytes(
+        current_member_lookup_path(),
+        serialize_payload(current_member_lookup_payload),
+    )
+    homepage_payload = _build_homepage_payload(conn, snapshot_date)
+    homepage_file = _build_homepage_file_from_payload(homepage_payload)
 
     planner = _make_planner(
         snapshot_id,
         member_profiles,
+        member_histories,
         zip_feeds,
         evidence_cards,
+        current_member_lookup_file,
         homepage_file,
+        current_member_lookup_payload=current_member_lookup_payload,
+        homepage_payload=homepage_payload,
     )
     config = PublishConfig(snapshot_id=snapshot_id, target_dir=target_dir)
     return run_publish(config, planner)

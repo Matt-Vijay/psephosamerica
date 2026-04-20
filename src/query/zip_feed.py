@@ -29,6 +29,21 @@ def _member_chamber(chamber: str) -> Literal["house", "senate"]:
     return cast(Literal["house", "senate"], chamber)
 
 
+def _normalized_score_rows(score_rows: Sequence[dict[str, Any]]) -> list[dict[str, Any]]:
+    return sorted(score_rows, key=lambda row: (row["dimension"],))
+
+
+def _normalized_evidence_card_ids(evidence_card_ids: Sequence[str]) -> list[str]:
+    seen: set[str] = set()
+    normalized: list[str] = []
+    for card_id in evidence_card_ids:
+        if not card_id or card_id in seen:
+            continue
+        seen.add(card_id)
+        normalized.append(card_id)
+    return normalized[:3]
+
+
 def _build_member_summary(
     ref: MemberRef,
     score_rows: Sequence[dict[str, Any]],
@@ -40,7 +55,7 @@ def _build_member_summary(
             current_score=row["current_score"],
             rule_fire_count=row["rule_fire_count"],
         )
-        for row in score_rows
+        for row in _normalized_score_rows(score_rows)
     ]
     return ZipMemberSummary(
         bioguide_id=ref.bioguide_id,
@@ -49,7 +64,7 @@ def _build_member_summary(
         chamber=_member_chamber(ref.chamber),
         party=ref.party,
         scores=scores,
-        top_evidence_card_ids=list(evidence_card_ids)[:3],
+        top_evidence_card_ids=_normalized_evidence_card_ids(evidence_card_ids),
     )
 
 

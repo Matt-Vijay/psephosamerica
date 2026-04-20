@@ -679,10 +679,7 @@ class TestRunOracleLocalE2E:
         bundle = build_disclosures_bundle(tmp_path / "bundle.json")
         target = tmp_path / "out"
         target.mkdir()
-        with (
-            patch(f"{_MAIN}._current_congress", return_value=118),
-            self._patch_stack(),
-        ):
+        with self._patch_stack():
             run(self._argv(archive, bundle, target, extra=["--congress", "119"]))
         out = json.loads(capsys.readouterr().out)
         assert out["congress"]["configured_congress"] == 119

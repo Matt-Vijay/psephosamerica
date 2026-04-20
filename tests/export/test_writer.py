@@ -11,6 +11,10 @@ from src.export.contracts import (
     EvidenceBlock,
     EvidenceCardPayload,
     EvidenceSection,
+    HistoricalCommitteeMembership,
+    MemberHistoryEvent,
+    MemberHistoryPayload,
+    MemberHistorySnapshot,
     MemberProfilePayload,
     ScoreSummary,
     SourceAnchor,
@@ -19,12 +23,17 @@ from src.export.contracts import (
 )
 from src.export.writer import (
     PlannedFile,
+    current_member_lookup_path,
     evidence_path,
     finalize_publish_plan,
+    homepage_bootstrap_path,
     manifest_path,
+    member_history_path,
+    member_page_payload_path,
     member_path,
     plan_snapshot,
     serialize_payload,
+    zip_entry_path,
     zip_path,
 )
 
@@ -51,6 +60,7 @@ def _make_member_profile() -> MemberProfilePayload:
             )
         ],
         recent_rule_fires=[],
+        top_evidence_card_ids=["ec-001"],
         committees=[],
         total_evidence_cards=1,
         snapshot_date=SNAPSHOT_DATE,
@@ -102,6 +112,50 @@ def _make_zip_feed() -> ZipFeedPayload:
     )
 
 
+def _make_member_history() -> MemberHistoryPayload:
+    return MemberHistoryPayload(
+        bioguide_id="S000148",
+        name="Charles Schumer",
+        slug="charles-schumer",
+        state="NY",
+        district=None,
+        chamber="senate",
+        party="Democrat",
+        snapshots=[
+            MemberHistorySnapshot(
+                snapshot_date=SNAPSHOT_DATE,
+                score_total=72.0,
+                score_total_delta=None,
+                dimension_scores={"conflict_of_interest_risk": 72.0},
+                published_at=datetime(2026, 4, 13, 12, 0, 0),
+            )
+        ],
+        events=[
+            MemberHistoryEvent(
+                rule_id="committee_sector_trade",
+                dimension="conflict_of_interest_risk",
+                severity="high",
+                evidence_card_id="ec-001",
+                short_explanation="Trade in sector overlapping with committee jurisdiction.",
+                score_delta=-5.0,
+                snapshot_date=SNAPSHOT_DATE,
+                fired_at=datetime(2026, 4, 13, 12, 0, 0),
+            )
+        ],
+        committee_history=[
+            HistoricalCommitteeMembership(
+                committee_name="Finance",
+                role="Member",
+                start_date=SNAPSHOT_DATE,
+                end_date=None,
+                is_current=True,
+                chamber="senate",
+                committee_type="standing",
+            )
+        ],
+    )
+
+
 # ── serialize_payload ────────────────────────────────────────────────────────────
 
 
@@ -114,6 +168,7 @@ def test_serialize_payload_valid_json():
     data = json.loads(serialize_payload(_make_member_profile()))
     assert data["bioguide_id"] == "S000148"
     assert data["slug"] == "charles-schumer"
+    assert data["top_evidence_card_ids"] == ["ec-001"]
 
 
 def test_serialize_payload_sorted_keys():
@@ -158,6 +213,26 @@ def test_zip_path():
 
 def test_evidence_path():
     assert evidence_path("ec-001") == "evidence/ec-001.json"
+
+
+def test_current_member_lookup_path():
+    assert current_member_lookup_path() == "identity/current-member-lookup.json"
+
+
+def test_homepage_bootstrap_path():
+    assert homepage_bootstrap_path() == "homepage/bootstrap.json"
+
+
+def test_zip_entry_path():
+    assert zip_entry_path("94102") == "zip-entry/94102.json"
+
+
+def test_member_history_path():
+    assert member_history_path("charles-schumer") == "history/members/charles-schumer.json"
+
+
+def test_member_page_payload_path():
+    assert member_page_payload_path("charles-schumer") == "member-pages/charles-schumer.json"
 
 
 def test_manifest_path():
@@ -215,15 +290,16 @@ def test_plan_snapshot_file_count():
         [_make_zip_feed()],
         [_make_evidence_card()],
     )
-    # 1 member + 1 zip + 1 evidence + 1 manifest
-    assert len(plan) == 4
+    # 1 member + 1 member page + 1 zip + 1 evidence + 1 lookup + 1 manifest
+    assert len(plan) == 6
 
 
 def test_plan_snapshot_empty_inputs():
     plan = plan_snapshot(SNAPSHOT_ID, [], [], [])
-    # Only the manifest
-    assert len(plan) == 1
-    assert plan[0].path == manifest_path(SNAPSHOT_ID)
+    assert [file.path for file in plan] == [
+        current_member_lookup_path(),
+        manifest_path(SNAPSHOT_ID),
+    ]
 
 
 def test_plan_snapshot_manifest_is_last():
@@ -242,6 +318,12 @@ def test_plan_snapshot_member_path_present():
     assert "members/charles-schumer.json" in paths
 
 
+def test_plan_snapshot_member_page_payload_path_present():
+    plan = plan_snapshot(SNAPSHOT_ID, [_make_member_profile()], [], [_make_evidence_card()])
+    paths = [f.path for f in plan]
+    assert member_page_payload_path("charles-schumer") in paths
+
+
 def test_plan_snapshot_zip_path_present():
     plan = plan_snapshot(SNAPSHOT_ID, [], [_make_zip_feed()], [])
     paths = [f.path for f in plan]
@@ -252,6 +334,24 @@ def test_plan_snapshot_evidence_path_present():
     plan = plan_snapshot(SNAPSHOT_ID, [], [], [_make_evidence_card()])
     paths = [f.path for f in plan]
     assert "evidence/ec-001.json" in paths
+
+
+def test_plan_snapshot_member_history_path_present() -> None:
+    plan = plan_snapshot(
+        SNAPSHOT_ID,
+        [_make_member_profile()],
+        [],
+        [],
+        member_histories=[_make_member_history()],
+    )
+    paths = [f.path for f in plan]
+    assert "history/members/charles-schumer.json" in paths
+
+
+def test_plan_snapshot_lookup_path_present():
+    plan = plan_snapshot(SNAPSHOT_ID, [_make_member_profile()], [], [])
+    paths = [f.path for f in plan]
+    assert current_member_lookup_path() in paths
 
 
 def test_plan_snapshot_manifest_covers_data_files():
@@ -339,3 +439,13 @@ def test_plan_snapshot_no_duplicate_paths():
     )
     paths = [f.path for f in plan]
     assert len(paths) == len(set(paths))
+
+
+def test_serialize_payload_uses_aliases_for_compact_lookup_payload():
+    from src.identity.current_member_lookup import build_current_member_lookup
+
+    payload = build_current_member_lookup([_make_member_profile()], snapshot_date=SNAPSHOT_DATE)
+
+    data = json.loads(serialize_payload(payload))
+    assert sorted(data.keys()) == ["m", "sd", "v"]
+    assert data["m"][0]["q"] == "charles schumer"

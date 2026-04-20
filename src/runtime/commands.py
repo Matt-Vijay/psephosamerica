@@ -11,13 +11,22 @@ from typing import Any
 
 from src.parse.disclosures.transform import DisclosureTransformResult
 from src.pipeline.publish_snapshot_run import ZipBundleInputs
-from src.runtime.app import build_runtime, open_runtime_connection
+from src.runtime.app import OpenPactRuntime, build_runtime, open_runtime_connection
 from src.runtime.bootstrap import bootstrap_database, describe_bootstrap_plan
 from src.runtime.congress import CongressLoadResult
 from src.runtime.congress_archive import run_congress_archive_load
 from src.runtime.congress_live_full import run_live_congress_load_full
 from src.runtime.congress_options import CongressLoadOptions, current_congress_for_date
 from src.runtime.context import RuntimeContext, open_connection
+from src.runtime.history_backfill import (
+    LocalHistoryBackfillResult,
+    plan_congress_history_backfill,
+    run_local_history_backfill,
+)
+from src.runtime.history_verify import (
+    verify_history_aggregate_local as _verify_local_history_aggregate,
+)
+from src.runtime.history_verify_types import HistoryVerifyResult
 from src.runtime.disclosures import DisclosuresLoadRuntimeResult, run_disclosures_load_runtime
 from src.runtime.disclosures_artifacts import run_disclosure_artifact_ingest
 from src.runtime.disclosures_bundle import DisclosuresBundle, load_disclosures_bundle
@@ -32,6 +41,8 @@ from src.runtime.oracle_local import run_oracle_local
 from src.runtime.output import (
     summarize_disclosure_artifact_ingest_result,
     summarize_disclosures_bundle_process_result,
+    summarize_history_verify_result,
+    summarize_local_history_backfill_result,
     summarize_load_result,
     summarize_local_oracle_run_result,
     summarize_parse_disclosures_result,
@@ -158,6 +169,13 @@ def verify_publish_roundtrip_local(
     return result
 
 
+def verify_history_aggregate_local(publish_root: Path) -> HistoryVerifyResult:
+    """Verify a local history aggregate root without a database connection."""
+    result = _verify_local_history_aggregate(publish_root)
+    _emit_verification_summary("verify-history-aggregate", publish_root, result)
+    return result
+
+
 def run_oracle_local_command(
     ctx: RuntimeContext,
     congress_archive: Path,
@@ -169,11 +187,45 @@ def run_oracle_local_command(
     return run_oracle_local(conn, congress_archive, disclosures_bundle, options)
 
 
+def run_history_backfill_local_command(
+    ctx: RuntimeContext,
+    congress_archive: Path,
+    disclosures_bundle: DisclosuresBundle,
+    *,
+    congress: int,
+    target_root: Path,
+    aggregate_root: Path | None = None,
+    chamber: str | None = None,
+    limit: int | None = None,
+    start_date: dt.date | None = None,
+    end_date: dt.date | None = None,
+    overwrite: bool = False,
+    continue_on_error: bool = False,
+    artifact_root: Path | None = None,
+) -> LocalHistoryBackfillResult:
+    """Run the local oracle across a planned weekly Congress history window."""
+    return run_local_history_backfill(
+        ctx,
+        congress_archive,
+        disclosures_bundle,
+        congress=congress,
+        target_root=target_root,
+        aggregate_root=aggregate_root,
+        chamber=chamber,
+        limit=limit,
+        start_date=start_date,
+        end_date=end_date,
+        overwrite=overwrite,
+        continue_on_error=continue_on_error,
+        artifact_root=artifact_root,
+    )
+
+
 def _snapshot_date_or_today(snapshot_date: dt.date | None) -> dt.date:
     return snapshot_date if snapshot_date is not None else dt.date.today()
 
 
-def _publish_target_or_default(target_dir: str | Path | None, runtime: Any) -> Path:
+def _publish_target_or_default(target_dir: str | Path | None, runtime: OpenPactRuntime) -> Path:
     if target_dir is None:
         return runtime.publish_root
     return Path(target_dir)
@@ -440,16 +492,20 @@ def _handle_process_disclosures_local(args: Any) -> dict[str, Any]:
 
 def _handle_run_oracle_local(args: Any) -> dict[str, Any]:
     runtime = build_runtime()
+    configured_congress = args.congress if args.congress is not None else _current_congress()
+    congress_source = "explicit-arg" if args.congress is not None else "current-date-default"
     congress_options = CongressOracleOptions(
-        congress=_current_congress(),
+        congress=configured_congress,
         chamber=None if args.chamber == "both" else args.chamber,
         limit=args.limit,
+        congress_source=congress_source,
     )
     options = LocalOracleOptions(
         congress_options=congress_options,
         snapshot_date=args.snapshot_date,
         target_dir=Path(args.target_dir),
         snapshot_id=args.snapshot_id,
+        artifact_root=Path(args.artifact_root) if args.artifact_root is not None else None,
     )
     result = run_oracle_local_command(
         runtime.context,
@@ -459,6 +515,75 @@ def _handle_run_oracle_local(args: Any) -> dict[str, Any]:
     )
     summary = summarize_local_oracle_run_result(result)
     return {"ok": _oracle_summary_ok(summary), "command": "run-oracle-local", **summary}
+
+
+def _handle_run_history_backfill_local(args: Any) -> dict[str, Any]:
+    runtime = build_runtime()
+    result = run_history_backfill_local_command(
+        runtime.context,
+        Path(args.congress_archive),
+        load_disclosures_bundle(Path(args.disclosures_bundle)),
+        congress=args.congress,
+        target_root=Path(args.target_root),
+        aggregate_root=Path(args.aggregate_root) if args.aggregate_root is not None else None,
+        start_date=args.start_date,
+        end_date=args.end_date,
+        chamber=None if args.chamber == "both" else args.chamber,
+        limit=args.limit,
+        artifact_root=Path(args.artifact_root) if args.artifact_root is not None else None,
+        overwrite=args.overwrite,
+        continue_on_error=args.continue_on_error,
+    )
+    summary = summarize_local_history_backfill_result(result)
+    return {"ok": result.ok, "command": "run-history-backfill-local", **summary}
+
+
+def _handle_plan_history_backfill(args: Any) -> dict[str, Any]:
+    plan = plan_congress_history_backfill(
+        args.congress,
+        target_root=Path(args.target_root),
+        start_date=args.start_date,
+        end_date=args.end_date,
+    )
+    return {
+        "ok": True,
+        "command": "plan-history-backfill",
+        "congress": plan.congress,
+        "cadence": plan.cadence,
+        "date_window": {
+            "start_date": plan.date_window.start_date.isoformat(),
+            "end_date": plan.date_window.end_date.isoformat(),
+            "bounded_by_today": plan.date_window.bounded_by_today,
+        },
+        "snapshot_count": len(plan.targets),
+        "targets": [
+            {
+                "snapshot_id": target.snapshot_id,
+                "snapshot_date": target.snapshot_date.isoformat(),
+                "publish_root": str(target.publish_root),
+            }
+            for target in plan.targets
+        ],
+    }
+
+
+def _handle_aggregate_history(args: Any) -> dict[str, Any]:
+    from src.pipeline.history_aggregate_run import write_history_aggregate
+
+    result = write_history_aggregate(
+        [Path(root) for root in args.source_root],
+        Path(args.target_root),
+    )
+    verify_result = verify_history_aggregate_local(Path(args.target_root))
+    return {
+        "ok": verify_result.ok,
+        "command": "aggregate-history",
+        "latest_snapshot_id": result.latest_snapshot_id,
+        "snapshot_count": len(result.snapshot_index.snapshots),
+        "member_history_count": result.member_history_count,
+        "target_root": str(result.target_root),
+        "verify": summarize_history_verify_result(verify_result),
+    }
 
 
 def _handle_verify_publish(args: Any) -> dict[str, Any]:
@@ -480,6 +605,15 @@ def _handle_verify_publish_roundtrip(args: Any) -> dict[str, Any]:
     }
 
 
+def _handle_verify_history_aggregate(args: Any) -> dict[str, Any]:
+    result = verify_history_aggregate_local(Path(args.publish_root))
+    return {
+        "ok": result.ok,
+        "command": "verify-history-aggregate",
+        **summarize_history_verify_result(result),
+    }
+
+
 COMMAND_REGISTRY: dict[str, Callable[[Any], dict[str, Any]]] = {
     "bootstrap-db": _handle_bootstrap_db,
     "status": _handle_status,
@@ -492,8 +626,12 @@ COMMAND_REGISTRY: dict[str, Callable[[Any], dict[str, Any]]] = {
     "load-congress-local": _handle_load_congress_local,
     "process-disclosures-local": _handle_process_disclosures_local,
     "run-oracle-local": _handle_run_oracle_local,
+    "plan-history-backfill": _handle_plan_history_backfill,
+    "run-history-backfill-local": _handle_run_history_backfill_local,
+    "aggregate-history": _handle_aggregate_history,
     "verify-publish": _handle_verify_publish,
     "verify-publish-roundtrip": _handle_verify_publish_roundtrip,
+    "verify-history-aggregate": _handle_verify_history_aggregate,
 }
 
 

@@ -6,6 +6,7 @@ level and propagates up to prevent the rule from firing.
 
 from __future__ import annotations
 
+import datetime as dt
 import uuid
 from collections import defaultdict
 from typing import Any
@@ -123,6 +124,7 @@ def evaluate_rule(
     member_bioguide_id: str,
     recompute_run_id: str,
     *,
+    fired_at: dt.datetime | None = None,
     superseded_filing_id: str | None = None,
 ) -> RuleFire | None:
     """Return a RuleFire if *rule* fires against *facts*, else None.
@@ -152,6 +154,7 @@ def evaluate_rule(
         derived_values={},
         parameters_used=dict(rule.parameters),
         recompute_run_id=recompute_run_id,
+        fired_at=fired_at or dt.datetime.now(dt.UTC),
         superseded_filing_id=superseded_filing_id,
         explanation=explanation,
     )

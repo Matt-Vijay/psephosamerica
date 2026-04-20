@@ -6,32 +6,88 @@ from pathlib import Path
 
 import pytest
 
+from src.api.contracts import (
+    HistoryBootstrapPayload,
+    HistoryPresetRangePayload,
+    HomepageBootstrapPayload,
+    MemberHistoryPagePayload,
+    MemberPagePayload,
+)
 from src.export.contracts import (
     ConfidenceLabel,
+    DimensionChangeSummary,
     EvidenceCardPayload,
+    HistoricalCommitteeMembership,
+    MemberChangeSummaryPayload,
+    MemberHistoryChartPayload,
+    MemberHistoryChartPoint,
+    MemberHistoryComparePreset,
+    MemberHistoryEvent,
+    MemberHistoryPayload,
+    MemberHistorySnapshot,
     MemberProfilePayload,
+    SnapshotComparePresetPayload,
+    MemberTrendSummaryPayload,
+    MemberTrendWindowPayload,
     ZipFeedPayload,
 )
 from src.export.filesystem import write_planned_files
 from src.export.local_store import (
     HOMEPAGE_FEED_PATH,
     _safe_subpath,
+    load_current_member_lookup,
+    load_history_bootstrap,
+    load_history_preset_range,
+    load_homepage_bootstrap,
+    load_member_page,
+    load_member_change_summary,
+    load_member_history_chart,
+    load_member_history_page,
+    load_member_preset_compare,
+    load_latest_snapshot_metadata,
+    load_member_history,
+    load_snapshot_preset_compare,
+    load_member_trend_summary,
+    load_movement_window,
     latest_snapshot_id,
+    list_snapshot_ids,
     list_artifact_paths,
+    manifest_published_at,
+    manifest_snapshot_date,
     load_evidence_card,
     load_homepage_feed,
     load_latest_manifest,
     load_manifest,
     load_member_profile,
+    load_snapshot_index,
+    load_zip_entry,
     load_zip_feed,
 )
 from src.homepage.contracts import HomepageFeedPayload, MemberMovementSummary, RecentEventSummary
+from src.homepage.contracts import MovementWindowPayload, SnapshotComparePayload
+from src.identity.current_member_lookup import CurrentMemberLookupEntry, CurrentMemberLookupPayload
 from src.export.manifest import ManifestEntry, SnapshotManifest, manifest_root_sha256
 from src.export.writer import (
     PlannedFile,
+    current_member_lookup_path,
     evidence_path,
+    history_bootstrap_path,
+    history_preset_range_path,
+    homepage_bootstrap_path,
     manifest_path,
+    member_change_summary_path,
+    member_history_chart_path,
+    member_history_page_path,
+    member_preset_compare_path,
+    member_history_path,
+    member_page_payload_path,
     member_path,
+    member_trend_summary_path,
+    movement_window_path,
+    serialize_payload,
+    snapshot_preset_compare_path,
+    snapshot_index_path,
+    zip_entry_path,
     zip_path,
 )
 
@@ -89,6 +145,117 @@ def _zip_payload() -> ZipFeedPayload:
     )
 
 
+def _member_history_payload() -> MemberHistoryPayload:
+    return MemberHistoryPayload(
+        bioguide_id="S000148",
+        name="Charles Schumer",
+        slug="charles-schumer",
+        state="NY",
+        district=None,
+        chamber="senate",
+        party="Democrat",
+        snapshots=[
+            MemberHistorySnapshot(
+                snapshot_date=SNAPSHOT_DATE,
+                score_total=72.0,
+                score_total_delta=None,
+                dimension_scores={"conflict_of_interest_risk": 72.0},
+                published_at=datetime(2026, 4, 13, 12, 0, 0),
+            )
+        ],
+        events=[
+            MemberHistoryEvent(
+                rule_id="committee_sector_trade",
+                dimension="conflict_of_interest_risk",
+                severity="high",
+                evidence_card_id="ec-001",
+                short_explanation="Trade overlapping committee jurisdiction.",
+                score_delta=-5.0,
+                snapshot_date=SNAPSHOT_DATE,
+                fired_at=datetime(2026, 4, 13, 12, 0, 0),
+            )
+        ],
+        committee_history=[
+            HistoricalCommitteeMembership(
+                committee_name="Finance",
+                role="Member",
+                start_date=SNAPSHOT_DATE,
+                end_date=None,
+                is_current=True,
+                chamber="senate",
+                committee_type="standing",
+            )
+        ],
+    )
+
+
+def _member_change_summary_payload() -> MemberChangeSummaryPayload:
+    return MemberChangeSummaryPayload(
+        bioguide_id="S000148",
+        name="Charles Schumer",
+        slug="charles-schumer",
+        state="NY",
+        district=None,
+        chamber="senate",
+        party="Democrat",
+        latest_snapshot_date=SNAPSHOT_DATE,
+        previous_snapshot_date=date(2026, 4, 6),
+        latest_score_total=72.0,
+        previous_score_total=60.0,
+        score_total_delta=12.0,
+        top_dimension_changes=[
+            DimensionChangeSummary(
+                dimension="conflict_of_interest_risk",
+                current_score=72.0,
+                previous_score=60.0,
+                score_delta=12.0,
+                abs_delta=12.0,
+                event_count=1,
+            )
+        ],
+        recent_events=_member_history_payload().events,
+        top_evidence_card_ids=["ec-001"],
+    )
+
+
+def _movement_window_payload() -> MovementWindowPayload:
+    return MovementWindowPayload(
+        latest_snapshot_id=SNAPSHOT_ID,
+        latest_snapshot_date=SNAPSHOT_DATE,
+        previous_snapshot_id="2026-04-06",
+        previous_snapshot_date=date(2026, 4, 6),
+        top_changes=[
+            MemberMovementSummary(
+                bioguide_id="S000148",
+                name="Charles Schumer",
+                slug="charles-schumer",
+                chamber="senate",
+                party="Democrat",
+                state="NY",
+                dimension="conflict_of_interest_risk",
+                score_delta=-12.0,
+                abs_delta=12.0,
+                event_count=1,
+                top_evidence_card_ids=["ec-001"],
+            )
+        ],
+        recent_events=[
+            RecentEventSummary(
+                feed_event_id="fe-001",
+                member_bioguide_id="S000148",
+                member_name="Charles Schumer",
+                member_slug="charles-schumer",
+                dimension="conflict_of_interest_risk",
+                score_delta=-12.0,
+                short_explanation="Trade overlapping committee jurisdiction.",
+                evidence_card_id="ec-001",
+                occurred_at=SNAPSHOT_DATE,
+            )
+        ],
+        recent_evidence_card_ids=["ec-001"],
+    )
+
+
 def _manifest(files: list[PlannedFile]) -> SnapshotManifest:
     entries = [
         ManifestEntry(path=f.path, sha256=f.sha256, size_bytes=f.size_bytes)
@@ -101,6 +268,23 @@ def _manifest(files: list[PlannedFile]) -> SnapshotManifest:
         total_files=len(files),
         total_bytes=sum(f.size_bytes for f in files),
         root_sha256=manifest_root_sha256(entries),
+    )
+
+
+def _current_member_lookup_payload() -> CurrentMemberLookupPayload:
+    return CurrentMemberLookupPayload(
+        snapshot_date=SNAPSHOT_DATE,
+        members=[
+            CurrentMemberLookupEntry(
+                bioguide_id="S000148",
+                slug="charles-schumer",
+                name="Charles Schumer",
+                search_name="charles schumer",
+                state="NY",
+                district=None,
+                chamber="senate",
+            )
+        ],
     )
 
 
@@ -134,6 +318,33 @@ def test_load_member_profile_roundtrip(tmp_path: Path) -> None:
     assert result.slug == "charles-schumer"
     assert result.chamber == "senate"
     assert result.snapshot_date == SNAPSHOT_DATE
+
+
+def test_load_member_page_roundtrip(tmp_path: Path) -> None:
+    payload = MemberPagePayload(
+        profile=_member_payload().model_copy(
+            update={
+                "top_evidence_card_ids": ["ec-001"],
+                "total_evidence_cards": 1,
+            }
+        ),
+        top_evidence_cards=[_evidence_payload()],
+        recent_evidence_cards=[_evidence_payload()],
+    )
+    pf = PlannedFile.from_bytes(
+        member_page_payload_path("charles-schumer"),
+        json.dumps(payload.model_dump(mode="json"), sort_keys=True).encode("utf-8"),
+    )
+    write_planned_files([pf], tmp_path)
+
+    result = load_member_page(tmp_path, "charles-schumer")
+    assert result.profile.slug == "charles-schumer"
+    assert result.top_evidence_cards[0].evidence_card_id == "ec-001"
+
+
+def test_load_member_page_missing(tmp_path: Path) -> None:
+    with pytest.raises(FileNotFoundError):
+        load_member_page(tmp_path, "ghost-member")
 
 
 def test_load_member_profile_missing(tmp_path: Path) -> None:
@@ -183,6 +394,424 @@ def test_load_evidence_card_invalid_json(tmp_path: Path) -> None:
         load_evidence_card(tmp_path, "ec-bad")
 
 
+# ── load_member_history ────────────────────────────────────────────
+
+
+def test_load_member_history_roundtrip(tmp_path: Path) -> None:
+    payload = _member_history_payload()
+    pf = PlannedFile.from_bytes(member_history_path(payload.slug), _serialise(payload))
+    write_planned_files([pf], tmp_path)
+
+    result = load_member_history(tmp_path, payload.slug)
+    assert result.slug == "charles-schumer"
+    assert result.snapshots[0].score_total == 72.0
+    assert result.events[0].evidence_card_id == "ec-001"
+
+
+def test_load_member_history_missing(tmp_path: Path) -> None:
+    with pytest.raises(FileNotFoundError):
+        load_member_history(tmp_path, "ghost-member")
+
+
+def test_load_member_change_summary_roundtrip(tmp_path: Path) -> None:
+    payload = _member_change_summary_payload()
+    pf = PlannedFile.from_bytes(member_change_summary_path(payload.slug), _serialise(payload))
+    write_planned_files([pf], tmp_path)
+
+    result = load_member_change_summary(tmp_path, payload.slug)
+    assert result.slug == "charles-schumer"
+    assert result.latest_score_total == 72.0
+    assert result.top_dimension_changes[0].dimension == "conflict_of_interest_risk"
+
+
+def test_load_member_change_summary_missing(tmp_path: Path) -> None:
+    with pytest.raises(FileNotFoundError):
+        load_member_change_summary(tmp_path, "ghost-member")
+
+
+def test_load_member_trend_summary_roundtrip(tmp_path: Path) -> None:
+    payload = MemberTrendSummaryPayload(
+        bioguide_id="S000148",
+        name="Charles Schumer",
+        slug="charles-schumer",
+        state="NY",
+        district=None,
+        chamber="senate",
+        party="Democrat",
+        latest_snapshot_date=SNAPSHOT_DATE,
+        windows=[
+            MemberTrendWindowPayload(
+                window_key="12w",
+                label="Last 12 weeks",
+                requested_days=84,
+                has_full_window=False,
+                start_snapshot_date=SNAPSHOT_DATE,
+                end_snapshot_date=SNAPSHOT_DATE,
+                current_score_total=72.0,
+                previous_score_total=None,
+                score_total_delta=72.0,
+                top_dimension_changes=[],
+                recent_event_count=1,
+                top_evidence_card_ids=["ec-001"],
+            )
+        ],
+    )
+    pf = PlannedFile.from_bytes(member_trend_summary_path(payload.slug), _serialise(payload))
+    write_planned_files([pf], tmp_path)
+
+    result = load_member_trend_summary(tmp_path, payload.slug)
+    assert result.slug == "charles-schumer"
+    assert result.windows[0].window_key == "12w"
+    assert result.windows[0].top_evidence_card_ids == ["ec-001"]
+
+
+def test_load_member_trend_summary_missing(tmp_path: Path) -> None:
+    with pytest.raises(FileNotFoundError):
+        load_member_trend_summary(tmp_path, "ghost-member")
+
+
+def test_load_member_history_chart_roundtrip(tmp_path: Path) -> None:
+    payload = MemberHistoryChartPayload(
+        bioguide_id="S000148",
+        name="Charles Schumer",
+        slug="charles-schumer",
+        state="NY",
+        district=None,
+        chamber="senate",
+        party="Democrat",
+        latest_snapshot_id=SNAPSHOT_ID,
+        latest_snapshot_date=SNAPSHOT_DATE,
+        default_preset_key="latest",
+        points=[
+            MemberHistoryChartPoint(
+                snapshot_id=SNAPSHOT_ID,
+                snapshot_date=SNAPSHOT_DATE,
+                score_total=72.0,
+                score_total_delta=-5.0,
+                event_count=1,
+            )
+        ],
+        compare_presets=[
+            MemberHistoryComparePreset(
+                preset_key="latest",
+                label="Latest change",
+                start_snapshot_id="2026-04-06",
+                start_snapshot_date=date(2026, 4, 6),
+                end_snapshot_id=SNAPSHOT_ID,
+                end_snapshot_date=SNAPSHOT_DATE,
+                has_full_window=True,
+                score_total_delta=-5.0,
+                top_evidence_card_ids=["ec-001"],
+            )
+        ],
+    )
+    pf = PlannedFile.from_bytes(member_history_chart_path(payload.slug), _serialise(payload))
+    write_planned_files([pf], tmp_path)
+
+    result = load_member_history_chart(tmp_path, payload.slug)
+    assert result.slug == "charles-schumer"
+    assert result.default_preset_key == "latest"
+    assert result.points[0].snapshot_id == SNAPSHOT_ID
+    assert result.compare_presets[0].preset_key == "latest"
+
+
+def test_load_member_history_chart_missing(tmp_path: Path) -> None:
+    with pytest.raises(FileNotFoundError):
+        load_member_history_chart(tmp_path, "ghost-member")
+
+
+def test_load_member_preset_compare_roundtrip(tmp_path: Path) -> None:
+    payload = {
+        "bioguide_id": "S000148",
+        "name": "Charles Schumer",
+        "slug": "charles-schumer",
+        "state": "NY",
+        "district": None,
+        "chamber": "senate",
+        "party": "Democrat",
+        "start_snapshot_id": "2026-04-06",
+        "start_snapshot_date": "2026-04-06",
+        "end_snapshot_id": SNAPSHOT_ID,
+        "end_snapshot_date": SNAPSHOT_DATE.isoformat(),
+        "summary": _member_change_summary_payload().model_dump(mode="json"),
+        "evidence_cards": [_evidence_payload().model_dump(mode="json")],
+    }
+    pf = PlannedFile.from_bytes(
+        member_preset_compare_path("charles-schumer", "latest"),
+        json.dumps(payload, sort_keys=True).encode("utf-8"),
+    )
+    write_planned_files([pf], tmp_path)
+
+    result = load_member_preset_compare(tmp_path, "charles-schumer", "latest")
+    assert result.slug == "charles-schumer"
+    assert result.start_snapshot_id == "2026-04-06"
+    assert result.evidence_cards[0].evidence_card_id == "ec-001"
+
+
+def test_load_member_preset_compare_missing(tmp_path: Path) -> None:
+    with pytest.raises(FileNotFoundError):
+        load_member_preset_compare(tmp_path, "ghost-member", "latest")
+
+
+def test_load_member_history_page_roundtrip(tmp_path: Path) -> None:
+    payload = MemberHistoryPagePayload(
+        member_page=MemberPagePayload(
+            profile=_member_payload(),
+            top_evidence_cards=[_evidence_payload()],
+            recent_evidence_cards=[_evidence_payload()],
+        ),
+        history=_member_history_payload(),
+        recent_change=_member_change_summary_payload(),
+        chart=MemberHistoryChartPayload(
+            bioguide_id="S000148",
+            name="Charles Schumer",
+            slug="charles-schumer",
+            state="NY",
+            district=None,
+            chamber="senate",
+            party="Democrat",
+            latest_snapshot_id=SNAPSHOT_ID,
+            latest_snapshot_date=SNAPSHOT_DATE,
+            default_preset_key="latest",
+            points=[],
+            compare_presets=[],
+        ),
+        default_window_compare={
+            "bioguide_id": "S000148",
+            "name": "Charles Schumer",
+            "slug": "charles-schumer",
+            "state": "NY",
+            "district": None,
+            "chamber": "senate",
+            "party": "Democrat",
+            "start_snapshot_id": "2026-04-06",
+            "start_snapshot_date": "2026-04-06",
+            "end_snapshot_id": SNAPSHOT_ID,
+            "end_snapshot_date": SNAPSHOT_DATE.isoformat(),
+            "summary": _member_change_summary_payload().model_dump(mode="json"),
+            "evidence_cards": [_evidence_payload().model_dump(mode="json")],
+        },
+        trend_summary=MemberTrendSummaryPayload(
+            bioguide_id="S000148",
+            name="Charles Schumer",
+            slug="charles-schumer",
+            state="NY",
+            district=None,
+            chamber="senate",
+            party="Democrat",
+            latest_snapshot_date=SNAPSHOT_DATE,
+            windows=[
+                MemberTrendWindowPayload(
+                    window_key="4w",
+                    label="Last 4 weeks",
+                    requested_days=28,
+                    has_full_window=True,
+                    start_snapshot_date=date(2026, 4, 6),
+                    end_snapshot_date=SNAPSHOT_DATE,
+                    current_score_total=72.0,
+                    previous_score_total=60.0,
+                    score_total_delta=12.0,
+                    top_dimension_changes=[],
+                    recent_event_count=1,
+                    top_evidence_card_ids=["ec-001"],
+                )
+            ],
+        ),
+        history_evidence_cards=[_evidence_payload()],
+        snapshot_index={
+            "latest_snapshot_id": SNAPSHOT_ID,
+            "snapshots": [
+                {
+                    "snapshot_id": SNAPSHOT_ID,
+                    "snapshot_date": SNAPSHOT_DATE.isoformat(),
+                    "published_at": "2026-04-13T00:00:00Z",
+                    "root_sha256": "a" * 64,
+                    "total_files": 4,
+                    "total_bytes": 1200,
+                }
+            ],
+        },
+    )
+    pf = PlannedFile.from_bytes(
+        member_history_page_path("charles-schumer"),
+        json.dumps(payload.model_dump(mode="json"), sort_keys=True).encode("utf-8"),
+    )
+    write_planned_files([pf], tmp_path)
+
+    result = load_member_history_page(tmp_path, "charles-schumer")
+    assert result.member_page.profile.slug == "charles-schumer"
+    assert result.default_window_compare.start_snapshot_id == "2026-04-06"
+    assert result.history_evidence_cards[0].evidence_card_id == "ec-001"
+
+
+def test_load_member_history_page_missing(tmp_path: Path) -> None:
+    with pytest.raises(FileNotFoundError):
+        load_member_history_page(tmp_path, "ghost-member")
+
+
+def test_load_snapshot_preset_compare_roundtrip(tmp_path: Path) -> None:
+    payload = {
+        "start_snapshot_id": "2026-04-06",
+        "start_snapshot_date": "2026-04-06",
+        "end_snapshot_id": SNAPSHOT_ID,
+        "end_snapshot_date": SNAPSHOT_DATE.isoformat(),
+        "top_changes": [],
+        "recent_events": [],
+        "recent_evidence_card_ids": [],
+        "featured_member_changes": [_member_change_summary_payload().model_dump(mode="json")],
+    }
+    pf = PlannedFile.from_bytes(
+        snapshot_preset_compare_path("latest"),
+        json.dumps(payload, sort_keys=True).encode("utf-8"),
+    )
+    write_planned_files([pf], tmp_path)
+
+    result = load_snapshot_preset_compare(tmp_path, "latest")
+    assert result.start_snapshot_id == "2026-04-06"
+    assert result.end_snapshot_id == SNAPSHOT_ID
+    assert result.featured_member_changes[0].slug == "charles-schumer"
+
+
+def test_load_snapshot_preset_compare_missing(tmp_path: Path) -> None:
+    with pytest.raises(FileNotFoundError):
+        load_snapshot_preset_compare(tmp_path, "cycle")
+
+
+def test_load_snapshot_preset_compare_rejects_invalid_preset_key(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="Unknown snapshot preset key"):
+        load_snapshot_preset_compare(tmp_path, "../latest")
+
+
+def test_load_movement_window_roundtrip(tmp_path: Path) -> None:
+    payload = _movement_window_payload()
+    pf = PlannedFile.from_bytes(movement_window_path(), _serialise(payload))
+    write_planned_files([pf], tmp_path)
+
+    result = load_movement_window(tmp_path)
+    assert result.latest_snapshot_id == SNAPSHOT_ID
+    assert result.previous_snapshot_id == "2026-04-06"
+    assert result.top_changes[0].slug == "charles-schumer"
+
+
+def test_load_named_movement_window_roundtrip(tmp_path: Path) -> None:
+    payload = _movement_window_payload().model_copy(
+        update={"window_key": "4w", "has_full_window": False}
+    )
+    pf = PlannedFile.from_bytes(movement_window_path("4w"), _serialise(payload))
+    write_planned_files([pf], tmp_path)
+
+    result = load_movement_window(tmp_path, "4w")
+    assert result.window_key == "4w"
+    assert result.has_full_window is False
+    assert result.latest_snapshot_id == SNAPSHOT_ID
+
+
+def test_load_history_preset_range_roundtrip(tmp_path: Path) -> None:
+    payload = HistoryPresetRangePayload(
+        preset=SnapshotComparePresetPayload(
+            preset_key="latest",
+            label="Latest change",
+            start_snapshot_id="2026-04-06",
+            start_snapshot_date="2026-04-06",
+            end_snapshot_id=SNAPSHOT_ID,
+            end_snapshot_date=SNAPSHOT_DATE,
+            has_full_window=True,
+        ),
+        movement_window=_movement_window_payload(),
+        snapshot_compare=SnapshotComparePayload(
+            start_snapshot_id="2026-04-06",
+            start_snapshot_date="2026-04-06",
+            end_snapshot_id=SNAPSHOT_ID,
+            end_snapshot_date=SNAPSHOT_DATE,
+            top_changes=[],
+            recent_events=[],
+            recent_evidence_card_ids=[],
+            featured_member_changes=[],
+        ),
+    )
+    pf = PlannedFile.from_bytes(history_preset_range_path("latest"), _serialise(payload))
+    write_planned_files([pf], tmp_path)
+
+    result = load_history_preset_range(tmp_path, "latest")
+    assert result.preset.preset_key == "latest"
+    assert result.movement_window.latest_snapshot_id == SNAPSHOT_ID
+    assert result.snapshot_compare.end_snapshot_id == SNAPSHOT_ID
+
+
+def test_load_movement_window_missing(tmp_path: Path) -> None:
+    with pytest.raises(FileNotFoundError):
+        load_movement_window(tmp_path)
+
+
+def test_load_snapshot_index_roundtrip(tmp_path: Path) -> None:
+    payload = {
+        "latest_snapshot_id": "2026-04-13",
+        "snapshots": [
+            {
+                "snapshot_id": "2026-04-13",
+                "snapshot_date": "2026-04-13",
+                "published_at": "2026-04-13T00:00:00Z",
+                "root_sha256": "a" * 64,
+                "total_files": 4,
+                "total_bytes": 1200,
+            }
+        ],
+    }
+    file = PlannedFile.from_bytes(
+        snapshot_index_path(),
+        json.dumps(payload, sort_keys=True).encode("utf-8"),
+    )
+    write_planned_files([file], tmp_path)
+
+    result = load_snapshot_index(tmp_path)
+    assert result.latest_snapshot_id == "2026-04-13"
+    assert result.snapshots[0].root_sha256 == "a" * 64
+
+
+def test_load_history_bootstrap_roundtrip(tmp_path: Path) -> None:
+    payload = HistoryBootstrapPayload(
+        snapshot_index={
+            "latest_snapshot_id": "2026-04-13",
+            "snapshots": [
+                {
+                    "snapshot_id": "2026-04-13",
+                    "snapshot_date": "2026-04-13",
+                    "published_at": "2026-04-13T00:00:00Z",
+                    "root_sha256": "a" * 64,
+                    "total_files": 4,
+                    "total_bytes": 1200,
+                }
+            ],
+        },
+        movement_window=_movement_window_payload(),
+        default_compare_preset_key="latest",
+        compare_presets=[
+            SnapshotComparePresetPayload(
+                preset_key="latest",
+                label="Latest change",
+                start_snapshot_id="2026-04-06",
+                start_snapshot_date="2026-04-06",
+                end_snapshot_id="2026-04-13",
+                end_snapshot_date="2026-04-13",
+                has_full_window=True,
+            )
+        ],
+        featured_member_changes=[_member_change_summary_payload()],
+    )
+    file = PlannedFile.from_bytes(
+        history_bootstrap_path(),
+        _serialise(payload),
+    )
+    write_planned_files([file], tmp_path)
+
+    result = load_history_bootstrap(tmp_path)
+    assert result.snapshot_index.latest_snapshot_id == "2026-04-13"
+    assert result.movement_window.latest_snapshot_id == SNAPSHOT_ID
+    assert result.default_compare_preset_key == "latest"
+    assert result.compare_presets[0].preset_key == "latest"
+    assert result.featured_member_changes[0].slug == "charles-schumer"
+
+
 # ── load_zip_feed ──────────────────────────────────────────────────
 
 
@@ -207,6 +836,71 @@ def test_load_zip_feed_schema_mismatch(tmp_path: Path) -> None:
     _write_json(tmp_path, zip_path("00000"), {"bad": "data"})
     with pytest.raises(Exception):
         load_zip_feed(tmp_path, "00000")
+
+
+def test_load_zip_entry_roundtrip(tmp_path: Path) -> None:
+    from src.api.contracts import ZipEntryPayload
+
+    payload = ZipEntryPayload(
+        zip_feed=_zip_payload(),
+        member_lookup_entries=_current_member_lookup_payload().members,
+        snapshot={
+            "snapshot_id": SNAPSHOT_ID,
+            "snapshot_date": SNAPSHOT_DATE.isoformat(),
+            "published_at": "2026-04-13T00:00:00Z",
+            "root_sha256": "c" * 64,
+            "total_files": 4,
+            "total_bytes": 1200,
+            "artifact_counts": {
+                "members": 1,
+                "evidence": 1,
+                "zip_feeds": 1,
+                "homepage_feeds": 1,
+                "current_member_lookups": 1,
+            },
+        },
+    )
+    pf = PlannedFile.from_bytes(zip_entry_path(payload.zip_feed.zip_code), _serialise(payload))
+    write_planned_files([pf], tmp_path)
+
+    result = load_zip_entry(tmp_path, "10001")
+    assert result.zip_feed.zip_code == "10001"
+    assert result.member_lookup_entries[0].slug == "charles-schumer"
+    assert result.snapshot.snapshot_id == SNAPSHOT_ID
+
+
+def test_load_zip_entry_alias_serialized_roundtrip(tmp_path: Path) -> None:
+    from src.api.contracts import ZipEntryPayload
+
+    payload = ZipEntryPayload(
+        zip_feed=_zip_payload(),
+        member_lookup_entries=_current_member_lookup_payload().members,
+        snapshot={
+            "snapshot_id": SNAPSHOT_ID,
+            "snapshot_date": SNAPSHOT_DATE.isoformat(),
+            "published_at": "2026-04-13T00:00:00Z",
+            "root_sha256": "c" * 64,
+            "total_files": 4,
+            "total_bytes": 1200,
+            "artifact_counts": {
+                "members": 1,
+                "evidence": 1,
+                "zip_feeds": 1,
+                "homepage_feeds": 1,
+                "current_member_lookups": 1,
+            },
+        },
+    )
+    pf = PlannedFile.from_bytes(zip_entry_path(payload.zip_feed.zip_code), serialize_payload(payload))
+    write_planned_files([pf], tmp_path)
+
+    result = load_zip_entry(tmp_path, "10001")
+    assert result.member_lookup_entries[0].slug == "charles-schumer"
+
+
+def test_load_zip_entry_missing(tmp_path: Path) -> None:
+    with pytest.raises(FileNotFoundError):
+        load_zip_entry(tmp_path, "99999")
 
 
 # ── load_homepage_feed ────────────────────────────────────────────
@@ -259,6 +953,77 @@ def test_load_homepage_feed_roundtrip(tmp_path: Path) -> None:
     assert result.recent_evidence_card_ids == ["ec-001"]
 
 
+def test_load_homepage_bootstrap_roundtrip(tmp_path: Path) -> None:
+    payload = HomepageBootstrapPayload(
+        snapshot={
+            "snapshot_id": SNAPSHOT_ID,
+            "snapshot_date": SNAPSHOT_DATE.isoformat(),
+            "published_at": "2026-04-13T00:00:00Z",
+            "root_sha256": "c" * 64,
+            "total_files": 4,
+            "total_bytes": 1200,
+            "artifact_counts": {
+                "members": 1,
+                "evidence": 1,
+                "zip_feeds": 0,
+                "homepage_feeds": 1,
+                "current_member_lookups": 1,
+            },
+        },
+        movement={
+            "snapshot_date": SNAPSHOT_DATE.isoformat(),
+            "top_changes": _homepage_feed_payload().top_changes,
+            "recent_events": _homepage_feed_payload().recent_events,
+            "recent_evidence_card_ids": ["ec-001"],
+        },
+        featured_lookup_entries=_current_member_lookup_payload().members,
+    )
+    pf = PlannedFile.from_bytes(homepage_bootstrap_path(), _serialise(payload))
+    write_planned_files([pf], tmp_path)
+
+    result = load_homepage_bootstrap(tmp_path)
+    assert result.snapshot.snapshot_id == SNAPSHOT_ID
+    assert result.movement.top_changes[0].slug == "charles-schumer"
+    assert result.featured_lookup_entries[0].slug == "charles-schumer"
+
+
+def test_load_homepage_bootstrap_alias_serialized_roundtrip(tmp_path: Path) -> None:
+    payload = HomepageBootstrapPayload(
+        snapshot={
+            "snapshot_id": SNAPSHOT_ID,
+            "snapshot_date": SNAPSHOT_DATE.isoformat(),
+            "published_at": "2026-04-13T00:00:00Z",
+            "root_sha256": "c" * 64,
+            "total_files": 4,
+            "total_bytes": 1200,
+            "artifact_counts": {
+                "members": 1,
+                "evidence": 1,
+                "zip_feeds": 0,
+                "homepage_feeds": 1,
+                "current_member_lookups": 1,
+            },
+        },
+        movement={
+            "snapshot_date": SNAPSHOT_DATE.isoformat(),
+            "top_changes": _homepage_feed_payload().top_changes,
+            "recent_events": _homepage_feed_payload().recent_events,
+            "recent_evidence_card_ids": ["ec-001"],
+        },
+        featured_lookup_entries=_current_member_lookup_payload().members,
+    )
+    pf = PlannedFile.from_bytes(homepage_bootstrap_path(), serialize_payload(payload))
+    write_planned_files([pf], tmp_path)
+
+    result = load_homepage_bootstrap(tmp_path)
+    assert result.featured_lookup_entries[0].slug == "charles-schumer"
+
+
+def test_load_homepage_bootstrap_missing(tmp_path: Path) -> None:
+    with pytest.raises(FileNotFoundError):
+        load_homepage_bootstrap(tmp_path)
+
+
 def test_load_homepage_feed_missing(tmp_path: Path) -> None:
     with pytest.raises(FileNotFoundError):
         load_homepage_feed(tmp_path)
@@ -292,6 +1057,49 @@ def test_load_homepage_feed_empty_featured_slugs(tmp_path: Path) -> None:
     assert result.top_changes == []
     assert result.recent_events == []
     assert result.recent_evidence_card_ids == []
+
+
+# ── load_current_member_lookup ─────────────────────────────────────
+
+
+def test_load_current_member_lookup_roundtrip(tmp_path: Path) -> None:
+    payload = _current_member_lookup_payload()
+    pf = PlannedFile.from_bytes(current_member_lookup_path(), _serialise(payload))
+    write_planned_files([pf], tmp_path)
+
+    result = load_current_member_lookup(tmp_path)
+    assert result.snapshot_date == SNAPSHOT_DATE
+    assert result.members[0].bioguide_id == "S000148"
+    assert result.members[0].search_name == "charles schumer"
+
+
+def test_load_current_member_lookup_missing(tmp_path: Path) -> None:
+    with pytest.raises(FileNotFoundError):
+        load_current_member_lookup(tmp_path)
+
+
+def test_load_current_member_lookup_schema_mismatch(tmp_path: Path) -> None:
+    _write_json(tmp_path, current_member_lookup_path(), {"bad": "data"})
+    with pytest.raises(Exception):
+        load_current_member_lookup(tmp_path)
+
+
+def test_load_current_member_lookup_rejects_stale_search_name(tmp_path: Path) -> None:
+    payload = _current_member_lookup_payload().model_dump(mode="json", by_alias=True)
+    payload["m"][0]["q"] = "stale lookup name"
+    _write_json(tmp_path, current_member_lookup_path(), payload)
+
+    with pytest.raises(ValueError, match="stale search_name"):
+        load_current_member_lookup(tmp_path)
+
+
+def test_load_current_member_lookup_rejects_duplicate_slug(tmp_path: Path) -> None:
+    payload = _current_member_lookup_payload().model_dump(mode="json", by_alias=True)
+    payload["m"].append({**payload["m"][0], "b": "S000149"})
+    _write_json(tmp_path, current_member_lookup_path(), payload)
+
+    with pytest.raises(ValueError, match="duplicate slug"):
+        load_current_member_lookup(tmp_path)
 
 
 # ── load_manifest ──────────────────────────────────────────────────
@@ -350,6 +1158,46 @@ def test_list_artifact_paths_empty() -> None:
     assert list_artifact_paths(manifest) == []
 
 
+# ── manifest-backed metadata helpers ───────────────────────────────
+
+
+def test_manifest_snapshot_date_uses_snapshot_id_when_isoformatted() -> None:
+    manifest = SnapshotManifest(
+        snapshot_id="2026-04-13",
+        created_at=datetime(2026, 4, 14, 9, 30, 0),
+        entries=[],
+        total_files=0,
+        total_bytes=0,
+        root_sha256=manifest_root_sha256([]),
+    )
+    assert manifest_snapshot_date(manifest) == date(2026, 4, 13)
+
+
+def test_manifest_snapshot_date_falls_back_to_created_at_for_non_date_ids() -> None:
+    manifest = SnapshotManifest(
+        snapshot_id="snapshot-prod-001",
+        created_at=datetime(2026, 4, 14, 9, 30, 0),
+        entries=[],
+        total_files=0,
+        total_bytes=0,
+        root_sha256=manifest_root_sha256([]),
+    )
+    assert manifest_snapshot_date(manifest) == date(2026, 4, 14)
+
+
+def test_manifest_published_at_returns_manifest_created_at() -> None:
+    created_at = datetime(2026, 4, 13, 12, 34, 56)
+    manifest = SnapshotManifest(
+        snapshot_id=SNAPSHOT_ID,
+        created_at=created_at,
+        entries=[],
+        total_files=0,
+        total_bytes=0,
+        root_sha256=manifest_root_sha256([]),
+    )
+    assert manifest_published_at(manifest) == created_at
+
+
 # ── latest_snapshot_id ────────────────────────────────────────────
 
 
@@ -376,6 +1224,12 @@ def test_latest_snapshot_id_picks_latest(tmp_path: Path) -> None:
     for sid in ("2026-01-01", "2026-04-13", "2026-03-10"):
         _write_manifest_for_snapshot(tmp_path, sid)
     assert latest_snapshot_id(tmp_path) == "2026-04-13"
+
+
+def test_list_snapshot_ids_returns_all_sorted_ids(tmp_path: Path) -> None:
+    for sid in ("2026-01-01", "2026-04-13", "2026-03-10"):
+        _write_manifest_for_snapshot(tmp_path, sid)
+    assert list_snapshot_ids(tmp_path) == ["2026-01-01", "2026-03-10", "2026-04-13"]
 
 
 def test_latest_snapshot_id_no_snapshots_dir(tmp_path: Path) -> None:
@@ -429,6 +1283,34 @@ def test_load_latest_manifest_counts_verify(tmp_path: Path) -> None:
     assert result.verify_counts() is True
     assert result.total_files == 1
     assert result.root_sha256 == manifest.root_sha256
+
+
+def test_load_latest_snapshot_metadata_returns_manifest_backed_values(tmp_path: Path) -> None:
+    _write_manifest_for_snapshot(tmp_path, "2026-04-13")
+    _write_manifest_for_snapshot(tmp_path, "2026-04-14")
+
+    snapshot_date, published_at = load_latest_snapshot_metadata(tmp_path)
+    assert snapshot_date == date(2026, 4, 14)
+    assert published_at == datetime(2026, 1, 1, 0, 0, 0)
+
+
+def test_load_latest_snapshot_metadata_uses_created_at_when_snapshot_id_not_a_date(
+    tmp_path: Path,
+) -> None:
+    manifest = SnapshotManifest(
+        snapshot_id="release-42",
+        created_at=datetime(2026, 4, 15, 7, 45, 0),
+        entries=[],
+        total_files=0,
+        total_bytes=0,
+        root_sha256=manifest_root_sha256([]),
+    )
+    pf = PlannedFile.from_bytes(manifest_path("release-42"), _serialise(manifest))
+    write_planned_files([pf], tmp_path)
+
+    snapshot_date, published_at = load_latest_snapshot_metadata(tmp_path)
+    assert snapshot_date == date(2026, 4, 15)
+    assert published_at == datetime(2026, 4, 15, 7, 45, 0)
 
 
 # ── Integration: write then read back all artifact types ───────────

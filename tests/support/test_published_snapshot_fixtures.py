@@ -28,10 +28,18 @@ from src.export.filesystem import verify_written_files
 from src.export.local_store import (
     load_evidence_card,
     load_manifest,
+    load_member_page,
+    load_member_history,
     load_member_profile,
     load_zip_feed,
 )
-from src.export.writer import evidence_path, manifest_path, member_path, zip_path
+from src.export.writer import (
+    evidence_path,
+    manifest_path,
+    member_page_payload_path,
+    member_path,
+    zip_path,
+)
 from tests.support.published_snapshot_fixtures import (
     PublishedSnapshot,
     PublishedSnapshotBuilder,
@@ -55,6 +63,10 @@ class TestPublishedSnapshotBuilderLayout:
     def test_default_member_profile_file_exists(self, tmp_path: Path) -> None:
         PublishedSnapshotBuilder(tmp_path).build()
         assert (tmp_path / member_path("nancy-pelosi")).is_file()
+
+    def test_default_member_page_payload_file_exists(self, tmp_path: Path) -> None:
+        PublishedSnapshotBuilder(tmp_path).build()
+        assert (tmp_path / member_page_payload_path("nancy-pelosi")).is_file()
 
     def test_default_evidence_card_file_exists(self, tmp_path: Path) -> None:
         PublishedSnapshotBuilder(tmp_path).build()
@@ -151,6 +163,12 @@ class TestPublishedSnapshotBuilderRoundTrip:
         assert card.evidence_card_id == "ec-0001"
         assert card.member_bioguide_id == "P000197"
 
+    def test_member_page_roundtrip(self, tmp_path: Path) -> None:
+        PublishedSnapshotBuilder(tmp_path).build()
+        page = load_member_page(tmp_path, "nancy-pelosi")
+        assert page.profile.slug == "nancy-pelosi"
+        assert [card.evidence_card_id for card in page.top_evidence_cards] == ["ec-0001"]
+
     def test_zip_feed_roundtrip(self, tmp_path: Path) -> None:
         feed = make_zip_feed(zip_code="94102")
         PublishedSnapshotBuilder(tmp_path).with_zip_feeds([feed]).build()
@@ -169,6 +187,12 @@ class TestPublishedSnapshotBuilderRoundTrip:
         manifest = load_manifest(tmp_path, "2026-01-01")
         paths = {e.path for e in manifest.entries}
         assert member_path("nancy-pelosi") in paths
+
+    def test_manifest_covers_member_page_file(self, tmp_path: Path) -> None:
+        PublishedSnapshotBuilder(tmp_path, snapshot_id="2026-01-01").build()
+        manifest = load_manifest(tmp_path, "2026-01-01")
+        paths = {e.path for e in manifest.entries}
+        assert member_page_payload_path("nancy-pelosi") in paths
 
     def test_manifest_covers_evidence_file(self, tmp_path: Path) -> None:
         PublishedSnapshotBuilder(tmp_path, snapshot_id="2026-01-01").build()
@@ -252,6 +276,15 @@ class TestPublishedSnapshotBuilderResult:
         builder.build()
         snap = builder.snapshot()
         assert snap.snapshot_id == "2026-03-01"
+
+    def test_default_payload_dates_align_with_snapshot_id(self, tmp_path: Path) -> None:
+        PublishedSnapshotBuilder(tmp_path, snapshot_id="2026-03-01").build()
+        profile = load_member_profile(tmp_path, "nancy-pelosi")
+        history = load_member_history(tmp_path, "nancy-pelosi")
+        card = load_evidence_card(tmp_path, "ec-0001")
+        assert profile.snapshot_date == date(2026, 3, 1)
+        assert history.snapshots[0].snapshot_date == date(2026, 3, 1)
+        assert card.snapshot_date == date(2026, 3, 1)
 
 
 # ---------------------------------------------------------------------------

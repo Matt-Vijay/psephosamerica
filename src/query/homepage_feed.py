@@ -5,12 +5,6 @@ Pure helpers — no SQL, no I/O, no network calls.
 Turns the flat evidence-card + member rows returned by
 ``fetch_homepage_feed_rows`` into ``FeedEvent`` objects and a
 ``HomepageFeedPayload``.
-
-The rows returned by ``fetch_homepage_feed_rows`` do not include
-``bioguide_id``.  ``member_slug`` is used as the per-member key throughout
-this module — it is unique and stable in the canonical schema.  Any caller
-that needs real ``bioguide_id``-keyed payloads should enrich the rows
-upstream before calling these helpers.
 """
 
 from __future__ import annotations
@@ -23,11 +17,45 @@ from src.homepage.builders import build_homepage_feed
 from src.homepage.contracts import HomepageFeedPayload
 
 
-def _to_date(value: dt.date | dt.datetime | str) -> dt.date:
+class _RankedDate(dt.date):
+    """Date-shaped value with an overridden rank for same-day recency sorts."""
+
+    _rank: float
+
+    def __new__(
+        cls,
+        year: int,
+        month: int,
+        day: int,
+        *,
+        rank: float | None = None,
+    ) -> "_RankedDate":
+        obj = super().__new__(cls, year, month, day)
+        obj._rank = float(rank if rank is not None else dt.date.toordinal(obj))
+        return obj
+
+    @classmethod
+    def from_datetime(cls, value: dt.datetime) -> "_RankedDate":
+        rank = (
+            value.toordinal() * 86400
+            + value.hour * 3600
+            + value.minute * 60
+            + value.second
+            + (value.microsecond / 1_000_000)
+        )
+        return cls(value.year, value.month, value.day, rank=rank)
+
+
+def _to_occurred_at(value: dt.date | dt.datetime | str) -> dt.date:
     if isinstance(value, dt.datetime):
-        return value.date()
+        return _RankedDate.from_datetime(value)
     if isinstance(value, str):
-        return dt.date.fromisoformat(value[:10])
+        normalized = value.replace("Z", "+00:00")
+        try:
+            parsed = dt.datetime.fromisoformat(normalized)
+        except ValueError:
+            return dt.date.fromisoformat(value[:10])
+        return _RankedDate.from_datetime(parsed)
     return value
 
 
@@ -42,32 +70,32 @@ def rows_to_feed_events(
     ``snapshot_date`` is set on every event.  ``occurred_at`` is taken from
     ``rendered_at`` when present, otherwise falls back to ``snapshot_date``.
 
-    Uses ``member_slug`` for ``member_bioguide_id`` — the homepage rows do
-    not carry the actual bioguide_id.
+    Uses the real ``member_bioguide_id`` carried on homepage rows.
     """
     _build_id = id_builder if id_builder is not None else make_feed_event_id
     events: list[FeedEvent] = []
 
     for row in rows:
         slug = row["member_slug"]
+        bioguide_id = row["member_bioguide_id"]
         dimension = row["dimension"]
         score_delta = float(row["score_delta"])
 
         occurred_at: dt.date = snapshot_date
         if row.get("rendered_at") is not None:
-            occurred_at = _to_date(row["rendered_at"])
+            occurred_at = _to_occurred_at(row["rendered_at"])
 
         events.append(
             FeedEvent(
                 feed_event_id=_build_id(
                     FeedEventKind.EVIDENCE_CARD,
-                    slug,
+                    bioguide_id,
                     dimension,
                     snapshot_date,
                     row["public_id"],
                 ),
                 kind=FeedEventKind.EVIDENCE_CARD,
-                member_bioguide_id=slug,
+                member_bioguide_id=bioguide_id,
                 member_name=row.get("member_full_name", ""),
                 member_slug=slug,
                 dimension=dimension,
@@ -84,16 +112,15 @@ def rows_to_feed_events(
 
 
 def member_meta_from_rows(rows: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
-    """Extract a member_meta dict keyed by ``member_slug`` from homepage rows.
+    """Extract a member_meta dict keyed by ``member_bioguide_id``.
 
-    Matches the slug-keyed ``member_bioguide_id`` used by
-    ``rows_to_feed_events``.  Only the first row per slug contributes.
+    Only the first row per member contributes.
     """
     meta: dict[str, dict[str, Any]] = {}
     for row in rows:
-        slug = row["member_slug"]
-        if slug not in meta:
-            meta[slug] = {
+        bioguide_id = row["member_bioguide_id"]
+        if bioguide_id not in meta:
+            meta[bioguide_id] = {
                 "chamber": row.get("chamber", ""),
                 "party": row.get("party", ""),
                 "state": row.get("state", ""),

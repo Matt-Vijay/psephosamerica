@@ -17,6 +17,7 @@ import pytest
 from src.pipeline.publish_snapshot_run import ZipBundleInputs
 from src.runtime.commands import (
     _oracle_summary_ok,
+    dispatch_command,
     load_congress,
     load_congress_local,
     load_disclosures,
@@ -24,9 +25,11 @@ from src.runtime.commands import (
     publish_snapshot,
     recompute_snapshot,
     run_oracle_local_command,
+    verify_history_aggregate_local,
     verify_publish_local,
     verify_publish_roundtrip_local,
 )
+from src.runtime.history_verify_types import HistoryVerifyResult, HistoryVerifyStageResult
 from src.runtime.congress import CongressLoadResult
 from src.runtime.congress_options import CongressLoadOptions
 from src.runtime.disclosures import DisclosuresLoadRuntimeResult
@@ -463,6 +466,11 @@ def _clean_roundtrip_result() -> PublishRoundtripResult:
     return PublishRoundtripResult(stages=(stage,))
 
 
+def _clean_history_verify_result() -> HistoryVerifyResult:
+    stage = HistoryVerifyStageResult(stage="snapshot_index", checked=1, issues=())
+    return HistoryVerifyResult(stages=(stage,))
+
+
 class TestVerifyPublishRoundtripLocal:
     def test_opens_connection_and_delegates(self) -> None:
         publish_root = Path("/tmp/publish/2024-06-01")
@@ -514,3 +522,261 @@ class TestVerifyPublishRoundtripLocal:
             with patch(f"{_MODULE}._verify_roundtrip", side_effect=RuntimeError("db down")):
                 with pytest.raises(RuntimeError, match="db down"):
                     verify_publish_roundtrip_local(env.ctx, publish_root)
+
+
+class TestVerifyHistoryAggregateLocal:
+    def test_delegates_to_verify_history_aggregate(self) -> None:
+        publish_root = Path("/tmp/history")
+        expected = _clean_history_verify_result()
+
+        with patch(f"{_MODULE}._verify_local_history_aggregate", return_value=expected) as mock_verify:
+            result = verify_history_aggregate_local(publish_root)
+
+        mock_verify.assert_called_once_with(publish_root)
+        assert result is expected
+
+    def test_returns_history_verify_result_instance(self) -> None:
+        publish_root = Path("/tmp/history")
+        expected = _clean_history_verify_result()
+
+        with patch(f"{_MODULE}._verify_local_history_aggregate", return_value=expected):
+            result = verify_history_aggregate_local(publish_root)
+
+        assert isinstance(result, HistoryVerifyResult)
+
+    def test_publish_root_forwarded(self) -> None:
+        publish_root = Path("/data/history/aggregate")
+
+        with patch(
+            f"{_MODULE}._verify_local_history_aggregate",
+            return_value=_clean_history_verify_result(),
+        ) as mock_verify:
+            verify_history_aggregate_local(publish_root)
+
+        assert mock_verify.call_args.args[0] == publish_root
+
+    def test_propagates_exception(self) -> None:
+        publish_root = Path("/tmp/history")
+
+        with patch(
+            f"{_MODULE}._verify_local_history_aggregate",
+            side_effect=RuntimeError("bad history root"),
+        ):
+            with pytest.raises(RuntimeError, match="bad history root"):
+                verify_history_aggregate_local(publish_root)
+
+
+class TestHistoryDispatchCommands:
+    def test_run_oracle_local_dispatch_respects_explicit_congress_and_artifact_root(self) -> None:
+        runtime = SimpleNamespace(context=sentinel.ctx)
+        oracle_result = MagicMock(spec=LocalOracleRunResult)
+        summary = {
+            "snapshot_id": "2025-01-15",
+            "congress": {"load_ok": True},
+            "disclosures": {"load_ok": True},
+            "recompute": {},
+            "publish": {"succeeded": True},
+            "verify": {"ok": True},
+            "roundtrip": {"ok": True},
+        }
+        with (
+            patch(f"{_MODULE}.build_runtime", return_value=runtime),
+            patch(f"{_MODULE}.load_disclosures_bundle", return_value=sentinel.bundle),
+            patch(f"{_MODULE}.run_oracle_local_command", return_value=oracle_result) as mock_run,
+            patch(f"{_MODULE}.summarize_local_oracle_run_result", return_value=summary),
+        ):
+            result = dispatch_command(
+                SimpleNamespace(
+                    command="run-oracle-local",
+                    congress_archive="/tmp/congress-118",
+                    disclosures_bundle="/tmp/disclosures.json",
+                    congress=118,
+                    snapshot_date=dt.date(2025, 1, 15),
+                    target_dir="/tmp/publish",
+                    chamber="both",
+                    limit=10,
+                    snapshot_id=None,
+                    artifact_root="/tmp/artifacts",
+                )
+            )
+
+        options = mock_run.call_args.args[3]
+        assert options.congress_options.congress == 118
+        assert options.congress_options.congress_source == "explicit-arg"
+        assert options.artifact_root == Path("/tmp/artifacts")
+        assert result["ok"] is True
+
+    def test_plan_history_backfill_dispatch_returns_targets(self, tmp_path: Path) -> None:
+        result = dispatch_command(
+            SimpleNamespace(
+                command="plan-history-backfill",
+                congress=119,
+                target_root=str(tmp_path / "roots"),
+                start_date=dt.date(2025, 1, 3),
+                end_date=dt.date(2025, 1, 20),
+            )
+        )
+
+        assert result["ok"] is True
+        assert result["command"] == "plan-history-backfill"
+        assert result["snapshot_count"] == 3
+        assert [target["snapshot_id"] for target in result["targets"]] == [
+            "2025-01-06",
+            "2025-01-13",
+            "2025-01-20",
+        ]
+
+    def test_aggregate_history_dispatch_delegates_and_summarizes(self, tmp_path: Path) -> None:
+        expected = SimpleNamespace(
+            latest_snapshot_id="2026-01-13",
+            snapshot_index=SimpleNamespace(snapshots=[object(), object()]),
+            member_history_count=8,
+            target_root=tmp_path / "aggregate",
+        )
+        verify_result = _clean_history_verify_result()
+        verify_summary = {
+            "ok": True,
+            "total_checked": 11,
+            "total_errors": 0,
+            "total_warnings": 0,
+            "stages": [],
+        }
+        with patch(
+            "src.pipeline.history_aggregate_run.write_history_aggregate",
+            return_value=expected,
+        ) as mock_write, patch(
+            f"{_MODULE}.verify_history_aggregate_local",
+            return_value=verify_result,
+        ) as mock_verify, patch(
+            f"{_MODULE}.summarize_history_verify_result",
+            return_value=verify_summary,
+        ):
+            result = dispatch_command(
+                SimpleNamespace(
+                    command="aggregate-history",
+                    source_root=["/tmp/snap-a", "/tmp/snap-b"],
+                    target_root=str(tmp_path / "aggregate"),
+                )
+            )
+
+        mock_write.assert_called_once_with(
+            [Path("/tmp/snap-a"), Path("/tmp/snap-b")],
+            tmp_path / "aggregate",
+        )
+        mock_verify.assert_called_once_with(tmp_path / "aggregate")
+        assert result == {
+            "ok": True,
+            "command": "aggregate-history",
+            "latest_snapshot_id": "2026-01-13",
+            "snapshot_count": 2,
+            "member_history_count": 8,
+            "target_root": str(tmp_path / "aggregate"),
+            "verify": verify_summary,
+        }
+
+    def test_verify_history_aggregate_dispatch_delegates_and_summarizes(self, tmp_path: Path) -> None:
+        summary = {
+            "ok": False,
+            "total_checked": 11,
+            "total_errors": 2,
+            "total_warnings": 0,
+            "stages": [
+                {
+                    "stage": "snapshot_index",
+                    "checked": 5,
+                    "ok": False,
+                    "errors": 2,
+                    "warnings": 0,
+                }
+            ],
+        }
+        result_obj = _clean_history_verify_result()
+        with (
+            patch(
+                f"{_MODULE}.verify_history_aggregate_local",
+                return_value=result_obj,
+            ) as mock_verify,
+            patch(
+                f"{_MODULE}.summarize_history_verify_result",
+                return_value=summary,
+            ),
+        ):
+            result = dispatch_command(
+                SimpleNamespace(
+                    command="verify-history-aggregate",
+                    publish_root=str(tmp_path / "aggregate"),
+                )
+            )
+
+        mock_verify.assert_called_once_with(tmp_path / "aggregate")
+        assert result == {
+            "ok": result_obj.ok,
+            "command": "verify-history-aggregate",
+            **summary,
+        }
+
+    def test_run_history_backfill_local_dispatch_delegates_and_summarizes(self, tmp_path: Path) -> None:
+        runtime = SimpleNamespace(context=sentinel.ctx)
+        result_obj = SimpleNamespace(ok=False)
+        summary = {
+            "congress": 119,
+            "cadence": "weekly:monday",
+            "planned_count": 3,
+            "attempted_count": 2,
+            "completed_count": 1,
+            "skipped_count": 1,
+            "failed_count": 0,
+            "remaining_count": 1,
+            "attempts": [],
+            "aggregate": None,
+        }
+        with (
+            patch(f"{_MODULE}.build_runtime", return_value=runtime),
+            patch(f"{_MODULE}.load_disclosures_bundle", return_value=sentinel.bundle),
+            patch(
+                f"{_MODULE}.run_history_backfill_local_command",
+                return_value=result_obj,
+            ) as mock_run,
+            patch(
+                f"{_MODULE}.summarize_local_history_backfill_result",
+                return_value=summary,
+            ),
+        ):
+            result = dispatch_command(
+                SimpleNamespace(
+                    command="run-history-backfill-local",
+                    congress_archive="/tmp/congress-119",
+                    disclosures_bundle="/tmp/disclosures.json",
+                    congress=119,
+                    target_root=str(tmp_path / "history"),
+                    aggregate_root=str(tmp_path / "aggregate"),
+                    start_date=dt.date(2025, 1, 3),
+                    end_date=dt.date(2025, 1, 20),
+                    chamber="senate",
+                    limit=25,
+                    artifact_root="/tmp/artifacts",
+                    overwrite=True,
+                    continue_on_error=True,
+                )
+            )
+
+        mock_run.assert_called_once_with(
+            sentinel.ctx,
+            Path("/tmp/congress-119"),
+            sentinel.bundle,
+            congress=119,
+            target_root=tmp_path / "history",
+            aggregate_root=tmp_path / "aggregate",
+            start_date=dt.date(2025, 1, 3),
+            end_date=dt.date(2025, 1, 20),
+            chamber="senate",
+            limit=25,
+            artifact_root=Path("/tmp/artifacts"),
+            overwrite=True,
+            continue_on_error=True,
+        )
+        assert result == {
+            "ok": False,
+            "command": "run-history-backfill-local",
+            **summary,
+        }

@@ -243,14 +243,28 @@ class TestPublishRoundtripResult:
 
 
 class TestRoundtripStages:
-    def test_contains_all_five(self) -> None:
-        assert set(ROUNDTRIP_STAGES) == {"snapshot", "profiles", "evidence", "zip", "homepage"}
+    def test_contains_all_six(self) -> None:
+        assert set(ROUNDTRIP_STAGES) == {
+            "snapshot",
+            "profiles",
+            "evidence",
+            "zip",
+            "homepage",
+            "lookup",
+        }
 
     def test_is_tuple(self) -> None:
         assert isinstance(ROUNDTRIP_STAGES, tuple)
 
     def test_order(self) -> None:
-        assert ROUNDTRIP_STAGES == ("snapshot", "profiles", "evidence", "zip", "homepage")
+        assert ROUNDTRIP_STAGES == (
+            "snapshot",
+            "profiles",
+            "evidence",
+            "zip",
+            "homepage",
+            "lookup",
+        )
 
     def test_length(self) -> None:
-        assert len(ROUNDTRIP_STAGES) == 5
+        assert len(ROUNDTRIP_STAGES) == 6
