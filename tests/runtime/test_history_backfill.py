@@ -9,8 +9,6 @@ import src.runtime as runtime
 import pytest
 
 from src.runtime.history_backfill import (
-    CongressDateWindow,
-    HistoricalSnapshotTarget,
     congress_term_bounds,
     derive_weekly_snapshot_dates,
     execute_history_backfill,

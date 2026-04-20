@@ -22,7 +22,7 @@ from src.query.conflict import (
 )
 from src.rules.engine import filter_rules, load_canonical_rules
 from src.rules.evaluator import evaluate_rule
-from src.rules.models import RuleDefinition, RuleFire, Severity
+from src.rules.models import RuleDefinition, RuleFire
 from src.scoring.semantics import severity_score_delta
 
 

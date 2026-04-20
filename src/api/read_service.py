@@ -17,7 +17,6 @@ from src.export.contracts import (
     MemberTrendSummaryPayload,
 )
 from src.export.local_store import manifest_published_at, manifest_snapshot_date
-from src.homepage.contracts import SnapshotComparePayload
 from src.homepage.contracts import MovementWindowPayload
 from src.api.contracts import (
     ArtifactCounts,

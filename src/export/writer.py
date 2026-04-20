@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel
 
-from src.identity.current_member_lookup import CurrentMemberLookupPayload, build_current_member_lookup
+from src.identity.current_member_lookup import build_current_member_lookup
 
 from .builders import build_manifest, sha256_hex
 from .contracts import EvidenceCardPayload, MemberHistoryPayload, MemberProfilePayload, ZipFeedPayload

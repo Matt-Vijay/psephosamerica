@@ -39,10 +39,10 @@ _stub_module("src.runtime.publish", PublishRuntimeResult=_Dummy)
 _stub_module("src.runtime.publish_roundtrip_types", PublishRoundtripResult=_Dummy)
 _stub_module("src.runtime.publish_verify_types", PublishVerifyResult=_Dummy)
 
-from src.db.load_report import LoadSummary, WarnErrorSummary, build_load_summary
-from src.pipeline.recompute_run import RecomputeRunResult
-from src.runtime.output import summarize_recompute_result
-from src.runtime.recompute import (
+from src.db.load_report import LoadSummary, WarnErrorSummary, build_load_summary  # noqa: E402
+from src.pipeline.recompute_run import RecomputeRunResult  # noqa: E402
+from src.runtime.output import summarize_recompute_result  # noqa: E402
+from src.runtime.recompute import (  # noqa: E402
     RuntimeRecomputeResult,
     _null_issuer_sector_resolver,
     run_recompute_runtime,

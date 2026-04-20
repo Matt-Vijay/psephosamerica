@@ -3,8 +3,6 @@ from __future__ import annotations
 from datetime import date
 from pathlib import Path
 
-import pytest
-
 import src.api as api
 from src.api.contracts import NotFoundBody
 from src.api.read_service import get_member_page

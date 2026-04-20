@@ -19,7 +19,7 @@ from unittest.mock import patch
 from src.api.contracts import ArtifactCounts, HomepageBootstrapPayload, MovementFeedPayload, SnapshotSummaryPayload
 from src.export.filesystem import write_planned_files
 from src.export.manifest import ManifestEntry, SnapshotManifest, manifest_root_sha256
-from src.export.writer import PlannedFile, current_member_lookup_path, homepage_bootstrap_path, serialize_payload
+from src.export.writer import PlannedFile, current_member_lookup_path, serialize_payload
 from src.homepage.builders import build_featured_lookup_entries
 from src.identity.current_member_lookup import CurrentMemberLookupEntry, CurrentMemberLookupPayload, normalize_lookup_name
 from src.homepage.contracts import HomepageFeedPayload

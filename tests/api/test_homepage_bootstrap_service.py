@@ -7,7 +7,7 @@ import src.api as api
 from src.api.contracts import NotFoundBody
 from src.api.read_service import get_homepage_bootstrap
 from src.export.local_store import HOMEPAGE_FEED_PATH
-from src.export.writer import current_member_lookup_path, homepage_bootstrap_path
+from src.export.writer import homepage_bootstrap_path
 from src.api.contracts import HomepageBootstrapPayload
 from src.homepage.contracts import HomepageFeedPayload, MemberMovementSummary, RecentEventSummary
 from src.pipeline.history_aggregate_run import write_history_aggregate

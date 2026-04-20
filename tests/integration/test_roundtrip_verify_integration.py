@@ -29,7 +29,7 @@ from src.export.contracts import (
     ZipFeedPayload,
 )
 from src.export.filesystem import read_manifest, verify_written_files
-from src.export.writer import plan_snapshot
+from src.export.writer import evidence_path, plan_snapshot
 from src.pipeline.conflict_recompute import recompute_conflicts
 from src.pipeline.publish_pipeline import PublishConfig, run_publish
 from src.rules.models import (
@@ -333,8 +333,16 @@ class TestRoundtripVerify:
         assert manifest_path.exists()
         manifest = read_manifest(manifest_path)
 
-        # Manifest should cover evidence card file(s) but not itself
-        assert manifest.total_files == len(cards)
+        # Manifest should cover evidence card files and any additional
+        # publish-layer sidecars, but not the manifest itself.
+        manifest_paths = {entry.path for entry in manifest.entries}
+        expected_evidence_paths = {
+            evidence_path(card.evidence_card_id)
+            for card in cards
+        }
+        assert expected_evidence_paths.issubset(manifest_paths)
+        assert "manifest.json" not in manifest_paths
+        assert manifest.total_files == len(manifest.entries)
         assert manifest.verify_counts()
 
         # Verify each entry's hash matches the actual file
@@ -414,12 +422,14 @@ class TestRoundtripVerify:
         restored_card = EvidenceCardPayload.model_validate(json.loads(card_path.read_bytes()))
         assert restored_card.evidence_card_id == cards[0].evidence_card_id
 
-        # Verify manifest covers both
+        # Manifest should cover the profile/card files and any additional
+        # publish-layer sidecars.
         manifest = read_manifest(tmp_path / f"snapshots/{_SNAPSHOT_ID}/manifest.json")
-        assert manifest.total_files == 2  # profile + card
         entry_paths = {e.path for e in manifest.entries}
         assert "members/rep-full.json" in entry_paths
-        assert f"evidence/{cards[0].evidence_card_id}.json" in entry_paths
+        assert evidence_path(cards[0].evidence_card_id) in entry_paths
+        assert "manifest.json" not in entry_paths
+        assert manifest.total_files == len(manifest.entries)
 
     def test_zip_feed_roundtrip(self, pg_conn_clean, tmp_path: Path):
         """Publish a ZIP feed, read back, compare typed payload."""

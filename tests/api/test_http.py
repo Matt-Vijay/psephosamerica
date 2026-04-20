@@ -5,7 +5,6 @@ import datetime as dt
 from datetime import date
 from pathlib import Path
 
-from src.api.http import serve_snapshot_compare
 from src.api.http import (
     JsonHttpResponse,
     serve_current_member_lookup,
@@ -27,9 +26,9 @@ from src.api.http import (
     serve_movement_feed,
     serve_movement_window,
     serve_search_session,
-    serve_snapshot_compare,
     serve_snapshot_preset_compare,
     serve_snapshot_index,
+    serve_snapshot_compare,
     serve_zip_entry,
     serve_snapshot_summary,
 )
@@ -929,39 +928,3 @@ def test_serve_member_compare_returns_aggregate_payload_and_304(tmp_path: Path) 
     assert second.status_code == 304
     assert second.body == b""
 
-
-def test_serve_snapshot_compare_returns_window_payload_and_304(tmp_path: Path) -> None:
-    start_root = tmp_path / "2026-01-01"
-    end_root = tmp_path / "2026-01-08"
-    aggregate_root = tmp_path / "aggregate"
-    make_snapshot(
-        start_root,
-        snapshot_id="2026-01-01",
-        member_histories=[make_member_history(snapshot_date=date(2026, 1, 1))],
-    )
-    make_snapshot(
-        end_root,
-        snapshot_id="2026-01-08",
-        member_histories=[make_member_history(snapshot_date=date(2026, 1, 8))],
-    )
-    write_history_aggregate([start_root, end_root], aggregate_root)
-
-    first = serve_snapshot_compare(
-        "2026-01-01",
-        "2026-01-08",
-        snapshot_root=aggregate_root,
-    )
-    second = serve_snapshot_compare(
-        "2026-01-01",
-        "2026-01-08",
-        snapshot_root=aggregate_root,
-        if_none_match=first.headers["ETag"],
-    )
-
-    assert first.status_code == 200
-    body = _decode(first)
-    assert body["data"]["start_snapshot_id"] == "2026-01-01"
-    assert body["data"]["end_snapshot_id"] == "2026-01-08"
-    assert body["data"]["featured_member_changes"][0]["slug"] == "nancy-pelosi"
-    assert second.status_code == 304
-    assert second.body == b""

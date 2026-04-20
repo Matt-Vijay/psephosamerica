@@ -25,7 +25,6 @@ from src.export.contracts import (  # noqa: E402
 from src.export.manifest import SnapshotManifest
 from src.homepage.contracts import HomepageFeedPayload
 from src.homepage.contracts import MemberMovementSummary, RecentEventSummary
-from src.identity.current_member_lookup import CurrentMemberLookupPayload
 from src.pipeline.publish_snapshot_run import (  # noqa: E402
     ZipBundleInputs,
     _build_current_member_lookup_file,

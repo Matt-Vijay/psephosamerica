@@ -4,8 +4,6 @@ from datetime import date
 import json
 from pathlib import Path
 
-import pytest
-
 import src.api as api
 from src.export.writer import current_member_lookup_path
 from src.export.writer import PlannedFile

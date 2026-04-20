@@ -3,8 +3,6 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import pytest
-
 import src.api as api
 from src.api.contracts import NotFoundBody
 from src.api.read_service import get_movement_feed, get_snapshot_summary
