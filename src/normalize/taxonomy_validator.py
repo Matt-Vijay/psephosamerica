@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import csv
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -160,14 +161,16 @@ def validate_all(data_root: Path) -> list[ValidationError]:
     return all_errors
 
 
-if __name__ == "__main__":
-    import sys
-
-    root = Path(__file__).resolve().parents[2] / "data"
-    errors = validate_all(root)
+def main(data_root: Path) -> int:
+    """Validate all taxonomy artifacts under *data_root*; return a process exit code."""
+    errors = validate_all(data_root)
     if errors:
         for e in errors:
             print(f"  FAIL  {e.artifact}: {e.message}", file=sys.stderr)
-        sys.exit(1)
-    else:
-        print("All taxonomy validations passed.")
+        return 1
+    print("All taxonomy validations passed.")
+    return 0
+
+
+if __name__ == "__main__":  # pragma: no cover
+    raise SystemExit(main(Path(__file__).resolve().parents[2] / "data"))

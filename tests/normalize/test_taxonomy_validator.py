@@ -161,3 +161,138 @@ class TestValidateAll:
 
 def test_allowed_tiers_match_spec() -> None:
     assert ALLOWED_MAPPING_TIERS == {"deterministic", "review_required", "out_of_scope"}
+
+
+# --- additional branch coverage ---
+
+
+def _write(path: Path, text: str) -> Path:
+    path.write_text(textwrap.dedent(text), encoding="utf-8")
+    return path
+
+
+class TestSectorsYamlEdgeCases:
+    def test_root_not_a_mapping(self, tmp_path: Path) -> None:
+        p = _write(tmp_path / "sectors.yaml", "- not\n- a\n- mapping\n")
+        ids, errors = validate_sectors_yaml(p)
+        assert ids == set()
+        assert any("Root must be a mapping" in e.message for e in errors)
+
+    def test_sectors_not_a_list(self, tmp_path: Path) -> None:
+        p = _write(
+            tmp_path / "sectors.yaml",
+            """
+            version: 1
+            taxonomy_name: t
+            sectors: {}
+            """,
+        )
+        ids, errors = validate_sectors_yaml(p)
+        assert ids == set()
+        assert any("'sectors' must be a list" in e.message for e in errors)
+
+    def test_sector_entry_not_a_mapping_is_reported_and_skipped(self, tmp_path: Path) -> None:
+        p = _write(
+            tmp_path / "sectors.yaml",
+            """
+            version: 1
+            taxonomy_name: t
+            sectors:
+              - "just a string"
+            """,
+        )
+        ids, errors = validate_sectors_yaml(p)
+        assert ids == set()
+        assert any("is not a mapping" in e.message for e in errors)
+
+    def test_sector_without_sector_id_is_skipped_for_id_set(self, tmp_path: Path) -> None:
+        p = _write(
+            tmp_path / "sectors.yaml",
+            """
+            version: 1
+            taxonomy_name: t
+            sectors:
+              - label: No Id
+                description: missing sector_id
+            """,
+        )
+        ids, errors = validate_sectors_yaml(p)
+        assert ids == set()  # no sector_id collected
+        assert any("missing fields" in e.message for e in errors)
+
+
+class TestCrpCrosswalkEdgeCases:
+    def test_missing_columns_detected(self, tmp_path: Path) -> None:
+        p = _write(tmp_path / "crp.csv", "crp_category,sector_id\nx,agriculture_food\n")
+        errors = validate_crp_crosswalk(p, {"agriculture_food"})
+        assert any("Missing columns" in e.message for e in errors)
+
+    def test_invalid_tier_detected(self, tmp_path: Path) -> None:
+        p = _write(
+            tmp_path / "crp.csv",
+            "crp_category,crp_label,sector_id,mapping_tier\nx,X,agriculture_food,bogus\n",
+        )
+        errors = validate_crp_crosswalk(p, {"agriculture_food"})
+        assert any("invalid mapping_tier 'bogus'" in e.message for e in errors)
+
+
+class TestValidateAllFileAbsence:
+    def test_validate_all_skips_absent_optional_files(self, tmp_path: Path) -> None:
+        # Only sectors.yaml present; committee_sector_map and crp crosswalk absent.
+        (tmp_path / "taxonomy").mkdir()
+        _write(
+            tmp_path / "taxonomy" / "sectors.yaml",
+            """
+            version: 1
+            taxonomy_name: t
+            sectors:
+              - sector_id: agriculture_food
+                label: Agriculture
+                description: d
+            """,
+        )
+        errors = validate_all(tmp_path)
+        assert errors == []
+
+
+class TestValidationErrorRepr:
+    def test_repr_includes_artifact_and_message(self) -> None:
+        from src.normalize.taxonomy_validator import ValidationError
+
+        err = ValidationError("sectors.yaml", "boom")
+        assert repr(err) == "ValidationError('sectors.yaml', 'boom')"
+
+
+class TestMain:
+    def _valid_root(self, tmp_path: Path) -> Path:
+        (tmp_path / "taxonomy").mkdir()
+        _write(
+            tmp_path / "taxonomy" / "sectors.yaml",
+            """
+            version: 1
+            taxonomy_name: t
+            sectors:
+              - sector_id: agriculture_food
+                label: Agriculture
+                description: d
+            """,
+        )
+        return tmp_path
+
+    def test_main_returns_zero_when_valid(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture
+    ) -> None:
+        from src.normalize.taxonomy_validator import main
+
+        assert main(self._valid_root(tmp_path)) == 0
+        assert "All taxonomy validations passed." in capsys.readouterr().out
+
+    def test_main_returns_one_and_prints_failures(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture
+    ) -> None:
+        from src.normalize.taxonomy_validator import main
+
+        (tmp_path / "taxonomy").mkdir()
+        _write(tmp_path / "taxonomy" / "sectors.yaml", "- not a mapping\n")
+        assert main(tmp_path) == 1
+        assert "FAIL" in capsys.readouterr().err
