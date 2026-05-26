@@ -7,6 +7,7 @@ import pytest
 from pydantic import ValidationError
 
 from src.export.builders import (
+    _normalized_card_ids,
     build_evidence_card,
     build_manifest,
     build_member_profile,
@@ -431,3 +432,56 @@ def test_manifest_missing_file_entry_field(missing_key):
     del entry[missing_key]
     with pytest.raises(ValueError, match=missing_key):
         build_manifest("2026-04-13", [entry])
+
+
+# ── helper / validation branch coverage ───────────────────────────
+
+
+def test_normalized_card_ids_dedups_skips_blanks_and_truncates():
+    assert _normalized_card_ids(None) == []
+    assert _normalized_card_ids([]) == []
+    assert _normalized_card_ids(["a", "", "a", "b"]) == ["a", "b"]
+    assert _normalized_card_ids(["a", "b", "c", "d"], limit=2) == ["a", "b"]
+
+
+def test_build_evidence_card_dedups_source_anchors_by_identity():
+    rows = [
+        {
+            "source_type": "financial_disclosure",
+            "source_id": "fd-99",
+            "url": "https://efdsearch.senate.gov/search/view/paper/99/",
+            "label": "FD 99",
+        },
+        {
+            "source_type": "financial_disclosure",
+            "source_id": "fd-99",
+            "url": "https://efdsearch.senate.gov/search/view/paper/99/",
+            "label": "2025 Annual Disclosure (longer label)",
+        },
+        {
+            # A worse candidate (shorter label) must NOT displace the winner.
+            "source_type": "financial_disclosure",
+            "source_id": "fd-99",
+            "url": "https://efdsearch.senate.gov/search/view/paper/99/",
+            "label": "FD",
+        },
+    ]
+    card = build_evidence_card(RULE_FIRE, MEMBER, rows, SNAPSHOT_DATE)
+    assert len(card.source_anchors) == 1
+    # The longer label wins the dedup tie-break for the same source identity.
+    assert card.source_anchors[0].label == "2025 Annual Disclosure (longer label)"
+
+
+def test_build_manifest_rejects_unconfined_entry_path():
+    files = [{"path": "../escape.json", "sha256": "a" * 64, "size_bytes": 10}]
+    with pytest.raises(ValueError, match="confined to publish root"):
+        build_manifest("2026-04-13", files)
+
+
+def test_build_manifest_rejects_duplicate_entry_paths():
+    files = [
+        {"path": "members/x.json", "sha256": "a" * 64, "size_bytes": 10},
+        {"path": "members/x.json", "sha256": "b" * 64, "size_bytes": 20},
+    ]
+    with pytest.raises(ValueError, match="duplicate manifest entry paths"):
+        build_manifest("2026-04-13", files)

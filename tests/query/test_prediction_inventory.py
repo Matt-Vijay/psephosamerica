@@ -188,3 +188,47 @@ def test_fetch_prediction_fec_inventory_without_linkage_counts_only_term_active_
     assert "statement_member.current_term_start <= (oe.attributes->>'statement_date')::date" in sql
     assert "statement_member.current_term_end IS NULL" in sql
     assert "statement_member.current_term_end >= (oe.attributes->>'statement_date')::date" in sql
+
+
+# --- inventory query selection + relation existence helpers ---
+
+
+def test_statement_signal_inventory_query_picks_sql_and_params_by_linkage_and_cutoff() -> None:
+    from src.query.prediction_inventory import (
+        _FEC_INVENTORY_CUTOFF_SQL,
+        _FEC_INVENTORY_SQL,
+        _FEC_INVENTORY_WITHOUT_LINKAGE_CUTOFF_SQL,
+        _FEC_INVENTORY_WITHOUT_LINKAGE_SQL,
+        _statement_signal_inventory_query,
+    )
+
+    assert _statement_signal_inventory_query(has_linkage=True, feature_cutoff=None) == (
+        _FEC_INVENTORY_SQL,
+        (),
+    )
+    sql, params = _statement_signal_inventory_query(
+        has_linkage=True, feature_cutoff=dt.date(2024, 1, 1)
+    )
+    assert sql == _FEC_INVENTORY_CUTOFF_SQL
+    assert params == (dt.date(2024, 1, 1),) * 4
+
+    assert _statement_signal_inventory_query(has_linkage=False, feature_cutoff=None) == (
+        _FEC_INVENTORY_WITHOUT_LINKAGE_SQL,
+        (),
+    )
+    sql2, params2 = _statement_signal_inventory_query(
+        has_linkage=False, feature_cutoff=dt.date(2024, 1, 1)
+    )
+    assert sql2 == _FEC_INVENTORY_WITHOUT_LINKAGE_CUTOFF_SQL
+    assert params2 == (dt.date(2024, 1, 1),) * 3
+
+
+def test_relation_exists_handles_empty_rows_and_flag() -> None:
+    from src.query.prediction_inventory import _relation_exists
+
+    with patch("src.query.prediction_inventory.fetch_all", return_value=[]):
+        assert _relation_exists(MagicMock(), "missing") is False
+    with patch("src.query.prediction_inventory.fetch_all", return_value=[{"exists": True}]):
+        assert _relation_exists(MagicMock(), "present") is True
+    with patch("src.query.prediction_inventory.fetch_all", return_value=[{"exists": False}]):
+        assert _relation_exists(MagicMock(), "present") is False
