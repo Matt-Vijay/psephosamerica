@@ -416,3 +416,73 @@ class TestStoreDownloadedArtifact:
         with patch("src.parse.disclosures.download.fetch_all", return_value=[]):
             with pytest.raises(ValueError, match="data_source slug not found"):
                 store_downloaded_artifact(conn, HOUSE_META, PDF_BYTES)
+
+
+# ---------------------------------------------------------------------------
+# Additional branch coverage: content-length, chunking, response-url, db id
+# ---------------------------------------------------------------------------
+
+_PTR_URL = "https://disclosures.house.gov/public_disc/ptr-pdfs/2024/DOC123.pdf"
+_ANNUAL_URL = "https://disclosures.house.gov/public_disc/financial-pdfs/2024/DOC123.pdf"
+
+
+def _resp(*, chunks: list[bytes], headers: dict[str, str] | None = None, url: str | None = None):
+    response = MagicMock()
+    response.__enter__.return_value = response
+    response.__exit__.return_value = False
+    response.headers = headers or {}
+    response.status_code = 200
+    response.url = url
+    response.iter_bytes.return_value = chunks
+    return response
+
+
+def test_download_ignores_non_integer_content_length() -> None:
+    resp = _resp(chunks=[b"ok"], headers={"content-length": "not-a-number"})
+    with patch("httpx.stream", return_value=resp):
+        assert download_artifact_bytes(_PTR_URL) == b"ok"
+
+
+def test_download_skips_empty_chunks() -> None:
+    resp = _resp(chunks=[b"", b"da", b"", b"ta"])
+    with patch("httpx.stream", return_value=resp):
+        assert download_artifact_bytes(_PTR_URL) == b"data"
+
+
+def test_download_allows_empty_response_url() -> None:
+    resp = _resp(chunks=[b"ok"], url="")
+    with patch("httpx.stream", return_value=resp):
+        assert download_artifact_bytes(_PTR_URL) == b"ok"
+
+
+def test_download_rejects_off_origin_final_url() -> None:
+    # A different (but still official) final URL must be rejected as off-origin.
+    resp = _resp(chunks=[b"ok"], url=_ANNUAL_URL)
+    with patch("httpx.stream", return_value=resp):
+        with pytest.raises(ValueError, match="off-origin disclosure artifact response URL"):
+            download_artifact_bytes(_PTR_URL)
+
+
+def test_fetch_data_source_id_returns_integer() -> None:
+    from src.parse.disclosures.download import _fetch_data_source_id
+
+    with patch("src.parse.disclosures.download.fetch_all", return_value=[{"id": 5}]):
+        assert _fetch_data_source_id(MagicMock(), "house-disclosures") == 5
+
+
+def test_fetch_data_source_id_rejects_boolean_and_non_integer_ids() -> None:
+    from src.parse.disclosures.download import _fetch_data_source_id
+
+    with patch("src.parse.disclosures.download.fetch_all", return_value=[{"id": True}]):
+        with pytest.raises(ValueError, match="must be an integer"):
+            _fetch_data_source_id(MagicMock(), "house-disclosures")
+    with patch("src.parse.disclosures.download.fetch_all", return_value=[{"id": "x"}]):
+        with pytest.raises(ValueError, match="must be an integer"):
+            _fetch_data_source_id(MagicMock(), "house-disclosures")
+
+
+def test_download_accepts_matching_response_url() -> None:
+    # final_url == requested_url is the safe, non-redirected case.
+    resp = _resp(chunks=[b"ok"], url=_PTR_URL)
+    with patch("httpx.stream", return_value=resp):
+        assert download_artifact_bytes(_PTR_URL) == b"ok"
