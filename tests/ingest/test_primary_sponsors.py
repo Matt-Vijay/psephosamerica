@@ -285,3 +285,13 @@ class TestRealisticBillDetailPayload:
         spec = primary_sponsor_spec_from_bill_detail(detail, _HR1)
         assert spec is not None
         assert spec.bioguide_id == "J000289"
+
+
+def test_primary_sponsor_spec_returns_none_when_bill_node_not_mapping(bill: BillRecord) -> None:
+    assert primary_sponsor_spec_from_bill_detail({"bill": "not-a-mapping"}, bill) is None
+
+
+def test_primary_sponsor_spec_returns_none_when_first_sponsor_not_mapping(
+    bill: BillRecord,
+) -> None:
+    assert primary_sponsor_spec_from_bill_detail({"sponsors": ["not-a-mapping"]}, bill) is None
