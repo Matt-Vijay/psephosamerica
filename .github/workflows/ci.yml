@@ -60,8 +60,10 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -e ".[dev]"
-      - name: pytest unit
-        run: python -m pytest tests/ -x -q --ignore=tests/integration
+      - name: pytest unit with coverage gate
+        run: |
+          python -m coverage run -m pytest tests/ -q --ignore=tests/integration
+          python -m coverage report --fail-under=89
 
   test-integration:
     name: Integration tests
