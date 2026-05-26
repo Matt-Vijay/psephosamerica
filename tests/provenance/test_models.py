@@ -36,3 +36,18 @@ def test_stage_event_rejects_invalid_payload_hash() -> None:
             payload_hash="not-a-sha256",
             occurred_at=datetime.now(tz=timezone.utc),
         )
+
+
+def test_stage_log_append_and_final_status() -> None:
+    from src.provenance.models import StageLog
+
+    now = datetime.now(timezone.utc)
+    log = StageLog(run_id=1)
+    assert log.final_status is None  # empty log has no final status
+
+    running = StageEvent(stage="fetch", status="running", artifact_sha256=None, occurred_at=now)
+    done = StageEvent(stage="parse", status="succeeded", artifact_sha256=None, occurred_at=now)
+    log.append(running)
+    log.append(done)
+    assert log.events == [running, done]
+    assert log.final_status == "succeeded"  # status of the last appended event
