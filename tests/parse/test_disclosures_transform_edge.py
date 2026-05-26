@@ -11,6 +11,7 @@ Covers scenarios not exercised in test_disclosure_transform.py:
 
 No DB, no network, no filesystem access.
 """
+
 from __future__ import annotations
 
 from datetime import date
@@ -189,7 +190,9 @@ class TestAmendmentInternalConsistency:
             supersedes_filing_source_id="DOC-PREV",
         )
         result = transform_filing(filing, [], [], [], CTX)
-        item = next(r for r in result.review_items if r.reason_code == "amendment_supersedes_mismatch")
+        item = next(
+            r for r in result.review_items if r.reason_code == "amendment_supersedes_mismatch"
+        )
         assert item.review_type == "amendment"
         assert item.entity_type == "financial_disclosure"
 
@@ -202,7 +205,9 @@ class TestAmendmentInternalConsistency:
             supersedes_filing_source_id="DOC-PREV",
         )
         result = transform_filing(filing, [], [], [], CTX)
-        mismatch = next(r for r in result.review_items if r.reason_code == "amendment_supersedes_mismatch")
+        mismatch = next(
+            r for r in result.review_items if r.reason_code == "amendment_supersedes_mismatch"
+        )
         assert mismatch.priority < 20  # lower than _PRIORITY_AMENDMENT=20
 
     def test_mismatch_payload_contains_supersedes_id(self):
@@ -212,7 +217,9 @@ class TestAmendmentInternalConsistency:
             supersedes_filing_source_id="DOC-PREV",
         )
         result = transform_filing(filing, [], [], [], CTX)
-        item = next(r for r in result.review_items if r.reason_code == "amendment_supersedes_mismatch")
+        item = next(
+            r for r in result.review_items if r.reason_code == "amendment_supersedes_mismatch"
+        )
         assert item.payload["supersedes_filing_source_id"] == "DOC-PREV"
         assert item.payload["is_amended"] is False
 
@@ -225,14 +232,18 @@ class TestAmendmentInternalConsistency:
     def test_amendment_number_without_flag_payload_contains_number(self):
         filing = _annual(is_amended=False, amendment_number=3)
         result = transform_filing(filing, [], [], [], CTX)
-        item = next(r for r in result.review_items if r.reason_code == "amendment_number_without_flag")
+        item = next(
+            r for r in result.review_items if r.reason_code == "amendment_number_without_flag"
+        )
         assert item.payload["amendment_number"] == 3
         assert item.payload["is_amended"] is False
 
     def test_amendment_number_without_flag_priority_within_bounds(self):
         filing = _annual(is_amended=False, amendment_number=1)
         result = transform_filing(filing, [], [], [], CTX)
-        item = next(r for r in result.review_items if r.reason_code == "amendment_number_without_flag")
+        item = next(
+            r for r in result.review_items if r.reason_code == "amendment_number_without_flag"
+        )
         assert 1 <= item.priority <= 100
 
     def test_properly_flagged_amendment_no_inconsistency_reviews(self):
@@ -374,8 +385,12 @@ class TestOutsidePositionReviewEdgeCases:
         result = transform_filing(_annual(), [], [], ops, CTX)
         assert len(result.outside_positions) == 3
         # Three no_canonical_table_v1 + one unknown_owner_type for line 2
-        sidecar_reviews = [r for r in result.review_items if r.reason_code == "no_canonical_table_v1"]
-        unknown_owner_reviews = [r for r in result.review_items if r.reason_code == "unknown_owner_type"]
+        sidecar_reviews = [
+            r for r in result.review_items if r.reason_code == "no_canonical_table_v1"
+        ]
+        unknown_owner_reviews = [
+            r for r in result.review_items if r.reason_code == "unknown_owner_type"
+        ]
         assert len(sidecar_reviews) == 3
         assert len(unknown_owner_reviews) == 1
         assert unknown_owner_reviews[0].payload["line_number"] == 2
@@ -395,7 +410,8 @@ class TestUnknownAmountOwnerTxType:
         result = transform_filing(_annual(), [h], [], [], CTX)
         # value_label unknown → unknown_amount_range; income_label unknown → unknown_income_range
         unknown_range_reviews = [
-            r for r in result.review_items
+            r
+            for r in result.review_items
             if r.reason_code in ("unknown_amount_range", "unknown_income_range")
         ]
         assert len(unknown_range_reviews) == 2
@@ -406,7 +422,9 @@ class TestUnknownAmountOwnerTxType:
             income_label="$1,001 - $15,000",
         )
         result = transform_filing(_annual(), [h], [], [], CTX)
-        unknown_amount_reviews = [r for r in result.review_items if r.reason_code == "unknown_amount_range"]
+        unknown_amount_reviews = [
+            r for r in result.review_items if r.reason_code == "unknown_amount_range"
+        ]
         assert len(unknown_amount_reviews) == 1
         assert unknown_amount_reviews[0].payload.get("value_label") == "$MYSTERY"
 
@@ -480,7 +498,9 @@ class TestUnknownAmountOwnerTxType:
         assert not any(r.reason_code == "unknown_owner_type" for r in result.review_items)
 
     def test_all_review_items_are_open(self):
-        t = _tx(owner_type=OwnerType.OTHER, transaction_type=TransactionType.OTHER, amount_label="$???")
+        t = _tx(
+            owner_type=OwnerType.OTHER, transaction_type=TransactionType.OTHER, amount_label="$???"
+        )
         result = transform_filing(_annual(), [], [t], [], CTX)
         for item in result.review_items:
             assert item.status == "open"
@@ -547,7 +567,12 @@ class TestFilingBundleAndBatch:
         ctx = ParseContext(parse_run_id=50, source_artifact_id=60, ingestion_run_id=70)
         ops = [_op()]
         bundles = [
-            FilingBundle(filing=_annual(source_record_id=f"D{i}"), holdings=[], transactions=[], outside_positions=ops)
+            FilingBundle(
+                filing=_annual(source_record_id=f"D{i}"),
+                holdings=[],
+                transactions=[],
+                outside_positions=ops,
+            )
             for i in range(1, 3)
         ]
         results = batch_transform_filings(bundles, ctx)
@@ -576,14 +601,22 @@ class TestFilingBundleAndBatch:
         assert results[1].review_items == []
 
     def test_batch_single_equals_direct_transform(self):
-        h = Holding(line_number=1, owner_type=OwnerType.SELF, issuer_name="Acme",
-                    value_min=Decimal("1001"), value_max=Decimal("15000"))
+        h = Holding(
+            line_number=1,
+            owner_type=OwnerType.SELF,
+            issuer_name="Acme",
+            value_min=Decimal("1001"),
+            value_max=Decimal("15000"),
+        )
         filing = _annual()
         bundle = FilingBundle(filing=filing, holdings=[h], transactions=[], outside_positions=[])
         batch_result = batch_transform_filings([bundle], CTX)[0]
         direct_result = transform_filing(filing, [h], [], [], CTX)
 
-        assert batch_result.disclosure.member_bioguide_id == direct_result.disclosure.member_bioguide_id
+        assert (
+            batch_result.disclosure.member_bioguide_id
+            == direct_result.disclosure.member_bioguide_id
+        )
         assert len(batch_result.holdings) == len(direct_result.holdings)
         assert batch_result.holdings[0].issuer_name == direct_result.holdings[0].issuer_name
 
@@ -838,7 +871,9 @@ class TestReviewItemOrdering:
         t = _tx(owner_type=OwnerType.OTHER, line_number=1)
         result = transform_filing(_annual(), [h], [t], [], CTX)
         # Both emit unknown_owner_type; first must be the holding's
-        owner_reviews = [r for r in result.review_items if r.reason_code == REASON_UNKNOWN_OWNER_TYPE]
+        owner_reviews = [
+            r for r in result.review_items if r.reason_code == REASON_UNKNOWN_OWNER_TYPE
+        ]
         assert owner_reviews[0].entity_type == "holding"
         assert owner_reviews[1].entity_type == "transaction"
 
@@ -847,11 +882,13 @@ class TestReviewItemOrdering:
         op = _op(owner_type=OwnerType.OTHER, line_number=1)
         result = transform_filing(_annual(), [], [t], [op], CTX)
         tx_owner_idx = next(
-            i for i, r in enumerate(result.review_items)
+            i
+            for i, r in enumerate(result.review_items)
             if r.reason_code == REASON_UNKNOWN_OWNER_TYPE and r.entity_type == "transaction"
         )
         op_sidecar_idx = next(
-            i for i, r in enumerate(result.review_items)
+            i
+            for i, r in enumerate(result.review_items)
             if r.reason_code == REASON_NO_CANONICAL_TABLE_V1
         )
         assert tx_owner_idx < op_sidecar_idx

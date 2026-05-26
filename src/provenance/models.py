@@ -55,6 +55,9 @@ class SourceArtifactMeta:
     ingestion_run_id: Optional[int] = None
     db_id: Optional[int] = None
 
+    def __post_init__(self) -> None:
+        _require_sha256_hex(self.sha256, field_name="sha256")
+
 
 @dataclass(frozen=True)
 class ParseRunContext:
@@ -85,14 +88,20 @@ class StageEvent:
     artifact, and with what content hash.  Built by events.py helpers.
     """
 
-    stage: str                        # e.g. "fetch", "parse", "normalize"
+    stage: str  # e.g. "fetch", "parse", "normalize"
     status: RunStatus
-    artifact_sha256: Optional[str]    # sha256 of the artifact touched
+    artifact_sha256: Optional[str]  # sha256 of the artifact touched
     occurred_at: datetime
     payload_hash: Optional[str] = None  # sha256 of any derived payload
     notes: Optional[str] = None
     error_message: Optional[str] = None
     metadata: dict[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        if self.artifact_sha256 is not None:
+            _require_sha256_hex(self.artifact_sha256, field_name="artifact_sha256")
+        if self.payload_hash is not None:
+            _require_sha256_hex(self.payload_hash, field_name="payload_hash")
 
 
 @dataclass
@@ -110,3 +119,8 @@ class StageLog:
         if not self.events:
             return None
         return self.events[-1].status
+
+
+def _require_sha256_hex(value: str, *, field_name: str) -> None:
+    if len(value) != 64 or not all(char in "0123456789abcdefABCDEF" for char in value):
+        raise ValueError(f"{field_name} must be a 64-character hex string")

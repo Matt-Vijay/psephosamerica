@@ -115,6 +115,12 @@ def test_get_history_bootstrap_returns_snapshot_index_movement_and_member_change
     assert result.ok is True
     assert result.data.snapshot_index.latest_snapshot_id == "2026-01-08"
     assert result.data.movement_window.latest_snapshot_id == "2026-01-08"
+    assert result.data.coverage.latest_snapshot_id == "2026-01-08"
+    assert result.data.coverage.snapshot_count == 2
+    assert result.data.coverage.member_history_count == 1
+    assert [dimension.dimension for dimension in result.data.coverage.dimensions] == [
+        "conflict_of_interest_risk"
+    ]
     assert result.data.default_compare_preset_key == "latest"
     assert [preset.preset_key for preset in result.data.compare_presets] == [
         "latest",
@@ -123,6 +129,34 @@ def test_get_history_bootstrap_returns_snapshot_index_movement_and_member_change
         "cycle",
     ]
     assert result.data.featured_member_changes[0].slug == "nancy-pelosi"
+
+
+def test_get_history_bootstrap_supports_dimension_scope(tmp_path: Path) -> None:
+    aggregate_root = _history_root(tmp_path)
+
+    result = get_history_bootstrap(
+        snapshot_root=aggregate_root,
+        dimension="conflict_of_interest_risk",
+    )
+
+    assert result.ok is True
+    assert result.data.dimension == "conflict_of_interest_risk"
+    assert result.data.movement_window.dimension == "conflict_of_interest_risk"
+    assert result.data.dimension_coverage is not None
+    assert result.data.dimension_coverage.dimension == "conflict_of_interest_risk"
+
+
+def test_get_history_bootstrap_returns_not_found_for_unknown_dimension(tmp_path: Path) -> None:
+    aggregate_root = _history_root(tmp_path)
+
+    result = get_history_bootstrap(
+        snapshot_root=aggregate_root,
+        dimension="transparency_risk",
+    )
+
+    assert isinstance(result, NotFoundBody)
+    assert result.resource_type == "history_dimension"
+    assert result.identifier == "transparency_risk"
 
 
 def test_get_history_bootstrap_returns_not_found_without_snapshots(tmp_path: Path) -> None:
@@ -158,9 +192,7 @@ def test_get_history_bootstrap_keeps_featured_changes_aligned_with_visible_top_c
     assert [summary.slug for summary in precomputed.data.featured_member_changes] == [
         "nancy-pelosi"
     ]
-    assert [summary.slug for summary in fallback.data.featured_member_changes] == [
-        "nancy-pelosi"
-    ]
+    assert [summary.slug for summary in fallback.data.featured_member_changes] == ["nancy-pelosi"]
 
 
 def test_get_history_bootstrap_keeps_compare_presets_aligned_with_fallback(
@@ -175,6 +207,9 @@ def test_get_history_bootstrap_keeps_compare_presets_aligned_with_fallback(
     assert precomputed.ok is True
     assert fallback.ok is True
     assert precomputed.data.default_compare_preset_key == fallback.data.default_compare_preset_key
+    assert precomputed.data.coverage.model_dump(mode="json") == fallback.data.coverage.model_dump(
+        mode="json"
+    )
     assert [preset.model_dump(mode="json") for preset in precomputed.data.compare_presets] == [
         preset.model_dump(mode="json") for preset in fallback.data.compare_presets
     ]

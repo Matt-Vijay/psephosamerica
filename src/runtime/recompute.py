@@ -13,7 +13,12 @@ import datetime as dt
 from dataclasses import dataclass
 from typing import Any, Callable
 
-from src.pipeline.recompute_run import RecomputeRunResult, run_recompute
+from src.db.repositories import rollback_if_available
+from src.pipeline.recompute_run import (
+    ContributionSectorResolver,
+    RecomputeRunResult,
+    run_recompute,
+)
 from src.provenance.store import (
     ensure_data_source,
     fail_ingestion_run,
@@ -66,6 +71,9 @@ def run_recompute_runtime(
     *,
     taxonomy: Any | None = None,
     issuer_sector_resolver: IssuerSectorResolver | None = None,
+    contribution_sector_resolver: ContributionSectorResolver | None = None,
+    statement_rows: list[dict[str, Any]] | None = None,
+    statement_rows_source: dict[str, Any] | None = None,
 ) -> RuntimeRecomputeResult:
     """Run a full conflict-of-interest recompute and return its result.
 
@@ -85,6 +93,13 @@ def run_recompute_runtime(
         issuer_sector_resolver: Callable(issuer_name, issuer_ticker) → sector
                                 slug or None.  When None the deterministic
                                 null resolver is used (no sector inferred).
+        contribution_sector_resolver:
+                                Optional callable(row) → sector slug or None
+                                for FEC contribution/donor-sector attribution.
+        statement_rows:         Optional prepared source-backed public statement
+                                rows for member-sector ontology edges.
+        statement_rows_source:  Optional provenance metadata describing the
+                                prepared statement-row artifact.
     """
     if taxonomy is None:
         from src.normalize.taxonomy_runtime import load_taxonomy_runtime
@@ -103,11 +118,15 @@ def run_recompute_runtime(
     )
 
     # ------------------------------------------------------------------ 2. --
+    parameters: dict[str, Any] = {"snapshot_date": snapshot_date.isoformat()}
+    if statement_rows_source is not None:
+        parameters["statement_rows_source"] = statement_rows_source
+
     run_id = start_ingestion_run(
         conn,
         data_source_id=data_source["id"],
         run_type="recompute",
-        parameters={"snapshot_date": snapshot_date.isoformat()},
+        parameters=parameters,
     )
 
     # ------------------------------------------------------------------ 3. --
@@ -118,14 +137,22 @@ def run_recompute_runtime(
             snapshot_date=snapshot_date,
             taxonomy=taxonomy,
             issuer_sector_resolver=issuer_sector_resolver,
+            contribution_sector_resolver=contribution_sector_resolver,
+            statement_rows=statement_rows,
+            commit=False,
         )
     except Exception as exc:
+        rollback_if_available(conn)
         fail_ingestion_run(conn, run_id, error_message=str(exc))
         raise
 
     # ------------------------------------------------------------------ 4. --
     record_count = len(recompute_result.rule_fires) + len(recompute_result.evidence_cards)
-    finish_ingestion_run(conn, run_id, record_count=record_count)
+    try:
+        finish_ingestion_run(conn, run_id, record_count=record_count)
+    except Exception:
+        rollback_if_available(conn)
+        raise
 
     return RuntimeRecomputeResult(
         data_source=data_source,

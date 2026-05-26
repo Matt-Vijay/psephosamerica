@@ -2,10 +2,12 @@
 
 No network calls.  No DB.  All I/O is local tmp_path JSON writes.
 """
+
 from __future__ import annotations
 
 import json
 from pathlib import Path
+from uuid import UUID
 
 import pytest
 
@@ -15,8 +17,11 @@ from src.runtime.disclosures_bundle import (
     HouseBundledIndexRow,
     SenateBundledIndexRow,
     disclosures_bundle_from_dict,
+    disclosures_bundle_to_dict,
     load_disclosures_bundle,
+    write_disclosures_bundle,
 )
+from src.runtime.sources import HOUSE_DISCLOSURES
 
 _SHA256 = "a" * 64
 
@@ -36,7 +41,7 @@ def _house_entry_dict(
         "chamber": "house",
         "filing_year": filing_year,
         "storage_uri": storage_uri,
-        "source_url": "https://disclosures.house.gov/public_disc/ptr-pdfs/2024/12345.pdf",
+        "source_url": "https://disclosures.house.gov/public_disc/financial-pdfs/2024/12345.pdf",
         "source_slug": "house_disclosures",
         "artifact_kind": "pdf",
         "sha256": _SHA256,
@@ -133,7 +138,11 @@ class TestHouseEntryFields:
         assert self.entry.storage_uri == "house/2024/12345.pdf"
 
     def test_source_slug(self) -> None:
-        assert self.entry.source_slug == "house_disclosures"
+        assert self.entry.source_slug == HOUSE_DISCLOSURES.slug
+
+    def test_legacy_source_slug_is_normalized(self) -> None:
+        bundle = disclosures_bundle_from_dict(_valid_dict([_house_entry_dict()]))
+        assert bundle.artifacts[0].source_slug == HOUSE_DISCLOSURES.slug
 
     def test_artifact_kind(self) -> None:
         assert self.entry.artifact_kind == "pdf"
@@ -245,6 +254,7 @@ class TestLoadDisclosuresBundle:
         p = tmp_path / "bad.json"
         p.write_text("not json", encoding="utf-8")
         import json as _json
+
         with pytest.raises(_json.JSONDecodeError):
             load_disclosures_bundle(p)
 
@@ -253,6 +263,69 @@ class TestLoadDisclosuresBundle:
         p.write_text("[]", encoding="utf-8")
         with pytest.raises(ValueError, match="JSON object"):
             load_disclosures_bundle(p)
+
+
+# ---------------------------------------------------------------------------
+# Serialization helpers
+# ---------------------------------------------------------------------------
+
+
+class TestDisclosuresBundleSerialization:
+    def test_to_dict_roundtrips_through_parser(self) -> None:
+        bundle = disclosures_bundle_from_dict(_valid_dict())
+        dumped = disclosures_bundle_to_dict(bundle)
+        reparsed = disclosures_bundle_from_dict(dumped)
+        assert reparsed == bundle
+
+    def test_to_dict_preserves_entry_order(self) -> None:
+        bundle = disclosures_bundle_from_dict(
+            {
+                "artifacts": [
+                    _house_entry_dict(source_record_id="A"),
+                    _senate_entry_dict(source_record_id="B"),
+                    _house_entry_dict(source_record_id="C", storage_uri="house/2024/C.pdf"),
+                ]
+            }
+        )
+        dumped = disclosures_bundle_to_dict(bundle)
+        assert [entry["source_record_id"] for entry in dumped["artifacts"]] == ["A", "B", "C"]
+
+    def test_write_disclosures_bundle_writes_loadable_json(self, tmp_path: Path) -> None:
+        bundle = disclosures_bundle_from_dict(_valid_dict())
+        path = tmp_path / "bundle.json"
+        written = write_disclosures_bundle(path, bundle)
+        assert written == path
+        assert load_disclosures_bundle(path) == bundle
+
+    def test_write_disclosures_bundle_uses_unique_temp_file_before_replace(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        bundle = disclosures_bundle_from_dict(_valid_dict())
+        path = tmp_path / "bundle.json"
+        seen_temp_names: list[str] = []
+        original_open = Path.open
+
+        def guarded_open(target: Path, *args: object, **kwargs: object):
+            mode = str(args[0]) if args else str(kwargs.get("mode", "r"))
+            if target == path and any(flag in mode for flag in ("w", "a", "x", "+")):
+                raise AssertionError("direct final-path write")
+            if target.name == ".bundle.json.tmp":
+                raise AssertionError("fixed temp filename used")
+            if target.name.startswith(".bundle.json.") and target.name.endswith(".tmp"):
+                token = target.name.removeprefix(".bundle.json.").removesuffix(".tmp")
+                UUID(token)
+                seen_temp_names.append(target.name)
+            return original_open(target, *args, **kwargs)
+
+        monkeypatch.setattr(Path, "open", guarded_open)
+
+        written = write_disclosures_bundle(path, bundle)
+
+        assert written == path
+        assert len(seen_temp_names) == 1
+        assert load_disclosures_bundle(path) == bundle
 
 
 # ---------------------------------------------------------------------------
@@ -318,9 +391,57 @@ class TestEntryFieldValidation:
         with pytest.raises(ValueError, match="storage_uri"):
             disclosures_bundle_from_dict(self._drop("storage_uri"))
 
+    def test_absolute_storage_uri_rejected(self) -> None:
+        with pytest.raises(ValueError, match="storage_uri"):
+            disclosures_bundle_from_dict(self._mutate("storage_uri", "/tmp/outside.pdf"))
+
+    def test_path_traversal_storage_uri_rejected(self) -> None:
+        with pytest.raises(ValueError, match="storage_uri"):
+            disclosures_bundle_from_dict(self._mutate("storage_uri", "../outside.pdf"))
+
     def test_missing_source_url(self) -> None:
         with pytest.raises(ValueError, match="source_url"):
             disclosures_bundle_from_dict(self._drop("source_url"))
+
+    @pytest.mark.parametrize(
+        "source_url",
+        [
+            "http://disclosures.house.gov/public_disc/ptr-pdfs/2024/12345.pdf",
+            "https://evil.example/public_disc/ptr-pdfs/2024/12345.pdf",
+            "https://disclosures.house.gov.evil.example/public_disc/ptr-pdfs/2024/12345.pdf",
+            "https://disclosures.house.gov/public_disc/ptr-pdfs/2024/../12345.pdf",
+            "https://disclosures.house.gov/public_disc/ptr-pdfs/2024/12345.pdf?download=1",
+            "https://disclosures.house.gov/search/view/paper/12345/",
+            "https://efdsearch.senate.gov/search/view/paper/12345/",
+        ],
+    )
+    def test_house_source_url_must_be_official_house_artifact_url(
+        self,
+        source_url: str,
+    ) -> None:
+        with pytest.raises(ValueError, match=r"artifacts\[0\]\.source_url"):
+            disclosures_bundle_from_dict(self._mutate("source_url", source_url))
+
+    @pytest.mark.parametrize(
+        "source_url",
+        [
+            "http://efdsearch.senate.gov/search/view/paper/uuid-xyz/",
+            "https://evil.example/search/view/paper/uuid-xyz/",
+            "https://efdsearch.senate.gov.evil.example/search/view/paper/uuid-xyz/",
+            "https://efdsearch.senate.gov/search/view/paper/../uuid-xyz/",
+            "https://efdsearch.senate.gov/search/view/paper/uuid-xyz/?download=1",
+            "https://efdsearch.senate.gov/public_disc/ptr-pdfs/2024/uuid-xyz.pdf",
+            "https://disclosures.house.gov/public_disc/ptr-pdfs/2024/12345.pdf",
+        ],
+    )
+    def test_senate_source_url_must_be_official_senate_artifact_url(
+        self,
+        source_url: str,
+    ) -> None:
+        d = _valid_dict([_senate_entry_dict()])
+        d["artifacts"][0]["source_url"] = source_url
+        with pytest.raises(ValueError, match=r"artifacts\[0\]\.source_url"):
+            disclosures_bundle_from_dict(d)
 
     def test_missing_source_slug(self) -> None:
         with pytest.raises(ValueError, match="source_slug"):
@@ -337,6 +458,10 @@ class TestEntryFieldValidation:
     def test_sha256_wrong_length(self) -> None:
         with pytest.raises(ValueError, match="64-char"):
             disclosures_bundle_from_dict(self._mutate("sha256", "abc"))
+
+    def test_sha256_must_be_hex(self) -> None:
+        with pytest.raises(ValueError, match="64-char hex"):
+            disclosures_bundle_from_dict(self._mutate("sha256", "z" * 64))
 
     def test_missing_index_row(self) -> None:
         with pytest.raises(ValueError, match="index_row"):

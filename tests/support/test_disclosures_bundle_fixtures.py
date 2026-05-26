@@ -71,8 +71,16 @@ class TestMakeHouseSpec:
     def test_index_row_has_required_house_fields(self):
         spec = make_house_spec("DOC123")
         row = spec.index_row
-        for key in ("last_name", "first_name", "suffix", "raw_filing_type",
-                    "state_dst", "filing_date", "doc_id", "filing_kind"):
+        for key in (
+            "last_name",
+            "first_name",
+            "suffix",
+            "raw_filing_type",
+            "state_dst",
+            "filing_date",
+            "doc_id",
+            "filing_kind",
+        ):
             assert key in row, f"missing field: {key}"
 
     def test_index_row_doc_id_matches_spec(self):
@@ -122,8 +130,7 @@ class TestMakeSenateSpec:
     def test_index_row_has_required_senate_fields(self):
         spec = make_senate_spec("uuid-xyz")
         row = spec.index_row
-        for key in ("first_name", "last_name", "office", "report_type",
-                    "date_filed", "doc_id"):
+        for key in ("first_name", "last_name", "office", "report_type", "date_filed", "doc_id"):
             assert key in row, f"missing field: {key}"
 
     def test_index_row_doc_id_matches_spec(self):

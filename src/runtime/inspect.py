@@ -8,7 +8,10 @@ from src.export.contracts import EvidenceCardPayload, MemberProfilePayload, ZipF
 from src.export.local_store import (
     load_current_member_lookup,
     load_evidence_card,
+    load_history_event,
+    load_history_event_page,
     load_history_bootstrap,
+    load_history_coverage,
     load_history_preset_range,
     load_homepage_bootstrap,
     load_homepage_feed,
@@ -16,31 +19,78 @@ from src.export.local_store import (
     load_latest_snapshot_metadata,
     load_manifest,
     load_member_change_summary,
+    load_member_history_coverage,
+    load_member_history_coverage_index,
     load_member_history_chart,
     load_member_history,
     load_member_history_page,
+    load_member_timeline_index,
+    load_member_timeline_page,
+    load_member_timeline_dimension,
+    load_member_timeline_year,
     load_member_page,
     load_member_preset_compare,
     load_snapshot_preset_compare,
     load_member_trend_summary,
     load_movement_window,
     load_member_profile,
+    load_ontology_edges,
+    load_ontology_index,
+    load_ontology_member_features,
+    load_ontology_member_edges,
+    load_prediction_bootstrap,
+    load_prediction_committee_context,
+    load_prediction_committee_readiness,
+    load_prediction_member_context,
+    load_prediction_member_readiness,
+    load_prediction_readiness,
+    load_prediction_readiness_index,
+    load_prediction_sector_context,
+    load_prediction_sector_readiness,
+    load_prediction_source_context,
+    load_prediction_source_index,
+    load_prediction_topology,
     load_snapshot_index,
     list_snapshot_ids,
     load_zip_entry,
     load_zip_feed,
 )
 from src.export.manifest import SnapshotManifest
-from src.homepage.contracts import HomepageFeedPayload, MovementWindowPayload, SnapshotComparePayload
+from src.homepage.contracts import (
+    HomepageFeedPayload,
+    MovementWindowPayload,
+    SnapshotComparePayload,
+)
 from src.identity.current_member_lookup import (
     CurrentMemberLookupPayload,
     search_current_member_lookup,
+)
+from src.ontology.contracts import (
+    OntologyGraphPayload,
+    OntologyIndexPayload,
+    OntologyMemberFeaturesPayload,
+    OntologyMemberGraphPayload,
+)
+from src.prediction.contracts import (
+    PredictionBootstrapPayload,
+    PredictionCommitteeContextPayload,
+    PredictionCommitteeReadinessPayload,
+    PredictionMemberContextPayload,
+    PredictionMemberReadinessPayload,
+    PredictionReadinessIndexPayload,
+    PredictionReadinessPayload,
+    PredictionSectorContextPayload,
+    PredictionSectorReadinessPayload,
+    PredictionSourceContextPayload,
+    PredictionSourceIndexPayload,
+    PredictionTopologyPayload,
 )
 from src.export.contracts import MemberHistoryPayload
 from src.runtime.paths import local_publish_root
 
 if TYPE_CHECKING:
     from src.api.contracts import HistoryBootstrapPayload
+    from src.api.contracts import HistoryEventPagePayload
     from src.api.contracts import HistoryPresetRangePayload
     from src.api.contracts import HomepageBootstrapPayload
     from src.api.contracts import MemberHistoryPagePayload
@@ -49,8 +99,17 @@ if TYPE_CHECKING:
     from src.api.contracts import SnapshotIndexPayload
     from src.api.contracts import ZipEntryPayload
     from src.export.contracts import MemberChangeSummaryPayload
+    from src.export.contracts import MemberHistoryCoveragePayload
+    from src.export.contracts import MemberHistoryCoverageIndexPayload
+    from src.export.contracts import HistoryCoveragePayload
     from src.export.contracts import MemberHistoryChartPayload
     from src.export.contracts import MemberTrendSummaryPayload
+    from src.export.contracts import MemberTimelineEventPayload
+    from src.export.contracts import MemberTimelineIndexPayload
+    from src.export.contracts import MemberTimelinePagePayload
+    from src.export.contracts import MemberTimelineDimensionPayload
+    from src.export.contracts import MemberTimelineYearPayload
+    from src.runtime.history_backfill_types import HistoryBackfillReportPayload
 
 
 # ── Content artifact loaders ──────────────────────────────────────
@@ -83,6 +142,141 @@ def load_local_evidence_card(
     return load_evidence_card(root, evidence_card_id)
 
 
+def load_local_ontology_edges(
+    *,
+    snapshot_root: Path | None = None,
+) -> OntologyGraphPayload:
+    root = snapshot_root if snapshot_root is not None else local_publish_root()
+    return load_ontology_edges(root)
+
+
+def load_local_ontology_index(
+    *,
+    snapshot_root: Path | None = None,
+) -> OntologyIndexPayload:
+    root = snapshot_root if snapshot_root is not None else local_publish_root()
+    return load_ontology_index(root)
+
+
+def load_local_ontology_member_edges(
+    member_bioguide_id: str,
+    *,
+    snapshot_root: Path | None = None,
+) -> OntologyMemberGraphPayload:
+    root = snapshot_root if snapshot_root is not None else local_publish_root()
+    return load_ontology_member_edges(root, member_bioguide_id)
+
+
+def load_local_ontology_member_features(
+    member_bioguide_id: str,
+    *,
+    snapshot_root: Path | None = None,
+) -> OntologyMemberFeaturesPayload:
+    root = snapshot_root if snapshot_root is not None else local_publish_root()
+    return load_ontology_member_features(root, member_bioguide_id)
+
+
+def load_local_prediction_readiness(
+    *,
+    snapshot_root: Path | None = None,
+) -> PredictionReadinessPayload:
+    root = snapshot_root if snapshot_root is not None else local_publish_root()
+    return load_prediction_readiness(root)
+
+
+def load_local_prediction_bootstrap(
+    *,
+    snapshot_root: Path | None = None,
+) -> PredictionBootstrapPayload:
+    root = snapshot_root if snapshot_root is not None else local_publish_root()
+    return load_prediction_bootstrap(root)
+
+
+def load_local_prediction_topology(
+    *,
+    snapshot_root: Path | None = None,
+) -> PredictionTopologyPayload:
+    root = snapshot_root if snapshot_root is not None else local_publish_root()
+    return load_prediction_topology(root)
+
+
+def load_local_prediction_readiness_index(
+    *,
+    snapshot_root: Path | None = None,
+) -> PredictionReadinessIndexPayload:
+    root = snapshot_root if snapshot_root is not None else local_publish_root()
+    return load_prediction_readiness_index(root)
+
+
+def load_local_prediction_source_index(
+    *,
+    snapshot_root: Path | None = None,
+) -> PredictionSourceIndexPayload:
+    root = snapshot_root if snapshot_root is not None else local_publish_root()
+    return load_prediction_source_index(root)
+
+
+def load_local_prediction_source_context(
+    source_key: str,
+    *,
+    snapshot_root: Path | None = None,
+) -> PredictionSourceContextPayload:
+    root = snapshot_root if snapshot_root is not None else local_publish_root()
+    return load_prediction_source_context(root, source_key)
+
+
+def load_local_prediction_sector_readiness(
+    *,
+    snapshot_root: Path | None = None,
+) -> PredictionSectorReadinessPayload:
+    root = snapshot_root if snapshot_root is not None else local_publish_root()
+    return load_prediction_sector_readiness(root)
+
+
+def load_local_prediction_sector_context(
+    sector_id: str,
+    *,
+    snapshot_root: Path | None = None,
+) -> PredictionSectorContextPayload:
+    root = snapshot_root if snapshot_root is not None else local_publish_root()
+    return load_prediction_sector_context(root, sector_id)
+
+
+def load_local_prediction_committee_readiness(
+    *,
+    snapshot_root: Path | None = None,
+) -> PredictionCommitteeReadinessPayload:
+    root = snapshot_root if snapshot_root is not None else local_publish_root()
+    return load_prediction_committee_readiness(root)
+
+
+def load_local_prediction_committee_context(
+    committee_id: str,
+    *,
+    snapshot_root: Path | None = None,
+) -> PredictionCommitteeContextPayload:
+    root = snapshot_root if snapshot_root is not None else local_publish_root()
+    return load_prediction_committee_context(root, committee_id)
+
+
+def load_local_prediction_member_readiness(
+    member_bioguide_id: str,
+    *,
+    snapshot_root: Path | None = None,
+) -> PredictionMemberReadinessPayload:
+    root = snapshot_root if snapshot_root is not None else local_publish_root()
+    return load_prediction_member_readiness(root, member_bioguide_id)
+
+
+def load_local_prediction_member_context(
+    member_bioguide_id: str,
+    *,
+    snapshot_root: Path | None = None,
+) -> PredictionMemberContextPayload:
+    root = snapshot_root if snapshot_root is not None else local_publish_root()
+    return load_prediction_member_context(root, member_bioguide_id)
+
+
 def load_local_member_history(
     slug: str,
     *,
@@ -90,6 +284,71 @@ def load_local_member_history(
 ) -> MemberHistoryPayload:
     root = snapshot_root if snapshot_root is not None else local_publish_root()
     return load_member_history(root, slug)
+
+
+def load_local_member_timeline_index(
+    slug: str,
+    *,
+    snapshot_root: Path | None = None,
+) -> MemberTimelineIndexPayload:
+    root = snapshot_root if snapshot_root is not None else local_publish_root()
+    return load_member_timeline_index(root, slug)
+
+
+def load_local_member_timeline_page(
+    slug: str,
+    page: int,
+    *,
+    snapshot_root: Path | None = None,
+) -> MemberTimelinePagePayload:
+    root = snapshot_root if snapshot_root is not None else local_publish_root()
+    return load_member_timeline_page(root, slug, page)
+
+
+def load_local_member_timeline_dimension(
+    slug: str,
+    dimension: str,
+    *,
+    snapshot_root: Path | None = None,
+) -> MemberTimelineDimensionPayload:
+    root = snapshot_root if snapshot_root is not None else local_publish_root()
+    return load_member_timeline_dimension(root, slug, dimension)
+
+
+def load_local_member_timeline_year(
+    slug: str,
+    year: int,
+    *,
+    snapshot_root: Path | None = None,
+) -> MemberTimelineYearPayload:
+    root = snapshot_root if snapshot_root is not None else local_publish_root()
+    return load_member_timeline_year(root, slug, year)
+
+
+def load_local_history_backfill_report(
+    target_root: Path,
+) -> HistoryBackfillReportPayload:
+    from src.runtime.history_backfill import load_history_backfill_report
+
+    return load_history_backfill_report(target_root)
+
+
+def load_local_history_event(
+    event_id: str,
+    *,
+    snapshot_root: Path | None = None,
+) -> MemberTimelineEventPayload:
+    root = snapshot_root if snapshot_root is not None else local_publish_root()
+    return load_history_event(root, event_id)
+
+
+def load_local_history_event_page(
+    event_id: str,
+    *,
+    snapshot_root: Path | None = None,
+) -> HistoryEventPagePayload:
+    root = snapshot_root if snapshot_root is not None else local_publish_root()
+    return load_history_event_page(root, event_id)
 
 
 def load_local_member_change_summary(
@@ -100,6 +359,24 @@ def load_local_member_change_summary(
     root = snapshot_root if snapshot_root is not None else local_publish_root()
     summary = load_member_change_summary(root, slug)
     return summary
+
+
+def load_local_member_history_coverage(
+    slug: str,
+    *,
+    snapshot_root: Path | None = None,
+) -> MemberHistoryCoveragePayload:
+    root = snapshot_root if snapshot_root is not None else local_publish_root()
+    coverage = load_member_history_coverage(root, slug)
+    return coverage
+
+
+def load_local_member_history_coverage_index(
+    *,
+    snapshot_root: Path | None = None,
+) -> MemberHistoryCoverageIndexPayload:
+    root = snapshot_root if snapshot_root is not None else local_publish_root()
+    return load_member_history_coverage_index(root)
 
 
 def load_local_member_history_chart(
@@ -204,6 +481,14 @@ def load_local_history_bootstrap(
     return load_history_bootstrap(root)
 
 
+def load_local_history_coverage(
+    *,
+    snapshot_root: Path | None = None,
+) -> HistoryCoveragePayload:
+    root = snapshot_root if snapshot_root is not None else local_publish_root()
+    return load_history_coverage(root)
+
+
 def load_local_history_preset_range(
     preset_key: str,
     *,
@@ -233,10 +518,11 @@ def load_local_snapshot_preset_compare(
 def load_local_movement_window(
     name: str = "latest",
     *,
+    dimension: str | None = None,
     snapshot_root: Path | None = None,
 ) -> MovementWindowPayload:
     root = snapshot_root if snapshot_root is not None else local_publish_root()
-    return load_movement_window(root, name)
+    return load_movement_window(root, name, dimension=dimension)
 
 
 # ── Manifest and snapshot resolution ──────────────────────────────

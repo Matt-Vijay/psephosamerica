@@ -23,21 +23,25 @@ def _chamber_from_raw(raw: str) -> str:
     return "house"
 
 
+def _identity_int(raw: Any, field_name: str) -> int:
+    if isinstance(raw, bool):
+        raise ValueError(f"{field_name} must be an integer")
+    return int(raw)
+
+
 def member_term_specs_from_detail(
     detail: dict[str, Any],
     member: MemberRecord,
 ) -> list[MemberTermSpec]:
     raw_terms = detail.get("terms", {})
-    items: list[dict[str, Any]] = (
-        raw_terms.get("item", []) if isinstance(raw_terms, dict) else []
-    )
+    items: list[dict[str, Any]] = raw_terms.get("item", []) if isinstance(raw_terms, dict) else []
 
     specs: list[MemberTermSpec] = []
     for item in items:
         congress_raw = item.get("congress")
         if congress_raw is None:
             continue
-        congress = int(congress_raw)
+        congress = _identity_int(congress_raw, "congress")
 
         start_date = _parse_term_date(item.get("startYear"))
         if start_date is None:
@@ -53,7 +57,7 @@ def member_term_specs_from_detail(
             district = None
         else:
             district_raw = item.get("district")
-            district = int(district_raw) if district_raw is not None else None
+            district = _identity_int(district_raw, "district") if district_raw is not None else None
 
         state = item.get("stateCode") or member.state
 

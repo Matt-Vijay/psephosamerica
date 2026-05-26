@@ -2,6 +2,7 @@
 
 No live DB. DB and pipeline boundaries are mocked at module-import paths.
 """
+
 from __future__ import annotations
 
 from datetime import date
@@ -32,7 +33,12 @@ _PUBLISH_SNAP = "src.runtime.publish.publish_snapshot_run"
 
 _SNAP_DATE = date(2026, 4, 14)
 _SNAP_ID = "2026-04-14"
-_DS_ROW = {"id": 7, "slug": "snapshot-publish", "name": "Published Score Snapshot", "source_kind": "artifact"}
+_DS_ROW = {
+    "id": 7,
+    "slug": "snapshot-publish",
+    "name": "Published Score Snapshot",
+    "source_kind": "artifact",
+}
 _RUN_ID = 42
 
 

@@ -47,9 +47,7 @@ def load_rules_from_directory(directory: Path) -> list[RuleDefinition]:
     if not directory.is_dir():
         raise RuleLoadError(directory, "not a directory")
 
-    rules: list[RuleDefinition] = [
-        load_rule(p) for p in sorted(directory.rglob("*.yaml"))
-    ]
+    rules: list[RuleDefinition] = [load_rule(p) for p in sorted(directory.rglob("*.yaml"))]
     return sorted(rules, key=lambda r: r.rule_id)
 
 

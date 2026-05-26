@@ -83,7 +83,7 @@ class TestRunVerifyPublishE2E:
         _, out = _run_and_parse(tmp_path, capsys)
         stages = out.get("stages", [])
         stage_names = {s["stage"] for s in stages}
-        assert {"manifest", "profiles", "evidence", "zip"} == stage_names
+        assert {"manifest", "profiles", "evidence", "ontology", "prediction", "zip"} == stage_names
 
     def test_multiple_members_and_cards_ok(self, tmp_path: Path, capsys) -> None:
         profiles = [

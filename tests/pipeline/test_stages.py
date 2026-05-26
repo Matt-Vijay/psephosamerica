@@ -22,6 +22,7 @@ from src.pipeline import (
 # Shared stage functions
 # ---------------------------------------------------------------------------
 
+
 def _ok_fn(context: dict, logs: list) -> dict:
     logs.append("ok ran")
     return {"status": "ok"}
@@ -44,6 +45,7 @@ def _ctx_reader_fn(context: dict, logs: list) -> str:
 # StageDefinition
 # ---------------------------------------------------------------------------
 
+
 class TestStageDefinition:
     def test_is_frozen(self):
         sd = StageDefinition(name="s", fn=_ok_fn)
@@ -62,6 +64,7 @@ class TestStageDefinition:
 # ---------------------------------------------------------------------------
 # StageResult properties and summary
 # ---------------------------------------------------------------------------
+
 
 class TestStageResult:
     def test_succeeded_flags(self):
@@ -101,6 +104,7 @@ class TestStageResult:
 # ---------------------------------------------------------------------------
 # run_stage
 # ---------------------------------------------------------------------------
+
 
 class TestRunStage:
     def test_success_returns_output(self):
@@ -180,6 +184,7 @@ class TestRunStage:
 # ---------------------------------------------------------------------------
 # run_pipeline
 # ---------------------------------------------------------------------------
+
 
 class TestRunPipeline:
     def _stages(self, pairs: list[tuple]) -> list[StageDefinition]:
@@ -284,6 +289,7 @@ class TestRunPipeline:
 # ProvenanceEmitter protocol
 # ---------------------------------------------------------------------------
 
+
 class TestProvenanceEmitterProtocol:
     def test_null_emitter_satisfies_protocol(self):
         assert isinstance(NullEmitter(), ProvenanceEmitter)
@@ -302,6 +308,7 @@ class TestProvenanceEmitterProtocol:
         class Partial:
             def on_stage_start(self, stage_name: str) -> None:
                 pass
+
             # missing on_stage_end
 
         assert not isinstance(Partial(), ProvenanceEmitter)

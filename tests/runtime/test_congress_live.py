@@ -25,6 +25,7 @@ from src.runtime.congress_live import run_live_congress_load
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 def _member(bioguide_id: str = "A000001") -> MemberRecord:
     return MemberRecord(
         bioguide_id=bioguide_id,
@@ -54,7 +55,9 @@ def _bill(bill_type: str = "hr", bill_number: int = 1) -> BillRecord:
     )
 
 
-def _cosponsor(bill_type: str = "hr", bill_number: int = 1, bioguide_id: str = "B000001") -> CosponsorRecord:
+def _cosponsor(
+    bill_type: str = "hr", bill_number: int = 1, bioguide_id: str = "B000001"
+) -> CosponsorRecord:
     return CosponsorRecord(
         congress=119,
         bill_type=bill_type,

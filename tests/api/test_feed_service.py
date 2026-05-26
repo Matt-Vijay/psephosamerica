@@ -5,10 +5,15 @@ from pathlib import Path
 
 import src.api as api
 from src.api.contracts import NotFoundBody
-from src.api.read_service import get_movement_feed, get_snapshot_summary
+from src.api.read_service import get_movement_feed, get_movement_window, get_snapshot_summary
 from src.export.local_store import HOMEPAGE_FEED_PATH
 from src.homepage.contracts import HomepageFeedPayload, MemberMovementSummary, RecentEventSummary
-from tests.support.published_snapshot_fixtures import make_snapshot, make_zip_feed
+from tests.support.published_snapshot_fixtures import (
+    make_evidence_card,
+    make_member_history,
+    make_snapshot,
+    make_zip_feed,
+)
 
 
 def _write_homepage_feed(root: Path) -> None:
@@ -74,7 +79,13 @@ def _write_homepage_feed(root: Path) -> None:
 
 
 def test_get_movement_feed_returns_wrapped_payload(tmp_path: Path) -> None:
-    make_snapshot(tmp_path)
+    make_snapshot(
+        tmp_path,
+        evidence_cards=[
+            make_evidence_card(evidence_card_id="ec-0001"),
+            make_evidence_card(evidence_card_id="ec-0002", member_slug="charles-schumer"),
+        ],
+    )
     _write_homepage_feed(tmp_path)
 
     result = get_movement_feed(snapshot_root=tmp_path)
@@ -83,10 +94,23 @@ def test_get_movement_feed_returns_wrapped_payload(tmp_path: Path) -> None:
     assert len(result.data.top_changes) == 2
     assert len(result.data.recent_events) == 2
     assert result.data.recent_evidence_card_ids == ["ec-0002", "ec-0001"]
+    assert [card.evidence_card_id for card in result.data.evidence_cards] == [
+        "ec-0001",
+        "ec-0002",
+    ]
+    assert result.data.missing_evidence_card_ids == []
+    first_card = result.data.model_dump(mode="json")["evidence_cards"][0]
+    assert first_card["primary_source_url"].startswith("https://disclosures.house.gov/")
 
 
 def test_get_movement_feed_supports_slicing(tmp_path: Path) -> None:
-    make_snapshot(tmp_path)
+    make_snapshot(
+        tmp_path,
+        evidence_cards=[
+            make_evidence_card(evidence_card_id="ec-0001"),
+            make_evidence_card(evidence_card_id="ec-0002", member_slug="charles-schumer"),
+        ],
+    )
     _write_homepage_feed(tmp_path)
 
     result = get_movement_feed(
@@ -99,6 +123,24 @@ def test_get_movement_feed_supports_slicing(tmp_path: Path) -> None:
     assert [change.slug for change in result.data.top_changes] == ["nancy-pelosi"]
     assert [event.feed_event_id for event in result.data.recent_events] == ["event-0002"]
     assert result.data.recent_evidence_card_ids == ["ec-0002"]
+    assert [card.evidence_card_id for card in result.data.evidence_cards] == [
+        "ec-0001",
+        "ec-0002",
+    ]
+    assert result.data.missing_evidence_card_ids == []
+
+
+def test_get_movement_feed_surfaces_missing_resolved_evidence_cards(
+    tmp_path: Path,
+) -> None:
+    make_snapshot(tmp_path)
+    _write_homepage_feed(tmp_path)
+
+    result = get_movement_feed(snapshot_root=tmp_path)
+
+    assert result.ok is True
+    assert [card.evidence_card_id for card in result.data.evidence_cards] == ["ec-0001"]
+    assert result.data.missing_evidence_card_ids == ["ec-0002"]
 
 
 def test_get_movement_feed_returns_not_found_without_homepage_feed(tmp_path: Path) -> None:
@@ -109,6 +151,50 @@ def test_get_movement_feed_returns_not_found_without_homepage_feed(tmp_path: Pat
     assert isinstance(result, NotFoundBody)
     assert result.resource_type == "movement_feed"
     assert result.identifier == "current"
+
+
+def test_get_movement_feed_returns_not_found_for_malformed_homepage_feed(
+    tmp_path: Path,
+) -> None:
+    make_snapshot(tmp_path)
+    feed_path = tmp_path / HOMEPAGE_FEED_PATH
+    feed_path.parent.mkdir(parents=True, exist_ok=True)
+    feed_path.write_text("{not valid json", encoding="utf-8")
+
+    result = get_movement_feed(snapshot_root=tmp_path)
+
+    assert isinstance(result, NotFoundBody)
+    assert result.resource_type == "movement_feed"
+    assert result.identifier == "current"
+
+
+def test_get_movement_window_hydrates_source_backed_evidence_cards(
+    tmp_path: Path,
+) -> None:
+    make_snapshot(tmp_path, member_histories=[make_member_history()])
+
+    result = get_movement_window(snapshot_root=tmp_path)
+
+    assert result.ok is True
+    assert [change.top_evidence_card_ids for change in result.data.top_changes] == [["ec-0001"]]
+    assert [card.evidence_card_id for card in result.data.evidence_cards] == ["ec-0001"]
+    assert result.data.missing_evidence_card_ids == []
+
+
+def test_get_movement_window_surfaces_missing_evidence_cards(
+    tmp_path: Path,
+) -> None:
+    make_snapshot(
+        tmp_path,
+        member_histories=[make_member_history()],
+        evidence_cards=[],
+    )
+
+    result = get_movement_window(snapshot_root=tmp_path)
+
+    assert result.ok is True
+    assert result.data.evidence_cards == []
+    assert result.data.missing_evidence_card_ids == ["ec-0001"]
 
 
 def test_get_snapshot_summary_returns_counts_from_latest_manifest(tmp_path: Path) -> None:

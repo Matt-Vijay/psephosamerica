@@ -28,7 +28,11 @@ from __future__ import annotations
 from typing import Any, Optional
 
 from src.runtime.disclosures_bundle import DisclosuresLookup
-from src.runtime.disclosures_index_rows import ArtifactIndexMatch, fetch_index_rows_for_artifacts
+from src.runtime.disclosures_index_rows import (
+    ArtifactIndexMatch,
+    fetch_index_rows_for_artifacts,
+    filing_year_or_none,
+)
 
 #: Canonical return type for both bundle and live index provider paths.
 #: One ArtifactIndexMatch per input artifact; order is preserved.
@@ -54,7 +58,11 @@ def bundle_index_matches(
         if chamber is None or year is None:
             matches.append(ArtifactIndexMatch(artifact=row, index_row=None))
             continue
-        lookup = bundle.get((chamber, int(year)), {})
+        filing_year = filing_year_or_none(year)
+        if filing_year is None:
+            matches.append(ArtifactIndexMatch(artifact=row, index_row=None))
+            continue
+        lookup = bundle.get((chamber, filing_year), {})
         doc_id = row.get("source_record_id") or ""
         matches.append(ArtifactIndexMatch(artifact=row, index_row=lookup.get(doc_id)))
     return matches

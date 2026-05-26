@@ -91,7 +91,9 @@ def _patch_all(
             patch(_START, return_value=run_id) as mock_start,
             patch(_FINISH) as mock_finish,
             patch(_FAIL) as mock_fail,
-            patch(_DISCOVER, return_value=metas if metas is not None else [_SENATE_META]) as mock_discover,
+            patch(
+                _DISCOVER, return_value=metas if metas is not None else [_SENATE_META]
+            ) as mock_discover,
             patch(_DOWNLOAD, return_value=_PDF) as mock_download,
             patch(_STORE, return_value=artifact_row or _ARTIFACT_ROW) as mock_store,
             patch(_WRITE) as mock_write,
@@ -270,6 +272,59 @@ class TestProvenanceOrdering:
 
 
 class TestFailureHandling:
+    def test_store_uses_outer_transaction(self):
+        conn = MagicMock()
+        with _patch_all() as mocks:
+            run_disclosure_artifact_ingest(conn, chamber="senate", year=2024)
+
+        assert mocks["store"].call_args.kwargs["commit"] is False
+
+    def test_store_error_rolls_back_partial_artifacts_before_marking_failed(self):
+        conn = MagicMock()
+        order: list[str] = []
+        conn.rollback.side_effect = lambda: order.append("rollback")
+
+        with (
+            patch(_ENSURE, return_value=_DS_ROW),
+            patch(_START, return_value=_RUN_ID),
+            patch(_FINISH),
+            patch(_FAIL, side_effect=lambda *a, **k: order.append("fail")),
+            patch(_DISCOVER, return_value=[_SENATE_META]),
+            patch(_DOWNLOAD, return_value=_PDF),
+            patch(_STORE, side_effect=RuntimeError("db error")),
+            patch(_WRITE),
+        ):
+            with pytest.raises(RuntimeError, match="db error"):
+                run_disclosure_artifact_ingest(conn, chamber="senate", year=2024)
+
+        assert order == ["rollback", "fail"]
+
+    def test_local_write_error_rolls_back_stored_artifact_before_marking_failed(self):
+        conn = MagicMock()
+        root = Path("/tmp/artifacts")
+        order: list[str] = []
+        conn.rollback.side_effect = lambda: order.append("rollback")
+
+        with (
+            patch(_ENSURE, return_value=_DS_ROW),
+            patch(_START, return_value=_RUN_ID),
+            patch(_FINISH),
+            patch(_FAIL, side_effect=lambda *a, **k: order.append("fail")),
+            patch(_DISCOVER, return_value=[_SENATE_META]),
+            patch(_DOWNLOAD, return_value=_PDF),
+            patch(_STORE, return_value=_ARTIFACT_ROW),
+            patch(_WRITE, side_effect=OSError("disk full")),
+        ):
+            with pytest.raises(OSError, match="disk full"):
+                run_disclosure_artifact_ingest(
+                    conn,
+                    chamber="senate",
+                    year=2024,
+                    local_root=root,
+                )
+
+        assert order == ["rollback", "fail"]
+
     def test_discover_error_marks_run_failed(self):
         conn = MagicMock()
         with (
@@ -353,9 +408,7 @@ class TestWiring:
             ds_row={"id": 3, "slug": "house-disclosures"},
             metas=[_HOUSE_META],
         ) as mocks:
-            run_disclosure_artifact_ingest(
-                conn, chamber="house", year=2024, filing_kind="ptr"
-            )
+            run_disclosure_artifact_ingest(conn, chamber="house", year=2024, filing_kind="ptr")
         args = mocks["ensure"].call_args[0]
         assert args[1] == "house-disclosures"
 
@@ -366,11 +419,12 @@ class TestWiring:
             run_disclosure_artifact_ingest(conn, chamber="senate", year=2024)
         assert mocks["start"].call_args[0][1] == 22
 
-    def test_start_uses_artifact_ingest_run_type(self):
+    def test_start_uses_schema_ingest_run_type_with_artifact_stage_parameter(self):
         conn = MagicMock()
         with _patch_all() as mocks:
             run_disclosure_artifact_ingest(conn, chamber="senate", year=2024)
-        assert mocks["start"].call_args[0][2] == "artifact_ingest"
+        assert mocks["start"].call_args[0][2] == "ingest"
+        assert mocks["start"].call_args.kwargs["parameters"]["stage"] == "artifact_ingest"
 
     def test_discover_receives_chamber_and_year(self):
         conn = MagicMock()
@@ -386,9 +440,7 @@ class TestWiring:
             ds_row={"id": 3, "slug": "house-disclosures"},
             metas=[_HOUSE_META],
         ) as mocks:
-            run_disclosure_artifact_ingest(
-                conn, chamber="house", year=2024, filing_kind="annual"
-            )
+            run_disclosure_artifact_ingest(conn, chamber="house", year=2024, filing_kind="annual")
         _, kwargs = mocks["discover"].call_args
         assert kwargs.get("filing_kind") == "annual"
 
@@ -396,9 +448,7 @@ class TestWiring:
         conn = MagicMock()
         fake_client = object()
         with _patch_all() as mocks:
-            run_disclosure_artifact_ingest(
-                conn, chamber="senate", year=2024, client=fake_client
-            )
+            run_disclosure_artifact_ingest(conn, chamber="senate", year=2024, client=fake_client)
         _, kwargs = mocks["discover"].call_args
         assert kwargs.get("client") is fake_client
 
@@ -412,7 +462,13 @@ class TestWiring:
         conn = MagicMock()
         with _patch_all() as mocks:
             run_disclosure_artifact_ingest(conn, chamber="senate", year=2024)
-        mocks["store"].assert_called_once_with(conn, _SENATE_META, _PDF)
+        mocks["store"].assert_called_once_with(
+            conn,
+            _SENATE_META,
+            _PDF,
+            ingestion_run_id=_RUN_ID,
+            commit=False,
+        )
 
     def test_finish_receives_stored_count(self):
         conn = MagicMock()
@@ -438,9 +494,7 @@ class TestLocalArtifactWrite:
         conn = MagicMock()
         root = Path("/tmp/artifacts")
         with _patch_all() as mocks:
-            run_disclosure_artifact_ingest(
-                conn, chamber="senate", year=2024, local_root=root
-            )
+            run_disclosure_artifact_ingest(conn, chamber="senate", year=2024, local_root=root)
         mocks["write"].assert_called_once_with(root, _SENATE_META, _PDF)
 
     def test_write_called_once_per_artifact(self):
@@ -448,9 +502,7 @@ class TestLocalArtifactWrite:
         root = Path("/tmp/artifacts")
         two_metas = [_SENATE_META, _SENATE_META]
         with _patch_all(metas=two_metas) as mocks:
-            run_disclosure_artifact_ingest(
-                conn, chamber="senate", year=2024, local_root=root
-            )
+            run_disclosure_artifact_ingest(conn, chamber="senate", year=2024, local_root=root)
         assert mocks["write"].call_count == 2
 
     def test_write_failure_marks_run_failed(self):
@@ -467,7 +519,5 @@ class TestLocalArtifactWrite:
             patch(_WRITE, side_effect=OSError("disk full")),
         ):
             with pytest.raises(OSError):
-                run_disclosure_artifact_ingest(
-                    conn, chamber="senate", year=2024, local_root=root
-                )
+                run_disclosure_artifact_ingest(conn, chamber="senate", year=2024, local_root=root)
         mock_fail.assert_called_once()

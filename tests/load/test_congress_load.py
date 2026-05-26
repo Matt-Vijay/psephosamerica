@@ -153,9 +153,7 @@ class TestPlanMemberTerms:
             record=house_member, congress=118, start_date=datetime.date(2023, 1, 3)
         )
         op = plan_member_terms([spec])
-        assert set(op["conflict_columns"]) == {
-            "member_id", "congress", "chamber", "start_date"
-        }
+        assert set(op["conflict_columns"]) == {"member_id", "congress", "chamber", "start_date"}
 
     def test_senator_district_forced_none(self, senate_member: MemberRecord) -> None:
         spec = MemberTermSpec(
@@ -341,8 +339,11 @@ class TestPlanBillSponsors:
 
     def test_cosponsor_only(self, bill_record: BillRecord) -> None:
         cosponsor = CosponsorRecord(
-            congress=118, bill_type="hr", bill_number=1,
-            bioguide_id="X000001", is_original=False,
+            congress=118,
+            bill_type="hr",
+            bill_number=1,
+            bioguide_id="X000001",
+            is_original=False,
         )
         op = plan_bill_sponsors([], [cosponsor])
         assert len(op["rows"]) == 1
@@ -376,7 +377,10 @@ class TestPlanVoteEvents:
     def test_conflict_columns(self, vote_event_record: VoteEventRecord) -> None:
         op = plan_vote_events([vote_event_record])
         assert set(op["conflict_columns"]) == {
-            "chamber", "congress", "session_number", "roll_call_number"
+            "chamber",
+            "congress",
+            "session_number",
+            "roll_call_number",
         }
 
     def test_row_fields(self, vote_event_record: VoteEventRecord) -> None:

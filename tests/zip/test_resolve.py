@@ -23,32 +23,68 @@ from src.zip.resolve import (
 # Fixtures
 # ---------------------------------------------------------------------------
 
-ZIP_SINGLE = "90210"   # maps to exactly one district
-ZIP_SPLIT  = "10001"   # maps to two districts (simulated)
-ZIP_NONE   = "00000"   # no mapping rows
+ZIP_SINGLE = "90210"  # maps to exactly one district
+ZIP_SPLIT = "10001"  # maps to two districts (simulated)
+ZIP_NONE = "00000"  # no mapping rows
 
 ZIP_DISTRICT_ROWS: list[ZipDistrictRow] = [
     ZipDistrictRow(zip5=ZIP_SINGLE, state="CA", district=33, population_share=1.0),
-    ZipDistrictRow(zip5=ZIP_SPLIT,  state="NY", district=12, population_share=0.65),
-    ZipDistrictRow(zip5=ZIP_SPLIT,  state="NY", district=10, population_share=0.35),
+    ZipDistrictRow(zip5=ZIP_SPLIT, state="NY", district=12, population_share=0.65),
+    ZipDistrictRow(zip5=ZIP_SPLIT, state="NY", district=10, population_share=0.35),
 ]
 
 DISTRICT_MEMBER_ROWS: list[DistrictMemberRow] = [
     DistrictMemberRow(
-        state="CA", district=33,
-        bioguide_id="B000001", full_name="Alice Brown", party="D", slug="alice-brown",
+        state="CA",
+        district=33,
+        bioguide_id="B000001",
+        full_name="Alice Brown",
+        party="D",
+        slug="alice-brown",
     ),
     DistrictMemberRow(
-        state="NY", district=12,
-        bioguide_id="C000002", full_name="Carlos Cruz", party="R", slug="carlos-cruz",
+        state="NY",
+        district=12,
+        bioguide_id="C000002",
+        full_name="Carlos Cruz",
+        party="R",
+        slug="carlos-cruz",
     ),
 ]
 
 SENATOR_ROWS: list[SenatorRow] = [
-    SenatorRow(state="CA", bioguide_id="D000003", full_name="Dana Davis",  party="D", slug="dana-davis",  seat=1),
-    SenatorRow(state="CA", bioguide_id="E000004", full_name="Eve Ellis",   party="D", slug="eve-ellis",   seat=2),
-    SenatorRow(state="NY", bioguide_id="F000005", full_name="Frank Ford",  party="D", slug="frank-ford",  seat=1),
-    SenatorRow(state="NY", bioguide_id="G000006", full_name="Grace Green", party="R", slug="grace-green", seat=2),
+    SenatorRow(
+        state="CA",
+        bioguide_id="D000003",
+        full_name="Dana Davis",
+        party="D",
+        slug="dana-davis",
+        seat=1,
+    ),
+    SenatorRow(
+        state="CA",
+        bioguide_id="E000004",
+        full_name="Eve Ellis",
+        party="D",
+        slug="eve-ellis",
+        seat=2,
+    ),
+    SenatorRow(
+        state="NY",
+        bioguide_id="F000005",
+        full_name="Frank Ford",
+        party="D",
+        slug="frank-ford",
+        seat=1,
+    ),
+    SenatorRow(
+        state="NY",
+        bioguide_id="G000006",
+        full_name="Grace Green",
+        party="R",
+        slug="grace-green",
+        seat=2,
+    ),
 ]
 
 
@@ -78,7 +114,7 @@ class TestSelectPluralityDistrict:
     def test_split_zip_selects_plurality(self) -> None:
         result = select_plurality_district(ZIP_SPLIT, ZIP_DISTRICT_ROWS)
         assert result is not None
-        assert result.district == 12   # 0.65 > 0.35
+        assert result.district == 12  # 0.65 > 0.35
         assert result.population_share == pytest.approx(0.65)
 
     def test_split_zip_is_ambiguous(self) -> None:
@@ -147,8 +183,8 @@ class TestFindSenators:
 
     def test_senators_ordered_by_seat(self) -> None:
         senators = find_senators("CA", SENATOR_ROWS)
-        assert senators[0].bioguide_id == "D000003"   # seat 1
-        assert senators[1].bioguide_id == "E000004"   # seat 2
+        assert senators[0].bioguide_id == "D000003"  # seat 1
+        assert senators[1].bioguide_id == "E000004"  # seat 2
 
     def test_senator_chamber_field(self) -> None:
         senators = find_senators("CA", SENATOR_ROWS)
@@ -209,10 +245,7 @@ class TestAssembleFederalBundle:
             ZIP_SINGLE, ZIP_DISTRICT_ROWS, DISTRICT_MEMBER_ROWS, SENATOR_ROWS
         )
         assert bundle is not None
-        all_members = (
-            ([bundle.house_member] if bundle.house_member else [])
-            + list(bundle.senators)
-        )
+        all_members = ([bundle.house_member] if bundle.house_member else []) + list(bundle.senators)
         assert len(all_members) == 3
 
     def test_split_zip_uses_plurality_district(self) -> None:
@@ -231,16 +264,12 @@ class TestAssembleFederalBundle:
 
     def test_house_member_none_when_no_district_row(self) -> None:
         # District 33 exists in zip_district_rows but not in district_member_rows
-        bundle = assemble_federal_bundle(
-            ZIP_SINGLE, ZIP_DISTRICT_ROWS, [], SENATOR_ROWS
-        )
+        bundle = assemble_federal_bundle(ZIP_SINGLE, ZIP_DISTRICT_ROWS, [], SENATOR_ROWS)
         assert bundle is not None
         assert bundle.house_member is None
 
     def test_senators_empty_when_no_senator_rows(self) -> None:
-        bundle = assemble_federal_bundle(
-            ZIP_SINGLE, ZIP_DISTRICT_ROWS, DISTRICT_MEMBER_ROWS, []
-        )
+        bundle = assemble_federal_bundle(ZIP_SINGLE, ZIP_DISTRICT_ROWS, DISTRICT_MEMBER_ROWS, [])
         assert bundle is not None
         assert bundle.senators == ()
 

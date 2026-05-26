@@ -8,8 +8,11 @@ import pytest
 
 from src.export.contracts import (
     ConfidenceLabel,
+    EvidenceBlock,
     EvidenceCardPayload,
+    EvidenceSection,
     MemberProfilePayload,
+    SourceAnchor,
     ZipFeedPayload,
 )
 from src.export.filesystem import write_planned_files
@@ -25,10 +28,18 @@ from src.export.writer import (
     member_path,
     zip_entry_path,
     zip_path,
+    ontology_edges_path,
+    ontology_member_edges_path,
 )
 from src.export.local_store import HOMEPAGE_FEED_PATH
 from src.homepage.contracts import HomepageFeedPayload
 from src.api.contracts import HomepageBootstrapPayload, MemberPagePayload, ZipEntryPayload
+from src.ontology.contracts import (
+    OntologyEdgePayload,
+    OntologyGraphPayload,
+    OntologyMemberGraphPayload,
+    OntologyNodeRef,
+)
 from src.runtime.inspect import (
     load_latest_local_manifest,
     load_latest_local_snapshot_metadata,
@@ -39,6 +50,8 @@ from src.runtime.inspect import (
     load_local_manifest,
     load_local_member_page,
     load_local_member_profile,
+    load_local_ontology_edges,
+    load_local_ontology_member_edges,
     load_local_zip_entry,
     load_local_zip_feed,
     search_local_current_member_lookup,
@@ -81,11 +94,60 @@ def _evidence() -> EvidenceCardPayload:
         rule_version=1,
         score_delta=-3.0,
         short_explanation="Trade overlapping committee jurisdiction.",
-        blocks=[],
-        source_anchors=[],
+        blocks=[
+            EvidenceBlock(section=EvidenceSection.FACT, text="PTR disclosed a trade."),
+        ],
+        source_anchors=[
+            SourceAnchor(
+                source_type="financial_disclosure",
+                source_id="fd-001",
+                url="https://disclosures.house.gov/public_disc/ptr-pdfs/2024/fd-001.pdf",
+                label="Financial disclosure",
+            )
+        ],
         confidence=ConfidenceLabel.MEDIUM,
         snapshot_date=SNAPSHOT_DATE,
         created_at=datetime(2026, 4, 14, 8, 0, 0),
+    )
+
+
+def _ontology_graph() -> OntologyGraphPayload:
+    edge = OntologyEdgePayload(
+        edge_id="ont-edge-inspect-001",
+        edge_type="member_committee_assignment",
+        subject=OntologyNodeRef(
+            node_type="member",
+            node_id="P000197",
+            label="Nancy Pelosi",
+        ),
+        object=OntologyNodeRef(
+            node_type="committee",
+            node_id="HSEC",
+            label="Energy",
+        ),
+        source_anchors=[
+            SourceAnchor(
+                source_type="committee_membership",
+                source_id="cm-inspect-1",
+                url="https://api.congress.gov/v3/committee/house/HSEC?format=json",
+                label="Committee membership",
+            )
+        ],
+    )
+    return OntologyGraphPayload(
+        snapshot_id=SNAPSHOT_ID,
+        edge_count=1,
+        edges=[edge],
+    )
+
+
+def _ontology_member_graph() -> OntologyMemberGraphPayload:
+    graph = _ontology_graph()
+    return OntologyMemberGraphPayload(
+        snapshot_id=SNAPSHOT_ID,
+        member_bioguide_id="P000197",
+        edge_count=1,
+        edges=graph.edges,
     )
 
 
@@ -100,10 +162,7 @@ def _zip_feed() -> ZipFeedPayload:
 
 
 def _manifest(files: list[PlannedFile]) -> SnapshotManifest:
-    entries = [
-        ManifestEntry(path=f.path, sha256=f.sha256, size_bytes=f.size_bytes)
-        for f in files
-    ]
+    entries = [ManifestEntry(path=f.path, sha256=f.sha256, size_bytes=f.size_bytes) for f in files]
     return SnapshotManifest(
         snapshot_id=SNAPSHOT_ID,
         created_at=datetime(2026, 4, 14, 0, 0, 0),
@@ -116,8 +175,11 @@ def _manifest(files: list[PlannedFile]) -> SnapshotManifest:
 
 def _serialise(model: object) -> bytes:
     from pydantic import BaseModel as _BM
+
     assert isinstance(model, _BM)
-    return json.dumps(model.model_dump(mode="json"), sort_keys=True, ensure_ascii=False).encode("utf-8")
+    return json.dumps(model.model_dump(mode="json"), sort_keys=True, ensure_ascii=False).encode(
+        "utf-8"
+    )
 
 
 def _homepage_feed() -> HomepageFeedPayload:
@@ -186,6 +248,11 @@ def _write_snapshot(root: Path, *, snapshot_id: str = SNAPSHOT_ID) -> None:
     files = [
         PlannedFile.from_bytes(member_path(member.slug), _serialise(member)),
         PlannedFile.from_bytes(evidence_path(evidence.evidence_card_id), _serialise(evidence)),
+        PlannedFile.from_bytes(ontology_edges_path(), _serialise(_ontology_graph())),
+        PlannedFile.from_bytes(
+            ontology_member_edges_path("P000197"),
+            _serialise(_ontology_member_graph()),
+        ),
         PlannedFile.from_bytes(zip_path(feed.zip_code), _serialise(feed)),
         PlannedFile.from_bytes(current_member_lookup_path(), _serialise(_current_member_lookup())),
     ]
@@ -282,6 +349,36 @@ def test_load_local_evidence_card_explicit_root(tmp_path: Path) -> None:
 def test_load_local_evidence_card_missing(tmp_path: Path) -> None:
     with pytest.raises(FileNotFoundError):
         load_local_evidence_card("ec-ghost", snapshot_root=tmp_path)
+
+
+# ── load_local_ontology_edges ──────────────────────────────────────
+
+
+def test_load_local_ontology_edges_explicit_root(tmp_path: Path) -> None:
+    _write_snapshot(tmp_path)
+    result = load_local_ontology_edges(snapshot_root=tmp_path)
+
+    assert result.edge_count == 1
+    assert result.edges[0].edge_id == "ont-edge-inspect-001"
+
+
+def test_load_local_ontology_edges_missing(tmp_path: Path) -> None:
+    with pytest.raises(FileNotFoundError):
+        load_local_ontology_edges(snapshot_root=tmp_path)
+
+
+def test_load_local_ontology_member_edges_explicit_root(tmp_path: Path) -> None:
+    _write_snapshot(tmp_path)
+    result = load_local_ontology_member_edges("P000197", snapshot_root=tmp_path)
+
+    assert result.member_bioguide_id == "P000197"
+    assert result.edge_count == 1
+    assert result.edges[0].edge_id == "ont-edge-inspect-001"
+
+
+def test_load_local_ontology_member_edges_missing(tmp_path: Path) -> None:
+    with pytest.raises(FileNotFoundError):
+        load_local_ontology_member_edges("P000197", snapshot_root=tmp_path)
 
 
 # ── load_local_zip_feed ────────────────────────────────────────────
@@ -417,7 +514,7 @@ def test_load_local_manifest_explicit_root(tmp_path: Path) -> None:
     result = load_local_manifest(SNAPSHOT_ID, snapshot_root=tmp_path)
     assert result.snapshot_id == SNAPSHOT_ID
     assert result.verify_counts() is True
-    assert result.total_files == 4
+    assert result.total_files == 6
     assert result.root_sha256 == manifest_root_sha256(result.entries)
 
 
@@ -442,7 +539,7 @@ def test_load_latest_local_manifest_single_snapshot(tmp_path: Path) -> None:
     result = load_latest_local_manifest(snapshot_root=tmp_path)
     assert result.snapshot_id == SNAPSHOT_ID
     assert result.verify_counts() is True
-    assert result.total_files == 4
+    assert result.total_files == 6
     assert result.root_sha256 == manifest_root_sha256(result.entries)
 
 
@@ -516,7 +613,9 @@ def test_load_local_current_member_lookup_default_root_is_publish_dir() -> None:
     from src.runtime.paths import local_publish_root
 
     sentinel = object()
-    with mock.patch("src.runtime.inspect.load_current_member_lookup", return_value=sentinel) as patched:
+    with mock.patch(
+        "src.runtime.inspect.load_current_member_lookup", return_value=sentinel
+    ) as patched:
         result = load_local_current_member_lookup()
     called_root = patched.call_args[0][0]
     assert called_root == local_publish_root()
@@ -535,7 +634,9 @@ def test_search_local_current_member_lookup_default_root_is_publish_dir() -> Non
     from src.runtime.paths import local_publish_root
 
     payload = _current_member_lookup()
-    with mock.patch("src.runtime.inspect.load_current_member_lookup", return_value=payload) as patched:
+    with mock.patch(
+        "src.runtime.inspect.load_current_member_lookup", return_value=payload
+    ) as patched:
         result = search_local_current_member_lookup("nancy pelosi")
     called_root = patched.call_args[0][0]
     assert called_root == local_publish_root()

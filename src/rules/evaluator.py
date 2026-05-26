@@ -150,6 +150,7 @@ def evaluate_rule(
         member_bioguide_id=member_bioguide_id,
         dimension=rule.dimension,
         severity=rule.severity,
+        source_types_required=list(rule.source_types_required),
         sourced_facts=dict(facts),
         derived_values={},
         parameters_used=dict(rule.parameters),

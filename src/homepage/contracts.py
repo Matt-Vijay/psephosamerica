@@ -9,12 +9,16 @@ from __future__ import annotations
 
 from datetime import date
 
-from pydantic import BaseModel, Field
+from pydantic import Field
 
-from src.export.contracts import MemberChangeSummaryPayload
+from src.export.contracts import (
+    EvidenceCardPayload,
+    ExportContractModel,
+    MemberChangeSummaryPayload,
+)
 
 
-class MemberMovementSummary(BaseModel):
+class MemberMovementSummary(ExportContractModel):
     """Per-member aggregate of score movement within a snapshot window."""
 
     bioguide_id: str
@@ -25,7 +29,7 @@ class MemberMovementSummary(BaseModel):
     state: str
     dimension: str
     score_delta: float  # net signed score movement; negative = penalty, positive = recovery
-    abs_delta: float    # always >= 0; used for ordering
+    abs_delta: float  # always >= 0; used for ordering
     event_count: int = Field(ge=1)
     top_evidence_card_ids: list[str] = Field(
         default_factory=list,
@@ -33,7 +37,7 @@ class MemberMovementSummary(BaseModel):
     )
 
 
-class RecentEventSummary(BaseModel):
+class RecentEventSummary(ExportContractModel):
     """One feed event for the homepage recent-events list.
 
     Lightweight: no block text, no source anchors.  Follow evidence_card_id
@@ -51,7 +55,7 @@ class RecentEventSummary(BaseModel):
     occurred_at: date
 
 
-class HomepageFeedPayload(BaseModel):
+class HomepageFeedPayload(ExportContractModel):
     """Top-level homepage/feed payload.
 
     Centered on movement — not a leaderboard.
@@ -68,10 +72,11 @@ class HomepageFeedPayload(BaseModel):
     recent_evidence_card_ids: list[str] = Field(default_factory=list)
 
 
-class MovementWindowPayload(BaseModel):
+class MovementWindowPayload(ExportContractModel):
     """Historical movement payload spanning the latest published window."""
 
     window_key: str = "latest"
+    dimension: str | None = None
     has_full_window: bool = True
     latest_snapshot_id: str
     latest_snapshot_date: date
@@ -80,9 +85,17 @@ class MovementWindowPayload(BaseModel):
     top_changes: list[MemberMovementSummary]
     recent_events: list[RecentEventSummary]
     recent_evidence_card_ids: list[str] = Field(default_factory=list)
+    evidence_cards: list[EvidenceCardPayload] = Field(
+        default_factory=list,
+        description="Resolved source-backed cards for displayed top changes and recent events.",
+    )
+    missing_evidence_card_ids: list[str] = Field(
+        default_factory=list,
+        description="Displayed evidence IDs that could not be resolved to sidecar payloads.",
+    )
 
 
-class SnapshotComparePayload(BaseModel):
+class SnapshotComparePayload(ExportContractModel):
     """Compare two published snapshots across the historical aggregate root."""
 
     start_snapshot_id: str
@@ -92,4 +105,12 @@ class SnapshotComparePayload(BaseModel):
     top_changes: list[MemberMovementSummary] = Field(default_factory=list)
     recent_events: list[RecentEventSummary] = Field(default_factory=list)
     recent_evidence_card_ids: list[str] = Field(default_factory=list)
+    evidence_cards: list[EvidenceCardPayload] = Field(
+        default_factory=list,
+        description="Resolved source-backed cards for displayed top changes and recent events.",
+    )
+    missing_evidence_card_ids: list[str] = Field(
+        default_factory=list,
+        description="Displayed evidence IDs that could not be resolved to sidecar payloads.",
+    )
     featured_member_changes: list[MemberChangeSummaryPayload] = Field(default_factory=list)

@@ -85,6 +85,7 @@ class FinancialDisclosurePayload:
     filing_period_start: Optional[date] = None
     filing_period_end: Optional[date] = None
     source_record_id: Optional[str] = None
+    source_artifact_id: Optional[int] = None
     source_artifact_sha256: Optional[str] = None
     # Natural key of the superseded filing; caller resolves to FK.
     supersedes_filing_source_id: Optional[str] = None
@@ -112,6 +113,7 @@ class HoldingPayload:
     income_label: Optional[str] = None
     is_liquid: Optional[bool] = None
     source_record_id: Optional[str] = None
+    source_artifact_id: Optional[int] = None
 
 
 @dataclass(frozen=True)
@@ -127,6 +129,7 @@ class TransactionPayload:
     amount_max: Optional[Decimal] = None
     amount_label: Optional[str] = None
     source_record_id: Optional[str] = None
+    source_artifact_id: Optional[int] = None
 
 
 @dataclass(frozen=True)
@@ -330,6 +333,7 @@ def _transform_holding(
         income_label=h.income_label,
         is_liquid=h.is_liquid,
         source_record_id=h.source_record_id,
+        source_artifact_id=ctx.source_artifact_id,
     )
 
 
@@ -401,6 +405,7 @@ def _transform_transaction(
         amount_max=amount_max,
         amount_label=t.amount_label,
         source_record_id=t.source_record_id,
+        source_artifact_id=ctx.source_artifact_id,
     )
 
 
@@ -474,6 +479,7 @@ def transform_filing(
         filing_period_start=filing.filing_period_start,
         filing_period_end=filing.filing_period_end,
         source_record_id=filing.source_record_id,
+        source_artifact_id=ctx.source_artifact_id,
         source_artifact_sha256=filing.source_artifact_sha256,
         supersedes_filing_source_id=filing.supersedes_filing_source_id,
     )
@@ -481,7 +487,10 @@ def transform_filing(
     # --- Amendment review item ---
     # Amendments always require a review-queue entry so an operator can link
     # the new row to the superseded filing and confirm the supersession chain.
-    _entity_key = filing.source_record_id or f"{filing.member_bioguide_id}:{filing.filing_year}:{filing.amendment_number}"
+    _entity_key = (
+        filing.source_record_id
+        or f"{filing.member_bioguide_id}:{filing.filing_year}:{filing.amendment_number}"
+    )
     if filing.is_amended or filing.filing_type.value == "amendment":
         review_items.append(
             _review(
@@ -559,19 +568,14 @@ def transform_filing(
         )
 
     # --- Holdings ---
-    holding_payloads = [
-        _transform_holding(h, ctx, review_items) for h in holdings
-    ]
+    holding_payloads = [_transform_holding(h, ctx, review_items) for h in holdings]
 
     # --- Transactions ---
-    transaction_payloads = [
-        _transform_transaction(t, ctx, review_items) for t in transactions
-    ]
+    transaction_payloads = [_transform_transaction(t, ctx, review_items) for t in transactions]
 
     # --- Outside positions (sidecar only) ---
     outside_position_sidecars = [
-        _transform_outside_position(op, ctx, review_items)
-        for op in outside_positions
+        _transform_outside_position(op, ctx, review_items) for op in outside_positions
     ]
 
     return DisclosureTransformResult(

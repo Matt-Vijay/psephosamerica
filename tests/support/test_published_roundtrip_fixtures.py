@@ -164,12 +164,7 @@ class TestPublishedRoundtripBuilderRoundtrip:
         # Member profile snapshot_date is derived from score_snapshot_rows["snapshot_at"],
         # not from the builder's snapshot_date.  The row set controls it.
         rs = make_member_row_set(snapshot_date=date(2025, 6, 15))
-        rt = (
-            PublishedRoundtripBuilder(tmp_path)
-            .with_member_row_sets([rs])
-            .build()
-            .roundtrip()
-        )
+        rt = PublishedRoundtripBuilder(tmp_path).with_member_row_sets([rs]).build().roundtrip()
         loaded = load_member_profile(tmp_path, "nancy-pelosi")
         assembled = assemble_from_member_row_set(rt.member_row_sets[0])
         assert loaded.snapshot_date == assembled.snapshot_date == date(2025, 6, 15)
@@ -207,7 +202,9 @@ class TestPublishedRoundtripBuilderOverrides:
 
     def test_no_zip_feeds_clears_zip_row_sets(self, tmp_path: Path) -> None:
         builder = PublishedRoundtripBuilder(tmp_path)
-        builder.with_zip_feed_row_sets([make_zip_feed_row_set(zip_code="10001")]).no_zip_feeds().build()
+        builder.with_zip_feed_row_sets(
+            [make_zip_feed_row_set(zip_code="10001")]
+        ).no_zip_feeds().build()
         assert not (tmp_path / "zip").exists()
 
     def test_multiple_member_row_sets_written(self, tmp_path: Path) -> None:
@@ -239,12 +236,7 @@ class TestPublishedRoundtripBuilderOverrides:
 
     def test_override_member_roundtrip_matches_rows(self, tmp_path: Path) -> None:
         rs = make_member_row_set(slug="test-member", bioguide_id="T000001", full_name="Test Member")
-        rt = (
-            PublishedRoundtripBuilder(tmp_path)
-            .with_member_row_sets([rs])
-            .build()
-            .roundtrip()
-        )
+        rt = PublishedRoundtripBuilder(tmp_path).with_member_row_sets([rs]).build().roundtrip()
         assembled = assemble_from_member_row_set(rt.member_row_sets[0])
         loaded = load_member_profile(tmp_path, "test-member")
         assert assembled == loaded
@@ -263,13 +255,10 @@ class TestPublishedRoundtripBuilderOverrides:
 
     def test_override_zip_feed_roundtrip_matches_rows(self, tmp_path: Path) -> None:
         rs = make_zip_feed_row_set(zip_code="90210")
-        rt = (
-            PublishedRoundtripBuilder(tmp_path)
-            .with_zip_feed_row_sets([rs])
-            .build()
-            .roundtrip()
+        rt = PublishedRoundtripBuilder(tmp_path).with_zip_feed_row_sets([rs]).build().roundtrip()
+        assembled = assemble_from_zip_feed_row_set(
+            rt.zip_feed_row_sets[0], snapshot_date=rt.snapshot_date
         )
-        assembled = assemble_from_zip_feed_row_set(rt.zip_feed_row_sets[0], snapshot_date=rt.snapshot_date)
         loaded = load_zip_feed(tmp_path, "90210")
         assert assembled == loaded
 
@@ -400,7 +389,9 @@ class TestMakeRoundtrip:
         rs = make_zip_feed_row_set(zip_code="12345")
         rt = make_roundtrip(tmp_path, zip_feed_row_sets=[rs])
         loaded = load_zip_feed(rt.snapshot.root, "12345")
-        assembled = assemble_from_zip_feed_row_set(rt.zip_feed_row_sets[0], snapshot_date=rt.snapshot_date)
+        assembled = assemble_from_zip_feed_row_set(
+            rt.zip_feed_row_sets[0], snapshot_date=rt.snapshot_date
+        )
         assert loaded == assembled
         assert loaded.zip_code == "12345"
 

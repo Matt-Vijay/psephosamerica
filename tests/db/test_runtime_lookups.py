@@ -35,7 +35,12 @@ CONN = MagicMock()  # stand-in; never called directly by the module under test
 
 
 def _member(id, bioguide_id, lis=None, fec_cand=None):
-    return {"id": id, "bioguide_id": bioguide_id, "lis_member_id": lis, "fec_candidate_id": fec_cand}
+    return {
+        "id": id,
+        "bioguide_id": bioguide_id,
+        "lis_member_id": lis,
+        "fec_candidate_id": fec_cand,
+    }
 
 
 def _committee(id, code, congress):
@@ -46,13 +51,14 @@ def _fec_committee(id, fec_id):
     return {"id": id, "fec_committee_id": fec_id}
 
 
-def _disclosure(id, member_id, filing_year, filing_type, amendment_number=0):
+def _disclosure(id, member_id, filing_year, filing_type, amendment_number=0, source_record_id=None):
     return {
         "id": id,
         "member_id": member_id,
         "filing_year": filing_year,
         "filing_type": filing_type,
         "amendment_number": amendment_number,
+        "source_record_id": source_record_id,
     }
 
 
@@ -89,11 +95,12 @@ def test_fetch_fec_committee_lookup_rows_delegates_and_returns():
 
 
 def test_fetch_financial_disclosure_lookup_rows_delegates_and_returns():
-    rows = [_disclosure(1, 10, 2023, "annual")]
+    rows = [_disclosure(1, 10, 2023, "annual", source_record_id="FILING-001")]
     with patch("src.db.runtime_lookups.fetch_all", return_value=rows) as mock_fa:
         result = fetch_financial_disclosure_lookup_rows(CONN)
     mock_fa.assert_called_once()
     assert mock_fa.call_args[0][0] is CONN
+    assert "source_record_id" in mock_fa.call_args[0][1]
     assert result == rows
 
 
@@ -104,6 +111,7 @@ def test_fetch_financial_disclosure_lookup_rows_delegates_and_returns():
 
 def _side_effect_for(member_rows, committee_rows, fec_rows, disc_rows):
     """Return a side_effect function that dispatches by SQL keyword."""
+
     def _se(conn, sql, params=None):
         sql_l = sql.lower()
         if "financial_disclosure" in sql_l:
@@ -115,6 +123,7 @@ def _side_effect_for(member_rows, committee_rows, fec_rows, disc_rows):
         if "member" in sql_l:
             return member_rows
         return []
+
     return _se
 
 
@@ -126,8 +135,12 @@ def test_load_lookup_bundle_builds_correct_maps():
     committee_rows = [_committee(10, "SSAF", 119), _committee(11, "HJUD", 119)]
     fec_rows = [_fec_committee(20, "C00000001")]
     disc_rows = [
-        _disclosure(30, member_id=1, filing_year=2023, filing_type="annual"),
-        _disclosure(31, member_id=2, filing_year=2023, filing_type="ptr"),
+        _disclosure(
+            30, member_id=1, filing_year=2023, filing_type="annual", source_record_id="FILING-001"
+        ),
+        _disclosure(
+            31, member_id=2, filing_year=2023, filing_type="ptr", source_record_id="FILING-002"
+        ),
     ]
 
     with patch(
@@ -145,6 +158,10 @@ def test_load_lookup_bundle_builds_correct_maps():
         (1, 2023, "annual", 0): 30,
         (2, 2023, "ptr", 0): 31,
     }
+    assert bundle.disclosure_source_record_id_map == {
+        "FILING-001": 30,
+        "FILING-002": 31,
+    }
 
 
 def test_load_lookup_bundle_empty_tables():
@@ -155,6 +172,7 @@ def test_load_lookup_bundle_empty_tables():
     assert bundle.committee_code_map == {}
     assert bundle.fec_committee_map == {}
     assert bundle.disclosure_natural_key_map == {}
+    assert bundle.disclosure_source_record_id_map == {}
 
 
 def test_load_lookup_bundle_to_maps_structure():
@@ -172,6 +190,7 @@ def test_load_lookup_bundle_to_maps_structure():
         "committee_code_map",
         "raw_id_maps",
         "disclosure_natural_key_map",
+        "disclosure_source_record_id_map",
     }
     assert set(maps["raw_id_maps"].keys()) == {"fec_candidate_id", "fec_committee_id"}
 

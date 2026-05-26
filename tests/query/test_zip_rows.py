@@ -75,9 +75,7 @@ class TestFetchZipMemberSummaryRows:
             {**self._ROW, "bioguide_id": "B000002", "rule_fire_count": 1},
         ]
         with patch(MODULE, return_value=rows):
-            result = fetch_zip_member_summary_rows(
-                CONN, bioguide_ids=["A000001", "B000002"]
-            )
+            result = fetch_zip_member_summary_rows(CONN, bioguide_ids=["A000001", "B000002"])
         assert len(result) == 2
         assert {r["bioguide_id"] for r in result} == {"A000001", "B000002"}
 
@@ -100,24 +98,18 @@ class TestFetchRecentEvidenceIdsByBioguide:
 
     def test_returns_empty_dict_when_no_cards(self):
         with patch(MODULE, return_value=[]):
-            result = fetch_recent_evidence_ids_by_bioguide(
-                CONN, bioguide_ids=["A000001"]
-            )
+            result = fetch_recent_evidence_ids_by_bioguide(CONN, bioguide_ids=["A000001"])
         assert result == {}
 
     def test_accepts_set_of_bioguide_ids(self):
         with patch(MODULE, return_value=[]) as mock_fa:
-            fetch_recent_evidence_ids_by_bioguide(
-                CONN, bioguide_ids={"A000001", "B000002"}
-            )
+            fetch_recent_evidence_ids_by_bioguide(CONN, bioguide_ids={"A000001", "B000002"})
         params = mock_fa.call_args[0][2]
         assert set(params["bioguide_ids"]) == {"A000001", "B000002"}
 
     def test_passes_bioguide_ids_as_list(self):
         with patch(MODULE, return_value=[]) as mock_fa:
-            fetch_recent_evidence_ids_by_bioguide(
-                CONN, bioguide_ids=["A000001"]
-            )
+            fetch_recent_evidence_ids_by_bioguide(CONN, bioguide_ids=["A000001"])
         params = mock_fa.call_args[0][2]
         assert isinstance(params["bioguide_ids"], list)
 
@@ -146,16 +138,12 @@ class TestFetchRecentEvidenceIdsByBioguide:
             {"bioguide_id": "A000001", "public_id": "ec_oldest"},
         ]
         with patch(MODULE, return_value=raw_rows):
-            result = fetch_recent_evidence_ids_by_bioguide(
-                CONN, bioguide_ids=["A000001"]
-            )
+            result = fetch_recent_evidence_ids_by_bioguide(CONN, bioguide_ids=["A000001"])
         assert result["A000001"] == ["ec_newest", "ec_older", "ec_oldest"]
 
     def test_member_not_in_input_excluded(self):
         """Only requested bioguide_ids should appear; DB does the filtering."""
         raw_rows = [{"bioguide_id": "A000001", "public_id": "ec_111"}]
         with patch(MODULE, return_value=raw_rows):
-            result = fetch_recent_evidence_ids_by_bioguide(
-                CONN, bioguide_ids=["A000001"]
-            )
+            result = fetch_recent_evidence_ids_by_bioguide(CONN, bioguide_ids=["A000001"])
         assert "B000002" not in result

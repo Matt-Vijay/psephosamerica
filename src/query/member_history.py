@@ -42,8 +42,7 @@ def _normalize_snapshots(snapshot_rows: list[dict[str, Any]]) -> list[MemberHist
                     None if previous_total is None else score_total - previous_total
                 ),
                 dimension_scores={
-                    key: float(value)
-                    for key, value in (row.get("dimension_scores") or {}).items()
+                    key: float(value) for key, value in (row.get("dimension_scores") or {}).items()
                 },
                 published_at=row.get("published_at"),
             )

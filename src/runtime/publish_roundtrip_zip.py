@@ -16,6 +16,7 @@ crosswalk files.  The DB-sourced fields — per-member score summaries and
 top evidence card IDs — are re-fetched and compared against the published
 values, which is the meaningful roundtrip boundary.
 """
+
 from __future__ import annotations
 
 from datetime import date
@@ -62,7 +63,7 @@ _ZIP_ENTRY_SUFFIX = ".json"
 def _zip_code_from_path(path: str) -> str | None:
     """Extract zip code from a manifest path like ``zip/90210.json``."""
     if path.startswith(_ZIP_PREFIX) and path.endswith(_ZIP_SUFFIX):
-        name = path[len(_ZIP_PREFIX): -len(_ZIP_SUFFIX)]
+        name = path[len(_ZIP_PREFIX) : -len(_ZIP_SUFFIX)]
         if name:
             return name
     return None
@@ -152,112 +153,126 @@ def _compare_payloads(
     issues: list[PublishRoundtripIssue] = []
 
     if published.zip_code != reassembled.zip_code:
-        issues.append(PublishRoundtripIssue(
-            stage=_STAGE,
-            message=(
-                f"zip_code mismatch in {path}: "
-                f"published={published.zip_code!r}, reassembled={reassembled.zip_code!r}"
-            ),
-            severity="error",
-            path=path,
-        ))
+        issues.append(
+            PublishRoundtripIssue(
+                stage=_STAGE,
+                message=(
+                    f"zip_code mismatch in {path}: "
+                    f"published={published.zip_code!r}, reassembled={reassembled.zip_code!r}"
+                ),
+                severity="error",
+                path=path,
+            )
+        )
 
     if published.congressional_district != reassembled.congressional_district:
-        issues.append(PublishRoundtripIssue(
-            stage=_STAGE,
-            message=(
-                f"congressional_district mismatch in {path}: "
-                f"published={published.congressional_district!r}, "
-                f"reassembled={reassembled.congressional_district!r}"
-            ),
-            severity="error",
-            path=path,
-        ))
+        issues.append(
+            PublishRoundtripIssue(
+                stage=_STAGE,
+                message=(
+                    f"congressional_district mismatch in {path}: "
+                    f"published={published.congressional_district!r}, "
+                    f"reassembled={reassembled.congressional_district!r}"
+                ),
+                severity="error",
+                path=path,
+            )
+        )
 
     if published.ambiguity_note != reassembled.ambiguity_note:
-        issues.append(PublishRoundtripIssue(
-            stage=_STAGE,
-            message=(
-                f"ambiguity_note mismatch in {path}: "
-                f"published={published.ambiguity_note!r}, "
-                f"reassembled={reassembled.ambiguity_note!r}"
-            ),
-            severity="error",
-            path=path,
-        ))
+        issues.append(
+            PublishRoundtripIssue(
+                stage=_STAGE,
+                message=(
+                    f"ambiguity_note mismatch in {path}: "
+                    f"published={published.ambiguity_note!r}, "
+                    f"reassembled={reassembled.ambiguity_note!r}"
+                ),
+                severity="error",
+                path=path,
+            )
+        )
 
     if published.snapshot_date != reassembled.snapshot_date:
-        issues.append(PublishRoundtripIssue(
-            stage=_STAGE,
-            message=(
-                f"snapshot_date mismatch in {path}: "
-                f"published={published.snapshot_date!r}, reassembled={reassembled.snapshot_date!r}"
-            ),
-            severity="error",
-            path=path,
-        ))
+        issues.append(
+            PublishRoundtripIssue(
+                stage=_STAGE,
+                message=(
+                    f"snapshot_date mismatch in {path}: "
+                    f"published={published.snapshot_date!r}, reassembled={reassembled.snapshot_date!r}"
+                ),
+                severity="error",
+                path=path,
+            )
+        )
 
     published_members = [_member_identity(member) for member in published.members]
     reassembled_members = [_member_identity(member) for member in reassembled.members]
     if published_members != reassembled_members:
-        issues.append(PublishRoundtripIssue(
-            stage=_STAGE,
-            message=(
-                f"members mismatch in {path}: "
-                f"published={published_members!r}, reassembled={reassembled_members!r}"
-            ),
-            severity="error",
-            path=path,
-        ))
+        issues.append(
+            PublishRoundtripIssue(
+                stage=_STAGE,
+                message=(
+                    f"members mismatch in {path}: "
+                    f"published={published_members!r}, reassembled={reassembled_members!r}"
+                ),
+                severity="error",
+                path=path,
+            )
+        )
 
     reassembled_by_bioguide = {m.bioguide_id: m for m in reassembled.members}
     published_by_bioguide = {m.bioguide_id: m for m in published.members}
 
     for bio_id, pub_member in published_by_bioguide.items():
         if bio_id not in reassembled_by_bioguide:
-            issues.append(PublishRoundtripIssue(
-                stage=_STAGE,
-                message=(
-                    f"member {bio_id!r} present in published payload but absent "
-                    f"from reassembled payload ({path})"
-                ),
-                severity="error",
-                path=path,
-            ))
+            issues.append(
+                PublishRoundtripIssue(
+                    stage=_STAGE,
+                    message=(
+                        f"member {bio_id!r} present in published payload but absent "
+                        f"from reassembled payload ({path})"
+                    ),
+                    severity="error",
+                    path=path,
+                )
+            )
             continue
 
         re_member = reassembled_by_bioguide[bio_id]
 
         pub_scores = sorted(
-            (s.dimension, s.current_score, s.rule_fire_count)
-            for s in pub_member.scores
+            (s.dimension, s.current_score, s.rule_fire_count) for s in pub_member.scores
         )
         re_scores = sorted(
-            (s.dimension, s.current_score, s.rule_fire_count)
-            for s in re_member.scores
+            (s.dimension, s.current_score, s.rule_fire_count) for s in re_member.scores
         )
         if pub_scores != re_scores:
-            issues.append(PublishRoundtripIssue(
-                stage=_STAGE,
-                message=(
-                    f"score mismatch for member {bio_id!r} in {path}: "
-                    f"published={pub_scores!r}, reassembled={re_scores!r}"
-                ),
-                severity="error",
-                path=path,
-            ))
+            issues.append(
+                PublishRoundtripIssue(
+                    stage=_STAGE,
+                    message=(
+                        f"score mismatch for member {bio_id!r} in {path}: "
+                        f"published={pub_scores!r}, reassembled={re_scores!r}"
+                    ),
+                    severity="error",
+                    path=path,
+                )
+            )
 
         if pub_member.top_evidence_card_ids != re_member.top_evidence_card_ids:
-            issues.append(PublishRoundtripIssue(
-                stage=_STAGE,
-                message=(
-                    f"top_evidence_card_ids mismatch for member {bio_id!r} in {path}: "
-                    f"published={pub_member.top_evidence_card_ids!r}, "
-                    f"reassembled={re_member.top_evidence_card_ids!r}"
-                ),
-                severity="error",
-                path=path,
-            ))
+            issues.append(
+                PublishRoundtripIssue(
+                    stage=_STAGE,
+                    message=(
+                        f"top_evidence_card_ids mismatch for member {bio_id!r} in {path}: "
+                        f"published={pub_member.top_evidence_card_ids!r}, "
+                        f"reassembled={re_member.top_evidence_card_ids!r}"
+                    ),
+                    severity="error",
+                    path=path,
+                )
+            )
 
     return issues
 
@@ -297,6 +312,10 @@ def _build_expected_zip_entry(
         artifact_counts=ArtifactCounts(
             members=sum(1 for path in artifact_paths if path.startswith("members/")),
             evidence=sum(1 for path in artifact_paths if path.startswith("evidence/")),
+            ontology_edges=sum(1 for path in artifact_paths if path == "ontology/edges.json"),
+            ontology_member_graphs=sum(
+                1 for path in artifact_paths if path.startswith("ontology/members/")
+            ),
             zip_feeds=sum(1 for path in artifact_paths if path.startswith("zip/")),
             homepage_feeds=1,
             current_member_lookups=sum(
@@ -323,26 +342,32 @@ def _compare_zip_entry_payloads(
 ) -> list[PublishRoundtripIssue]:
     issues: list[PublishRoundtripIssue] = []
     if published.snapshot != expected.snapshot:
-        issues.append(PublishRoundtripIssue(
-            stage=_STAGE,
-            message="zip-entry snapshot mismatch",
-            severity="error",
-            path=path,
-        ))
+        issues.append(
+            PublishRoundtripIssue(
+                stage=_STAGE,
+                message="zip-entry snapshot mismatch",
+                severity="error",
+                path=path,
+            )
+        )
     if published.zip_feed != expected.zip_feed:
-        issues.append(PublishRoundtripIssue(
-            stage=_STAGE,
-            message="zip-entry zip_feed mismatch",
-            severity="error",
-            path=path,
-        ))
+        issues.append(
+            PublishRoundtripIssue(
+                stage=_STAGE,
+                message="zip-entry zip_feed mismatch",
+                severity="error",
+                path=path,
+            )
+        )
     if published.member_lookup_entries != expected.member_lookup_entries:
-        issues.append(PublishRoundtripIssue(
-            stage=_STAGE,
-            message="zip-entry member_lookup_entries mismatch",
-            severity="error",
-            path=path,
-        ))
+        issues.append(
+            PublishRoundtripIssue(
+                stage=_STAGE,
+                message="zip-entry member_lookup_entries mismatch",
+                severity="error",
+                path=path,
+            )
+        )
     return issues
 
 
@@ -404,45 +429,53 @@ def verify_published_zip_roundtrip(
         try:
             published = load_zip_feed(root, zip_code)
         except FileNotFoundError:
-            issues.append(PublishRoundtripIssue(
-                stage=_STAGE,
-                message=f"zip feed file missing: {path}",
-                severity="error",
-                path=path,
-            ))
+            issues.append(
+                PublishRoundtripIssue(
+                    stage=_STAGE,
+                    message=f"zip feed file missing: {path}",
+                    severity="error",
+                    path=path,
+                )
+            )
             continue
         except Exception as exc:
-            issues.append(PublishRoundtripIssue(
-                stage=_STAGE,
-                message=f"zip feed failed to load ({path}): {exc}",
-                severity="error",
-                path=path,
-            ))
+            issues.append(
+                PublishRoundtripIssue(
+                    stage=_STAGE,
+                    message=f"zip feed failed to load ({path}): {exc}",
+                    severity="error",
+                    path=path,
+                )
+            )
             continue
 
         if published.zip_code != zip_code:
-            issues.append(PublishRoundtripIssue(
-                stage=_STAGE,
-                message=(
-                    f"zip_code mismatch for {path}: "
-                    f"manifest={zip_code!r}, published={published.zip_code!r}"
-                ),
-                severity="error",
-                path=path,
-            ))
+            issues.append(
+                PublishRoundtripIssue(
+                    stage=_STAGE,
+                    message=(
+                        f"zip_code mismatch for {path}: "
+                        f"manifest={zip_code!r}, published={published.zip_code!r}"
+                    ),
+                    severity="error",
+                    path=path,
+                )
+            )
             continue
 
         bundle = _bundle_from_payload(published)
         if bundle is None:
-            issues.append(PublishRoundtripIssue(
-                stage=_STAGE,
-                message=(
-                    f"cannot reconstruct federal bundle from published payload ({path}): "
-                    f"congressional_district={published.congressional_district!r}"
-                ),
-                severity="error",
-                path=path,
-            ))
+            issues.append(
+                PublishRoundtripIssue(
+                    stage=_STAGE,
+                    message=(
+                        f"cannot reconstruct federal bundle from published payload ({path}): "
+                        f"congressional_district={published.congressional_district!r}"
+                    ),
+                    severity="error",
+                    path=path,
+                )
+            )
             continue
 
         refs = []
@@ -461,20 +494,24 @@ def verify_published_zip_roundtrip(
         try:
             published_zip_entry = load_zip_entry(root, zip_code)
         except FileNotFoundError:
-            issues.append(PublishRoundtripIssue(
-                stage=_STAGE,
-                message=f"zip entry file missing: {zip_entry_path}",
-                severity="error",
-                path=zip_entry_path,
-            ))
+            issues.append(
+                PublishRoundtripIssue(
+                    stage=_STAGE,
+                    message=f"zip entry file missing: {zip_entry_path}",
+                    severity="error",
+                    path=zip_entry_path,
+                )
+            )
             continue
         except Exception as exc:
-            issues.append(PublishRoundtripIssue(
-                stage=_STAGE,
-                message=f"zip entry failed to load ({zip_entry_path}): {exc}",
-                severity="error",
-                path=zip_entry_path,
-            ))
+            issues.append(
+                PublishRoundtripIssue(
+                    stage=_STAGE,
+                    message=f"zip entry failed to load ({zip_entry_path}): {exc}",
+                    severity="error",
+                    path=zip_entry_path,
+                )
+            )
             continue
 
         expected_zip_entry = _build_expected_zip_entry(
@@ -487,7 +524,9 @@ def verify_published_zip_roundtrip(
             issues.append(expected_zip_entry)
             continue
 
-        issues.extend(_compare_zip_entry_payloads(published_zip_entry, expected_zip_entry, zip_entry_path))
+        issues.extend(
+            _compare_zip_entry_payloads(published_zip_entry, expected_zip_entry, zip_entry_path)
+        )
 
     return PublishRoundtripStageResult(
         stage=_STAGE,

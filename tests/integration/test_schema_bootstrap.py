@@ -54,9 +54,7 @@ EXPECTED_TABLES = {
 
 def _existing_tables(conn) -> set[str]:
     with conn.cursor() as cur:
-        cur.execute(
-            "SELECT tablename FROM pg_tables WHERE schemaname = current_schema()"
-        )
+        cur.execute("SELECT tablename FROM pg_tables WHERE schemaname = current_schema()")
         return {row[0] for row in cur.fetchall()}
 
 
@@ -311,9 +309,7 @@ class TestRuntimeBootstrapCommand:
 
 @REAL_PG_REQUIRED
 class TestDisposableSchemaLifecycle:
-    def test_wrapped_migration_stays_isolated_and_connection_remains_usable(
-        self, pg_conn_clean
-    ):
+    def test_wrapped_migration_stays_isolated_and_connection_remains_usable(self, pg_conn_clean):
         conn = pg_conn_clean
 
         apply_sql(conn, read_migration_sql())

@@ -84,6 +84,7 @@ _SNAPSHOT_B: dict[str, Any] = {
 # fetch_recompute_members
 # ---------------------------------------------------------------------------
 
+
 class TestFetchRecomputeMembers:
     def test_all_current_members_when_no_filter(self):
         with patch(MODULE, return_value=[_MEMBER_ROW_A, _MEMBER_ROW_B]) as mock_fa:
@@ -147,6 +148,7 @@ class TestFetchRecomputeMembers:
 # fetch_previous_score_snapshot_rows
 # ---------------------------------------------------------------------------
 
+
 class TestFetchPreviousScoreSnapshotRows:
     def test_returns_snapshot_rows(self):
         with patch(MODULE, return_value=[_SNAPSHOT_A_RECENT]) as mock_fa:
@@ -202,6 +204,7 @@ class TestFetchPreviousScoreSnapshotRows:
 # ---------------------------------------------------------------------------
 # index_latest_previous_snapshots
 # ---------------------------------------------------------------------------
+
 
 class TestIndexLatestPreviousSnapshots:
     def test_indexes_single_member(self):

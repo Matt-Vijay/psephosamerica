@@ -135,7 +135,7 @@ def _make_disclosures_bundle(*, include_house: bool = True) -> DisclosuresBundle
         "chamber": "house",
         "filing_year": 2024,
         "storage_uri": "house/2024/99001.pdf",
-        "source_url": "https://disclosures.house.gov/public_disc/ptr-pdfs/2024/99001.pdf",
+        "source_url": "https://disclosures.house.gov/public_disc/financial-pdfs/2024/99001.pdf",
         "source_slug": "house_disclosures",
         "artifact_kind": "pdf",
         "sha256": _SHA256,
@@ -296,6 +296,7 @@ class TestRealInputObjectTypes:
 
     def test_bundle_artifact_index_row_is_typed(self) -> None:
         from src.runtime.disclosures_bundle import HouseBundledIndexRow
+
         bundle = _make_disclosures_bundle()
         assert isinstance(bundle.artifacts[0].index_row, HouseBundledIndexRow)
 
@@ -570,6 +571,7 @@ class TestCongressArchiveReadsRealFiles:
         with patch(_CONGRESS_LOAD_RT, side_effect=_capture_and_return):
             from src.runtime.congress_archive import run_congress_archive_load
             from src.runtime.congress_options import CongressLoadOptions
+
             run_congress_archive_load(
                 conn,
                 archive_path,
@@ -599,6 +601,7 @@ class TestDisclosuresBundleValidation:
     def test_real_bundle_passes_validation(self) -> None:
         """_validate_bundle accepts a real DisclosuresBundle without raising."""
         from src.runtime.disclosures_bundle_process import _validate_bundle
+
         bundle = _make_disclosures_bundle()
         # Should not raise
         _validate_bundle(bundle)
@@ -606,6 +609,7 @@ class TestDisclosuresBundleValidation:
     def test_bundle_provider_built_from_real_artifacts(self) -> None:
         """_BundleIndexProvider indexes real bundle artifacts."""
         from src.runtime.disclosures_bundle_process import _BundleIndexProvider
+
         bundle = _make_disclosures_bundle(include_house=True)
         provider = _BundleIndexProvider(bundle)
         # The one artifact should be indexed under (chamber, year, source_record_id)
@@ -614,11 +618,13 @@ class TestDisclosuresBundleValidation:
 
     def test_empty_bundle_passes_validation(self) -> None:
         from src.runtime.disclosures_bundle_process import _validate_bundle
+
         bundle = _make_disclosures_bundle(include_house=False)
         _validate_bundle(bundle)  # must not raise
 
     def test_empty_bundle_provider_has_empty_lookup(self) -> None:
         from src.runtime.disclosures_bundle_process import _BundleIndexProvider
+
         bundle = _make_disclosures_bundle(include_house=False)
         provider = _BundleIndexProvider(bundle)
         assert len(provider._lookup) == 0
@@ -680,6 +686,7 @@ class TestBundleProcessAlignmentInOracle:
     def test_bundle_index_provider_indexes_oracle_bundle_artifact(self) -> None:
         """_BundleIndexProvider built from _make_disclosures_bundle indexes correctly."""
         from src.runtime.disclosures_bundle_process import _BundleIndexProvider
+
         bundle = _make_disclosures_bundle(include_house=True)
         provider = _BundleIndexProvider(bundle)
 
@@ -689,6 +696,7 @@ class TestBundleProcessAlignmentInOracle:
 
     def test_bundle_index_provider_resolves_artifact_row_for_oracle_bundle(self) -> None:
         from src.runtime.disclosures_bundle_process import _BundleIndexProvider
+
         bundle = _make_disclosures_bundle(include_house=True)
         provider = _BundleIndexProvider(bundle)
 
@@ -726,6 +734,7 @@ class TestBundleProcessAlignmentInOracle:
             patch(_PUBLISH_RT, return_value=_fake_publish_result()),
         ):
             import pytest
+
             with pytest.raises(TypeError, match="artifacts"):
                 run_oracle_local(conn, archive, object(), opts)
 
@@ -734,6 +743,7 @@ class TestBundleProcessAlignmentInOracle:
     def test_richer_bundle_index_row_fields_accessible(self) -> None:
         """All typed fields on HouseBundledIndexRow are accessible from oracle bundle."""
         from src.runtime.disclosures_bundle_process import _BundleIndexProvider
+
         bundle = _make_disclosures_bundle(include_house=True)
         provider = _BundleIndexProvider(bundle)
         row = {"id": 1, "chamber": "house", "filing_year": 2024, "source_record_id": "99001"}

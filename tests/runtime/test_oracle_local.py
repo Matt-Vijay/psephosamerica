@@ -21,6 +21,12 @@ import pytest
 
 from src.pipeline.recompute_run import RecomputeRunResult
 from src.export.manifest import manifest_root_sha256
+from src.runtime.disclosures_bundle import (
+    DisclosureArtifactEntry,
+    DisclosuresBundle,
+    HouseBundledIndexRow,
+    SenateBundledIndexRow,
+)
 from src.runtime.oracle_contracts import (
     CongressOracleOptions,
     CongressStageSummary,
@@ -81,6 +87,7 @@ _OPTIONS_WITH_SNAPSHOT_ID = LocalOracleOptions(
 
 try:
     from src.runtime.publish_verify import verify_local_publish as _check_import  # noqa: F401
+
     _VERIFY_AVAILABLE = True
 except (ImportError, AttributeError):
     _VERIFY_AVAILABLE = False
@@ -113,8 +120,83 @@ def _fake_disclosures_result() -> MagicMock:
     return r
 
 
+def _fake_scoped_disclosures_result(
+    *,
+    run_id: int,
+    source_slug: str,
+    parse_succeeded: int,
+    parse_failed: int = 0,
+    transform_count: int | None = None,
+    total_written: int | None = None,
+    load_ok: bool = True,
+) -> MagicMock:
+    r = MagicMock()
+    r.load_result.run_id = run_id
+    r.load_result.data_source = {"slug": source_slug}
+    r.load_result.load_summary.total_written = (
+        total_written if total_written is not None else parse_succeeded
+    )
+    r.load_result.load_summary.ok = load_ok
+    r.parse_result.succeeded_count = parse_succeeded
+    r.parse_result.failed_count = parse_failed
+    r.transform_count = transform_count if transform_count is not None else parse_succeeded
+    return r
+
+
+def _house_bundle_entry(source_record_id: str) -> DisclosureArtifactEntry:
+    return DisclosureArtifactEntry(
+        source_record_id=source_record_id,
+        chamber="house",
+        filing_year=2024,
+        storage_uri=f"house/2024/{source_record_id}.pdf",
+        source_url=(
+            f"https://disclosures.house.gov/public_disc/financial-pdfs/2024/{source_record_id}.pdf"
+        ),
+        source_slug="house_disclosures",
+        artifact_kind="pdf",
+        sha256="a" * 64,
+        index_row=HouseBundledIndexRow(
+            last_name="Smith",
+            first_name="Jane",
+            suffix="",
+            raw_filing_type="O",
+            state_dst="CA08",
+            filing_date="2024-01-15",
+            doc_id=source_record_id,
+            filing_kind="annual",
+        ),
+    )
+
+
+def _senate_bundle_entry(source_record_id: str) -> DisclosureArtifactEntry:
+    return DisclosureArtifactEntry(
+        source_record_id=source_record_id,
+        chamber="senate",
+        filing_year=2024,
+        storage_uri=f"senate/2024/{source_record_id}.pdf",
+        source_url=f"https://efdsearch.senate.gov/search/view/paper/{source_record_id}/",
+        source_slug="senate_disclosures",
+        artifact_kind="pdf",
+        sha256="b" * 64,
+        index_row=SenateBundledIndexRow(
+            first_name="John",
+            last_name="Doe",
+            office="Senator, CA",
+            report_type="Annual Report for CY2023",
+            date_filed="01/15/2024",
+            doc_id=source_record_id,
+        ),
+    )
+
+
+def _house_only_bundle() -> DisclosuresBundle:
+    return DisclosuresBundle(artifacts=(_house_bundle_entry("HOUSE-ONLY-001"),))
+
+
 def _fake_recompute_result() -> RuntimeRecomputeResult:
-    inner = RecomputeRunResult(rule_fires=["fire1", "fire2"], evidence_cards=["card1"], load_summary=None)
+    inner = RecomputeRunResult(
+        rule_fires=["fire1", "fire2"], evidence_cards=["card1"], load_summary=None
+    )
     return RuntimeRecomputeResult(
         data_source={"id": 5, "slug": "conflict-recompute"},
         run_id=7,
@@ -124,8 +206,10 @@ def _fake_recompute_result() -> RuntimeRecomputeResult:
 
 def _fake_publish_result() -> PublishRuntimeResult:
     publish_inner = MagicMock()
+    publish_inner.planned_count = 43
     publish_inner.written_count = 42
     publish_inner.succeeded = True
+    publish_inner.verification_failures = []
     return PublishRuntimeResult(
         data_source={"id": 6, "slug": "snapshot-publish"},
         run_id=9,
@@ -255,7 +339,9 @@ class TestRunOracleLocalResultShape:
 
         with (
             patch(f"{_MODULE}.run_congress_archive_load", return_value=_fake_congress_result()),
-            patch(f"{_MODULE}.run_disclosures_bundle_process", return_value=_fake_disclosures_result()),
+            patch(
+                f"{_MODULE}.run_disclosures_bundle_process", return_value=_fake_disclosures_result()
+            ),
             patch(f"{_MODULE}.run_recompute_runtime", return_value=_fake_recompute_result()),
             patch(f"{_MODULE}.run_publish_runtime", return_value=_fake_publish_result()),
             patch(f"{_MODULE}._run_verify", return_value=_fake_verify_result()),
@@ -271,7 +357,9 @@ class TestRunOracleLocalResultShape:
 
         with (
             patch(f"{_MODULE}.run_congress_archive_load", return_value=_fake_congress_result()),
-            patch(f"{_MODULE}.run_disclosures_bundle_process", return_value=_fake_disclosures_result()),
+            patch(
+                f"{_MODULE}.run_disclosures_bundle_process", return_value=_fake_disclosures_result()
+            ),
             patch(f"{_MODULE}.run_recompute_runtime", return_value=_fake_recompute_result()),
             patch(f"{_MODULE}.run_publish_runtime", return_value=_fake_publish_result()),
             patch(f"{_MODULE}._run_verify", return_value=_fake_verify_result()),
@@ -287,7 +375,9 @@ class TestRunOracleLocalResultShape:
 
         with (
             patch(f"{_MODULE}.run_congress_archive_load", return_value=_fake_congress_result()),
-            patch(f"{_MODULE}.run_disclosures_bundle_process", return_value=_fake_disclosures_result()),
+            patch(
+                f"{_MODULE}.run_disclosures_bundle_process", return_value=_fake_disclosures_result()
+            ),
             patch(f"{_MODULE}.run_recompute_runtime", return_value=_fake_recompute_result()),
             patch(f"{_MODULE}.run_publish_runtime", return_value=_fake_publish_result()),
             patch(f"{_MODULE}._run_verify", return_value=_fake_verify_result()),
@@ -303,7 +393,9 @@ class TestRunOracleLocalResultShape:
 
         with (
             patch(f"{_MODULE}.run_congress_archive_load", return_value=_fake_congress_result()),
-            patch(f"{_MODULE}.run_disclosures_bundle_process", return_value=_fake_disclosures_result()),
+            patch(
+                f"{_MODULE}.run_disclosures_bundle_process", return_value=_fake_disclosures_result()
+            ),
             patch(f"{_MODULE}.run_recompute_runtime", return_value=_fake_recompute_result()),
             patch(f"{_MODULE}.run_publish_runtime", return_value=_fake_publish_result()),
             patch(f"{_MODULE}._run_verify", return_value=_fake_verify_result()),
@@ -319,7 +411,9 @@ class TestRunOracleLocalResultShape:
 
         with (
             patch(f"{_MODULE}.run_congress_archive_load", return_value=_fake_congress_result()),
-            patch(f"{_MODULE}.run_disclosures_bundle_process", return_value=_fake_disclosures_result()),
+            patch(
+                f"{_MODULE}.run_disclosures_bundle_process", return_value=_fake_disclosures_result()
+            ),
             patch(f"{_MODULE}.run_recompute_runtime", return_value=_fake_recompute_result()),
             patch(f"{_MODULE}.run_publish_runtime", return_value=_fake_publish_result()),
             patch(f"{_MODULE}._run_verify", return_value=_fake_verify_result()),
@@ -339,7 +433,9 @@ class TestRunOracleLocalResultShape:
 
         with (
             patch(f"{_MODULE}.run_congress_archive_load", return_value=_fake_congress_result()),
-            patch(f"{_MODULE}.run_disclosures_bundle_process", return_value=_fake_disclosures_result()),
+            patch(
+                f"{_MODULE}.run_disclosures_bundle_process", return_value=_fake_disclosures_result()
+            ),
             patch(f"{_MODULE}.run_recompute_runtime", return_value=_fake_recompute_result()),
             patch(f"{_MODULE}.run_publish_runtime", return_value=_fake_publish_result()),
             patch(f"{_MODULE}._run_verify", return_value=_fake_verify_result()),
@@ -360,7 +456,9 @@ class TestRunOracleLocalResultShape:
 
         with (
             patch(f"{_MODULE}.run_congress_archive_load", return_value=_fake_congress_result()),
-            patch(f"{_MODULE}.run_disclosures_bundle_process", return_value=_fake_disclosures_result()),
+            patch(
+                f"{_MODULE}.run_disclosures_bundle_process", return_value=_fake_disclosures_result()
+            ),
             patch(f"{_MODULE}.run_recompute_runtime", return_value=_fake_recompute_result()),
             patch(f"{_MODULE}.run_publish_runtime", return_value=_fake_publish_result()),
             patch(f"{_MODULE}._run_verify", return_value=_fake_verify_result()),
@@ -379,7 +477,9 @@ class TestRunOracleLocalResultShape:
 
         with (
             patch(f"{_MODULE}.run_congress_archive_load", return_value=_fake_congress_result()),
-            patch(f"{_MODULE}.run_disclosures_bundle_process", return_value=_fake_disclosures_result()),
+            patch(
+                f"{_MODULE}.run_disclosures_bundle_process", return_value=_fake_disclosures_result()
+            ),
             patch(f"{_MODULE}.run_recompute_runtime", return_value=_fake_recompute_result()),
             patch(f"{_MODULE}.run_publish_runtime", return_value=_fake_publish_result()),
             patch(f"{_MODULE}._run_verify", return_value=_fake_verify_result()),
@@ -389,8 +489,10 @@ class TestRunOracleLocalResultShape:
 
         assert "run_id" in result.publish
         assert "snapshot_id" in result.publish
+        assert "planned_count" in result.publish
         assert "written_count" in result.publish
         assert "succeeded" in result.publish
+        assert "verification_failures" in result.publish
 
     def test_verify_field_is_publish_verify_result(self):
         conn = MagicMock()
@@ -398,7 +500,9 @@ class TestRunOracleLocalResultShape:
 
         with (
             patch(f"{_MODULE}.run_congress_archive_load", return_value=_fake_congress_result()),
-            patch(f"{_MODULE}.run_disclosures_bundle_process", return_value=_fake_disclosures_result()),
+            patch(
+                f"{_MODULE}.run_disclosures_bundle_process", return_value=_fake_disclosures_result()
+            ),
             patch(f"{_MODULE}.run_recompute_runtime", return_value=_fake_recompute_result()),
             patch(f"{_MODULE}.run_publish_runtime", return_value=_fake_publish_result()),
             patch(f"{_MODULE}._run_verify", return_value=_fake_verify_result()),
@@ -414,7 +518,9 @@ class TestRunOracleLocalResultShape:
 
         with (
             patch(f"{_MODULE}.run_congress_archive_load", return_value=_fake_congress_result()),
-            patch(f"{_MODULE}.run_disclosures_bundle_process", return_value=_fake_disclosures_result()),
+            patch(
+                f"{_MODULE}.run_disclosures_bundle_process", return_value=_fake_disclosures_result()
+            ),
             patch(f"{_MODULE}.run_recompute_runtime", return_value=_fake_recompute_result()),
             patch(f"{_MODULE}.run_publish_runtime", return_value=_fake_publish_result()),
             patch(f"{_MODULE}._run_verify", return_value=_fake_verify_result()),
@@ -430,7 +536,9 @@ class TestRunOracleLocalResultShape:
 
         with (
             patch(f"{_MODULE}.run_congress_archive_load", return_value=_fake_congress_result()),
-            patch(f"{_MODULE}.run_disclosures_bundle_process", return_value=_fake_disclosures_result()),
+            patch(
+                f"{_MODULE}.run_disclosures_bundle_process", return_value=_fake_disclosures_result()
+            ),
             patch(f"{_MODULE}.run_recompute_runtime", return_value=_fake_recompute_result()),
             patch(f"{_MODULE}.run_publish_runtime", return_value=_fake_publish_result()),
             patch(f"{_MODULE}._run_verify", return_value=_fake_verify_result()),
@@ -446,7 +554,9 @@ class TestRunOracleLocalResultShape:
 
         with (
             patch(f"{_MODULE}.run_congress_archive_load", return_value=_fake_congress_result()),
-            patch(f"{_MODULE}.run_disclosures_bundle_process", return_value=_fake_disclosures_result()),
+            patch(
+                f"{_MODULE}.run_disclosures_bundle_process", return_value=_fake_disclosures_result()
+            ),
             patch(f"{_MODULE}.run_recompute_runtime", return_value=_fake_recompute_result()),
             patch(f"{_MODULE}.run_publish_runtime", return_value=_fake_publish_result()),
             patch(f"{_MODULE}._run_verify", return_value=_fake_verify_result()),
@@ -468,8 +578,12 @@ class TestRunOracleLocalArgForwarding:
         bundle = MagicMock()
 
         with (
-            patch(f"{_MODULE}.run_congress_archive_load", return_value=_fake_congress_result()) as m_congress,
-            patch(f"{_MODULE}.run_disclosures_bundle_process", return_value=_fake_disclosures_result()),
+            patch(
+                f"{_MODULE}.run_congress_archive_load", return_value=_fake_congress_result()
+            ) as m_congress,
+            patch(
+                f"{_MODULE}.run_disclosures_bundle_process", return_value=_fake_disclosures_result()
+            ),
             patch(f"{_MODULE}.run_recompute_runtime", return_value=_fake_recompute_result()),
             patch(f"{_MODULE}.run_publish_runtime", return_value=_fake_publish_result()),
             patch(f"{_MODULE}._run_verify", return_value=_fake_verify_result()),
@@ -481,6 +595,7 @@ class TestRunOracleLocalArgForwarding:
         assert args[0] is conn
         assert args[1] == _ARCHIVE
         from src.runtime.congress_options import CongressLoadOptions
+
         assert isinstance(args[2], CongressLoadOptions)
         assert args[2].congress == _CONGRESS
 
@@ -489,8 +604,12 @@ class TestRunOracleLocalArgForwarding:
         bundle = MagicMock()
 
         with (
-            patch(f"{_MODULE}.run_congress_archive_load", return_value=_fake_congress_result()) as m_congress,
-            patch(f"{_MODULE}.run_disclosures_bundle_process", return_value=_fake_disclosures_result()),
+            patch(
+                f"{_MODULE}.run_congress_archive_load", return_value=_fake_congress_result()
+            ) as m_congress,
+            patch(
+                f"{_MODULE}.run_disclosures_bundle_process", return_value=_fake_disclosures_result()
+            ),
             patch(f"{_MODULE}.run_recompute_runtime", return_value=_fake_recompute_result()),
             patch(f"{_MODULE}.run_publish_runtime", return_value=_fake_publish_result()),
             patch(f"{_MODULE}._run_verify", return_value=_fake_verify_result()),
@@ -517,7 +636,9 @@ class TestRunOracleLocalArgForwarding:
 
         with (
             patch(f"{_MODULE}.run_congress_archive_load", return_value=_fake_congress_result()),
-            patch(f"{_MODULE}.run_disclosures_bundle_process", return_value=_fake_disclosures_result()),
+            patch(
+                f"{_MODULE}.run_disclosures_bundle_process", return_value=_fake_disclosures_result()
+            ),
             patch(f"{_MODULE}.run_recompute_runtime", return_value=_fake_recompute_result()),
             patch(f"{_MODULE}.run_publish_runtime", return_value=_fake_publish_result()),
             patch(f"{_MODULE}._run_verify", return_value=_fake_verify_result()),
@@ -534,11 +655,13 @@ class TestRunOracleLocalArgForwarding:
 
     def test_disclosures_bundle_process_receives_conn_and_bundle(self):
         conn = MagicMock()
-        bundle = MagicMock()
+        bundle = _house_only_bundle()
 
         with (
             patch(f"{_MODULE}.run_congress_archive_load", return_value=_fake_congress_result()),
-            patch(f"{_MODULE}.run_disclosures_bundle_process", return_value=_fake_disclosures_result()) as m_disc,
+            patch(
+                f"{_MODULE}.run_disclosures_bundle_process", return_value=_fake_disclosures_result()
+            ) as m_disc,
             patch(f"{_MODULE}.run_recompute_runtime", return_value=_fake_recompute_result()),
             patch(f"{_MODULE}.run_publish_runtime", return_value=_fake_publish_result()),
             patch(f"{_MODULE}._run_verify", return_value=_fake_verify_result()),
@@ -548,15 +671,17 @@ class TestRunOracleLocalArgForwarding:
 
         args, kwargs = m_disc.call_args
         assert args[0] is conn
-        assert args[1] is bundle
+        assert args[1] == bundle
 
     def test_disclosures_bundle_process_passes_artifact_root(self):
         conn = MagicMock()
-        bundle = MagicMock()
+        bundle = _house_only_bundle()
 
         with (
             patch(f"{_MODULE}.run_congress_archive_load", return_value=_fake_congress_result()),
-            patch(f"{_MODULE}.run_disclosures_bundle_process", return_value=_fake_disclosures_result()) as m_disc,
+            patch(
+                f"{_MODULE}.run_disclosures_bundle_process", return_value=_fake_disclosures_result()
+            ) as m_disc,
             patch(f"{_MODULE}.run_recompute_runtime", return_value=_fake_recompute_result()),
             patch(f"{_MODULE}.run_publish_runtime", return_value=_fake_publish_result()),
             patch(f"{_MODULE}._run_verify", return_value=_fake_verify_result()),
@@ -569,11 +694,13 @@ class TestRunOracleLocalArgForwarding:
 
     def test_disclosures_bundle_process_local_root_none_when_absent(self):
         conn = MagicMock()
-        bundle = MagicMock()
+        bundle = _house_only_bundle()
 
         with (
             patch(f"{_MODULE}.run_congress_archive_load", return_value=_fake_congress_result()),
-            patch(f"{_MODULE}.run_disclosures_bundle_process", return_value=_fake_disclosures_result()) as m_disc,
+            patch(
+                f"{_MODULE}.run_disclosures_bundle_process", return_value=_fake_disclosures_result()
+            ) as m_disc,
             patch(f"{_MODULE}.run_recompute_runtime", return_value=_fake_recompute_result()),
             patch(f"{_MODULE}.run_publish_runtime", return_value=_fake_publish_result()),
             patch(f"{_MODULE}._run_verify", return_value=_fake_verify_result()),
@@ -584,14 +711,115 @@ class TestRunOracleLocalArgForwarding:
         kwargs = m_disc.call_args.kwargs
         assert kwargs.get("local_root") is None
 
+    def test_disclosures_bundle_process_scopes_bundle_by_requested_chamber_and_limit(self):
+        conn = MagicMock()
+        bundle = DisclosuresBundle(
+            artifacts=(
+                _house_bundle_entry("HOUSE-001"),
+                _senate_bundle_entry("SEN-001"),
+                _house_bundle_entry("HOUSE-002"),
+            )
+        )
+        options = LocalOracleOptions(
+            congress_options=CongressOracleOptions(
+                congress=118,
+                chamber="house",
+                limit=1,
+                congress_source="current-date-default",
+            ),
+            snapshot_date=_SNAPSHOT_DATE,
+            target_dir=_TARGET_DIR,
+        )
+
+        with (
+            patch(f"{_MODULE}.run_congress_archive_load", return_value=_fake_congress_result()),
+            patch(
+                f"{_MODULE}.run_disclosures_bundle_process",
+                return_value=_fake_scoped_disclosures_result(
+                    run_id=11,
+                    source_slug="house_disclosures",
+                    parse_succeeded=1,
+                ),
+            ) as m_disc,
+            patch(f"{_MODULE}.run_recompute_runtime", return_value=_fake_recompute_result()),
+            patch(f"{_MODULE}.run_publish_runtime", return_value=_fake_publish_result()),
+            patch(f"{_MODULE}._run_verify", return_value=_fake_verify_result()),
+            patch(f"{_MODULE}._run_roundtrip", return_value=_fake_roundtrip_result()),
+        ):
+            result = run_oracle_local(conn, _ARCHIVE, bundle, options)
+
+        scoped_bundle = m_disc.call_args.args[1]
+        assert [entry.source_record_id for entry in scoped_bundle.artifacts] == ["HOUSE-001"]
+        assert result.disclosures["processed_artifact_count"] == 1
+        assert result.disclosures["source_slugs"] == ["house_disclosures"]
+
+    def test_disclosures_bundle_process_splits_mixed_bundle_by_source_slug(self):
+        conn = MagicMock()
+        bundle = DisclosuresBundle(
+            artifacts=(
+                _house_bundle_entry("HOUSE-001"),
+                _senate_bundle_entry("SEN-001"),
+                _house_bundle_entry("HOUSE-002"),
+            )
+        )
+
+        with (
+            patch(f"{_MODULE}.run_congress_archive_load", return_value=_fake_congress_result()),
+            patch(
+                f"{_MODULE}.run_disclosures_bundle_process",
+                side_effect=[
+                    _fake_scoped_disclosures_result(
+                        run_id=21,
+                        source_slug="house_disclosures",
+                        parse_succeeded=2,
+                        total_written=2,
+                    ),
+                    _fake_scoped_disclosures_result(
+                        run_id=22,
+                        source_slug="senate_disclosures",
+                        parse_succeeded=1,
+                        total_written=1,
+                    ),
+                ],
+            ) as m_disc,
+            patch(f"{_MODULE}.run_recompute_runtime", return_value=_fake_recompute_result()),
+            patch(f"{_MODULE}.run_publish_runtime", return_value=_fake_publish_result()),
+            patch(f"{_MODULE}._run_verify", return_value=_fake_verify_result()),
+            patch(f"{_MODULE}._run_roundtrip", return_value=_fake_roundtrip_result()),
+        ):
+            result = run_oracle_local(conn, _ARCHIVE, bundle, _OPTIONS)
+
+        assert m_disc.call_count == 2
+        house_bundle = m_disc.call_args_list[0].args[1]
+        senate_bundle = m_disc.call_args_list[1].args[1]
+        assert [entry.source_record_id for entry in house_bundle.artifacts] == [
+            "HOUSE-001",
+            "HOUSE-002",
+        ]
+        assert [entry.source_record_id for entry in senate_bundle.artifacts] == ["SEN-001"]
+        assert result.disclosures["run_id"] is None
+        assert result.disclosures["run_ids"] == [21, 22]
+        assert result.disclosures["source_slug"] is None
+        assert result.disclosures["source_slugs"] == [
+            "house_disclosures",
+            "senate_disclosures",
+        ]
+        assert result.disclosures["parse_succeeded"] == 3
+        assert result.disclosures["total_written"] == 3
+        assert result.disclosures["processed_artifact_count"] == 3
+
     def test_recompute_receives_conn_and_snapshot_date(self):
         conn = MagicMock()
         bundle = MagicMock()
 
         with (
             patch(f"{_MODULE}.run_congress_archive_load", return_value=_fake_congress_result()),
-            patch(f"{_MODULE}.run_disclosures_bundle_process", return_value=_fake_disclosures_result()),
-            patch(f"{_MODULE}.run_recompute_runtime", return_value=_fake_recompute_result()) as m_recompute,
+            patch(
+                f"{_MODULE}.run_disclosures_bundle_process", return_value=_fake_disclosures_result()
+            ),
+            patch(
+                f"{_MODULE}.run_recompute_runtime", return_value=_fake_recompute_result()
+            ) as m_recompute,
             patch(f"{_MODULE}.run_publish_runtime", return_value=_fake_publish_result()),
             patch(f"{_MODULE}._run_verify", return_value=_fake_verify_result()),
             patch(f"{_MODULE}._run_roundtrip", return_value=_fake_roundtrip_result()),
@@ -608,9 +836,13 @@ class TestRunOracleLocalArgForwarding:
 
         with (
             patch(f"{_MODULE}.run_congress_archive_load", return_value=_fake_congress_result()),
-            patch(f"{_MODULE}.run_disclosures_bundle_process", return_value=_fake_disclosures_result()),
+            patch(
+                f"{_MODULE}.run_disclosures_bundle_process", return_value=_fake_disclosures_result()
+            ),
             patch(f"{_MODULE}.run_recompute_runtime", return_value=_fake_recompute_result()),
-            patch(f"{_MODULE}.run_publish_runtime", return_value=_fake_publish_result()) as m_publish,
+            patch(
+                f"{_MODULE}.run_publish_runtime", return_value=_fake_publish_result()
+            ) as m_publish,
             patch(f"{_MODULE}._run_verify", return_value=_fake_verify_result()),
             patch(f"{_MODULE}._run_roundtrip", return_value=_fake_roundtrip_result()),
         ):
@@ -627,9 +859,13 @@ class TestRunOracleLocalArgForwarding:
 
         with (
             patch(f"{_MODULE}.run_congress_archive_load", return_value=_fake_congress_result()),
-            patch(f"{_MODULE}.run_disclosures_bundle_process", return_value=_fake_disclosures_result()),
+            patch(
+                f"{_MODULE}.run_disclosures_bundle_process", return_value=_fake_disclosures_result()
+            ),
             patch(f"{_MODULE}.run_recompute_runtime", return_value=_fake_recompute_result()),
-            patch(f"{_MODULE}.run_publish_runtime", return_value=_fake_publish_result()) as m_publish,
+            patch(
+                f"{_MODULE}.run_publish_runtime", return_value=_fake_publish_result()
+            ) as m_publish,
             patch(f"{_MODULE}._run_verify", return_value=_fake_verify_result()),
             patch(f"{_MODULE}._run_roundtrip", return_value=_fake_roundtrip_result()),
         ):
@@ -645,9 +881,13 @@ class TestRunOracleLocalArgForwarding:
 
         with (
             patch(f"{_MODULE}.run_congress_archive_load", return_value=_fake_congress_result()),
-            patch(f"{_MODULE}.run_disclosures_bundle_process", return_value=_fake_disclosures_result()),
+            patch(
+                f"{_MODULE}.run_disclosures_bundle_process", return_value=_fake_disclosures_result()
+            ),
             patch(f"{_MODULE}.run_recompute_runtime", return_value=_fake_recompute_result()),
-            patch(f"{_MODULE}.run_publish_runtime", return_value=_fake_publish_result()) as m_publish,
+            patch(
+                f"{_MODULE}.run_publish_runtime", return_value=_fake_publish_result()
+            ) as m_publish,
             patch(f"{_MODULE}._run_verify", return_value=_fake_verify_result()),
             patch(f"{_MODULE}._run_roundtrip", return_value=_fake_roundtrip_result()),
         ):
@@ -669,7 +909,9 @@ class TestRunOracleLocalArgForwarding:
 
         with (
             patch(f"{_MODULE}.run_congress_archive_load", return_value=_fake_congress_result()),
-            patch(f"{_MODULE}.run_disclosures_bundle_process", return_value=_fake_disclosures_result()),
+            patch(
+                f"{_MODULE}.run_disclosures_bundle_process", return_value=_fake_disclosures_result()
+            ),
             patch(f"{_MODULE}.run_recompute_runtime", return_value=_fake_recompute_result()),
             patch(f"{_MODULE}.run_publish_runtime", return_value=_fake_publish_result()),
             patch(f"{_MODULE}._run_verify", return_value=_fake_verify_result()) as m_verify,
@@ -686,11 +928,15 @@ class TestRunOracleLocalArgForwarding:
 
         with (
             patch(f"{_MODULE}.run_congress_archive_load", return_value=_fake_congress_result()),
-            patch(f"{_MODULE}.run_disclosures_bundle_process", return_value=_fake_disclosures_result()),
+            patch(
+                f"{_MODULE}.run_disclosures_bundle_process", return_value=_fake_disclosures_result()
+            ),
             patch(f"{_MODULE}.run_recompute_runtime", return_value=_fake_recompute_result()),
             patch(f"{_MODULE}.run_publish_runtime", return_value=_fake_publish_result()),
             patch(f"{_MODULE}._run_verify", return_value=_fake_verify_result()),
-            patch(f"{_MODULE}._run_roundtrip", return_value=_fake_roundtrip_result()) as m_roundtrip,
+            patch(
+                f"{_MODULE}._run_roundtrip", return_value=_fake_roundtrip_result()
+            ) as m_roundtrip,
         ):
             run_oracle_local(conn, _ARCHIVE, bundle, _OPTIONS)
 
@@ -712,7 +958,9 @@ class TestRunOracleLocalSummaryValues:
 
         with (
             patch(f"{_MODULE}.run_congress_archive_load", return_value=congress),
-            patch(f"{_MODULE}.run_disclosures_bundle_process", return_value=_fake_disclosures_result()),
+            patch(
+                f"{_MODULE}.run_disclosures_bundle_process", return_value=_fake_disclosures_result()
+            ),
             patch(f"{_MODULE}.run_recompute_runtime", return_value=_fake_recompute_result()),
             patch(f"{_MODULE}.run_publish_runtime", return_value=_fake_publish_result()),
             patch(f"{_MODULE}._run_verify", return_value=_fake_verify_result()),
@@ -733,7 +981,9 @@ class TestRunOracleLocalSummaryValues:
 
         with (
             patch(f"{_MODULE}.run_congress_archive_load", return_value=_fake_congress_result()),
-            patch(f"{_MODULE}.run_disclosures_bundle_process", return_value=_fake_disclosures_result()),
+            patch(
+                f"{_MODULE}.run_disclosures_bundle_process", return_value=_fake_disclosures_result()
+            ),
             patch(f"{_MODULE}.run_recompute_runtime", return_value=recompute),
             patch(f"{_MODULE}.run_publish_runtime", return_value=_fake_publish_result()),
             patch(f"{_MODULE}._run_verify", return_value=_fake_verify_result()),
@@ -751,7 +1001,9 @@ class TestRunOracleLocalSummaryValues:
 
         with (
             patch(f"{_MODULE}.run_congress_archive_load", return_value=_fake_congress_result()),
-            patch(f"{_MODULE}.run_disclosures_bundle_process", return_value=_fake_disclosures_result()),
+            patch(
+                f"{_MODULE}.run_disclosures_bundle_process", return_value=_fake_disclosures_result()
+            ),
             patch(f"{_MODULE}.run_recompute_runtime", return_value=_fake_recompute_result()),
             patch(f"{_MODULE}.run_publish_runtime", return_value=publish),
             patch(f"{_MODULE}._run_verify", return_value=_fake_verify_result()),
@@ -760,12 +1012,35 @@ class TestRunOracleLocalSummaryValues:
             result = run_oracle_local(conn, _ARCHIVE, bundle, _OPTIONS)
 
         assert result.publish["run_id"] == 9
+        assert result.publish["planned_count"] == 43
         assert result.publish["written_count"] == 42
         assert result.publish["succeeded"] is True
 
-    def test_disclosures_summary_reflects_bundle_process_result(self):
+    def test_publish_summary_reflects_publish_failures(self):
         conn = MagicMock()
         bundle = MagicMock()
+        publish = _fake_publish_result()
+        publish.publish_result.succeeded = False
+        publish.publish_result.verification_failures = ["members/alice.json: sha256 mismatch"]
+
+        with (
+            patch(f"{_MODULE}.run_congress_archive_load", return_value=_fake_congress_result()),
+            patch(
+                f"{_MODULE}.run_disclosures_bundle_process", return_value=_fake_disclosures_result()
+            ),
+            patch(f"{_MODULE}.run_recompute_runtime", return_value=_fake_recompute_result()),
+            patch(f"{_MODULE}.run_publish_runtime", return_value=publish),
+            patch(f"{_MODULE}._run_verify", return_value=_fake_verify_result()),
+            patch(f"{_MODULE}._run_roundtrip", return_value=_fake_roundtrip_result()),
+        ):
+            result = run_oracle_local(conn, _ARCHIVE, bundle, _OPTIONS)
+
+        assert result.publish["succeeded"] is False
+        assert result.publish["verification_failures"] == ["members/alice.json: sha256 mismatch"]
+
+    def test_disclosures_summary_reflects_bundle_process_result(self):
+        conn = MagicMock()
+        bundle = _house_only_bundle()
         disc = _fake_disclosures_result()
 
         with (
@@ -792,7 +1067,9 @@ class TestRunOracleLocalSummaryValues:
 
         with (
             patch(f"{_MODULE}.run_congress_archive_load", return_value=_fake_congress_result()),
-            patch(f"{_MODULE}.run_disclosures_bundle_process", return_value=_fake_disclosures_result()),
+            patch(
+                f"{_MODULE}.run_disclosures_bundle_process", return_value=_fake_disclosures_result()
+            ),
             patch(f"{_MODULE}.run_recompute_runtime", return_value=_fake_recompute_result()),
             patch(f"{_MODULE}.run_publish_runtime", return_value=_fake_publish_result()),
             patch(f"{_MODULE}._run_verify", return_value=verify),
@@ -809,7 +1086,9 @@ class TestRunOracleLocalSummaryValues:
 
         with (
             patch(f"{_MODULE}.run_congress_archive_load", return_value=_fake_congress_result()),
-            patch(f"{_MODULE}.run_disclosures_bundle_process", return_value=_fake_disclosures_result()),
+            patch(
+                f"{_MODULE}.run_disclosures_bundle_process", return_value=_fake_disclosures_result()
+            ),
             patch(f"{_MODULE}.run_recompute_runtime", return_value=_fake_recompute_result()),
             patch(f"{_MODULE}.run_publish_runtime", return_value=_fake_publish_result()),
             patch(f"{_MODULE}._run_verify", return_value=_fake_verify_result()),
@@ -830,7 +1109,7 @@ class TestRunOracleLocalStageOrdering:
         """congress → disclosures → recompute → publish → verify → roundtrip."""
         call_log: list[str] = []
         conn = MagicMock()
-        bundle = MagicMock()
+        bundle = _house_only_bundle()
 
         def _congress(*_a, **_kw):
             call_log.append("congress")
@@ -866,7 +1145,14 @@ class TestRunOracleLocalStageOrdering:
         ):
             run_oracle_local(conn, _ARCHIVE, bundle, _OPTIONS)
 
-        assert call_log == ["congress", "disclosures", "recompute", "publish", "verify", "roundtrip"]
+        assert call_log == [
+            "congress",
+            "disclosures",
+            "recompute",
+            "publish",
+            "verify",
+            "roundtrip",
+        ]
 
     def test_verify_is_called_after_publish(self):
         """verify must run after publish, not before."""
@@ -885,7 +1171,9 @@ class TestRunOracleLocalStageOrdering:
 
         with (
             patch(f"{_MODULE}.run_congress_archive_load", return_value=_fake_congress_result()),
-            patch(f"{_MODULE}.run_disclosures_bundle_process", return_value=_fake_disclosures_result()),
+            patch(
+                f"{_MODULE}.run_disclosures_bundle_process", return_value=_fake_disclosures_result()
+            ),
             patch(f"{_MODULE}.run_recompute_runtime", return_value=_fake_recompute_result()),
             patch(f"{_MODULE}.run_publish_runtime", side_effect=_publish),
             patch(f"{_MODULE}._run_verify", side_effect=_verify),
@@ -910,7 +1198,9 @@ class TestRunOracleLocalStageOrdering:
 
         with (
             patch(f"{_MODULE}.run_congress_archive_load", return_value=_fake_congress_result()),
-            patch(f"{_MODULE}.run_disclosures_bundle_process", return_value=_fake_disclosures_result()),
+            patch(
+                f"{_MODULE}.run_disclosures_bundle_process", return_value=_fake_disclosures_result()
+            ),
             patch(f"{_MODULE}.run_recompute_runtime", return_value=_fake_recompute_result()),
             patch(f"{_MODULE}.run_publish_runtime", return_value=_fake_publish_result()),
             patch(f"{_MODULE}._run_verify", side_effect=_verify),
@@ -933,7 +1223,9 @@ class TestRunOracleLocalVerifyFailureSurfacing:
 
         with (
             patch(f"{_MODULE}.run_congress_archive_load", return_value=_fake_congress_result()),
-            patch(f"{_MODULE}.run_disclosures_bundle_process", return_value=_fake_disclosures_result()),
+            patch(
+                f"{_MODULE}.run_disclosures_bundle_process", return_value=_fake_disclosures_result()
+            ),
             patch(f"{_MODULE}.run_recompute_runtime", return_value=_fake_recompute_result()),
             patch(f"{_MODULE}.run_publish_runtime", return_value=_fake_publish_result()),
             patch(f"{_MODULE}._run_verify", return_value=failure),
@@ -953,7 +1245,9 @@ class TestRunOracleLocalVerifyFailureSurfacing:
 
         with (
             patch(f"{_MODULE}.run_congress_archive_load", return_value=_fake_congress_result()),
-            patch(f"{_MODULE}.run_disclosures_bundle_process", return_value=_fake_disclosures_result()),
+            patch(
+                f"{_MODULE}.run_disclosures_bundle_process", return_value=_fake_disclosures_result()
+            ),
             patch(f"{_MODULE}.run_recompute_runtime", return_value=_fake_recompute_result()),
             patch(f"{_MODULE}.run_publish_runtime", return_value=_fake_publish_result()),
             patch(f"{_MODULE}._run_verify", return_value=failure),
@@ -973,7 +1267,9 @@ class TestRunOracleLocalVerifyFailureSurfacing:
 
         with (
             patch(f"{_MODULE}.run_congress_archive_load", return_value=_fake_congress_result()),
-            patch(f"{_MODULE}.run_disclosures_bundle_process", return_value=_fake_disclosures_result()),
+            patch(
+                f"{_MODULE}.run_disclosures_bundle_process", return_value=_fake_disclosures_result()
+            ),
             patch(f"{_MODULE}.run_recompute_runtime", return_value=_fake_recompute_result()),
             patch(f"{_MODULE}.run_publish_runtime", return_value=_fake_publish_result()),
             patch(f"{_MODULE}._run_verify", return_value=_fake_verify_failure()),
@@ -1002,7 +1298,9 @@ class TestRunOracleLocalRoundtripFailureSurfacing:
 
         with (
             patch(f"{_MODULE}.run_congress_archive_load", return_value=_fake_congress_result()),
-            patch(f"{_MODULE}.run_disclosures_bundle_process", return_value=_fake_disclosures_result()),
+            patch(
+                f"{_MODULE}.run_disclosures_bundle_process", return_value=_fake_disclosures_result()
+            ),
             patch(f"{_MODULE}.run_recompute_runtime", return_value=_fake_recompute_result()),
             patch(f"{_MODULE}.run_publish_runtime", return_value=_fake_publish_result()),
             patch(f"{_MODULE}._run_verify", return_value=_fake_verify_result()),
@@ -1022,7 +1320,9 @@ class TestRunOracleLocalRoundtripFailureSurfacing:
 
         with (
             patch(f"{_MODULE}.run_congress_archive_load", return_value=_fake_congress_result()),
-            patch(f"{_MODULE}.run_disclosures_bundle_process", return_value=_fake_disclosures_result()),
+            patch(
+                f"{_MODULE}.run_disclosures_bundle_process", return_value=_fake_disclosures_result()
+            ),
             patch(f"{_MODULE}.run_recompute_runtime", return_value=_fake_recompute_result()),
             patch(f"{_MODULE}.run_publish_runtime", return_value=_fake_publish_result()),
             patch(f"{_MODULE}._run_verify", return_value=_fake_verify_result()),
@@ -1042,7 +1342,9 @@ class TestRunOracleLocalRoundtripFailureSurfacing:
 
         with (
             patch(f"{_MODULE}.run_congress_archive_load", return_value=_fake_congress_result()),
-            patch(f"{_MODULE}.run_disclosures_bundle_process", return_value=_fake_disclosures_result()),
+            patch(
+                f"{_MODULE}.run_disclosures_bundle_process", return_value=_fake_disclosures_result()
+            ),
             patch(f"{_MODULE}.run_recompute_runtime", return_value=_fake_recompute_result()),
             patch(f"{_MODULE}.run_publish_runtime", return_value=_fake_publish_result()),
             patch(f"{_MODULE}._run_verify", return_value=_fake_verify_result()),
@@ -1064,7 +1366,9 @@ class TestRunOracleLocalRoundtripFailureSurfacing:
 
         with (
             patch(f"{_MODULE}.run_congress_archive_load", return_value=_fake_congress_result()),
-            patch(f"{_MODULE}.run_disclosures_bundle_process", return_value=_fake_disclosures_result()),
+            patch(
+                f"{_MODULE}.run_disclosures_bundle_process", return_value=_fake_disclosures_result()
+            ),
             patch(f"{_MODULE}.run_recompute_runtime", return_value=_fake_recompute_result()),
             patch(f"{_MODULE}.run_publish_runtime", return_value=_fake_publish_result()),
             patch(f"{_MODULE}._run_verify", return_value=_fake_verify_result()),
@@ -1129,7 +1433,9 @@ class TestRunOracleLocalVerifyIntegration:
         # verify runs against the real tree; roundtrip is mocked (DB-backed).
         with (
             patch(f"{_MODULE}.run_congress_archive_load", return_value=_fake_congress_result()),
-            patch(f"{_MODULE}.run_disclosures_bundle_process", return_value=_fake_disclosures_result()),
+            patch(
+                f"{_MODULE}.run_disclosures_bundle_process", return_value=_fake_disclosures_result()
+            ),
             patch(f"{_MODULE}.run_recompute_runtime", return_value=_fake_recompute_result()),
             patch(f"{_MODULE}.run_publish_runtime", return_value=publish_result),
             patch(f"{_MODULE}._run_roundtrip", return_value=_fake_roundtrip_result()),

@@ -30,9 +30,7 @@ _RENDERED_AT = dt.datetime(2025, 4, 1, 10, 0, 0, tzinfo=_UTC)
 _CREATED_AT = dt.datetime(2025, 4, 1, 10, 0, 0, tzinfo=_UTC)
 _SNAPSHOT_ID = "2025-04-01"
 
-_PATCH_TARGET = (
-    "src.runtime.publish_roundtrip_evidence.fetch_all_evidence_card_rows"
-)
+_PATCH_TARGET = "src.runtime.publish_roundtrip_evidence.fetch_all_evidence_card_rows"
 
 
 # ---------------------------------------------------------------------------
@@ -71,6 +69,7 @@ def _db_row(
             {
                 "source_type": "financial_disclosure",
                 "source_id": "fd-001",
+                "url": "https://disclosures.house.gov/public_disc/ptr-pdfs/2024/001.pdf",
                 "label": "Disclosure 2024",
             }
         ],
@@ -211,7 +210,13 @@ class TestCleanRoundtrip:
         assert result.checked == 3
 
     def test_card_with_no_blocks_matches(self, tmp_path: Path) -> None:
-        row = _db_row("ec-bare", facts=None, inferences=None, normative_judgments=None)
+        row = _db_row(
+            "ec-bare",
+            score_delta=0.0,
+            facts=None,
+            inferences=None,
+            normative_judgments=None,
+        )
         card = assemble_evidence_card(row)
         manifest = _write_publish_tree(tmp_path, [card])
 
@@ -219,6 +224,19 @@ class TestCleanRoundtrip:
             result = verify_published_evidence_roundtrip(object(), tmp_path, manifest)
 
         assert result.ok is True
+
+    def test_db_row_missing_required_source_anchors_reports_issue(self, tmp_path: Path) -> None:
+        original = _db_row("ec-no-anchor")
+        card = assemble_evidence_card(original)
+        manifest = _write_publish_tree(tmp_path, [card])
+        altered = {**original, "source_anchors": []}
+
+        with patch(_PATCH_TARGET, return_value=[altered]):
+            result = verify_published_evidence_roundtrip(object(), tmp_path, manifest)
+
+        assert result.ok is False
+        assert result.error_count == 1
+        assert "source anchor" in result.issues[0].message
 
     def test_card_with_dict_facts_matches(self, tmp_path: Path) -> None:
         row = _db_row(
@@ -436,18 +454,12 @@ class TestCheckedCount:
 
         assert result.checked == 5
 
-    def test_manifest_with_mixed_entries_counts_only_evidence(
-        self, tmp_path: Path
-    ) -> None:
+    def test_manifest_with_mixed_entries_counts_only_evidence(self, tmp_path: Path) -> None:
         row = _db_row("ec-001")
         card = assemble_evidence_card(row)
         # Build manifest manually with one evidence entry + one member entry
-        evidence_entry = ManifestEntry(
-            path=evidence_path("ec-001"), sha256="a" * 64, size_bytes=1
-        )
-        member_entry = ManifestEntry(
-            path="members/jane-smith.json", sha256="b" * 64, size_bytes=1
-        )
+        evidence_entry = ManifestEntry(path=evidence_path("ec-001"), sha256="a" * 64, size_bytes=1)
+        member_entry = ManifestEntry(path="members/jane-smith.json", sha256="b" * 64, size_bytes=1)
         manifest = SnapshotManifest(
             snapshot_id=_SNAPSHOT_ID,
             created_at=_CREATED_AT,

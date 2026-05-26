@@ -23,8 +23,8 @@ Artifact bundle JSON shape
             "chamber": "house",
             "filing_year": 2024,
             "storage_uri": "house/2024/12345.pdf",
-            "source_url": "https://disclosures.house.gov/...",
-            "source_slug": "house_disclosures",
+            "source_url": "https://disclosures.house.gov/public_disc/financial-pdfs/2024/12345.pdf",
+            "source_slug": "house-disclosures",
             "artifact_kind": "pdf",
             "sha256": "<64-char hex>",
             "index_row": {
@@ -43,8 +43,8 @@ Artifact bundle JSON shape
             "chamber": "senate",
             "filing_year": 2024,
             "storage_uri": "senate/2024/uuid-xyz.pdf",
-            "source_url": "https://efdsearch.senate.gov/...",
-            "source_slug": "senate_disclosures",
+            "source_url": "https://efdsearch.senate.gov/search/view/paper/uuid-xyz/",
+            "source_slug": "senate-disclosures",
             "artifact_kind": "pdf",
             "sha256": "<64-char hex>",
             "index_row": {
@@ -70,9 +70,16 @@ from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 from typing import Any, Union
+from uuid import uuid4
 
+from src.core.path_safety import require_confined_relative_path
 from src.parse.disclosures.house_index import HouseFilingKind, HouseIndexRow
 from src.parse.disclosures.senate_index import SenateIndexRow
+from src.parse.disclosures.source_urls import (
+    DisclosureSourceChamber,
+    validate_official_disclosure_artifact_url,
+)
+from src.runtime.sources import canonical_source_slug
 
 # ---------------------------------------------------------------------------
 # Index bundle types (used by disclosures_index_provider)
@@ -171,8 +178,7 @@ def load_disclosures_index_bundle(path: Path) -> DisclosuresLookup:
     data = json.loads(raw)
     if not isinstance(data, dict):
         raise ValueError(
-            f"disclosures index bundle file must contain a JSON object, "
-            f"got {type(data).__name__}"
+            f"disclosures index bundle file must contain a JSON object, got {type(data).__name__}"
         )
     return disclosures_index_bundle_from_dict(data)
 
@@ -192,12 +198,12 @@ class HouseBundledIndexRow:
 
     last_name: str
     first_name: str
-    suffix: str           # empty string when absent in the source index
+    suffix: str  # empty string when absent in the source index
     raw_filing_type: str  # "O", "A", "T", "P" etc.
-    state_dst: str        # e.g. "CA08" — state abbrev + zero-padded district
-    filing_date: str      # ISO date string "YYYY-MM-DD"
+    state_dst: str  # e.g. "CA08" — state abbrev + zero-padded district
+    filing_date: str  # ISO date string "YYYY-MM-DD"
     doc_id: str
-    filing_kind: str      # "ptr" | "annual"
+    filing_kind: str  # "ptr" | "annual"
 
 
 @dataclass(frozen=True)
@@ -210,9 +216,9 @@ class SenateBundledIndexRow:
 
     first_name: str
     last_name: str
-    office: str       # e.g. "Senator, TX"
+    office: str  # e.g. "Senator, TX"
     report_type: str  # e.g. "Annual Report for CY2023"
-    date_filed: str   # raw EFD date string, e.g. "01/15/2024"
+    date_filed: str  # raw EFD date string, e.g. "01/15/2024"
     doc_id: str
 
 
@@ -236,13 +242,13 @@ class DisclosureArtifactEntry:
     """
 
     source_record_id: str
-    chamber: str       # "house" | "senate"
+    chamber: str  # "house" | "senate"
     filing_year: int
     storage_uri: str
     source_url: str
     source_slug: str
     artifact_kind: str
-    sha256: str        # 64-char hex SHA-256
+    sha256: str  # 64-char hex SHA-256
     index_row: BundledIndexRow
 
 
@@ -269,8 +275,7 @@ def load_disclosures_bundle(path: Path) -> DisclosuresBundle:
     data = json.loads(raw)
     if not isinstance(data, dict):
         raise ValueError(
-            f"disclosures bundle file must contain a JSON object, "
-            f"got {type(data).__name__}"
+            f"disclosures bundle file must contain a JSON object, got {type(data).__name__}"
         )
     return disclosures_bundle_from_dict(data)
 
@@ -290,6 +295,32 @@ def disclosures_bundle_from_dict(data: dict[str, Any]) -> DisclosuresBundle:
     )
 
 
+def disclosures_bundle_to_dict(bundle: DisclosuresBundle) -> dict[str, Any]:
+    """Return the canonical JSON-serializable dict for a DisclosuresBundle."""
+    return {
+        "artifacts": [_entry_to_dict(entry) for entry in bundle.artifacts],
+    }
+
+
+def write_disclosures_bundle(path: Path, bundle: DisclosuresBundle) -> Path:
+    """Serialize *bundle* to *path* as canonical JSON and return the path."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    _write_text_atomic(
+        path,
+        json.dumps(disclosures_bundle_to_dict(bundle), indent=2, sort_keys=True),
+    )
+    return path
+
+
+def _write_text_atomic(path: Path, text: str) -> None:
+    temp_path = path.with_name(f".{path.name}.{uuid4().hex}.tmp")
+    try:
+        temp_path.write_text(text, encoding="utf-8")
+        temp_path.replace(path)
+    finally:
+        temp_path.unlink(missing_ok=True)
+
+
 # ---------------------------------------------------------------------------
 # Artifact bundle — entry and index-row parsing
 # ---------------------------------------------------------------------------
@@ -297,6 +328,15 @@ def disclosures_bundle_from_dict(data: dict[str, Any]) -> DisclosuresBundle:
 _VALID_CHAMBERS = {"house", "senate"}
 _VALID_ARTIFACT_KINDS = {"pdf", "xml", "csv", "json", "html", "txt", "other"}
 _SHA256_LEN = 64
+_SHA256_HEX_CHARS = set("0123456789abcdefABCDEF")
+
+
+def _validate_storage_uri(value: str, idx: int) -> None:
+    require_confined_relative_path(value, label=f"artifacts[{idx}].storage_uri")
+
+
+def _is_sha256_hex(value: str) -> bool:
+    return all(char in _SHA256_HEX_CHARS for char in value)
 
 
 def _parse_entry(raw: Any, idx: int) -> DisclosureArtifactEntry:
@@ -306,13 +346,18 @@ def _parse_entry(raw: Any, idx: int) -> DisclosureArtifactEntry:
     source_record_id = _str(raw, "source_record_id", "artifacts", idx)
     chamber = _str(raw, "chamber", "artifacts", idx)
     if chamber not in _VALID_CHAMBERS:
-        raise ValueError(
-            f"artifacts[{idx}].chamber must be 'house' or 'senate', got {chamber!r}"
-        )
+        raise ValueError(f"artifacts[{idx}].chamber must be 'house' or 'senate', got {chamber!r}")
+    source_chamber: DisclosureSourceChamber = "house" if chamber == "house" else "senate"
     filing_year = _int(raw, "filing_year", "artifacts", idx)
     storage_uri = _str(raw, "storage_uri", "artifacts", idx)
+    _validate_storage_uri(storage_uri, idx)
     source_url = _str(raw, "source_url", "artifacts", idx)
-    source_slug = _str(raw, "source_slug", "artifacts", idx)
+    validate_official_disclosure_artifact_url(
+        source_url,
+        chamber=source_chamber,
+        label=f"artifacts[{idx}].source_url must be an official {chamber} disclosure URL",
+    )
+    source_slug = canonical_source_slug(_str(raw, "source_slug", "artifacts", idx))
     artifact_kind = _str(raw, "artifact_kind", "artifacts", idx)
     if artifact_kind not in _VALID_ARTIFACT_KINDS:
         raise ValueError(
@@ -320,7 +365,7 @@ def _parse_entry(raw: Any, idx: int) -> DisclosureArtifactEntry:
             f"{sorted(_VALID_ARTIFACT_KINDS)}, got {artifact_kind!r}"
         )
     sha256 = _str(raw, "sha256", "artifacts", idx)
-    if len(sha256) != _SHA256_LEN:
+    if len(sha256) != _SHA256_LEN or not _is_sha256_hex(sha256):
         raise ValueError(
             f"artifacts[{idx}].sha256 must be a {_SHA256_LEN}-char hex string, "
             f"got length {len(sha256)}"
@@ -331,8 +376,7 @@ def _parse_entry(raw: Any, idx: int) -> DisclosureArtifactEntry:
     raw_index = raw["index_row"]
     if not isinstance(raw_index, dict):
         raise ValueError(
-            f"artifacts[{idx}].index_row must be an object, "
-            f"got {type(raw_index).__name__}"
+            f"artifacts[{idx}].index_row must be an object, got {type(raw_index).__name__}"
         )
 
     return DisclosureArtifactEntry(
@@ -374,6 +418,42 @@ def _parse_index_row(chamber: str, raw: dict[str, Any], entry_idx: int) -> Bundl
     )
 
 
+def _entry_to_dict(entry: DisclosureArtifactEntry) -> dict[str, Any]:
+    return {
+        "source_record_id": entry.source_record_id,
+        "chamber": entry.chamber,
+        "filing_year": entry.filing_year,
+        "storage_uri": entry.storage_uri,
+        "source_url": entry.source_url,
+        "source_slug": entry.source_slug,
+        "artifact_kind": entry.artifact_kind,
+        "sha256": entry.sha256,
+        "index_row": _index_row_to_dict(entry.index_row),
+    }
+
+
+def _index_row_to_dict(row: BundledIndexRow) -> dict[str, Any]:
+    if isinstance(row, HouseBundledIndexRow):
+        return {
+            "last_name": row.last_name,
+            "first_name": row.first_name,
+            "suffix": row.suffix,
+            "raw_filing_type": row.raw_filing_type,
+            "state_dst": row.state_dst,
+            "filing_date": row.filing_date,
+            "doc_id": row.doc_id,
+            "filing_kind": row.filing_kind,
+        }
+    return {
+        "first_name": row.first_name,
+        "last_name": row.last_name,
+        "office": row.office,
+        "report_type": row.report_type,
+        "date_filed": row.date_filed,
+        "doc_id": row.doc_id,
+    }
+
+
 # ---------------------------------------------------------------------------
 # Typed field extractors (internal)
 # ---------------------------------------------------------------------------
@@ -384,9 +464,7 @@ def _str(raw: dict[str, Any], field: str, section: str, idx: int) -> str:
         raise ValueError(f"{section}[{idx}] missing required field: {field!r}")
     v = raw[field]
     if not isinstance(v, str):
-        raise ValueError(
-            f"{section}[{idx}].{field} must be a string, got {type(v).__name__}"
-        )
+        raise ValueError(f"{section}[{idx}].{field} must be a string, got {type(v).__name__}")
     return v
 
 
@@ -396,9 +474,7 @@ def _int(raw: dict[str, Any], field: str, section: str, idx: int) -> int:
     v = raw[field]
     # Reject bool (a subclass of int in Python) and floats.
     if not isinstance(v, int) or isinstance(v, bool):
-        raise ValueError(
-            f"{section}[{idx}].{field} must be an integer, got {type(v).__name__}"
-        )
+        raise ValueError(f"{section}[{idx}].{field} must be an integer, got {type(v).__name__}")
     return v
 
 

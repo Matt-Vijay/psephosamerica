@@ -153,7 +153,7 @@ class TestIndexHouseRowsByDocIdDuplicates:
             state_dst="CA27",
             year=2023,
             filing_date=date(2024, 1, 10),
-            doc_id=rows[0].doc_id,          # same doc_id as rows[0]
+            doc_id=rows[0].doc_id,  # same doc_id as rows[0]
             filing_kind=HouseFilingKind.PTR,
         )
         with pytest.raises(ValueError, match=rows[0].doc_id):
@@ -196,15 +196,17 @@ class TestFetchHouseRowsByDocId:
         fetch_house_rows_by_doc_id(2023, HouseFilingKind.ANNUAL, client=client)
         assert client.get.call_count == 1
 
-    def test_falls_back_to_httpx_get_when_no_client(self):
+    def test_falls_back_to_httpx_stream_when_no_client(self):
         mock_resp = MagicMock()
         mock_resp.text = _ANNUAL_XML
         mock_resp.raise_for_status = MagicMock()
+        mock_stream = MagicMock()
+        mock_stream.__enter__.return_value = mock_resp
         with patch(
-            "src.parse.disclosures.house_index.httpx.get", return_value=mock_resp
-        ) as mock_get:
+            "src.parse.disclosures.house_index.httpx.stream", return_value=mock_stream
+        ) as mock_stream_fn:
             result = fetch_house_rows_by_doc_id(2023, HouseFilingKind.ANNUAL)
-        assert mock_get.call_count == 1
+        assert mock_stream_fn.call_count == 1
         assert "20024001" in result
 
     def test_empty_index_returns_empty_dict(self):

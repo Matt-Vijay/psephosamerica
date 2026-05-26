@@ -98,9 +98,7 @@ class TestHouseIndexUrl:
 
     def test_base_domain_is_disclosures_house_gov(self):
         for kind in HouseFilingKind:
-            assert house_index_url(2024, kind).startswith(
-                "https://disclosures.house.gov"
-            )
+            assert house_index_url(2024, kind).startswith("https://disclosures.house.gov")
 
 
 # ---------------------------------------------------------------------------
@@ -175,8 +173,12 @@ class TestParseHouseIndexAnnual:
         # The parser must not care whether entries are <Member> or <New>.
         xml_with_member_tag = _ANNUAL_XML
         xml_with_new_tag = _ANNUAL_XML.replace("<Member>", "<New>").replace("</Member>", "</New>")
-        rows_member = parse_house_index(xml_with_member_tag, year=2023, filing_kind=HouseFilingKind.ANNUAL)
-        rows_new = parse_house_index(xml_with_new_tag, year=2023, filing_kind=HouseFilingKind.ANNUAL)
+        rows_member = parse_house_index(
+            xml_with_member_tag, year=2023, filing_kind=HouseFilingKind.ANNUAL
+        )
+        rows_new = parse_house_index(
+            xml_with_new_tag, year=2023, filing_kind=HouseFilingKind.ANNUAL
+        )
         assert rows_member[0].doc_id == rows_new[0].doc_id
 
 
@@ -277,11 +279,13 @@ class TestHouseIndexRowToArtifactMeta:
             bioguide_id="G000001",
             filing_year=row.year,
             doc_id=row.doc_id,
+            filing_kind=row.filing_kind.value,
         )
         assert meta.filing_year == 2023
         assert meta.source_record_id == "10023432"
         assert meta.member_bioguide_id == "G000001"
         assert "disclosures.house.gov" in meta.source_url
+        assert "/public_disc/ptr-pdfs/" in meta.source_url
 
     def test_annual_row_roundtrip(self):
         rows = parse_house_index(_ANNUAL_XML, year=2023, filing_kind=HouseFilingKind.ANNUAL)
@@ -290,9 +294,28 @@ class TestHouseIndexRowToArtifactMeta:
             bioguide_id="A000001",
             filing_year=row.year,
             doc_id=row.doc_id,
+            filing_kind=row.filing_kind.value,
         )
         assert meta.source_record_id == "20024001"
         assert meta.filing_year == 2023
+        assert "/public_disc/financial-pdfs/" in meta.source_url
+
+    def test_default_filing_kind_stays_ptr_for_compatibility(self):
+        meta = house_artifact_meta(
+            bioguide_id="G000001",
+            filing_year=2023,
+            doc_id="10023432",
+        )
+        assert "/public_disc/ptr-pdfs/" in meta.source_url
+
+    def test_invalid_filing_kind_rejected(self):
+        with pytest.raises(ValueError, match="filing_kind"):
+            house_artifact_meta(
+                bioguide_id="G000001",
+                filing_year=2023,
+                doc_id="10023432",
+                filing_kind="summary",
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -314,21 +337,27 @@ class TestFetchHouseIndex:
         assert len(rows) == 2
         mock_client.get.assert_called_once_with(
             house_index_url(2023, HouseFilingKind.PTR),
-            follow_redirects=True,
+            follow_redirects=False,
         )
 
-    def test_falls_back_to_httpx_get_when_no_client(self):
+    def test_falls_back_to_httpx_stream_when_no_client(self):
         mock_resp = MagicMock()
         mock_resp.text = _ANNUAL_XML
         mock_resp.raise_for_status = MagicMock()
+        mock_stream = MagicMock()
+        mock_stream.__enter__.return_value = mock_resp
 
         with patch(
-            "src.parse.disclosures.house_index.httpx.get", return_value=mock_resp
-        ) as mock_get:
+            "src.parse.disclosures.house_index.httpx.stream", return_value=mock_stream
+        ) as mock_stream_fn:
             rows = fetch_house_index(2023, HouseFilingKind.ANNUAL)
 
         assert len(rows) == 1
-        assert mock_get.call_args[0][0] == house_index_url(2023, HouseFilingKind.ANNUAL)
+        assert mock_stream_fn.call_args[0][:2] == (
+            "GET",
+            house_index_url(2023, HouseFilingKind.ANNUAL),
+        )
+        assert mock_stream_fn.call_args.kwargs["follow_redirects"] is False
 
     def test_raises_http_error_from_client(self):
         mock_resp = MagicMock()
@@ -346,10 +375,73 @@ class TestFetchHouseIndex:
         mock_resp.raise_for_status.side_effect = httpx.HTTPStatusError(
             "500", request=MagicMock(), response=MagicMock()
         )
+        mock_stream = MagicMock()
+        mock_stream.__enter__.return_value = mock_resp
 
-        with patch("src.parse.disclosures.house_index.httpx.get", return_value=mock_resp):
+        with patch("src.parse.disclosures.house_index.httpx.stream", return_value=mock_stream):
             with pytest.raises(httpx.HTTPStatusError):
                 fetch_house_index(2023, HouseFilingKind.ANNUAL)
+
+    def test_rejects_redirect_response(self):
+        url = house_index_url(2023, HouseFilingKind.PTR)
+        request = httpx.Request("GET", url)
+        redirect = httpx.Response(
+            302,
+            headers={"location": "https://evil.example/house-index.xml"},
+            request=request,
+        )
+        mock_client = MagicMock()
+        mock_client.get.return_value = redirect
+
+        with pytest.raises(ValueError, match="redirect response rejected"):
+            fetch_house_index(2023, HouseFilingKind.PTR, client=mock_client)
+
+    def test_rejects_off_origin_response_url(self):
+        response = httpx.Response(
+            200,
+            content=_EMPTY_XML.encode(),
+            request=httpx.Request("GET", "https://evil.example/house-index.xml"),
+        )
+        mock_client = MagicMock()
+        mock_client.get.return_value = response
+
+        with pytest.raises(ValueError, match="off-origin response rejected"):
+            fetch_house_index(2023, HouseFilingKind.PTR, client=mock_client)
+
+    def test_rejects_oversized_content_length(self):
+        url = house_index_url(2023, HouseFilingKind.PTR)
+        response = httpx.Response(
+            200,
+            content=_EMPTY_XML.encode(),
+            headers={"content-length": str(10 * 1024 * 1024 + 1)},
+            request=httpx.Request("GET", url),
+        )
+        mock_client = MagicMock()
+        mock_client.get.return_value = response
+
+        with pytest.raises(ValueError, match="exceeds maximum size"):
+            fetch_house_index(2023, HouseFilingKind.PTR, client=mock_client)
+
+    def test_rejects_chunked_index_before_reading_past_max_bytes(self):
+        class RaisingStream(httpx.SyncByteStream):
+            def __iter__(self):
+                yield b"12345"
+                yield b"678901"
+                raise AssertionError("read past limit")
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(200, stream=RaisingStream(), request=request)
+
+        with (
+            httpx.Client(transport=httpx.MockTransport(handler)) as client,
+            patch("src.parse.disclosures.house_index._MAX_INDEX_BYTES", 10),
+        ):
+            with pytest.raises(ValueError, match="exceeds maximum size"):
+                fetch_house_index(
+                    2023,
+                    HouseFilingKind.PTR,
+                    client=client,
+                )
 
     def test_ptr_url_contains_ptr_segment(self):
         mock_resp = MagicMock()

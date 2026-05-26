@@ -6,13 +6,27 @@ import datetime as dt
 
 from src.export.contracts import (
     DimensionChangeSummary,
+    HistoryCoverageDimensionPayload,
+    HistoryCoveragePayload,
     MemberChangeSummaryPayload,
     MemberHistoryChartPayload,
     MemberHistoryChartPoint,
+    MemberHistoryCoverageDimensionPayload,
+    MemberHistoryCoverageIndexEntryPayload,
+    MemberHistoryCoverageIndexPayload,
+    MemberHistoryCoveragePayload,
+    MemberHistoryCoverageWindowPayload,
+    MemberHistoryCoverageYearPayload,
     MemberHistoryComparePreset,
     MemberHistoryEvent,
     MemberHistoryPayload,
     MemberHistorySnapshot,
+    MemberTimelineDimensionPayload,
+    MemberTimelineEventPayload,
+    MemberTimelineIndexPayload,
+    MemberTimelinePagePayload,
+    MemberTimelineYearPayload,
+    MemberTimelineYearBucketPayload,
     MemberTrendSummaryPayload,
     MemberTrendWindowPayload,
     SnapshotComparePresetPayload,
@@ -21,6 +35,7 @@ from src.export.contracts import (
 from src.feed.changes import FeedEvent, FeedEventKind, make_feed_event_id
 from src.homepage.builders import build_homepage_feed
 from src.homepage.contracts import MovementWindowPayload, SnapshotComparePayload
+from src.identity.public_ids import build_history_event_id
 
 
 def _ordered_snapshots(history: MemberHistoryPayload) -> list[MemberHistorySnapshot]:
@@ -44,11 +59,7 @@ def _recent_events(
     *,
     limit: int,
 ) -> list[MemberHistoryEvent]:
-    events = [
-        event
-        for event in history.events
-        if event.snapshot_date == latest_snapshot_date
-    ]
+    events = [event for event in history.events if event.snapshot_date == latest_snapshot_date]
     return events[:limit]
 
 
@@ -78,6 +89,294 @@ def _top_evidence_card_ids(events: list[MemberHistoryEvent]) -> list[str]:
     return result
 
 
+def _timeline_event_date(
+    event: MemberHistoryEvent,
+    *,
+    fallback_date: dt.date,
+) -> dt.date:
+    if event.fired_at is not None:
+        return event.fired_at.date()
+    if event.snapshot_date is not None:
+        return event.snapshot_date
+    return fallback_date
+
+
+def _ordered_timeline_events(
+    history: MemberHistoryPayload,
+) -> list[MemberHistoryEvent]:
+    minimum_dt = dt.datetime.min.replace(tzinfo=dt.UTC)
+    return sorted(
+        history.events,
+        key=lambda event: (
+            event.fired_at or minimum_dt,
+            event.snapshot_date or dt.date.min,
+            event.evidence_card_id or "",
+            event.rule_id,
+            event.short_explanation,
+            event.score_delta,
+        ),
+        reverse=True,
+    )
+
+
+def build_member_timeline_events(
+    history: MemberHistoryPayload,
+) -> list[MemberTimelineEventPayload]:
+    latest_snapshot, _previous = _snapshot_pair(history)
+    events = _ordered_timeline_events(history)
+    duplicate_counts: dict[
+        tuple[dt.date, dt.date | None, dt.datetime | None, str, str, str | None, str, float],
+        int,
+    ] = {}
+    payloads: list[MemberTimelineEventPayload] = []
+    for event in events:
+        event_date = _timeline_event_date(event, fallback_date=latest_snapshot.snapshot_date)
+        duplicate_key = (
+            event_date,
+            event.snapshot_date,
+            event.fired_at,
+            event.rule_id,
+            event.dimension,
+            event.evidence_card_id,
+            event.short_explanation,
+            event.score_delta,
+        )
+        ordinal = duplicate_counts.get(duplicate_key, 0) + 1
+        duplicate_counts[duplicate_key] = ordinal
+        payloads.append(
+            MemberTimelineEventPayload(
+                event_id=build_history_event_id(
+                    history.bioguide_id,
+                    event.snapshot_date or event_date,
+                    event.rule_id,
+                    event.dimension,
+                    evidence_card_id=event.evidence_card_id,
+                    fired_at=event.fired_at,
+                    ordinal=ordinal,
+                ),
+                bioguide_id=history.bioguide_id,
+                name=history.name,
+                slug=history.slug,
+                state=history.state,
+                district=history.district,
+                chamber=history.chamber,
+                party=history.party,
+                event_date=event_date,
+                snapshot_date=event.snapshot_date,
+                fired_at=event.fired_at,
+                rule_id=event.rule_id,
+                dimension=event.dimension,
+                severity=event.severity,
+                evidence_card_id=event.evidence_card_id,
+                short_explanation=event.short_explanation,
+                score_delta=event.score_delta,
+            )
+        )
+    return payloads
+
+
+def _timeline_page_from_events(
+    history: MemberHistoryPayload,
+    events: list[MemberTimelineEventPayload],
+    *,
+    page: int,
+    page_size: int = 25,
+) -> MemberTimelinePagePayload:
+    if page < 1:
+        raise ValueError("page must be >= 1")
+    if page_size < 1:
+        raise ValueError("page_size must be >= 1")
+
+    total_events = len(events)
+    total_pages = max(1, (total_events + page_size - 1) // page_size)
+    if page > total_pages:
+        raise ValueError(f"page must be <= total pages ({total_pages})")
+    start = (page - 1) * page_size
+    end = start + page_size
+    page_events = events[start:end]
+    return MemberTimelinePagePayload(
+        bioguide_id=history.bioguide_id,
+        name=history.name,
+        slug=history.slug,
+        state=history.state,
+        district=history.district,
+        chamber=history.chamber,
+        party=history.party,
+        page=page,
+        page_size=page_size,
+        total_pages=total_pages,
+        total_events=total_events,
+        next_page=(page + 1) if end < total_events else None,
+        previous_page=(page - 1) if page > 1 else None,
+        events=page_events,
+    )
+
+
+def _timeline_index_from_events(
+    history: MemberHistoryPayload,
+    events: list[MemberTimelineEventPayload],
+    *,
+    page_size: int = 25,
+) -> MemberTimelineIndexPayload:
+    if page_size < 1:
+        raise ValueError("page_size must be >= 1")
+    latest_snapshot, _previous = _snapshot_pair(history)
+    total_events = len(events)
+    total_pages = max(1, (total_events + page_size - 1) // page_size)
+    years = sorted({event.event_date.year for event in events}, reverse=True)
+    latest_event = events[0] if events else None
+    earliest_event = events[-1] if events else None
+    year_buckets: list[MemberTimelineYearBucketPayload] = []
+    for year in years:
+        year_positions = [
+            position for position, event in enumerate(events) if event.event_date.year == year
+        ]
+        if not year_positions:
+            continue
+        first_position = year_positions[0]
+        last_position = year_positions[-1]
+        year_events = events[first_position : last_position + 1]
+        year_buckets.append(
+            MemberTimelineYearBucketPayload(
+                year=year,
+                event_count=len(year_events),
+                start_page=(first_position // page_size) + 1,
+                end_page=(last_position // page_size) + 1,
+                latest_event_date=year_events[0].event_date,
+                earliest_event_date=year_events[-1].event_date,
+            )
+        )
+    return MemberTimelineIndexPayload(
+        bioguide_id=history.bioguide_id,
+        name=history.name,
+        slug=history.slug,
+        state=history.state,
+        district=history.district,
+        chamber=history.chamber,
+        party=history.party,
+        latest_snapshot_date=latest_snapshot.snapshot_date,
+        page_size=page_size,
+        total_pages=total_pages,
+        total_events=total_events,
+        latest_event_id=latest_event.event_id if latest_event is not None else None,
+        latest_event_date=latest_event.event_date if latest_event is not None else None,
+        earliest_event_date=earliest_event.event_date if earliest_event is not None else None,
+        available_years=years,
+        year_buckets=year_buckets,
+    )
+
+
+def build_member_timeline_page(
+    history: MemberHistoryPayload,
+    *,
+    page: int,
+    page_size: int = 25,
+) -> MemberTimelinePagePayload:
+    events = build_member_timeline_events(history)
+    return _timeline_page_from_events(history, events, page=page, page_size=page_size)
+
+
+def build_member_timeline_index(
+    history: MemberHistoryPayload,
+    *,
+    page_size: int = 25,
+) -> MemberTimelineIndexPayload:
+    events = build_member_timeline_events(history)
+    return _timeline_index_from_events(history, events, page_size=page_size)
+
+
+def build_member_timeline_year(
+    history: MemberHistoryPayload,
+    *,
+    year: int,
+    page_size: int = 25,
+) -> MemberTimelineYearPayload:
+    timeline_index = build_member_timeline_index(history, page_size=page_size)
+    year_bucket = next(
+        (bucket for bucket in timeline_index.year_buckets if bucket.year == year),
+        None,
+    )
+    if year_bucket is None:
+        raise ValueError(f"year {year} is not available for member timeline")
+    timeline_page = build_member_timeline_page(
+        history,
+        page=year_bucket.start_page,
+        page_size=page_size,
+    )
+    return MemberTimelineYearPayload(
+        year=year,
+        timeline_index=timeline_index,
+        year_bucket=year_bucket,
+        timeline_page=timeline_page,
+    )
+
+
+def build_member_timeline_dimension(
+    history: MemberHistoryPayload,
+    *,
+    dimension: str,
+    page_size: int = 25,
+) -> MemberTimelineDimensionPayload:
+    events = [
+        event for event in build_member_timeline_events(history) if event.dimension == dimension
+    ]
+    if not events:
+        raise ValueError(f"dimension {dimension} is not available for member timeline")
+    return MemberTimelineDimensionPayload(
+        dimension=dimension,
+        timeline_index=_timeline_index_from_events(history, events, page_size=page_size),
+        timeline_page=_timeline_page_from_events(history, events, page=1, page_size=page_size),
+    )
+
+
+def build_history_coverage(
+    snapshot_compare_entries: list[tuple[str, dt.date]],
+    histories: list[MemberHistoryPayload],
+) -> HistoryCoveragePayload:
+    if not snapshot_compare_entries:
+        raise ValueError("snapshot_compare_entries must not be empty")
+    ordered_entries = sorted(snapshot_compare_entries, key=lambda entry: (entry[1], entry[0]))
+    earliest_snapshot_id, earliest_snapshot_date = ordered_entries[0]
+    latest_snapshot_id, latest_snapshot_date = ordered_entries[-1]
+    available_years = sorted({entry[1].year for entry in ordered_entries})
+    total_events = sum(len(history.events) for history in histories)
+    dimension_member_counts: dict[str, set[str]] = {}
+    dimension_event_counts: dict[str, int] = {}
+    dimension_years: dict[str, set[int]] = {}
+    for history in histories:
+        member_dimensions: set[str] = set()
+        for event in build_member_timeline_events(history):
+            dimension_event_counts[event.dimension] = (
+                dimension_event_counts.get(event.dimension, 0) + 1
+            )
+            dimension_years.setdefault(event.dimension, set()).add(event.event_date.year)
+            if event.dimension not in member_dimensions:
+                dimension_member_counts.setdefault(event.dimension, set()).add(history.bioguide_id)
+                member_dimensions.add(event.dimension)
+    return HistoryCoveragePayload(
+        earliest_snapshot_id=earliest_snapshot_id,
+        earliest_snapshot_date=earliest_snapshot_date,
+        latest_snapshot_id=latest_snapshot_id,
+        latest_snapshot_date=latest_snapshot_date,
+        snapshot_count=len(ordered_entries),
+        member_history_count=len(histories),
+        total_events=total_events,
+        available_years=available_years,
+        dimensions=[
+            HistoryCoverageDimensionPayload(
+                dimension=dimension,
+                member_history_count=len(dimension_member_counts[dimension]),
+                total_events=dimension_event_counts[dimension],
+                available_years=sorted(dimension_years.get(dimension, set())),
+            )
+            for dimension in sorted(
+                dimension_event_counts,
+                key=lambda dimension: (-dimension_event_counts[dimension], dimension),
+            )
+        ],
+    )
+
+
 def build_member_change_summary(
     history: MemberHistoryPayload,
     *,
@@ -92,9 +391,7 @@ def build_member_change_summary(
 
     dimension_changes: list[DimensionChangeSummary] = []
     if previous is not None:
-        all_dimensions = sorted(
-            set(latest.dimension_scores) | set(previous.dimension_scores)
-        )
+        all_dimensions = sorted(set(latest.dimension_scores) | set(previous.dimension_scores))
         for dimension in all_dimensions:
             current_score = float(latest.dimension_scores.get(dimension, 0.0))
             previous_score = float(previous.dimension_scores.get(dimension, 0.0))
@@ -111,9 +408,7 @@ def build_member_change_summary(
                     event_count=event_counts.get(dimension, 0),
                 )
             )
-        dimension_changes.sort(
-            key=lambda summary: (-summary.abs_delta, summary.dimension)
-        )
+        dimension_changes.sort(key=lambda summary: (-summary.abs_delta, summary.dimension))
 
     return MemberChangeSummaryPayload(
         bioguide_id=history.bioguide_id,
@@ -131,6 +426,100 @@ def build_member_change_summary(
         top_dimension_changes=dimension_changes[:dimension_limit],
         recent_events=latest_events,
         top_evidence_card_ids=_top_evidence_card_ids(latest_events),
+    )
+
+
+def build_member_history_coverage(
+    history: MemberHistoryPayload,
+) -> MemberHistoryCoveragePayload:
+    ordered_snapshots = _ordered_snapshots(history)
+    if not ordered_snapshots:
+        raise ValueError("history must contain at least one snapshot")
+    events = build_member_timeline_events(history)
+    years = sorted({snapshot.snapshot_date.year for snapshot in ordered_snapshots}, reverse=True)
+    year_counts = {
+        year: sum(1 for event in events if event.event_date.year == year) for year in years
+    }
+    dimension_counts: dict[str, int] = {}
+    for event in events:
+        dimension_counts[event.dimension] = dimension_counts.get(event.dimension, 0) + 1
+    trend_summary = build_member_trend_summary(history)
+    latest_event = events[0] if events else None
+    earliest_event = events[-1] if events else None
+    return MemberHistoryCoveragePayload(
+        bioguide_id=history.bioguide_id,
+        name=history.name,
+        slug=history.slug,
+        state=history.state,
+        district=history.district,
+        chamber=history.chamber,
+        party=history.party,
+        earliest_snapshot_date=ordered_snapshots[0].snapshot_date,
+        latest_snapshot_date=ordered_snapshots[-1].snapshot_date,
+        latest_event_date=latest_event.event_date if latest_event is not None else None,
+        earliest_event_date=earliest_event.event_date if earliest_event is not None else None,
+        snapshot_count=len(ordered_snapshots),
+        total_events=len(events),
+        available_years=years,
+        years=[
+            MemberHistoryCoverageYearPayload(year=year, event_count=year_counts[year])
+            for year in years
+        ],
+        dimensions=[
+            MemberHistoryCoverageDimensionPayload(
+                dimension=dimension,
+                event_count=dimension_counts[dimension],
+            )
+            for dimension in sorted(
+                dimension_counts,
+                key=lambda dimension: (-dimension_counts[dimension], dimension),
+            )
+        ],
+        windows=[
+            MemberHistoryCoverageWindowPayload(
+                window_key=window.window_key,
+                requested_days=window.requested_days,
+                has_full_window=window.has_full_window,
+                start_snapshot_date=window.start_snapshot_date,
+                end_snapshot_date=window.end_snapshot_date,
+            )
+            for window in trend_summary.windows
+        ],
+    )
+
+
+def build_member_history_coverage_index(
+    coverages: list[MemberHistoryCoveragePayload],
+) -> MemberHistoryCoverageIndexPayload:
+    members: list[MemberHistoryCoverageIndexEntryPayload] = []
+    for coverage in sorted(coverages, key=lambda payload: payload.slug):
+        windows = {window.window_key: window for window in coverage.windows}
+        full_4w = windows["4w"].has_full_window if "4w" in windows else False
+        full_12w = windows["12w"].has_full_window if "12w" in windows else False
+        full_cycle = windows["cycle"].has_full_window if "cycle" in windows else False
+        members.append(
+            MemberHistoryCoverageIndexEntryPayload(
+                bioguide_id=coverage.bioguide_id,
+                name=coverage.name,
+                slug=coverage.slug,
+                state=coverage.state,
+                district=coverage.district,
+                chamber=coverage.chamber,
+                party=coverage.party,
+                earliest_snapshot_date=coverage.earliest_snapshot_date,
+                latest_snapshot_date=coverage.latest_snapshot_date,
+                latest_event_date=coverage.latest_event_date,
+                snapshot_count=coverage.snapshot_count,
+                total_events=coverage.total_events,
+                available_years=coverage.available_years,
+                has_full_4w=full_4w,
+                has_full_12w=full_12w,
+                has_full_cycle=full_cycle,
+            )
+        )
+    return MemberHistoryCoverageIndexPayload(
+        total_members=len(members),
+        members=members,
     )
 
 
@@ -152,7 +541,9 @@ def _snapshot_on_or_before(
     snapshot_date: dt.date,
 ) -> MemberHistorySnapshot | None:
     candidates = [
-        snapshot for snapshot in _ordered_snapshots(history) if snapshot.snapshot_date <= snapshot_date
+        snapshot
+        for snapshot in _ordered_snapshots(history)
+        if snapshot.snapshot_date <= snapshot_date
     ]
     return candidates[-1] if candidates else None
 
@@ -190,9 +581,7 @@ def _movement_events(
         for event in _recent_events(history, latest_snapshot_date, limit=len(history.events)):
             discriminator = event.evidence_card_id or event.rule_id
             occurred_at = (
-                event.fired_at.date()
-                if event.fired_at is not None
-                else latest_snapshot_date
+                event.fired_at.date() if event.fired_at is not None else latest_snapshot_date
             )
             events.append(
                 FeedEvent(
@@ -294,9 +683,7 @@ def build_member_window_change_summary(
             float(baseline_scores.get(dimension, 0.0)) if start_snapshot is not None else None
         )
         score_delta = (
-            current_score - previous_score
-            if previous_score is not None
-            else current_score
+            current_score - previous_score if previous_score is not None else current_score
         )
         if score_delta == 0 and event_counts.get(dimension, 0) == 0:
             continue
@@ -599,6 +986,7 @@ def build_latest_movement_window(
     latest_snapshot_date: dt.date,
     previous_snapshot_id: str | None = None,
     previous_snapshot_date: dt.date | None = None,
+    dimension: str | None = None,
     top_n: int = 10,
     recent_n: int = 20,
 ) -> MovementWindowPayload:
@@ -610,6 +998,7 @@ def build_latest_movement_window(
         previous_snapshot_id=previous_snapshot_id,
         previous_snapshot_date=previous_snapshot_date,
         has_full_window=True,
+        dimension=dimension,
         top_n=top_n,
         recent_n=recent_n,
     )
@@ -624,6 +1013,7 @@ def build_movement_window(
     previous_snapshot_id: str | None = None,
     previous_snapshot_date: dt.date | None = None,
     has_full_window: bool = True,
+    dimension: str | None = None,
     top_n: int = 10,
     recent_n: int = 20,
 ) -> MovementWindowPayload:
@@ -644,9 +1034,11 @@ def build_movement_window(
         snapshot_date=latest_snapshot_date,
         top_n=top_n,
         recent_n=recent_n,
+        dimension=dimension,
     )
     return MovementWindowPayload(
         window_key=window_key,
+        dimension=dimension,
         has_full_window=has_full_window,
         latest_snapshot_id=latest_snapshot_id,
         latest_snapshot_date=latest_snapshot_date,

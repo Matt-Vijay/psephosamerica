@@ -105,10 +105,7 @@ def _score_snapshot_row(*, member_id: int = 1, snapshot_at: date = SNAPSHOT_DATE
 def _manifest_from_files(
     files: list[PlannedFile], *, snapshot_id: str = "2026-04-14"
 ) -> SnapshotManifest:
-    entries = [
-        ManifestEntry(path=f.path, sha256=f.sha256, size_bytes=f.size_bytes)
-        for f in files
-    ]
+    entries = [ManifestEntry(path=f.path, sha256=f.sha256, size_bytes=f.size_bytes) for f in files]
     return SnapshotManifest(
         snapshot_id=snapshot_id,
         created_at=datetime(2026, 4, 14, 0, 0, 0),
@@ -151,7 +148,7 @@ def _card_row(
             {
                 "source_type": "financial_disclosure",
                 "source_id": "fd-001",
-                "url": None,
+                "url": "https://disclosures.house.gov/public_disc/ptr-pdfs/2024/fd-001.pdf",
                 "label": "2026 PTR filing",
             }
         ],
@@ -281,12 +278,8 @@ def test_multiple_matching_profiles_pass(tmp_path: Path) -> None:
                 side_effect=_fake_snapshot_rows,
             )
         )
-        stack.enter_context(
-            patch(f"{_DB_MODULE}.fetch_member_rule_fire_rows", return_value=[])
-        )
-        stack.enter_context(
-            patch(f"{_DB_MODULE}.fetch_member_committee_rows", return_value=[])
-        )
+        stack.enter_context(patch(f"{_DB_MODULE}.fetch_member_rule_fire_rows", return_value=[]))
+        stack.enter_context(patch(f"{_DB_MODULE}.fetch_member_committee_rows", return_value=[]))
         result = verify_published_member_profiles_roundtrip(conn, tmp_path, manifest)
 
     assert result.ok is True
@@ -565,6 +558,31 @@ def test_snapshot_date_mismatch_is_error(tmp_path: Path) -> None:
     assert any("snapshot_date" in i.message for i in result.issues)
 
 
+def test_top_evidence_card_ids_mismatch_is_error(tmp_path: Path) -> None:
+    profile = _profile().model_copy(update={"top_evidence_card_ids": ["ec-stale"]})
+    pf = _write_profile(tmp_path, profile)
+    manifest = _manifest_from_files([pf])
+    result = _run_roundtrip(
+        tmp_path,
+        manifest,
+        member_row_val=_member_row(profile),
+        score_rows=[_score_snapshot_row()],
+        fire_rows=[
+            {
+                "rule_id": "committee_sector_trade",
+                "dimension": "conflict_of_interest_risk",
+                "evidence_card_id": "ec-current",
+                "short_explanation": "Trade overlapping committee jurisdiction.",
+                "score_delta": 5.0,
+                "snapshot_date": SNAPSHOT_DATE,
+            }
+        ],
+    )
+
+    assert result.ok is False
+    assert any("top_evidence_card_ids" in i.message for i in result.issues)
+
+
 # ---------------------------------------------------------------------------
 # Multiple issues
 # ---------------------------------------------------------------------------
@@ -586,9 +604,7 @@ def test_multiple_field_mismatches_all_reported(tmp_path: Path) -> None:
 
 
 def test_one_passing_one_failing_profile(tmp_path: Path) -> None:
-    good = _profile(
-        bioguide_id="P000197", name="Nancy Pelosi", slug="nancy-pelosi"
-    )
+    good = _profile(bioguide_id="P000197", name="Nancy Pelosi", slug="nancy-pelosi")
     bad = _profile(
         bioguide_id="S000033", name="Bernie Sanders", slug="bernie-sanders", chamber="senate"
     )
@@ -622,12 +638,8 @@ def test_one_passing_one_failing_profile(tmp_path: Path) -> None:
                 side_effect=_fake_snapshot_rows,
             )
         )
-        stack.enter_context(
-            patch(f"{_DB_MODULE}.fetch_member_rule_fire_rows", return_value=[])
-        )
-        stack.enter_context(
-            patch(f"{_DB_MODULE}.fetch_member_committee_rows", return_value=[])
-        )
+        stack.enter_context(patch(f"{_DB_MODULE}.fetch_member_rule_fire_rows", return_value=[]))
+        stack.enter_context(patch(f"{_DB_MODULE}.fetch_member_committee_rows", return_value=[]))
         result = verify_published_member_profiles_roundtrip(conn, tmp_path, manifest)
 
     assert result.checked == 2

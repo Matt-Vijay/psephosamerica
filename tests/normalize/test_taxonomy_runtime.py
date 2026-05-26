@@ -59,11 +59,15 @@ class TestLoadSectors:
 
     def test_sector_without_aliases_uses_empty_tuple(self, tmp_path: Path) -> None:
         p = tmp_path / "sectors.yaml"
-        p.write_text(yaml.dump({
-            "version": 1,
-            "taxonomy_name": "test",
-            "sectors": [{"sector_id": "x", "label": "X", "description": "X desc"}],
-        }))
+        p.write_text(
+            yaml.dump(
+                {
+                    "version": 1,
+                    "taxonomy_name": "test",
+                    "sectors": [{"sector_id": "x", "label": "X", "description": "X desc"}],
+                }
+            )
+        )
         sectors = _load_sectors(p)
         assert sectors[0].aliases == ()
 
@@ -85,17 +89,23 @@ class TestLoadCommitteeMappings:
 
     def test_known_committee_present(self, data_root: Path) -> None:
         rows = _load_committee_mappings(data_root / "taxonomy" / "committee_sector_map.csv")
-        found = [r for r in rows if r.committee_name == "Committee on Agriculture" and r.subcommittee_name == ""]
+        found = [
+            r
+            for r in rows
+            if r.committee_name == "Committee on Agriculture" and r.subcommittee_name == ""
+        ]
         assert len(found) == 1
         assert found[0].sector_id == "agriculture_food"
         assert found[0].mapping_tier == "deterministic"
 
     def test_subcommittee_name_empty_string_when_absent(self, tmp_path: Path) -> None:
         p = tmp_path / "map.csv"
-        p.write_text(textwrap.dedent("""\
+        p.write_text(
+            textwrap.dedent("""\
             congress,chamber,committee_name,subcommittee_name,sector_id,mapping_tier,jurisdiction_basis,basis_source,notes
             119,House,Test Committee,,health,deterministic,Test basis,src,
-        """))
+        """)
+        )
         rows = _load_committee_mappings(p)
         assert rows[0].subcommittee_name == ""
 
@@ -119,10 +129,12 @@ class TestLoadCrpCrosswalk:
 
     def test_fields_stripped(self, tmp_path: Path) -> None:
         p = tmp_path / "crp.csv"
-        p.write_text(textwrap.dedent("""\
+        p.write_text(
+            textwrap.dedent("""\
             crp_category,crp_label,sector_id,mapping_tier,notes
             " banks "," Banks "," financial_services "," deterministic ",
-        """))
+        """)
+        )
         rows = _load_crp_crosswalk(p)
         assert rows[0].crp_category == "banks"
         assert rows[0].sector_id == "financial_services"
@@ -300,14 +312,18 @@ class TestLoadTaxonomyRuntime:
         crosswalks_dir.mkdir()
 
         # sectors.yaml with duplicate sector_id triggers a validation error
-        (taxonomy_dir / "sectors.yaml").write_text(yaml.dump({
-            "version": 1,
-            "taxonomy_name": "test",
-            "sectors": [
-                {"sector_id": "dup", "label": "A", "description": "A"},
-                {"sector_id": "dup", "label": "B", "description": "B"},
-            ],
-        }))
+        (taxonomy_dir / "sectors.yaml").write_text(
+            yaml.dump(
+                {
+                    "version": 1,
+                    "taxonomy_name": "test",
+                    "sectors": [
+                        {"sector_id": "dup", "label": "A", "description": "A"},
+                        {"sector_id": "dup", "label": "B", "description": "B"},
+                    ],
+                }
+            )
+        )
         (taxonomy_dir / "committee_sector_map.csv").write_text(
             "congress,chamber,committee_name,subcommittee_name,sector_id,mapping_tier,jurisdiction_basis,basis_source,notes\n"
         )

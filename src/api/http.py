@@ -9,19 +9,45 @@ from pathlib import Path
 from pydantic import BaseModel
 
 from src.api.contracts import (
+    ApiEnvelope,
     CurrentMemberLookupResponse,
     EvidenceResponse,
+    OntologyGraphResponse,
+    OntologyIndexResponse,
+    OntologyMemberFeaturesResponse,
+    OntologyMemberGraphResponse,
+    PredictionBootstrapResponse,
+    PredictionCommitteeContextResponse,
+    PredictionCommitteeReadinessResponse,
+    PredictionMemberContextResponse,
+    PredictionMemberReadinessResponse,
+    PredictionReadinessIndexResponse,
+    PredictionReadinessResponse,
+    PredictionSectorContextResponse,
+    PredictionSectorReadinessResponse,
+    PredictionSourceContextResponse,
+    PredictionSourceIndexResponse,
+    PredictionTopologyResponse,
+    HistoryBackfillBootstrapResponse,
     HistoryBootstrapResponse,
+    HistoryEventPageResponse,
+    HistoryEventResponse,
     HistoryPresetRangeResponse,
     HomepageBootstrapResponse,
     HomepageResponse,
     LastUpdatedResponse,
     MemberChangeSummaryResponse,
     MemberHistoryChartResponse,
+    MemberHistoryCoverageResponse,
+    MemberHistoryCoverageIndexResponse,
     MemberTrendSummaryResponse,
     MemberHistoryResponse,
     MemberCompareResponse,
     MemberHistoryPageResponse,
+    MemberTimelineDimensionResponse,
+    MemberTimelineIndexResponse,
+    MemberTimelinePageResponse,
+    MemberTimelineYearResponse,
     MemberWindowCompareResponse,
     MemberPageResponse,
     MovementFeedResponse,
@@ -35,21 +61,48 @@ from src.api.contracts import (
     ZipEntryResponse,
     ZipResponse,
 )
+from src.runtime.history_backfill_types import HistoryBackfillReportPayload
 from src.api.read_api import make_headers
 from src.api.read_service import (
     get_current_member_lookup,
     get_evidence,
+    get_ontology_graph,
+    get_ontology_index,
+    get_ontology_member_features,
+    get_ontology_member_graph,
+    get_prediction_bootstrap,
+    get_prediction_committee_context,
+    get_prediction_committee_readiness,
+    get_prediction_member_context,
+    get_prediction_member_readiness,
+    get_prediction_readiness,
+    get_prediction_readiness_index,
+    get_prediction_sector_context,
+    get_prediction_sector_readiness,
+    get_prediction_source_index,
+    get_prediction_source_context,
+    get_prediction_topology,
+    get_history_backfill_bootstrap,
+    get_history_backfill_report,
     get_history_bootstrap,
+    get_history_event_page,
+    get_history_event,
     get_history_preset_range,
     get_homepage_bootstrap,
     get_homepage,
     get_last_updated,
     get_member_change_summary,
     get_member_history_chart,
+    get_member_history_coverage,
+    get_member_history_coverage_index,
     get_member_trend_summary,
     get_member_history,
     get_member_compare,
     get_member_history_page,
+    get_member_timeline_index,
+    get_member_timeline_page,
+    get_member_timeline_dimension,
+    get_member_timeline_year,
     get_member_preset_compare,
     get_member_window_compare,
     get_member_page,
@@ -71,13 +124,37 @@ from src.export.writer import (
     evidence_path,
     history_bootstrap_path,
     history_preset_range_path,
+    history_event_path,
+    history_event_page_path,
     member_change_summary_path,
+    member_history_coverage_path,
+    member_history_coverage_index_path,
     member_history_chart_path,
     member_preset_compare_path,
     member_history_path,
+    member_timeline_index_path,
+    member_timeline_page_path,
+    member_timeline_dimension_path,
+    member_timeline_year_path,
     member_path,
     member_trend_summary_path,
     movement_window_path,
+    ontology_edges_path,
+    ontology_index_path,
+    ontology_member_features_path,
+    ontology_member_edges_path,
+    prediction_bootstrap_path,
+    prediction_committee_context_path,
+    prediction_committee_readiness_path,
+    prediction_member_context_path,
+    prediction_member_readiness_path,
+    prediction_readiness_index_path,
+    prediction_readiness_path,
+    prediction_sector_context_path,
+    prediction_sector_readiness_path,
+    prediction_source_index_path,
+    prediction_source_context_path,
+    prediction_topology_path,
     snapshot_preset_compare_path,
     zip_path,
 )
@@ -95,7 +172,7 @@ class JsonHttpResponse:
 
 def _json_bytes(model: BaseModel) -> bytes:
     return json.dumps(
-        model.model_dump(mode="json"),
+        model.model_dump(mode="json", by_alias=True),
         sort_keys=True,
         ensure_ascii=False,
     ).encode("utf-8")
@@ -121,11 +198,11 @@ def _etag_matches(if_none_match: str | None, etag: str) -> bool:
     if not if_none_match:
         return False
     candidate = _normalize_etag_value(etag)
-    for raw_token in if_none_match.split(","):
-        token = raw_token.strip()
-        if token == "*":
+    for raw_etag_member in if_none_match.split(","):
+        etag_member = raw_etag_member.strip()
+        if etag_member == "*":
             return True
-        if _normalize_etag_value(token) == candidate:
+        if _normalize_etag_value(etag_member) == candidate:
             return True
     return False
 
@@ -162,17 +239,43 @@ def _response_from_success(
     | MemberResponse
     | MemberCompareResponse
     | EvidenceResponse
+    | OntologyGraphResponse
+    | OntologyIndexResponse
+    | OntologyMemberFeaturesResponse
+    | OntologyMemberGraphResponse
+    | PredictionBootstrapResponse
+    | PredictionTopologyResponse
+    | PredictionMemberContextResponse
+    | PredictionMemberReadinessResponse
+    | PredictionCommitteeContextResponse
+    | PredictionCommitteeReadinessResponse
+    | PredictionReadinessIndexResponse
+    | PredictionReadinessResponse
+    | PredictionSectorContextResponse
+    | PredictionSectorReadinessResponse
+    | PredictionSourceContextResponse
+    | PredictionSourceIndexResponse
     | HomepageBootstrapResponse
     | CurrentMemberLookupResponse
     | LastUpdatedResponse
+    | HistoryBackfillBootstrapResponse
+    | ApiEnvelope[HistoryBackfillReportPayload]
     | MemberChangeSummaryResponse
+    | MemberHistoryCoverageResponse
+    | MemberHistoryCoverageIndexResponse
     | MemberHistoryChartResponse
     | MemberTrendSummaryResponse
     | HistoryBootstrapResponse
+    | HistoryEventPageResponse
+    | HistoryEventResponse
     | HistoryPresetRangeResponse
     | MemberHistoryResponse
     | MemberPageResponse
     | MemberHistoryPageResponse
+    | MemberTimelineDimensionResponse
+    | MemberTimelineIndexResponse
+    | MemberTimelinePageResponse
+    | MemberTimelineYearResponse
     | MemberWindowCompareResponse
     | MovementFeedResponse
     | MovementWindowResponse
@@ -185,31 +288,33 @@ def _response_from_success(
     etag: str | None,
     if_none_match: str | None,
 ) -> JsonHttpResponse:
-    headers = make_headers(payload.meta.snapshot_date, etag=etag)
-    if etag is not None and _etag_matches(if_none_match, headers["ETag"]):
+    body: bytes | None = None
+    if etag is None:
+        body = _json_bytes(payload)
+        resolved_etag = sha256_hex(body)
+    else:
+        resolved_etag = etag
+    headers = make_headers(payload.meta.snapshot_date, etag=resolved_etag)
+    if _etag_matches(if_none_match, headers["ETag"]):
         return JsonHttpResponse(status_code=304, headers=headers, body=b"")
+    if body is None:
+        body = _json_bytes(payload)
     return JsonHttpResponse(
         status_code=200,
         headers=headers,
-        body=_json_bytes(payload),
+        body=body,
     )
 
 
 def _response_from_not_found(payload: NotFoundBody) -> JsonHttpResponse:
     status_code = (
-        503
-        if payload.resource_type == "snapshot" and payload.identifier == "latest"
-        else 404
+        503 if payload.resource_type == "snapshot" and payload.identifier == "latest" else 404
     )
     return JsonHttpResponse(
         status_code=status_code,
         headers=_error_headers(),
         body=_json_bytes(payload),
     )
-
-
-def _dynamic_etag(payload: BaseModel) -> str:
-    return sha256_hex(_json_bytes(payload))
 
 
 def serve_homepage(
@@ -221,8 +326,6 @@ def serve_homepage(
     if isinstance(payload, NotFoundBody):
         return _response_from_not_found(payload)
     etag = _manifest_entry_etag("homepage/feed.json", snapshot_root=snapshot_root)
-    if etag is None:
-        etag = _dynamic_etag(payload)
     return _response_from_success(payload, etag=etag, if_none_match=if_none_match)
 
 
@@ -242,7 +345,7 @@ def serve_homepage_bootstrap(
         return _response_from_not_found(payload)
     return _response_from_success(
         payload,
-        etag=_dynamic_etag(payload),
+        etag=None,
         if_none_match=if_none_match,
     )
 
@@ -250,29 +353,61 @@ def serve_homepage_bootstrap(
 def serve_history_bootstrap(
     *,
     snapshot_root: Path | None = None,
+    dimension: str | None = None,
     top_changes_limit: int | None = None,
     featured_limit: int = 5,
     if_none_match: str | None = None,
 ) -> JsonHttpResponse:
     payload = get_history_bootstrap(
         snapshot_root=snapshot_root,
+        dimension=dimension,
         top_changes_limit=top_changes_limit,
         featured_limit=featured_limit,
     )
     if isinstance(payload, NotFoundBody):
         return _response_from_not_found(payload)
-    if top_changes_limit is None and featured_limit == 5:
-        etag = _manifest_entry_etag(
+    etag = (
+        _manifest_entry_etag(
             history_bootstrap_path(),
             snapshot_root=snapshot_root,
         )
-        if etag is None:
-            etag = _dynamic_etag(payload)
-    else:
-        etag = _dynamic_etag(payload)
+        if top_changes_limit is None and featured_limit == 5 and dimension is None
+        else None
+    )
     return _response_from_success(
         payload,
         etag=etag,
+        if_none_match=if_none_match,
+    )
+
+
+def serve_history_backfill_report(
+    *,
+    target_root: Path,
+    if_none_match: str | None = None,
+) -> JsonHttpResponse:
+    payload = get_history_backfill_report(target_root=target_root)
+    if isinstance(payload, NotFoundBody):
+        return _response_from_not_found(payload)
+    return _response_from_success(
+        payload,
+        etag=None,
+        if_none_match=if_none_match,
+    )
+
+
+def serve_history_backfill_bootstrap(
+    *,
+    target_root: Path,
+    dimension: str | None = None,
+    if_none_match: str | None = None,
+) -> JsonHttpResponse:
+    payload = get_history_backfill_bootstrap(target_root=target_root, dimension=dimension)
+    if isinstance(payload, NotFoundBody):
+        return _response_from_not_found(payload)
+    return _response_from_success(
+        payload,
+        etag=None,
         if_none_match=if_none_match,
     )
 
@@ -304,7 +439,7 @@ def serve_zip_entry(
         return _response_from_not_found(payload)
     return _response_from_success(
         payload,
-        etag=_dynamic_etag(payload),
+        etag=None,
         if_none_match=if_none_match,
     )
 
@@ -343,7 +478,7 @@ def serve_member_page(
         return _response_from_not_found(payload)
     return _response_from_success(
         payload,
-        etag=_dynamic_etag(payload),
+        etag=None,
         if_none_match=if_none_match,
     )
 
@@ -367,6 +502,117 @@ def serve_member_history(
     )
 
 
+def serve_member_timeline_index(
+    slug: str,
+    *,
+    snapshot_root: Path | None = None,
+    if_none_match: str | None = None,
+) -> JsonHttpResponse:
+    payload = get_member_timeline_index(slug, snapshot_root=snapshot_root)
+    if isinstance(payload, NotFoundBody):
+        return _response_from_not_found(payload)
+    etag = _manifest_entry_etag(
+        member_timeline_index_path(slug),
+        snapshot_root=snapshot_root,
+    )
+    return _response_from_success(payload, etag=etag, if_none_match=if_none_match)
+
+
+def serve_member_timeline_page(
+    slug: str,
+    page: int,
+    *,
+    snapshot_root: Path | None = None,
+    if_none_match: str | None = None,
+) -> JsonHttpResponse:
+    payload = get_member_timeline_page(
+        slug,
+        page,
+        snapshot_root=snapshot_root,
+    )
+    if isinstance(payload, NotFoundBody):
+        return _response_from_not_found(payload)
+    etag = _manifest_entry_etag(
+        member_timeline_page_path(slug, page),
+        snapshot_root=snapshot_root,
+    )
+    return _response_from_success(payload, etag=etag, if_none_match=if_none_match)
+
+
+def serve_member_timeline_dimension(
+    slug: str,
+    dimension: str,
+    *,
+    snapshot_root: Path | None = None,
+    if_none_match: str | None = None,
+) -> JsonHttpResponse:
+    payload = get_member_timeline_dimension(
+        slug,
+        dimension,
+        snapshot_root=snapshot_root,
+    )
+    if isinstance(payload, NotFoundBody):
+        return _response_from_not_found(payload)
+    etag = _manifest_entry_etag(
+        member_timeline_dimension_path(slug, dimension),
+        snapshot_root=snapshot_root,
+    )
+    return _response_from_success(payload, etag=etag, if_none_match=if_none_match)
+
+
+def serve_member_timeline_year(
+    slug: str,
+    year: int,
+    *,
+    snapshot_root: Path | None = None,
+    if_none_match: str | None = None,
+) -> JsonHttpResponse:
+    payload = get_member_timeline_year(
+        slug,
+        year,
+        snapshot_root=snapshot_root,
+    )
+    if isinstance(payload, NotFoundBody):
+        return _response_from_not_found(payload)
+    etag = _manifest_entry_etag(
+        member_timeline_year_path(slug, year),
+        snapshot_root=snapshot_root,
+    )
+    return _response_from_success(payload, etag=etag, if_none_match=if_none_match)
+
+
+def serve_history_event(
+    event_id: str,
+    *,
+    snapshot_root: Path | None = None,
+    if_none_match: str | None = None,
+) -> JsonHttpResponse:
+    payload = get_history_event(event_id, snapshot_root=snapshot_root)
+    if isinstance(payload, NotFoundBody):
+        return _response_from_not_found(payload)
+    etag = _manifest_entry_etag(
+        history_event_path(event_id),
+        snapshot_root=snapshot_root,
+    )
+    return _response_from_success(payload, etag=etag, if_none_match=if_none_match)
+
+
+def serve_history_event_page(
+    event_id: str,
+    *,
+    snapshot_root: Path | None = None,
+    if_none_match: str | None = None,
+) -> JsonHttpResponse:
+    payload = get_history_event_page(event_id, snapshot_root=snapshot_root)
+    if isinstance(payload, NotFoundBody):
+        return _response_from_not_found(payload)
+    etag = _manifest_entry_etag(
+        history_event_page_path(event_id),
+        snapshot_root=snapshot_root,
+    )
+    return _response_from_success(payload, etag=etag, if_none_match=if_none_match)
+
+
 def serve_member_change_summary(
     slug: str,
     *,
@@ -380,8 +626,45 @@ def serve_member_change_summary(
         member_change_summary_path(slug),
         snapshot_root=snapshot_root,
     )
-    if etag is None:
-        etag = _dynamic_etag(payload)
+    return _response_from_success(
+        payload,
+        etag=etag,
+        if_none_match=if_none_match,
+    )
+
+
+def serve_member_history_coverage(
+    slug: str,
+    *,
+    snapshot_root: Path | None = None,
+    if_none_match: str | None = None,
+) -> JsonHttpResponse:
+    payload = get_member_history_coverage(slug, snapshot_root=snapshot_root)
+    if isinstance(payload, NotFoundBody):
+        return _response_from_not_found(payload)
+    etag = _manifest_entry_etag(
+        member_history_coverage_path(slug),
+        snapshot_root=snapshot_root,
+    )
+    return _response_from_success(
+        payload,
+        etag=etag,
+        if_none_match=if_none_match,
+    )
+
+
+def serve_member_history_coverage_index(
+    *,
+    snapshot_root: Path | None = None,
+    if_none_match: str | None = None,
+) -> JsonHttpResponse:
+    payload = get_member_history_coverage_index(snapshot_root=snapshot_root)
+    if isinstance(payload, NotFoundBody):
+        return _response_from_not_found(payload)
+    etag = _manifest_entry_etag(
+        member_history_coverage_index_path(),
+        snapshot_root=snapshot_root,
+    )
     return _response_from_success(
         payload,
         etag=etag,
@@ -402,8 +685,6 @@ def serve_member_history_chart(
         member_history_chart_path(slug),
         snapshot_root=snapshot_root,
     )
-    if etag is None:
-        etag = _dynamic_etag(payload)
     return _response_from_success(
         payload,
         etag=etag,
@@ -429,7 +710,7 @@ def serve_member_window_compare(
         return _response_from_not_found(payload)
     return _response_from_success(
         payload,
-        etag=_dynamic_etag(payload),
+        etag=None,
         if_none_match=if_none_match,
     )
 
@@ -452,8 +733,6 @@ def serve_member_preset_compare(
         member_preset_compare_path(slug, preset_key),
         snapshot_root=snapshot_root,
     )
-    if etag is None:
-        etag = _dynamic_etag(payload)
     return _response_from_success(
         payload,
         etag=etag,
@@ -474,8 +753,6 @@ def serve_member_trend_summary(
         member_trend_summary_path(slug),
         snapshot_root=snapshot_root,
     )
-    if etag is None:
-        etag = _dynamic_etag(payload)
     return _response_from_success(
         payload,
         etag=etag,
@@ -501,7 +778,7 @@ def serve_member_history_page(
         return _response_from_not_found(payload)
     return _response_from_success(
         payload,
-        etag=_dynamic_etag(payload),
+        etag=None,
         if_none_match=if_none_match,
     )
 
@@ -526,7 +803,7 @@ def serve_member_compare(
         return _response_from_not_found(payload)
     return _response_from_success(
         payload,
-        etag=_dynamic_etag(payload),
+        etag=None,
         if_none_match=if_none_match,
     )
 
@@ -544,6 +821,316 @@ def serve_evidence(
         payload,
         etag=_manifest_entry_etag(
             evidence_path(evidence_card_id),
+            snapshot_root=snapshot_root,
+        ),
+        if_none_match=if_none_match,
+    )
+
+
+def serve_ontology_graph(
+    *,
+    snapshot_root: Path | None = None,
+    if_none_match: str | None = None,
+) -> JsonHttpResponse:
+    payload = get_ontology_graph(snapshot_root=snapshot_root)
+    if isinstance(payload, NotFoundBody):
+        return _response_from_not_found(payload)
+    return _response_from_success(
+        payload,
+        etag=_manifest_entry_etag(
+            ontology_edges_path(),
+            snapshot_root=snapshot_root,
+        ),
+        if_none_match=if_none_match,
+    )
+
+
+def serve_ontology_index(
+    *,
+    snapshot_root: Path | None = None,
+    if_none_match: str | None = None,
+) -> JsonHttpResponse:
+    payload = get_ontology_index(snapshot_root=snapshot_root)
+    if isinstance(payload, NotFoundBody):
+        return _response_from_not_found(payload)
+    return _response_from_success(
+        payload,
+        etag=_manifest_entry_etag(
+            ontology_index_path(),
+            snapshot_root=snapshot_root,
+        ),
+        if_none_match=if_none_match,
+    )
+
+
+def serve_ontology_member_graph(
+    member_bioguide_id: str,
+    *,
+    snapshot_root: Path | None = None,
+    if_none_match: str | None = None,
+) -> JsonHttpResponse:
+    payload = get_ontology_member_graph(member_bioguide_id, snapshot_root=snapshot_root)
+    if isinstance(payload, NotFoundBody):
+        return _response_from_not_found(payload)
+    return _response_from_success(
+        payload,
+        etag=_manifest_entry_etag(
+            ontology_member_edges_path(member_bioguide_id),
+            snapshot_root=snapshot_root,
+        ),
+        if_none_match=if_none_match,
+    )
+
+
+def serve_ontology_member_features(
+    member_bioguide_id: str,
+    *,
+    snapshot_root: Path | None = None,
+    if_none_match: str | None = None,
+) -> JsonHttpResponse:
+    payload = get_ontology_member_features(member_bioguide_id, snapshot_root=snapshot_root)
+    if isinstance(payload, NotFoundBody):
+        return _response_from_not_found(payload)
+    return _response_from_success(
+        payload,
+        etag=_manifest_entry_etag(
+            ontology_member_features_path(member_bioguide_id),
+            snapshot_root=snapshot_root,
+        ),
+        if_none_match=if_none_match,
+    )
+
+
+def serve_prediction_readiness(
+    *,
+    snapshot_root: Path | None = None,
+    if_none_match: str | None = None,
+) -> JsonHttpResponse:
+    payload = get_prediction_readiness(snapshot_root=snapshot_root)
+    if isinstance(payload, NotFoundBody):
+        return _response_from_not_found(payload)
+    return _response_from_success(
+        payload,
+        etag=_manifest_entry_etag(
+            prediction_readiness_path(),
+            snapshot_root=snapshot_root,
+        ),
+        if_none_match=if_none_match,
+    )
+
+
+def serve_prediction_bootstrap(
+    *,
+    snapshot_root: Path | None = None,
+    if_none_match: str | None = None,
+) -> JsonHttpResponse:
+    payload = get_prediction_bootstrap(snapshot_root=snapshot_root)
+    if isinstance(payload, NotFoundBody):
+        return _response_from_not_found(payload)
+    return _response_from_success(
+        payload,
+        etag=_manifest_entry_etag(
+            prediction_bootstrap_path(),
+            snapshot_root=snapshot_root,
+        ),
+        if_none_match=if_none_match,
+    )
+
+
+def serve_prediction_topology(
+    *,
+    snapshot_root: Path | None = None,
+    if_none_match: str | None = None,
+) -> JsonHttpResponse:
+    payload = get_prediction_topology(snapshot_root=snapshot_root)
+    if isinstance(payload, NotFoundBody):
+        return _response_from_not_found(payload)
+    return _response_from_success(
+        payload,
+        etag=_manifest_entry_etag(
+            prediction_topology_path(),
+            snapshot_root=snapshot_root,
+        ),
+        if_none_match=if_none_match,
+    )
+
+
+def serve_prediction_readiness_index(
+    *,
+    snapshot_root: Path | None = None,
+    if_none_match: str | None = None,
+) -> JsonHttpResponse:
+    payload = get_prediction_readiness_index(snapshot_root=snapshot_root)
+    if isinstance(payload, NotFoundBody):
+        return _response_from_not_found(payload)
+    return _response_from_success(
+        payload,
+        etag=_manifest_entry_etag(
+            prediction_readiness_index_path(),
+            snapshot_root=snapshot_root,
+        ),
+        if_none_match=if_none_match,
+    )
+
+
+def serve_prediction_sector_readiness(
+    *,
+    snapshot_root: Path | None = None,
+    if_none_match: str | None = None,
+) -> JsonHttpResponse:
+    payload = get_prediction_sector_readiness(snapshot_root=snapshot_root)
+    if isinstance(payload, NotFoundBody):
+        return _response_from_not_found(payload)
+    return _response_from_success(
+        payload,
+        etag=_manifest_entry_etag(
+            prediction_sector_readiness_path(),
+            snapshot_root=snapshot_root,
+        ),
+        if_none_match=if_none_match,
+    )
+
+
+def serve_prediction_source_index(
+    *,
+    snapshot_root: Path | None = None,
+    if_none_match: str | None = None,
+) -> JsonHttpResponse:
+    payload = get_prediction_source_index(snapshot_root=snapshot_root)
+    if isinstance(payload, NotFoundBody):
+        return _response_from_not_found(payload)
+    return _response_from_success(
+        payload,
+        etag=_manifest_entry_etag(
+            prediction_source_index_path(),
+            snapshot_root=snapshot_root,
+        ),
+        if_none_match=if_none_match,
+    )
+
+
+def serve_prediction_source_context(
+    source_key: str,
+    *,
+    snapshot_root: Path | None = None,
+    if_none_match: str | None = None,
+) -> JsonHttpResponse:
+    payload = get_prediction_source_context(
+        source_key,
+        snapshot_root=snapshot_root,
+    )
+    if isinstance(payload, NotFoundBody):
+        return _response_from_not_found(payload)
+    return _response_from_success(
+        payload,
+        etag=_manifest_entry_etag(
+            prediction_source_context_path(source_key),
+            snapshot_root=snapshot_root,
+        ),
+        if_none_match=if_none_match,
+    )
+
+
+def serve_prediction_sector_context(
+    sector_id: str,
+    *,
+    snapshot_root: Path | None = None,
+    if_none_match: str | None = None,
+) -> JsonHttpResponse:
+    payload = get_prediction_sector_context(
+        sector_id,
+        snapshot_root=snapshot_root,
+    )
+    if isinstance(payload, NotFoundBody):
+        return _response_from_not_found(payload)
+    return _response_from_success(
+        payload,
+        etag=_manifest_entry_etag(
+            prediction_sector_context_path(sector_id),
+            snapshot_root=snapshot_root,
+        ),
+        if_none_match=if_none_match,
+    )
+
+
+def serve_prediction_committee_readiness(
+    *,
+    snapshot_root: Path | None = None,
+    if_none_match: str | None = None,
+) -> JsonHttpResponse:
+    payload = get_prediction_committee_readiness(snapshot_root=snapshot_root)
+    if isinstance(payload, NotFoundBody):
+        return _response_from_not_found(payload)
+    return _response_from_success(
+        payload,
+        etag=_manifest_entry_etag(
+            prediction_committee_readiness_path(),
+            snapshot_root=snapshot_root,
+        ),
+        if_none_match=if_none_match,
+    )
+
+
+def serve_prediction_committee_context(
+    committee_id: str,
+    *,
+    snapshot_root: Path | None = None,
+    if_none_match: str | None = None,
+) -> JsonHttpResponse:
+    payload = get_prediction_committee_context(
+        committee_id,
+        snapshot_root=snapshot_root,
+    )
+    if isinstance(payload, NotFoundBody):
+        return _response_from_not_found(payload)
+    return _response_from_success(
+        payload,
+        etag=_manifest_entry_etag(
+            prediction_committee_context_path(committee_id),
+            snapshot_root=snapshot_root,
+        ),
+        if_none_match=if_none_match,
+    )
+
+
+def serve_prediction_member_readiness(
+    member_bioguide_id: str,
+    *,
+    snapshot_root: Path | None = None,
+    if_none_match: str | None = None,
+) -> JsonHttpResponse:
+    payload = get_prediction_member_readiness(
+        member_bioguide_id,
+        snapshot_root=snapshot_root,
+    )
+    if isinstance(payload, NotFoundBody):
+        return _response_from_not_found(payload)
+    return _response_from_success(
+        payload,
+        etag=_manifest_entry_etag(
+            prediction_member_readiness_path(member_bioguide_id),
+            snapshot_root=snapshot_root,
+        ),
+        if_none_match=if_none_match,
+    )
+
+
+def serve_prediction_member_context(
+    member_bioguide_id: str,
+    *,
+    snapshot_root: Path | None = None,
+    if_none_match: str | None = None,
+) -> JsonHttpResponse:
+    payload = get_prediction_member_context(
+        member_bioguide_id,
+        snapshot_root=snapshot_root,
+    )
+    if isinstance(payload, NotFoundBody):
+        return _response_from_not_found(payload)
+    return _response_from_success(
+        payload,
+        etag=_manifest_entry_etag(
+            prediction_member_context_path(member_bioguide_id),
             snapshot_root=snapshot_root,
         ),
         if_none_match=if_none_match,
@@ -584,7 +1171,7 @@ def serve_current_member_lookup_search(
         return _response_from_not_found(payload)
     return _response_from_success(
         payload,
-        etag=_dynamic_etag(payload),
+        etag=None,
         if_none_match=if_none_match,
     )
 
@@ -611,7 +1198,7 @@ def serve_search_session(
         return _response_from_not_found(payload)
     return _response_from_success(
         payload,
-        etag=_dynamic_etag(payload),
+        etag=None,
         if_none_match=if_none_match,
     )
 
@@ -625,8 +1212,6 @@ def serve_last_updated(
     if isinstance(payload, NotFoundBody):
         return _response_from_not_found(payload)
     etag = _manifest_root_etag(snapshot_root=snapshot_root)
-    if etag is None:
-        etag = _dynamic_etag(payload)
     return _response_from_success(payload, etag=etag, if_none_match=if_none_match)
 
 
@@ -646,7 +1231,7 @@ def serve_movement_feed(
         return _response_from_not_found(payload)
     return _response_from_success(
         payload,
-        etag=_dynamic_etag(payload),
+        etag=None,
         if_none_match=if_none_match,
     )
 
@@ -654,18 +1239,21 @@ def serve_movement_feed(
 def serve_movement_window(
     *,
     name: str = "latest",
+    dimension: str | None = None,
     snapshot_root: Path | None = None,
     if_none_match: str | None = None,
 ) -> JsonHttpResponse:
-    payload = get_movement_window(name=name, snapshot_root=snapshot_root)
+    payload = get_movement_window(
+        name=name,
+        dimension=dimension,
+        snapshot_root=snapshot_root,
+    )
     if isinstance(payload, NotFoundBody):
         return _response_from_not_found(payload)
     etag = _manifest_entry_etag(
-        movement_window_path(name),
+        movement_window_path(name, dimension=dimension),
         snapshot_root=snapshot_root,
     )
-    if etag is None:
-        etag = _dynamic_etag(payload)
     return _response_from_success(
         payload,
         etag=etag,
@@ -683,7 +1271,7 @@ def serve_snapshot_summary(
         return _response_from_not_found(payload)
     return _response_from_success(
         payload,
-        etag=_manifest_root_etag(snapshot_root=snapshot_root) or _dynamic_etag(payload),
+        etag=_manifest_root_etag(snapshot_root=snapshot_root),
         if_none_match=if_none_match,
     )
 
@@ -698,7 +1286,7 @@ def serve_snapshot_index(
         return _response_from_not_found(payload)
     return _response_from_success(
         payload,
-        etag=_dynamic_etag(payload),
+        etag=None,
         if_none_match=if_none_match,
     )
 
@@ -725,7 +1313,7 @@ def serve_snapshot_compare(
         return _response_from_not_found(payload)
     return _response_from_success(
         payload,
-        etag=_dynamic_etag(payload),
+        etag=None,
         if_none_match=if_none_match,
     )
 
@@ -746,8 +1334,6 @@ def serve_snapshot_preset_compare(
         snapshot_preset_compare_path(preset_key),
         snapshot_root=snapshot_root,
     )
-    if etag is None:
-        etag = _dynamic_etag(payload)
     return _response_from_success(
         payload,
         etag=etag,
@@ -771,8 +1357,6 @@ def serve_history_preset_range(
         history_preset_range_path(preset_key),
         snapshot_root=snapshot_root,
     )
-    if etag is None:
-        etag = _dynamic_etag(payload)
     return _response_from_success(
         payload,
         etag=etag,

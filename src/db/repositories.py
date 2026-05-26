@@ -26,6 +26,8 @@ class ConnectionLike(Protocol):
 
     def commit(self) -> object: ...
 
+    def rollback(self) -> object: ...
+
 
 def _recover_test_connection(conn: Any) -> None:
     recover = getattr(conn, "_recover_test_isolation", None)
@@ -33,28 +35,70 @@ def _recover_test_connection(conn: Any) -> None:
         recover()
 
 
-def execute_one(conn: ConnectionLike, sql: str, params: Params = None) -> None:
+def rollback_if_available(conn: Any) -> None:
+    rollback = getattr(conn, "rollback", None)
+    if callable(rollback):
+        rollback()
+
+
+def ensure_transactional_for_commit(conn: Any, *, commit: bool) -> None:
+    """Reject caller-owned transactions that cannot actually roll back.
+
+    psycopg connections opened with autocommit=True commit each statement
+    immediately.  Load runners that own a multi-phase transaction must fail
+    before any write starts instead of pretending a later rollback can restore
+    already-committed phase writes.
+    """
+    if commit and getattr(conn, "autocommit", False) is True:
+        raise RuntimeError(
+            "commit=True requires a transactional connection; received autocommit=True"
+        )
+
+
+def commit_or_rollback(conn: ConnectionLike) -> None:
+    try:
+        conn.commit()
+    except Exception:
+        rollback_if_available(conn)
+        raise
+
+
+def execute_one(
+    conn: ConnectionLike,
+    sql: str,
+    params: Params = None,
+    *,
+    commit: bool = True,
+) -> None:
     try:
         with conn.cursor() as cur:
             cur.execute(sql, params)
     except Exception:
+        if commit:
+            rollback_if_available(conn)
         _recover_test_connection(conn)
         raise
-    conn.commit()
+    if commit:
+        commit_or_rollback(conn)
 
 
 def execute_many(
     conn: ConnectionLike,
     sql: str,
     params_seq: BatchParams,
+    *,
+    commit: bool = True,
 ) -> None:
     try:
         with conn.cursor() as cur:
             cur.executemany(sql, params_seq)
     except Exception:
+        if commit:
+            rollback_if_available(conn)
         _recover_test_connection(conn)
         raise
-    conn.commit()
+    if commit:
+        commit_or_rollback(conn)
 
 
 def fetch_all(

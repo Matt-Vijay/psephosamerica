@@ -62,16 +62,10 @@ class HeaderFields:
 
 # ── Compiled patterns ─────────────────────────────────────────────────────────
 
-_RE_MEMBER_NAME = re.compile(
-    r"^(?:member\s+name|name)\s*:\s*(.+)$", re.IGNORECASE
-)
+_RE_MEMBER_NAME = re.compile(r"^(?:member\s+name|name)\s*:\s*(.+)$", re.IGNORECASE)
 
-_RE_HOUSE = re.compile(
-    r"\bu\.?s\.?\s+house\b|\bhouse\s+of\s+representatives\b", re.IGNORECASE
-)
-_RE_SENATE = re.compile(
-    r"\bu\.?s\.?\s+senate\b|\bsenate\b", re.IGNORECASE
-)
+_RE_HOUSE = re.compile(r"\bu\.?s\.?\s+house\b|\bhouse\s+of\s+representatives\b", re.IGNORECASE)
+_RE_SENATE = re.compile(r"\bu\.?s\.?\s+senate\b|\bsenate\b", re.IGNORECASE)
 
 _RE_PTR = re.compile(r"\bperiodic\s+transaction\s+report\b", re.IGNORECASE)
 _RE_ANNUAL = re.compile(
@@ -87,24 +81,21 @@ _RE_YEAR_LABELED = re.compile(
 )
 _RE_YEAR_BARE = re.compile(r"\b(20\d{2})\b")
 
-_RE_DATE_LABELED = re.compile(
-    r"(?:date\s+filed|filed(?:\s+date)?)\s*:\s*(.+)$", re.IGNORECASE
-)
+_RE_DATE_LABELED = re.compile(r"(?:date\s+filed|filed(?:\s+date)?)\s*:\s*(.+)$", re.IGNORECASE)
 
-_RE_AMENDMENT_NUMBER = re.compile(
-    r"\bamendment\s+(?:no\.?|number|#)?\s*(\d+)\b", re.IGNORECASE
-)
+_RE_AMENDMENT_NUMBER = re.compile(r"\bamendment\s+(?:no\.?|number|#)?\s*(\d+)\b", re.IGNORECASE)
 
 _DATE_FORMATS = (
     "%B %d, %Y",  # May 15, 2024
     "%b %d, %Y",  # May 15, 2024
-    "%m/%d/%Y",   # 05/15/2024
-    "%Y-%m-%d",   # 2024-05-15
-    "%m-%d-%Y",   # 05-15-2024
+    "%m/%d/%Y",  # 05/15/2024
+    "%Y-%m-%d",  # 2024-05-15
+    "%m-%d-%Y",  # 05-15-2024
 )
 
 
 # ── Field extractors ──────────────────────────────────────────────────────────
+
 
 def _extract_member_name(lines: Sequence[str]) -> str | None:
     for line in lines:
@@ -208,10 +199,7 @@ def _detect_conflicts(lines: Sequence[str]) -> tuple[str, ...]:
 
     # Multiple distinct labeled reporting years (e.g. two "Reporting Year:" lines).
     labeled_years = [
-        int(m.group(1))
-        for line in lines
-        for m in [_RE_YEAR_LABELED.search(line)]
-        if m
+        int(m.group(1)) for line in lines for m in [_RE_YEAR_LABELED.search(line)] if m
     ]
     unique_labeled = sorted(set(labeled_years))
     if len(unique_labeled) > 1:
@@ -232,6 +220,7 @@ def _detect_conflicts(lines: Sequence[str]) -> tuple[str, ...]:
 
 
 # ── Public entry point ────────────────────────────────────────────────────────
+
 
 def extract_header_fields(lines: Sequence[str]) -> HeaderFields:
     """Return header fields parsed from line-oriented disclosure text.

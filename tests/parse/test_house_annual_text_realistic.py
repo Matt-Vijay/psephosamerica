@@ -568,9 +568,9 @@ class TestDottedRowCounters:
 
     def test_dotted_counter_owner_resolved(self) -> None:
         holdings = parse_house_annual([_SCHED_A_DOTTED], _filing()).holdings
-        assert holdings[0].owner_type == OwnerType.SPOUSE   # "SP"
-        assert holdings[1].owner_type == OwnerType.JOINT    # "JT"
-        assert holdings[2].owner_type == OwnerType.SELF     # "Self"
+        assert holdings[0].owner_type == OwnerType.SPOUSE  # "SP"
+        assert holdings[1].owner_type == OwnerType.JOINT  # "JT"
+        assert holdings[2].owner_type == OwnerType.SELF  # "Self"
         assert holdings[3].owner_type == OwnerType.DEPENDENT  # "DC"
 
     def test_dotted_counter_issuer_names_intact(self) -> None:
@@ -868,18 +868,24 @@ class TestRowNumbersRestartOnContinuationPage:
         assert len(result.holdings) == 4
 
     def test_internal_line_numbers_sequential(self) -> None:
-        holdings = parse_house_annual([_SCHED_A_RESTART_P1, _SCHED_A_RESTART_P2], _filing()).holdings
+        holdings = parse_house_annual(
+            [_SCHED_A_RESTART_P1, _SCHED_A_RESTART_P2], _filing()
+        ).holdings
         assert [h.line_number for h in holdings] == [1, 2, 3, 4]
 
     def test_issuers_from_both_pages(self) -> None:
-        holdings = parse_house_annual([_SCHED_A_RESTART_P1, _SCHED_A_RESTART_P2], _filing()).holdings
+        holdings = parse_house_annual(
+            [_SCHED_A_RESTART_P1, _SCHED_A_RESTART_P2], _filing()
+        ).holdings
         assert holdings[0].issuer_name == "First Holding Corp"
         assert holdings[1].issuer_name == "Second Fund LLC"
         assert holdings[2].issuer_name == "Third Asset Trust"
         assert holdings[3].issuer_name == "Fourth Holding Inc"
 
     def test_continuation_header_not_harvested(self) -> None:
-        holdings = parse_house_annual([_SCHED_A_RESTART_P1, _SCHED_A_RESTART_P2], _filing()).holdings
+        holdings = parse_house_annual(
+            [_SCHED_A_RESTART_P1, _SCHED_A_RESTART_P2], _filing()
+        ).holdings
         names = [h.issuer_name for h in holdings]
         assert not any("CONTINUED" in n for n in names)
 

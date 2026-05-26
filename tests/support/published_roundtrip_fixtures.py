@@ -145,7 +145,7 @@ def _default_evidence_card_row() -> dict[str, Any]:
             {
                 "source_type": "financial_disclosure",
                 "source_id": "fd-001",
-                "url": None,
+                "url": "https://disclosures.house.gov/public_disc/ptr-pdfs/2024/fd-001.pdf",
                 "label": "2025 PTR filing",
             }
         ],
@@ -338,9 +338,7 @@ class PublishedRoundtripBuilder:
         self._snapshot_date = d
         return self
 
-    def with_member_row_sets(
-        self, sets: list[MemberRowSet]
-    ) -> "PublishedRoundtripBuilder":
+    def with_member_row_sets(self, sets: list[MemberRowSet]) -> "PublishedRoundtripBuilder":
         self._member_row_sets = sets
         return self
 
@@ -350,9 +348,7 @@ class PublishedRoundtripBuilder:
         self._evidence_card_row_sets = sets
         return self
 
-    def with_zip_feed_row_sets(
-        self, sets: list[ZipFeedRowSet]
-    ) -> "PublishedRoundtripBuilder":
+    def with_zip_feed_row_sets(self, sets: list[ZipFeedRowSet]) -> "PublishedRoundtripBuilder":
         self._zip_feed_row_sets = sets
         return self
 
@@ -408,6 +404,7 @@ class PublishedRoundtripBuilder:
             member_profiles=self._assemble_member_profiles(),
             zip_feeds=self._assemble_zip_feeds(),
             evidence_cards=self._assemble_evidence_cards(),
+            ontology_edges=[],
         )
         write_planned_files(planned, self._root)
         return self
@@ -563,7 +560,7 @@ def make_evidence_card_row_set(
             {
                 "source_type": "financial_disclosure",
                 "source_id": "fd-001",
-                "url": None,
+                "url": "https://disclosures.house.gov/public_disc/ptr-pdfs/2024/fd-001.pdf",
                 "label": "Test filing",
             }
         ],
@@ -603,7 +600,9 @@ def make_zip_feed_row_set(
                     "rule_fire_count": 1,
                 }
             ],
-            "top_evidence_card_ids": top_evidence_card_ids if top_evidence_card_ids is not None else ["ec-0001"],
+            "top_evidence_card_ids": top_evidence_card_ids
+            if top_evidence_card_ids is not None
+            else ["ec-0001"],
         }
     ]
     return ZipFeedRowSet(

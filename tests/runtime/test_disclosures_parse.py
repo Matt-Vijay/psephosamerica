@@ -14,6 +14,7 @@ Index-driven resolution tests inject a _FakeIndexProvider that satisfies the
 IndexMatchProvider protocol without touching _resolve_artifact_member or any
 other module-level delegate.
 """
+
 from __future__ import annotations
 
 from datetime import date
@@ -324,8 +325,7 @@ class TestCountTracking:
         conn = MagicMock()
         inputs = [_make_input(i) for i in range(4)]
         session_or_error = [
-            _make_session(i) if i % 2 == 0 else RuntimeError("bad")
-            for i in range(4)
+            _make_session(i) if i % 2 == 0 else RuntimeError("bad") for i in range(4)
         ]
         with (
             patch(_LOAD, return_value=inputs),
@@ -521,9 +521,7 @@ class TestParseSessionWiring:
             patch(_EXTRACT, return_value=_make_metrics()),
             patch(_RUN_SESSION, return_value=_make_session(1)) as mock_run,
         ):
-            run_disclosure_parse_runtime(
-                conn, local_root=_LOCAL_ROOT, parser_name="house_ocr_v2"
-            )
+            run_disclosure_parse_runtime(conn, local_root=_LOCAL_ROOT, parser_name="house_ocr_v2")
         _, kwargs = mock_run.call_args
         assert kwargs["parser_name"] == "house_ocr_v2"
 
@@ -535,9 +533,7 @@ class TestParseSessionWiring:
             patch(_EXTRACT, return_value=_make_metrics()),
             patch(_RUN_SESSION, return_value=_make_session(1)) as mock_run,
         ):
-            run_disclosure_parse_runtime(
-                conn, local_root=_LOCAL_ROOT, parser_version="2"
-            )
+            run_disclosure_parse_runtime(conn, local_root=_LOCAL_ROOT, parser_version="2")
         _, kwargs = mock_run.call_args
         assert kwargs["parser_version"] == "2"
 
@@ -874,15 +870,51 @@ class TestOptionalPipelineStages:
             patch(_RESOLVE_ARTIFACT, return_value=None),
             patch(_RUN_SESSION, side_effect=side_effect),
         ):
-            run_disclosure_parse_runtime(
-                conn, local_root=_LOCAL_ROOT, index_provider=provider
-            )
+            run_disclosure_parse_runtime(conn, local_root=_LOCAL_ROOT, index_provider=provider)
 
         filing = mock_dispatch.call_args[0][1]
         assert filing.filing_type is FilingType.PTR
         assert filing.is_amended is True
         assert filing.filing_year == 2024
         assert filing.filed_at == date(2024, 3, 15)
+
+    def test_boolean_index_filing_year_does_not_override_header(self):
+        conn = MagicMock()
+        inp = _make_input(1, chamber="house")
+        provider = _FakeIndexProvider(
+            matches=[
+                ArtifactIndexMatch(
+                    artifact=inp.artifact_row,
+                    index_row=_make_house_index_row(year=True),
+                )
+            ]
+        )
+        mock_dispatch = MagicMock(return_value={"fields": []})
+        side_effect, _ = _capturing_run_session()
+
+        with (
+            patch(_LOAD, return_value=[inp]),
+            patch(_EXTRACT, return_value=_make_metrics()),
+            patch(
+                _HEADER,
+                return_value=HeaderFields(
+                    member_name="Jane Doe",
+                    chamber=None,
+                    filing_type=FilingType.ANNUAL,
+                    filing_year=2024,
+                    filed_at=date(2025, 1, 15),
+                    amendment_number=0,
+                    is_amended=False,
+                ),
+            ),
+            patch(_DISPATCH, mock_dispatch),
+            patch(_RESOLVE_ARTIFACT, return_value=None),
+            patch(_RUN_SESSION, side_effect=side_effect),
+        ):
+            run_disclosure_parse_runtime(conn, local_root=_LOCAL_ROOT, index_provider=provider)
+
+        filing = mock_dispatch.call_args[0][1]
+        assert filing.filing_year == 2024
 
     def test_senate_index_metadata_overrides_header_for_dispatch(self):
         conn = MagicMock()
@@ -925,9 +957,7 @@ class TestOptionalPipelineStages:
             patch(_RESOLVE_ARTIFACT, return_value=None),
             patch(_RUN_SESSION, side_effect=side_effect),
         ):
-            run_disclosure_parse_runtime(
-                conn, local_root=_LOCAL_ROOT, index_provider=provider
-            )
+            run_disclosure_parse_runtime(conn, local_root=_LOCAL_ROOT, index_provider=provider)
 
         filing = mock_dispatch.call_args[0][1]
         assert filing.filing_type is FilingType.PTR
@@ -971,9 +1001,7 @@ class TestOptionalPipelineStages:
             patch(_RESOLVE_ARTIFACT, return_value=None),
             patch(_RUN_SESSION, side_effect=side_effect),
         ):
-            run_disclosure_parse_runtime(
-                conn, local_root=_LOCAL_ROOT, index_provider=provider
-            )
+            run_disclosure_parse_runtime(conn, local_root=_LOCAL_ROOT, index_provider=provider)
 
         filing = mock_dispatch.call_args[0][1]
         assert filing.filing_type is FilingType.ANNUAL
@@ -1031,9 +1059,7 @@ class TestOptionalPipelineStages:
             patch(_RESOLVE_ARTIFACT, return_value=None),
             patch(_RUN_SESSION, side_effect=side_effect),
         ):
-            run_disclosure_parse_runtime(
-                conn, local_root=_LOCAL_ROOT, index_provider=provider
-            )
+            run_disclosure_parse_runtime(conn, local_root=_LOCAL_ROOT, index_provider=provider)
 
         filing = results[0]["parsed_document"].filing
         assert filing.filing_type is FilingType.ANNUAL
@@ -1076,6 +1102,7 @@ class TestIndexMatchProviderProtocol:
     def test_index_match_provider_is_exported(self):
         """IndexMatchProvider is importable from disclosures_parse."""
         from src.runtime.disclosures_parse import IndexMatchProvider as _P
+
         assert _P is not None
 
 
@@ -1116,9 +1143,7 @@ class TestProviderDrivenResolution:
             patch(_RUN_SESSION, side_effect=[_make_session(1), _make_session(2)]),
             patch(_RESOLVE_ARTIFACT, return_value=None),
         ):
-            run_disclosure_parse_runtime(
-                conn, local_root=_LOCAL_ROOT, index_provider=provider
-            )
+            run_disclosure_parse_runtime(conn, local_root=_LOCAL_ROOT, index_provider=provider)
 
         assert len(provider.load_matches_calls) == 1
         ids = {r["id"] for r in provider.load_matches_calls[0]}
@@ -1156,9 +1181,7 @@ class TestProviderDrivenResolution:
             patch(_RUN_SESSION, return_value=_make_session(1)),
             patch(_RESOLVE_ARTIFACT, return_value=None),
         ):
-            run_disclosure_parse_runtime(
-                conn, local_root=_LOCAL_ROOT, index_provider=provider
-            )
+            run_disclosure_parse_runtime(conn, local_root=_LOCAL_ROOT, index_provider=provider)
 
         assert provider.load_member_rows_calls == ["senate"]
 
@@ -1174,9 +1197,7 @@ class TestProviderDrivenResolution:
             patch(_EXTRACT, return_value=_make_metrics()),
             patch(_RUN_SESSION, return_value=_make_session(1)),
         ):
-            run_disclosure_parse_runtime(
-                conn, local_root=_LOCAL_ROOT, index_provider=provider
-            )
+            run_disclosure_parse_runtime(conn, local_root=_LOCAL_ROOT, index_provider=provider)
 
         assert provider.load_member_rows_calls == []
 
@@ -1216,9 +1237,7 @@ class TestProviderDrivenResolution:
             ),
             patch(_RESOLVE_ARTIFACT, return_value=None),
         ):
-            run_disclosure_parse_runtime(
-                conn, local_root=_LOCAL_ROOT, index_provider=provider
-            )
+            run_disclosure_parse_runtime(conn, local_root=_LOCAL_ROOT, index_provider=provider)
 
         assert provider.load_member_rows_calls.count("senate") == 1
 
@@ -1243,9 +1262,7 @@ class TestProviderDrivenResolution:
             patch(_RESOLVE_ARTIFACT, mock_resolve),
             patch(_RUN_SESSION, side_effect=side_effect),
         ):
-            run_disclosure_parse_runtime(
-                conn, local_root=_LOCAL_ROOT, index_provider=provider
-            )
+            run_disclosure_parse_runtime(conn, local_root=_LOCAL_ROOT, index_provider=provider)
 
         assert mock_resolve.called
         assert results[0]["resolved_member"] is resolution
@@ -1265,9 +1282,7 @@ class TestProviderDrivenResolution:
             patch(_RESOLVE_ARTIFACT, mock_resolve),
             patch(_RUN_SESSION, side_effect=side_effect),
         ):
-            run_disclosure_parse_runtime(
-                conn, local_root=_LOCAL_ROOT, index_provider=provider
-            )
+            run_disclosure_parse_runtime(conn, local_root=_LOCAL_ROOT, index_provider=provider)
 
         mock_resolve.assert_not_called()
         assert results[0]["resolved_member"] is None
@@ -1295,9 +1310,7 @@ class TestProviderDrivenResolution:
             patch(_RESOLVE_ARTIFACT, mock_resolve),
             patch(_RUN_SESSION, side_effect=side_effect),
         ):
-            run_disclosure_parse_runtime(
-                conn, local_root=_LOCAL_ROOT, index_provider=provider
-            )
+            run_disclosure_parse_runtime(conn, local_root=_LOCAL_ROOT, index_provider=provider)
 
         mock_resolve.assert_not_called()
         assert results[0]["resolved_member"] is None
@@ -1321,9 +1334,7 @@ class TestProviderDrivenResolution:
             patch(_RESOLVE_ARTIFACT, mock_resolve),
             patch(_RUN_SESSION, side_effect=side_effect),
         ):
-            run_disclosure_parse_runtime(
-                conn, local_root=_LOCAL_ROOT, index_provider=provider
-            )
+            run_disclosure_parse_runtime(conn, local_root=_LOCAL_ROOT, index_provider=provider)
 
         call_args = mock_resolve.call_args
         member_lookup_arg = call_args[0][2]
@@ -1349,9 +1360,7 @@ class TestProviderDrivenResolution:
         )
 
         resolution_ok = {"bioguide_id": "S000002"}
-        mock_resolve = MagicMock(
-            side_effect=[RuntimeError("bad match"), resolution_ok]
-        )
+        mock_resolve = MagicMock(side_effect=[RuntimeError("bad match"), resolution_ok])
 
         with (
             patch(_LOAD, return_value=[inp1, inp2]),
@@ -1419,9 +1428,7 @@ class TestExplicitParseInputs:
             patch(_EXTRACT, return_value=_make_metrics()),
             patch(_RUN_SESSION, return_value=_make_session(1)),
         ):
-            run_disclosure_parse_runtime(
-                conn, local_root=_LOCAL_ROOT, parse_inputs=[inp]
-            )
+            run_disclosure_parse_runtime(conn, local_root=_LOCAL_ROOT, parse_inputs=[inp])
         mock_load.assert_not_called()
 
     def test_db_path_used_when_parse_inputs_is_none(self):
@@ -1445,9 +1452,7 @@ class TestExplicitParseInputs:
     def test_explicit_empty_inputs_yields_zero_counts(self):
         conn = MagicMock()
         with patch(_LOAD) as mock_load:
-            result = run_disclosure_parse_runtime(
-                conn, local_root=_LOCAL_ROOT, parse_inputs=[]
-            )
+            result = run_disclosure_parse_runtime(conn, local_root=_LOCAL_ROOT, parse_inputs=[])
         mock_load.assert_not_called()
         assert result.processed_count == 0
         assert result.succeeded_count == 0
@@ -1464,9 +1469,7 @@ class TestExplicitParseInputs:
             patch(_EXTRACT, return_value=_make_metrics()),
             patch(_RUN_SESSION, return_value=session),
         ):
-            result = run_disclosure_parse_runtime(
-                conn, local_root=None, parse_inputs=[inp]
-            )
+            result = run_disclosure_parse_runtime(conn, local_root=None, parse_inputs=[inp])
         mock_load.assert_not_called()
         assert result.succeeded_count == 1
         assert result.parse_sessions == (session,)
@@ -1481,9 +1484,7 @@ class TestExplicitParseInputs:
             patch(_EXTRACT, return_value=_make_metrics()),
             patch(_RUN_SESSION, return_value=session),
         ):
-            result = run_disclosure_parse_runtime(
-                conn, local_root=_LOCAL_ROOT, parse_inputs=[inp]
-            )
+            result = run_disclosure_parse_runtime(conn, local_root=_LOCAL_ROOT, parse_inputs=[inp])
         assert result.succeeded_count == 1
         assert result.failed_count == 0
         assert result.parse_sessions == (session,)
@@ -1508,9 +1509,7 @@ class TestExplicitParseInputs:
             ),
             patch(_RUN_SESSION, side_effect=side_effect),
         ):
-            run_disclosure_parse_runtime(
-                conn, local_root=_LOCAL_ROOT, parse_inputs=[inp]
-            )
+            run_disclosure_parse_runtime(conn, local_root=_LOCAL_ROOT, parse_inputs=[inp])
 
         assert captured == [b"explicit bytes"]
 
@@ -1523,9 +1522,7 @@ class TestExplicitParseInputs:
             patch(_EXTRACT, return_value=_make_metrics()),
             patch(_RUN_SESSION, side_effect=sessions),
         ):
-            result = run_disclosure_parse_runtime(
-                conn, local_root=_LOCAL_ROOT, parse_inputs=inputs
-            )
+            result = run_disclosure_parse_runtime(conn, local_root=_LOCAL_ROOT, parse_inputs=inputs)
         assert result.succeeded_count == 3
         assert result.parse_sessions == tuple(sessions)
 
@@ -1565,9 +1562,7 @@ class TestExplicitParseInputs:
             patch(_EXTRACT, return_value=_make_metrics()),
             patch(_RUN_SESSION, return_value=_make_session(99)) as mock_run,
         ):
-            run_disclosure_parse_runtime(
-                conn, local_root=_LOCAL_ROOT, parse_inputs=[inp]
-            )
+            run_disclosure_parse_runtime(conn, local_root=_LOCAL_ROOT, parse_inputs=[inp])
         _, kwargs = mock_run.call_args
         assert kwargs["source_artifact_id"] == 99
 
@@ -1690,7 +1685,5 @@ class TestFailedArtifactIds:
             patch(_EXTRACT, return_value=_make_metrics()),
             patch(_RUN_SESSION, side_effect=RuntimeError("bad")),
         ):
-            result = run_disclosure_parse_runtime(
-                conn, local_root=_LOCAL_ROOT, parse_inputs=[inp]
-            )
+            result = run_disclosure_parse_runtime(conn, local_root=_LOCAL_ROOT, parse_inputs=[inp])
         assert result.failed_artifact_ids == (55,)

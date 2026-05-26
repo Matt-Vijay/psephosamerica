@@ -63,7 +63,5 @@ def fetch_cosponsors_for_bills(
     """
     results: list[CosponsorRecord] = []
     for bill in bills:
-        results.extend(
-            client.iter_cosponsors(bill.congress, bill.bill_type, bill.bill_number)
-        )
+        results.extend(client.iter_cosponsors(bill.congress, bill.bill_type, bill.bill_number))
     return results

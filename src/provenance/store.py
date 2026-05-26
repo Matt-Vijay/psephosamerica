@@ -20,19 +20,33 @@ def _utcnow() -> datetime:
     return datetime.now(tz=timezone.utc)
 
 
-def _insert_returning_id(conn: Any, sql: str, params: tuple[Any, ...]) -> int:
-    """Execute an INSERT ... RETURNING id, commit, and return the new id."""
+def _insert_returning_id(
+    conn: Any,
+    sql: str,
+    params: tuple[Any, ...],
+    *,
+    commit: bool = True,
+) -> int:
+    """Execute an INSERT ... RETURNING id and return the new id."""
     from psycopg.rows import dict_row
 
-    with conn.cursor(row_factory=dict_row) as cur:
-        cur.execute(sql, params)
-        row = cast(dict[str, object] | None, cur.fetchone())
-    conn.commit()
-    if row is None:
-        raise ValueError("INSERT ... RETURNING id produced no row")
-    row_id = row.get("id")
-    if not isinstance(row_id, int):
-        raise TypeError(f"expected integer id from INSERT ... RETURNING, got {row_id!r}")
+    try:
+        with conn.cursor(row_factory=dict_row) as cur:
+            cur.execute(sql, params)
+            row = cast(dict[str, object] | None, cur.fetchone())
+        if row is None:
+            raise ValueError("INSERT ... RETURNING id produced no row")
+        row_id = row.get("id")
+        if isinstance(row_id, bool) or not isinstance(row_id, int):
+            raise TypeError(f"expected integer id from INSERT ... RETURNING, got {row_id!r}")
+    except Exception:
+        if commit:
+            rollback = getattr(conn, "rollback", None)
+            if callable(rollback):
+                rollback()
+        raise
+    if commit:
+        conn.commit()
     return row_id
 
 
@@ -76,6 +90,8 @@ def start_ingestion_run(
     data_source_id: int,
     run_type: str,
     parameters: dict[str, Any] | None = None,
+    *,
+    commit: bool = True,
 ) -> int:
     """Insert a new ingestion_run row in 'running' status and return its id."""
     return _insert_returning_id(
@@ -87,10 +103,17 @@ def start_ingestion_run(
         RETURNING id
         """,
         (data_source_id, run_type, _utcnow(), json.dumps(parameters or {})),
+        commit=commit,
     )
 
 
-def finish_ingestion_run(conn: Any, run_id: int, record_count: int) -> None:
+def finish_ingestion_run(
+    conn: Any,
+    run_id: int,
+    record_count: int,
+    *,
+    commit: bool = True,
+) -> None:
     """Mark an ingestion_run as succeeded and record the final row count."""
     now = _utcnow()
     execute_one(
@@ -101,13 +124,20 @@ def finish_ingestion_run(conn: Any, run_id: int, record_count: int) -> None:
                finished_at = %s,
                record_count = %s,
                updated_at = %s
-         WHERE id = %s
+        WHERE id = %s
         """,
         (now, record_count, now, run_id),
+        commit=commit,
     )
 
 
-def fail_ingestion_run(conn: Any, run_id: int, error_message: str) -> None:
+def fail_ingestion_run(
+    conn: Any,
+    run_id: int,
+    error_message: str,
+    *,
+    commit: bool = True,
+) -> None:
     """Mark an ingestion_run as failed and store the error message."""
     now = _utcnow()
     execute_one(
@@ -121,4 +151,5 @@ def fail_ingestion_run(conn: Any, run_id: int, error_message: str) -> None:
          WHERE id = %s
         """,
         (now, error_message, now, run_id),
+        commit=commit,
     )

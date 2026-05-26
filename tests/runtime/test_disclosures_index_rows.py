@@ -104,17 +104,42 @@ class TestGroupArtifactsByChamberYear:
         assert ("house", 2024) in result
 
     def test_none_filing_year_excluded(self):
-        row: dict[str, Any] = {"id": 1, "chamber": "senate", "filing_year": None, "source_record_id": "DOC1"}
+        row: dict[str, Any] = {
+            "id": 1,
+            "chamber": "senate",
+            "filing_year": None,
+            "source_record_id": "DOC1",
+        }
         assert group_artifacts_by_chamber_year([row]) == {}
 
     def test_none_chamber_excluded(self):
-        row: dict[str, Any] = {"id": 1, "chamber": None, "filing_year": 2024, "source_record_id": "DOC1"}
+        row: dict[str, Any] = {
+            "id": 1,
+            "chamber": None,
+            "filing_year": 2024,
+            "source_record_id": "DOC1",
+        }
         assert group_artifacts_by_chamber_year([row]) == {}
 
     def test_year_cast_to_int(self):
-        row: dict[str, Any] = {"id": 1, "chamber": "senate", "filing_year": "2024", "source_record_id": "DOC1"}
+        row: dict[str, Any] = {
+            "id": 1,
+            "chamber": "senate",
+            "filing_year": "2024",
+            "source_record_id": "DOC1",
+        }
         result = group_artifacts_by_chamber_year([row])
         assert ("senate", 2024) in result
+
+    def test_boolean_filing_year_excluded(self):
+        row: dict[str, Any] = {
+            "id": 1,
+            "chamber": "senate",
+            "filing_year": True,
+            "source_record_id": "DOC1",
+        }
+        result = group_artifacts_by_chamber_year([row])
+        assert result == {}
 
     def test_order_within_group_preserved(self):
         a1 = _artifact("house", 2024, "D1", artifact_id=1)
@@ -291,30 +316,68 @@ class TestLookupArguments:
 
 class TestMissingFields:
     def test_none_filing_year_produces_none_index_row(self):
-        row: dict[str, Any] = {"id": 1, "chamber": "senate", "filing_year": None, "source_record_id": "DOC1"}
+        row: dict[str, Any] = {
+            "id": 1,
+            "chamber": "senate",
+            "filing_year": None,
+            "source_record_id": "DOC1",
+        }
         result = fetch_index_rows_for_artifacts([row])
         assert result[0].index_row is None
 
     def test_none_chamber_produces_none_index_row(self):
-        row: dict[str, Any] = {"id": 1, "chamber": None, "filing_year": 2024, "source_record_id": "DOC1"}
+        row: dict[str, Any] = {
+            "id": 1,
+            "chamber": None,
+            "filing_year": 2024,
+            "source_record_id": "DOC1",
+        }
         result = fetch_index_rows_for_artifacts([row])
         assert result[0].index_row is None
 
     def test_no_lookup_call_when_year_is_none(self):
-        row: dict[str, Any] = {"id": 1, "chamber": "senate", "filing_year": None, "source_record_id": "DOC1"}
+        row: dict[str, Any] = {
+            "id": 1,
+            "chamber": "senate",
+            "filing_year": None,
+            "source_record_id": "DOC1",
+        }
         with patch(_LOOKUP) as mock_lookup:
             fetch_index_rows_for_artifacts([row])
         mock_lookup.assert_not_called()
 
     def test_artifact_with_none_year_still_in_result(self):
-        row: dict[str, Any] = {"id": 1, "chamber": "senate", "filing_year": None, "source_record_id": "DOC1"}
+        row: dict[str, Any] = {
+            "id": 1,
+            "chamber": "senate",
+            "filing_year": None,
+            "source_record_id": "DOC1",
+        }
         result = fetch_index_rows_for_artifacts([row])
         assert len(result) == 1
         assert result[0].artifact is row
 
+    def test_boolean_filing_year_produces_none_index_row_without_lookup(self):
+        row: dict[str, Any] = {
+            "id": 1,
+            "chamber": "senate",
+            "filing_year": True,
+            "source_record_id": "DOC1",
+        }
+        with patch(_LOOKUP) as mock_lookup:
+            result = fetch_index_rows_for_artifacts([row])
+
+        mock_lookup.assert_not_called()
+        assert result[0].index_row is None
+
     def test_valid_and_invalid_rows_mixed(self):
         valid = _artifact("senate", 2024, "DOC1", artifact_id=1)
-        invalid: dict[str, Any] = {"id": 2, "chamber": "senate", "filing_year": None, "source_record_id": "DOC2"}
+        invalid: dict[str, Any] = {
+            "id": 2,
+            "chamber": "senate",
+            "filing_year": None,
+            "source_record_id": "DOC2",
+        }
         with patch(_LOOKUP, return_value={"DOC1": _senate_row("DOC1")}):
             result = fetch_index_rows_for_artifacts([valid, invalid])
         assert len(result) == 2

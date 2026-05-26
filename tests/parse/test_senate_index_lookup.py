@@ -18,6 +18,7 @@ from src.parse.disclosures.senate_index_lookup import (
 # Shared row fixtures
 # ---------------------------------------------------------------------------
 
+
 def _row(doc_id: str, first: str = "A", last: str = "B", year: int = 2023) -> SenateIndexRow:
     return SenateIndexRow(
         first_name=first,

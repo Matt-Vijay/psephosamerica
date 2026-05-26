@@ -7,7 +7,13 @@ from __future__ import annotations
 
 import datetime
 from dataclasses import dataclass
+from typing import Any
 from typing import Literal
+
+
+def _validate_identity_int(value: Any, field_name: str) -> None:
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise ValueError(f"{field_name} must be an integer")
 
 
 @dataclass(frozen=True, slots=True)
@@ -37,6 +43,9 @@ class CommitteeRecord:
     parent_committee_code: str | None = None
     source_url: str | None = None
 
+    def __post_init__(self) -> None:
+        _validate_identity_int(self.congress, "congress")
+
 
 @dataclass(frozen=True, slots=True)
 class BillRecord:
@@ -50,6 +59,10 @@ class BillRecord:
     current_status: str | None = None
     source_url: str | None = None
 
+    def __post_init__(self) -> None:
+        _validate_identity_int(self.congress, "congress")
+        _validate_identity_int(self.bill_number, "bill_number")
+
 
 @dataclass(frozen=True, slots=True)
 class CosponsorRecord:
@@ -60,6 +73,10 @@ class CosponsorRecord:
     is_original: bool = False
     sponsor_date: datetime.date | None = None
     source_url: str | None = None
+
+    def __post_init__(self) -> None:
+        _validate_identity_int(self.congress, "congress")
+        _validate_identity_int(self.bill_number, "bill_number")
 
 
 @dataclass(frozen=True, slots=True)
@@ -72,6 +89,11 @@ class VoteEventRecord:
     question: str
     result: str | None = None
     source_url: str | None = None
+
+    def __post_init__(self) -> None:
+        _validate_identity_int(self.congress, "congress")
+        _validate_identity_int(self.session_number, "session_number")
+        _validate_identity_int(self.roll_call_number, "roll_call_number")
 
 
 @dataclass(frozen=True, slots=True)
@@ -89,5 +111,8 @@ class VoteCastRecord:
     lis_member_id: str | None = None
 
     def __post_init__(self) -> None:
+        _validate_identity_int(self.congress, "congress")
+        _validate_identity_int(self.session_number, "session_number")
+        _validate_identity_int(self.roll_call_number, "roll_call_number")
         if self.bioguide_id is None and self.lis_member_id is None:
             raise ValueError("VoteCastRecord requires at least one of bioguide_id or lis_member_id")

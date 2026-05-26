@@ -7,7 +7,8 @@ import src.api as api
 from src.api.contracts import NotFoundBody
 from src.api.read_service import get_member_page
 from src.export.writer import member_page_payload_path
-from src.export.contracts import RecentRuleFire
+from src.export.contracts import RecentRuleFire, SourceAnchor
+from src.ontology.contracts import OntologyEdgePayload, OntologyNodeRef
 from src.pipeline.history_aggregate_run import write_history_aggregate
 from tests.support.published_snapshot_fixtures import (
     make_evidence_card,
@@ -42,6 +43,56 @@ def _member_profile_with_cards() -> object:
     )
 
 
+def _ontology_edge() -> OntologyEdgePayload:
+    return OntologyEdgePayload(
+        edge_id="ont-edge-member-page-001",
+        edge_type="member_committee_assignment",
+        subject=OntologyNodeRef(
+            node_type="member",
+            node_id="P000197",
+            label="Nancy Pelosi",
+        ),
+        object=OntologyNodeRef(
+            node_type="committee",
+            node_id="HSEC",
+            label="Energy",
+        ),
+        source_anchors=[
+            SourceAnchor(
+                source_type="committee_membership",
+                source_id="cm-member-page-1",
+                url="https://api.congress.gov/v3/committee/house/HSEC?format=json",
+                label="Committee membership",
+            )
+        ],
+    )
+
+
+def _committee_sector_edge() -> OntologyEdgePayload:
+    return OntologyEdgePayload(
+        edge_id="ont-edge-member-page-sector-001",
+        edge_type="committee_sector_jurisdiction",
+        subject=OntologyNodeRef(
+            node_type="committee",
+            node_id="HSEC",
+            label="Energy",
+        ),
+        object=OntologyNodeRef(
+            node_type="sector",
+            node_id="energy",
+            label="Energy",
+        ),
+        source_anchors=[
+            SourceAnchor(
+                source_type="committee_membership",
+                source_id="cm-member-page-sector-1",
+                url="https://api.congress.gov/v3/committee/house/HSEC?format=json",
+                label="Committee jurisdiction",
+            )
+        ],
+    )
+
+
 def test_get_member_page_returns_profile_and_resolved_evidence(tmp_path: Path) -> None:
     profile = _member_profile_with_cards()
     cards = [
@@ -54,8 +105,66 @@ def test_get_member_page_returns_profile_and_resolved_evidence(tmp_path: Path) -
 
     assert result.ok is True
     assert result.data.profile.slug == "nancy-pelosi"
-    assert [card.evidence_card_id for card in result.data.top_evidence_cards] == ["ec-0002", "ec-0001"]
-    assert [card.evidence_card_id for card in result.data.recent_evidence_cards] == ["ec-0002", "ec-0001"]
+    assert [card.evidence_card_id for card in result.data.top_evidence_cards] == [
+        "ec-0002",
+        "ec-0001",
+    ]
+    assert [card.evidence_card_id for card in result.data.recent_evidence_cards] == [
+        "ec-0002",
+        "ec-0001",
+    ]
+    top_card = result.data.model_dump(mode="json")["top_evidence_cards"][0]
+    assert top_card["source_count"] == 1
+    assert top_card["official_source_count"] == 1
+    assert top_card["primary_source_url"].startswith("https://disclosures.house.gov/")
+
+
+def test_get_member_page_includes_member_scoped_ontology_graph(tmp_path: Path) -> None:
+    profile = _member_profile_with_cards()
+    cards = [
+        make_evidence_card(evidence_card_id="ec-0001", score_delta=5.0),
+        make_evidence_card(evidence_card_id="ec-0002", score_delta=-3.0),
+    ]
+    make_snapshot(
+        tmp_path,
+        member_profiles=[profile],
+        evidence_cards=cards,
+        ontology_edges=[_ontology_edge()],
+    )
+
+    result = get_member_page("nancy-pelosi", snapshot_root=tmp_path)
+
+    assert result.ok is True
+    assert result.data.ontology_graph is not None
+    assert result.data.ontology_graph.member_bioguide_id == "P000197"
+    assert result.data.ontology_graph.edge_count == 1
+    assert result.data.ontology_graph.edges[0].edge_id == "ont-edge-member-page-001"
+
+
+def test_get_member_page_ontology_graph_includes_committee_sector_context(
+    tmp_path: Path,
+) -> None:
+    profile = _member_profile_with_cards()
+    cards = [
+        make_evidence_card(evidence_card_id="ec-0001", score_delta=5.0),
+        make_evidence_card(evidence_card_id="ec-0002", score_delta=-3.0),
+    ]
+    make_snapshot(
+        tmp_path,
+        member_profiles=[profile],
+        evidence_cards=cards,
+        ontology_edges=[_ontology_edge(), _committee_sector_edge()],
+    )
+
+    result = get_member_page("nancy-pelosi", snapshot_root=tmp_path)
+
+    assert result.ok is True
+    assert result.data.ontology_graph is not None
+    assert [edge.edge_id for edge in result.data.ontology_graph.edges] == [
+        "ont-edge-member-page-001",
+        "ont-edge-member-page-sector-001",
+    ]
+    assert result.data.ontology_graph.edges[1].object.node_id == "energy"
 
 
 def test_get_member_page_supports_independent_limits(tmp_path: Path) -> None:
@@ -78,7 +187,9 @@ def test_get_member_page_supports_independent_limits(tmp_path: Path) -> None:
     assert [card.evidence_card_id for card in result.data.recent_evidence_cards] == ["ec-0002"]
 
 
-def test_get_member_page_prefers_precomputed_artifact_and_falls_back_cleanly(tmp_path: Path) -> None:
+def test_get_member_page_prefers_precomputed_artifact_and_falls_back_cleanly(
+    tmp_path: Path,
+) -> None:
     profile = _member_profile_with_cards()
     cards = [
         make_evidence_card(evidence_card_id="ec-0001", score_delta=5.0),
@@ -192,8 +303,14 @@ def test_get_member_page_skips_missing_evidence_sidecars(tmp_path: Path) -> None
     result = get_member_page("nancy-pelosi", snapshot_root=tmp_path)
 
     assert result.ok is True
-    assert [card.evidence_card_id for card in result.data.top_evidence_cards] == ["ec-0002", "ec-0001"]
-    assert [card.evidence_card_id for card in result.data.recent_evidence_cards] == ["ec-0002", "ec-0001"]
+    assert [card.evidence_card_id for card in result.data.top_evidence_cards] == [
+        "ec-0002",
+        "ec-0001",
+    ]
+    assert [card.evidence_card_id for card in result.data.recent_evidence_cards] == [
+        "ec-0002",
+        "ec-0001",
+    ]
 
 
 def test_get_member_page_returns_not_found_for_missing_member(tmp_path: Path) -> None:
@@ -233,10 +350,7 @@ def test_get_member_page_history_aggregate_root_serves_copied_artifact_without_s
         member_profiles=[
             profile.model_copy(update={"name": "Early Nancy", "snapshot_date": first_date})
         ],
-        evidence_cards=[
-            card.model_copy(update={"snapshot_date": first_date})
-            for card in cards
-        ],
+        evidence_cards=[card.model_copy(update={"snapshot_date": first_date}) for card in cards],
     )
     make_snapshot(
         second_root,
@@ -244,10 +358,7 @@ def test_get_member_page_history_aggregate_root_serves_copied_artifact_without_s
         member_profiles=[
             profile.model_copy(update={"name": "Latest Nancy", "snapshot_date": second_date})
         ],
-        evidence_cards=[
-            card.model_copy(update={"snapshot_date": second_date})
-            for card in cards
-        ],
+        evidence_cards=[card.model_copy(update={"snapshot_date": second_date}) for card in cards],
     )
 
     write_history_aggregate([first_root, second_root], aggregate_root)
@@ -259,7 +370,10 @@ def test_get_member_page_history_aggregate_root_serves_copied_artifact_without_s
 
     assert result.ok is True
     assert result.data.profile.name == "Latest Nancy"
-    assert [card.evidence_card_id for card in result.data.top_evidence_cards] == ["ec-0002", "ec-0001"]
+    assert [card.evidence_card_id for card in result.data.top_evidence_cards] == [
+        "ec-0002",
+        "ec-0001",
+    ]
 
 
 def test_src_api_exports_member_page_helper() -> None:

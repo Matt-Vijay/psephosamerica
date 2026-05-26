@@ -45,7 +45,9 @@ def _disclosures_summary(
     }
 
 
-def _recompute_result(*, run_id: int = 20, rule_fires: int = 4, evidence_cards: int = 2) -> MagicMock:
+def _recompute_result(
+    *, run_id: int = 20, rule_fires: int = 4, evidence_cards: int = 2
+) -> MagicMock:
     r = MagicMock()
     r.run_id = run_id
     r.data_source = {"id": 1, "slug": "conflict-recompute"}
@@ -85,9 +87,16 @@ def _run(
     conn = conn or MagicMock()
     zip_inputs = MagicMock()
     with (
-        patch(f"{_MODULE}.smoke_process_disclosures", return_value=disclosures or _disclosures_summary()) as mock_disc,
-        patch(f"{_MODULE}.run_recompute_runtime", return_value=recompute or _recompute_result()) as mock_rec,
-        patch(f"{_MODULE}.run_publish_runtime", return_value=publish or _publish_result()) as mock_pub,
+        patch(
+            f"{_MODULE}.smoke_process_disclosures",
+            return_value=disclosures or _disclosures_summary(),
+        ) as mock_disc,
+        patch(
+            f"{_MODULE}.run_recompute_runtime", return_value=recompute or _recompute_result()
+        ) as mock_rec,
+        patch(
+            f"{_MODULE}.run_publish_runtime", return_value=publish or _publish_result()
+        ) as mock_pub,
     ):
         summary = smoke_oracle_path(
             conn,
@@ -117,20 +126,33 @@ class TestSmokeOraclePathStructure:
     def test_disclosures_summary_keys(self) -> None:
         summary, *_ = _run()
         assert set(summary["disclosures"]) == {
-            "run_id", "source_slug", "parsed", "parse_succeeded",
-            "parse_failed", "transformed", "total_written", "load_ok",
+            "run_id",
+            "source_slug",
+            "parsed",
+            "parse_succeeded",
+            "parse_failed",
+            "transformed",
+            "total_written",
+            "load_ok",
         }
 
     def test_recompute_summary_keys(self) -> None:
         summary, *_ = _run()
         assert set(summary["recompute"]) == {
-            "run_id", "source_slug", "rule_fires", "evidence_cards",
+            "run_id",
+            "source_slug",
+            "rule_fires",
+            "evidence_cards",
         }
 
     def test_publish_summary_keys(self) -> None:
         summary, *_ = _run()
         assert set(summary["publish"]) == {
-            "run_id", "snapshot_id", "source_slug", "written_count", "succeeded",
+            "run_id",
+            "snapshot_id",
+            "source_slug",
+            "written_count",
+            "succeeded",
         }
 
 
@@ -141,7 +163,9 @@ class TestSmokeOraclePathStructure:
 
 class TestDisclosuresStage:
     def test_values_forwarded(self) -> None:
-        disc = _disclosures_summary(run_id=11, parse_succeeded=5, parse_failed=1, total_written=8, load_ok=True)
+        disc = _disclosures_summary(
+            run_id=11, parse_succeeded=5, parse_failed=1, total_written=8, load_ok=True
+        )
         summary, *_ = _run(disclosures=disc)
         assert summary["disclosures"]["run_id"] == 11
         assert summary["disclosures"]["parse_succeeded"] == 5
@@ -277,9 +301,7 @@ class TestCallOrder:
             patch(f"{_MODULE}.run_recompute_runtime", side_effect=_rec),
             patch(f"{_MODULE}.run_publish_runtime", side_effect=_pub),
         ):
-            smoke_oracle_path(
-                MagicMock(), _LOCAL_ROOT, _SNAP_DATE, _TARGET_DIR, MagicMock()
-            )
+            smoke_oracle_path(MagicMock(), _LOCAL_ROOT, _SNAP_DATE, _TARGET_DIR, MagicMock())
 
         assert call_log == ["disclosures", "recompute", "publish"]
 

@@ -75,6 +75,7 @@ def _disclosure_row(p: FinancialDisclosurePayload) -> dict[str, Any]:
         "filed_at": p.filed_at,
         "filing_period_start": p.filing_period_start,
         "filing_period_end": p.filing_period_end,
+        "source_artifact_id": p.source_artifact_id,
         "source_record_id": p.source_record_id,
         "supersedes_filing_source_id": p.supersedes_filing_source_id,
     }
@@ -110,6 +111,7 @@ def _holding_row(p: HoldingPayload, disclosure_ref: dict[str, Any]) -> dict[str,
         "income_max": p.income_max,
         "income_label": p.income_label,
         "is_liquid": p.is_liquid,
+        "source_artifact_id": p.source_artifact_id,
         "source_record_id": p.source_record_id,
     }
 
@@ -127,6 +129,7 @@ def _transaction_row(p: TransactionPayload, disclosure_ref: dict[str, Any]) -> d
         "amount_min": p.amount_min,
         "amount_max": p.amount_max,
         "amount_label": p.amount_label,
+        "source_artifact_id": p.source_artifact_id,
         "source_record_id": p.source_record_id,
     }
 

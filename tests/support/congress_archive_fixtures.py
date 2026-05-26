@@ -153,9 +153,7 @@ class CongressArchiveBuilder:
         self._members: list[dict[str, Any]] = [_DEFAULT_MEMBER]
         self._committees: list[dict[str, Any]] = [_DEFAULT_COMMITTEE]
         self._bills: list[dict[str, Any]] = [_DEFAULT_BILL]
-        self._member_details: dict[str, dict[str, Any]] = {
-            "P000197": _DEFAULT_MEMBER_DETAIL
-        }
+        self._member_details: dict[str, dict[str, Any]] = {"P000197": _DEFAULT_MEMBER_DETAIL}
         self._bill_details: dict[tuple[int, str, int], dict[str, Any]] = {
             (119, "hr", 1): _DEFAULT_BILL_DETAIL
         }
@@ -175,9 +173,7 @@ class CongressArchiveBuilder:
         self._members = members
         return self
 
-    def with_committees(
-        self, committees: list[dict[str, Any]]
-    ) -> "CongressArchiveBuilder":
+    def with_committees(self, committees: list[dict[str, Any]]) -> "CongressArchiveBuilder":
         self._committees = committees
         return self
 
@@ -363,9 +359,9 @@ def make_archive(
     if cosponsors is not None:
         builder._cosponsors = cosponsors
 
-    for (year, rc) in (house_vote_keys or []):
+    for year, rc in house_vote_keys or []:
         builder.add_house_vote(year, rc, congress=congress)
-    for (c, sess, rc) in (senate_vote_keys or []):
+    for c, sess, rc in senate_vote_keys or []:
         builder.add_senate_vote(c, sess, rc)
 
     builder.build()

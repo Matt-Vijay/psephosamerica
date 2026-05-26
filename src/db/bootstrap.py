@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from src.db.repositories import ConnectionLike
+from src.db.repositories import ConnectionLike, commit_or_rollback
 
 _DB_DIR = Path(__file__).resolve().parents[2] / "db"
 _SCHEMA_PATH = _DB_DIR / "schema.sql"
@@ -21,4 +21,4 @@ def apply_sql(conn: ConnectionLike, sql: str) -> None:
     # sql is executed as a single string; wrap in BEGIN/COMMIT when transactional behaviour is needed
     with conn.cursor() as cur:
         cur.execute(sql)
-    conn.commit()
+    commit_or_rollback(conn)

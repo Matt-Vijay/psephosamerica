@@ -178,11 +178,13 @@ def run_conflict_demo() -> DemoResult:
         build_source_anchor(
             source_type="financial_disclosure",
             source_id="fd-S000999-2023",
+            url="https://disclosures.house.gov/public_disc/financial-pdfs/2023/fd-S000999-2023.pdf",
             label="Annual Financial Disclosure 2023",
         ),
         build_source_anchor(
             source_type="committee_membership",
             source_id="cm-S000999-hfsc",
+            url="https://api.congress.gov/v3/committee/house/HSBA?format=json",
             label="House Financial Services Committee membership",
         ),
     ]

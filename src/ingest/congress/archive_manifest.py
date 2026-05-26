@@ -9,8 +9,13 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from uuid import uuid4
 
-from src.ingest.congress.archive import CongressArchiveManifest, manifest_from_dict
+from src.ingest.congress.archive import (
+    CongressArchiveManifest,
+    congress_archive_manifest_to_dict,
+    manifest_from_dict,
+)
 
 
 def load_manifest(manifest_path: Path) -> CongressArchiveManifest:
@@ -36,3 +41,24 @@ def load_manifest(manifest_path: Path) -> CongressArchiveManifest:
     raw = json.loads(manifest_path.read_text(encoding="utf-8"))
     root = manifest_path.parent
     return manifest_from_dict(raw, root=root)
+
+
+def write_manifest(
+    manifest_path: Path,
+    manifest: CongressArchiveManifest,
+) -> Path:
+    """Serialize *manifest* to JSON, resolving source paths relative to the file."""
+    manifest_path = Path(manifest_path)
+    raw = congress_archive_manifest_to_dict(manifest, root=manifest_path.parent)
+    manifest_path.parent.mkdir(parents=True, exist_ok=True)
+    _write_text_atomic(manifest_path, json.dumps(raw, sort_keys=True))
+    return manifest_path
+
+
+def _write_text_atomic(path: Path, text: str) -> None:
+    temp_path = path.with_name(f".{path.name}.{uuid4().hex}.tmp")
+    try:
+        temp_path.write_text(text, encoding="utf-8")
+        temp_path.replace(path)
+    finally:
+        temp_path.unlink(missing_ok=True)

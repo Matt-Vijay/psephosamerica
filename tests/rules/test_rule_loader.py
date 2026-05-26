@@ -66,6 +66,7 @@ def tmp_rules_dir(tmp_path: Path) -> Path:
 # load_rule
 # ---------------------------------------------------------------------------
 
+
 class TestLoadRule:
     def test_load_minimal(self, tmp_rule: Path) -> None:
         rule = load_rule(tmp_rule)
@@ -101,6 +102,7 @@ class TestLoadRule:
 # load_rules_from_directory
 # ---------------------------------------------------------------------------
 
+
 class TestLoadRulesFromDirectory:
     def test_loads_all(self, tmp_rules_dir: Path) -> None:
         rules = load_rules_from_directory(tmp_rules_dir)
@@ -123,6 +125,7 @@ class TestLoadRulesFromDirectory:
 # validate_rule_set
 # ---------------------------------------------------------------------------
 
+
 class TestValidateRuleSet:
     def test_no_warnings_for_unique_ids(self, tmp_rules_dir: Path) -> None:
         rules = load_rules_from_directory(tmp_rules_dir)
@@ -138,6 +141,7 @@ class TestValidateRuleSet:
 # ---------------------------------------------------------------------------
 # Real YAML rule files (integration)
 # ---------------------------------------------------------------------------
+
 
 class TestRealRules:
     """Load the actual checked-in YAML files and verify structural properties."""

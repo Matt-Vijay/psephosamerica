@@ -42,7 +42,10 @@ RULE_FIRE = {
     "blocks": [
         {"section": "fact", "text": "Purchased AAPL shares on 2026-01-15."},
         {"section": "inference", "text": "Technology sector overlaps with committee."},
-        {"section": "normative_judgment", "text": "This pattern suggests conflict-of-interest risk."},
+        {
+            "section": "normative_judgment",
+            "text": "This pattern suggests conflict-of-interest risk.",
+        },
     ],
     "created_at": datetime(2026, 4, 13, 12, 0, 0),
 }
@@ -51,7 +54,7 @@ SOURCE_ROWS = [
     {
         "source_type": "financial_disclosure",
         "source_id": "fd-99",
-        "url": "https://efdsearch.senate.gov/filing/99",
+        "url": "https://efdsearch.senate.gov/search/view/paper/99/",
         "label": "2025 Annual Disclosure",
     },
 ]
@@ -77,21 +80,28 @@ def test_evidence_card_roundtrip_json():
     data = card.model_dump(mode="json")
     assert isinstance(data["evidence_card_id"], str)
     assert data["dimension"] == "conflict_of_interest_risk"
+    assert data["source_count"] == 1
+    assert data["official_source_count"] == 1
+    assert data["primary_source_url"] == "https://efdsearch.senate.gov/search/view/paper/99/"
+    assert data["primary_source_label"] == "2025 Annual Disclosure"
 
 
 # ── Evidence Card — missing required fields ────────────────────────
 
 
-@pytest.mark.parametrize("missing_key", [
-    "evidence_card_id",
-    "dimension",
-    "rule_id",
-    "rule_version",
-    "score_delta",
-    "short_explanation",
-    "confidence",
-    "blocks",
-])
+@pytest.mark.parametrize(
+    "missing_key",
+    [
+        "evidence_card_id",
+        "dimension",
+        "rule_id",
+        "rule_version",
+        "score_delta",
+        "short_explanation",
+        "confidence",
+        "blocks",
+    ],
+)
 def test_evidence_card_missing_rule_fire_field(missing_key):
     rf = copy.deepcopy(RULE_FIRE)
     del rf[missing_key]
@@ -123,12 +133,27 @@ def test_evidence_card_missing_block_field(missing_key):
         build_evidence_card(rf, MEMBER, SOURCE_ROWS, SNAPSHOT_DATE)
 
 
-def test_evidence_card_source_url_optional():
-    """url is optional — omitting it must not raise."""
+def test_evidence_card_source_url_optional_for_zero_delta_card():
+    """url is optional for zero-delta cards that do not make a score claim."""
     rows = [copy.deepcopy(SOURCE_ROWS[0])]
     del rows[0]["url"]
-    card = build_evidence_card(RULE_FIRE, MEMBER, rows, SNAPSHOT_DATE)
+    rf = copy.deepcopy(RULE_FIRE)
+    rf["score_delta"] = 0.0
+    card = build_evidence_card(rf, MEMBER, rows, SNAPSHOT_DATE)
     assert card.source_anchors[0].url is None
+
+
+@pytest.mark.parametrize(
+    "source_type",
+    ["financial_disclosure", "fec_contribution", "vote_event"],
+)
+def test_build_evidence_card_rejects_claim_bearing_source_without_https(source_type):
+    rows = [copy.deepcopy(SOURCE_ROWS[0])]
+    rows[0]["source_type"] = source_type
+    del rows[0]["url"]
+
+    with pytest.raises(ValueError, match=rf"{source_type}.*fd-99"):
+        build_evidence_card(RULE_FIRE, MEMBER, rows, SNAPSHOT_DATE)
 
 
 # ── Member Profile ─────────────────────────────────────────────────
@@ -164,9 +189,17 @@ def test_build_member_profile():
     assert profile.total_evidence_cards == 12
 
 
-@pytest.mark.parametrize("missing_key", [
-    "bioguide_id", "name", "slug", "state", "chamber", "party",
-])
+@pytest.mark.parametrize(
+    "missing_key",
+    [
+        "bioguide_id",
+        "name",
+        "slug",
+        "state",
+        "chamber",
+        "party",
+    ],
+)
 def test_member_profile_missing_member_field(missing_key):
     m = copy.deepcopy(MEMBER)
     del m[missing_key]
@@ -182,9 +215,16 @@ def test_member_profile_missing_score_field(missing_key):
         build_member_profile(MEMBER, rows, RECENT_FIRES, COMMITTEE_ROWS, 0, SNAPSHOT_DATE)
 
 
-@pytest.mark.parametrize("missing_key", [
-    "rule_id", "evidence_card_id", "short_explanation", "score_delta", "snapshot_date",
-])
+@pytest.mark.parametrize(
+    "missing_key",
+    [
+        "rule_id",
+        "evidence_card_id",
+        "short_explanation",
+        "score_delta",
+        "snapshot_date",
+    ],
+)
 def test_member_profile_missing_fire_field(missing_key):
     fires = [copy.deepcopy(RECENT_FIRES[0])]
     del fires[0][missing_key]
@@ -223,7 +263,11 @@ def test_build_zip_feed():
             "chamber": "senate",
             "party": "Democrat",
             "scores": [
-                {"dimension": "conflict_of_interest_risk", "current_score": 72.0, "rule_fire_count": 3},
+                {
+                    "dimension": "conflict_of_interest_risk",
+                    "current_score": 72.0,
+                    "rule_fire_count": 3,
+                },
             ],
             "top_evidence_card_ids": ["ec-001"],
         },
@@ -340,6 +384,36 @@ def test_snapshot_manifest_requires_explicit_root_sha256():
                 "entries": [],
                 "total_files": 0,
                 "total_bytes": 0,
+            }
+        )
+
+
+def test_manifest_entry_rejects_boolean_size_bytes():
+    with pytest.raises(ValueError, match="size_bytes must be an integer"):
+        SnapshotManifest.model_validate(
+            {
+                "snapshot_id": "2026-04-13",
+                "created_at": "2026-04-13T00:00:00",
+                "entries": [
+                    {"path": "x.json", "sha256": "a" * 64, "size_bytes": True},
+                ],
+                "total_files": 1,
+                "total_bytes": 1,
+                "root_sha256": "b" * 64,
+            }
+        )
+
+
+def test_snapshot_manifest_rejects_boolean_totals():
+    with pytest.raises(ValueError, match="total_files must be an integer"):
+        SnapshotManifest.model_validate(
+            {
+                "snapshot_id": "2026-04-13",
+                "created_at": "2026-04-13T00:00:00",
+                "entries": [],
+                "total_files": True,
+                "total_bytes": 0,
+                "root_sha256": "b" * 64,
             }
         )
 

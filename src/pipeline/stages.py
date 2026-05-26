@@ -14,6 +14,7 @@ from typing import Any, Callable, Optional, Protocol, runtime_checkable
 # Typed structures
 # ---------------------------------------------------------------------------
 
+
 @dataclass(frozen=True)
 class StageDefinition:
     """Immutable description of one pipeline stage.
@@ -33,7 +34,7 @@ class StageResult:
     """Outcome of a single stage execution."""
 
     stage_name: str
-    status: str          # "succeeded" | "failed" | "skipped"
+    status: str  # "succeeded" | "failed" | "skipped"
     output: Any = None
     error: Optional[BaseException] = None
     logs: list[str] = field(default_factory=list)
@@ -99,6 +100,7 @@ class PipelineResult:
 # Provenance emitter protocol
 # ---------------------------------------------------------------------------
 
+
 @runtime_checkable
 class ProvenanceEmitter(Protocol):
     """Receives pipeline lifecycle events.  Inject one or omit for NullEmitter."""
@@ -108,7 +110,6 @@ class ProvenanceEmitter(Protocol):
 
 
 class NullEmitter:
-
     def on_stage_start(self, stage_name: str) -> None:
         pass
 
@@ -119,6 +120,7 @@ class NullEmitter:
 # ---------------------------------------------------------------------------
 # Stage runner
 # ---------------------------------------------------------------------------
+
 
 def run_stage(
     stage: StageDefinition,
@@ -159,6 +161,7 @@ def run_stage(
 # ---------------------------------------------------------------------------
 # Pipeline runner
 # ---------------------------------------------------------------------------
+
 
 def run_pipeline(
     stages: list[StageDefinition],

@@ -782,7 +782,12 @@ class TestPreambleLinesAliasTermination:
         assert "self  Apple  STK" not in preamble
 
     def test_positions_held_outside_us_gov_terminates_preamble(self):
-        lines = ("Annual Report", "Name: Jones", "positions held outside us government", "self  Corp  CEO")
+        lines = (
+            "Annual Report",
+            "Name: Jones",
+            "positions held outside us government",
+            "self  Corp  CEO",
+        )
         preamble = _preamble_lines(lines)
         assert "positions held outside us government" not in preamble
 
@@ -809,7 +814,12 @@ class TestPreambleLinesAliasTermination:
         assert "Name: Lee, Robert" in preamble
 
     def test_transactions_alias_terminates_preamble(self):
-        lines = ("Periodic Transaction Report", "Name: Chen", "transactions", "01/05/2024  self  TSLA  Tesla  Purchase  $1,001 - $15,000")
+        lines = (
+            "Periodic Transaction Report",
+            "Name: Chen",
+            "transactions",
+            "01/05/2024  self  TSLA  Tesla  Purchase  $1,001 - $15,000",
+        )
         preamble = _preamble_lines(lines)
         assert "transactions" not in preamble
 

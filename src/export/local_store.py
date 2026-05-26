@@ -5,28 +5,88 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from src.core.path_safety import safe_join_confined
 from src.identity.current_member_lookup import (
     CurrentMemberLookupPayload,
     validate_current_member_lookup,
 )
-from .contracts import EvidenceCardPayload, MemberHistoryPayload, MemberProfilePayload, ZipFeedPayload
+from src.ontology.agent_tools import OntologyAgentToolManifestPayload
+from src.ontology.contracts import (
+    OntologyGraphPayload,
+    OntologyIndexPayload,
+    OntologyMemberFeaturesPayload,
+    OntologyMemberGraphPayload,
+)
+from src.ontology.frontend_contracts import OntologyFrontendContractPayload
+from src.ontology.static_schema import OntologyFrontendIndexPayload, OntologyStaticSchemaPayload
+from src.prediction.contracts import (
+    PredictionBootstrapPayload,
+    PredictionCommitteeContextPayload,
+    PredictionCommitteeReadinessPayload,
+    PredictionMemberContextPayload,
+    PredictionMemberReadinessPayload,
+    PredictionReadinessIndexPayload,
+    PredictionReadinessPayload,
+    PredictionSectorContextPayload,
+    PredictionSectorReadinessPayload,
+    PredictionSourceContextPayload,
+    PredictionSourceIndexPayload,
+    PredictionTopologyPayload,
+)
+from .contracts import (
+    EvidenceCardPayload,
+    MemberHistoryPayload,
+    MemberProfilePayload,
+    ZipFeedPayload,
+)
 from .manifest import SnapshotManifest
 from .writer import (
     current_member_lookup_path,
     evidence_path,
     history_bootstrap_path,
+    history_coverage_path,
+    history_event_path,
+    history_event_page_path,
     history_preset_range_path,
     homepage_bootstrap_path,
     manifest_path,
     member_change_summary_path,
+    member_history_coverage_path,
+    member_history_coverage_index_path,
     member_history_chart_path,
     member_history_page_path,
     member_history_path,
+    member_timeline_index_path,
+    member_timeline_page_path,
+    member_timeline_dimension_path,
+    member_timeline_year_path,
     member_page_payload_path,
     member_preset_compare_path,
     member_path,
     member_trend_summary_path,
     movement_window_path,
+    ontology_agent_tools_path,
+    ontology_edges_path,
+    ontology_frontend_client_path,
+    ontology_frontend_contract_path,
+    ontology_frontend_types_path,
+    ontology_frontend_index_path,
+    ontology_index_path,
+    ontology_member_features_path,
+    ontology_member_edges_path,
+    ontology_schema_path,
+    prediction_committee_context_path,
+    prediction_committee_readiness_path,
+    prediction_bootstrap_path,
+    prediction_member_context_path,
+    prediction_member_readiness_path,
+    prediction_readiness_index_path,
+    prediction_readiness_path,
+    prediction_sector_context_path,
+    prediction_sector_readiness_path,
+    prediction_source_context_path,
+    prediction_source_index_path,
+    prediction_topology_path,
     snapshot_preset_compare_path,
     snapshot_index_path,
     zip_entry_path,
@@ -35,13 +95,22 @@ from .writer import (
 
 if TYPE_CHECKING:
     from src.api.contracts import HistoryBootstrapPayload
+    from src.api.contracts import HistoryEventPagePayload
     from src.api.contracts import HistoryPresetRangePayload
     from src.api.contracts import HomepageBootstrapPayload
     from src.api.contracts import MemberHistoryPagePayload
     from src.api.contracts import MemberPagePayload
     from src.api.contracts import MemberWindowComparePayload
     from src.export.contracts import MemberChangeSummaryPayload
+    from src.export.contracts import HistoryCoveragePayload
     from src.export.contracts import MemberHistoryChartPayload
+    from src.export.contracts import MemberHistoryCoveragePayload
+    from src.export.contracts import MemberHistoryCoverageIndexPayload
+    from src.export.contracts import MemberTimelineEventPayload
+    from src.export.contracts import MemberTimelineIndexPayload
+    from src.export.contracts import MemberTimelinePagePayload
+    from src.export.contracts import MemberTimelineDimensionPayload
+    from src.export.contracts import MemberTimelineYearPayload
     from src.export.contracts import MemberTrendSummaryPayload
     from src.api.contracts import SnapshotIndexPayload
     from src.api.contracts import ZipEntryPayload
@@ -65,14 +134,10 @@ def _safe_subpath(root: Path, relative: str) -> Path:
     """
     if "\x00" in relative:
         raise ValueError(f"Path segment contains null byte: {relative!r}")
-    resolved = (root / relative).resolve()
-    root_resolved = root.resolve()
-    # The resolved path must be equal to or a child of root.
-    if not (resolved == root_resolved or str(resolved).startswith(str(root_resolved) + "/")):
-        raise ValueError(
-            f"Path escapes snapshot root: {relative!r} resolves to {resolved}"
-        )
-    return root / relative
+    try:
+        return safe_join_confined(root, relative, label="artifact path")
+    except ValueError as exc:
+        raise ValueError(f"Path escapes snapshot root or is not confined: {relative!r}") from exc
 
 
 # ── Internal loader ────────────────────────────────────────────────
@@ -113,10 +178,259 @@ def load_evidence_card(snapshot_root: Path, evidence_card_id: str) -> EvidenceCa
     return EvidenceCardPayload.model_validate(data)
 
 
+def load_ontology_edges(snapshot_root: Path) -> OntologyGraphPayload:
+    file = _safe_subpath(snapshot_root, ontology_edges_path())
+    data = _load_json(file)
+    return OntologyGraphPayload.model_validate(data)
+
+
+def load_ontology_agent_tools(snapshot_root: Path) -> OntologyAgentToolManifestPayload:
+    file = _safe_subpath(snapshot_root, ontology_agent_tools_path())
+    data = _load_json(file)
+    return OntologyAgentToolManifestPayload.model_validate(data)
+
+
+def load_ontology_static_schema(snapshot_root: Path) -> OntologyStaticSchemaPayload:
+    file = _safe_subpath(snapshot_root, ontology_schema_path())
+    data = _load_json(file)
+    return OntologyStaticSchemaPayload.model_validate(data)
+
+
+def load_ontology_frontend_contract(snapshot_root: Path) -> OntologyFrontendContractPayload:
+    file = _safe_subpath(snapshot_root, ontology_frontend_contract_path())
+    data = _load_json(file)
+    return OntologyFrontendContractPayload.model_validate(data)
+
+
+def load_ontology_frontend_types(snapshot_root: Path) -> str:
+    file = _safe_subpath(snapshot_root, ontology_frontend_types_path())
+    if not file.exists():
+        raise FileNotFoundError(f"Artifact not found: {file}")
+    return file.read_text(encoding="utf-8")
+
+
+def load_ontology_frontend_client(snapshot_root: Path) -> str:
+    file = _safe_subpath(snapshot_root, ontology_frontend_client_path())
+    if not file.exists():
+        raise FileNotFoundError(f"Artifact not found: {file}")
+    return file.read_text(encoding="utf-8")
+
+
+def load_ontology_index(snapshot_root: Path) -> OntologyIndexPayload:
+    file = _safe_subpath(snapshot_root, ontology_index_path())
+    data = _load_json(file)
+    return OntologyIndexPayload.model_validate(data)
+
+
+def load_ontology_frontend_index(snapshot_root: Path) -> OntologyFrontendIndexPayload:
+    file = _safe_subpath(snapshot_root, ontology_frontend_index_path())
+    data = _load_json(file)
+    return OntologyFrontendIndexPayload.model_validate(data)
+
+
+def load_ontology_member_edges(
+    snapshot_root: Path,
+    member_bioguide_id: str,
+) -> OntologyMemberGraphPayload:
+    file = _safe_subpath(snapshot_root, ontology_member_edges_path(member_bioguide_id))
+    data = _load_json(file)
+    return OntologyMemberGraphPayload.model_validate(data)
+
+
+def load_ontology_member_features(
+    snapshot_root: Path,
+    member_bioguide_id: str,
+) -> OntologyMemberFeaturesPayload:
+    file = _safe_subpath(snapshot_root, ontology_member_features_path(member_bioguide_id))
+    data = _load_json(file)
+    return OntologyMemberFeaturesPayload.model_validate(data)
+
+
+def load_prediction_readiness(snapshot_root: Path) -> PredictionReadinessPayload:
+    file = _safe_subpath(snapshot_root, prediction_readiness_path())
+    data = _load_json(file)
+    return PredictionReadinessPayload.model_validate(data)
+
+
+def load_prediction_bootstrap(snapshot_root: Path) -> PredictionBootstrapPayload:
+    file = _safe_subpath(snapshot_root, prediction_bootstrap_path())
+    data = _load_json(file)
+    return PredictionBootstrapPayload.model_validate(data)
+
+
+def load_prediction_topology(snapshot_root: Path) -> PredictionTopologyPayload:
+    file = _safe_subpath(snapshot_root, prediction_topology_path())
+    data = _load_json(file)
+    return PredictionTopologyPayload.model_validate(data)
+
+
+def load_prediction_readiness_index(snapshot_root: Path) -> PredictionReadinessIndexPayload:
+    file = _safe_subpath(snapshot_root, prediction_readiness_index_path())
+    data = _load_json(file)
+    return PredictionReadinessIndexPayload.model_validate(data)
+
+
+def load_prediction_source_index(snapshot_root: Path) -> PredictionSourceIndexPayload:
+    file = _safe_subpath(snapshot_root, prediction_source_index_path())
+    data = _load_json(file)
+    return PredictionSourceIndexPayload.model_validate(data)
+
+
+def load_prediction_source_context(
+    snapshot_root: Path,
+    source_key: str,
+) -> PredictionSourceContextPayload:
+    file = _safe_subpath(snapshot_root, prediction_source_context_path(source_key))
+    data = _load_json(file)
+    payload = PredictionSourceContextPayload.model_validate(data)
+    if payload.source.source_key != source_key:
+        raise ValueError("prediction source context source_key does not match requested key")
+    return payload
+
+
+def load_prediction_sector_readiness(snapshot_root: Path) -> PredictionSectorReadinessPayload:
+    file = _safe_subpath(snapshot_root, prediction_sector_readiness_path())
+    data = _load_json(file)
+    return PredictionSectorReadinessPayload.model_validate(data)
+
+
+def load_prediction_sector_context(
+    snapshot_root: Path,
+    sector_id: str,
+) -> PredictionSectorContextPayload:
+    file = _safe_subpath(snapshot_root, prediction_sector_context_path(sector_id))
+    data = _load_json(file)
+    payload = PredictionSectorContextPayload.model_validate(data)
+    if payload.sector.sector_id != sector_id:
+        raise ValueError("prediction sector context sector_id does not match requested id")
+    return payload
+
+
+def load_prediction_committee_readiness(
+    snapshot_root: Path,
+) -> PredictionCommitteeReadinessPayload:
+    file = _safe_subpath(snapshot_root, prediction_committee_readiness_path())
+    data = _load_json(file)
+    return PredictionCommitteeReadinessPayload.model_validate(data)
+
+
+def load_prediction_committee_context(
+    snapshot_root: Path,
+    committee_id: str,
+) -> PredictionCommitteeContextPayload:
+    file = _safe_subpath(snapshot_root, prediction_committee_context_path(committee_id))
+    data = _load_json(file)
+    payload = PredictionCommitteeContextPayload.model_validate(data)
+    if payload.committee.committee_id != committee_id:
+        raise ValueError("prediction committee context committee_id does not match requested id")
+    return payload
+
+
+def load_prediction_member_readiness(
+    snapshot_root: Path,
+    member_bioguide_id: str,
+) -> PredictionMemberReadinessPayload:
+    file = _safe_subpath(snapshot_root, prediction_member_readiness_path(member_bioguide_id))
+    data = _load_json(file)
+    payload = PredictionMemberReadinessPayload.model_validate(data)
+    if payload.bioguide_id != member_bioguide_id:
+        raise ValueError("prediction member readiness bioguide_id does not match requested id")
+    return payload
+
+
+def load_prediction_member_context(
+    snapshot_root: Path,
+    member_bioguide_id: str,
+) -> PredictionMemberContextPayload:
+    file = _safe_subpath(snapshot_root, prediction_member_context_path(member_bioguide_id))
+    data = _load_json(file)
+    payload = PredictionMemberContextPayload.model_validate(data)
+    if payload.member_bioguide_id != member_bioguide_id:
+        raise ValueError("prediction member context bioguide_id does not match requested id")
+    return payload
+
+
 def load_member_history(snapshot_root: Path, slug: str) -> MemberHistoryPayload:
     file = _safe_subpath(snapshot_root, member_history_path(slug))
     data = _load_json(file)
     return MemberHistoryPayload.model_validate(data)
+
+
+def load_member_timeline_index(
+    snapshot_root: Path,
+    slug: str,
+) -> MemberTimelineIndexPayload:
+    from src.export.contracts import MemberTimelineIndexPayload
+
+    file = _safe_subpath(snapshot_root, member_timeline_index_path(slug))
+    data = _load_json(file)
+    return MemberTimelineIndexPayload.model_validate(data)
+
+
+def load_member_timeline_page(
+    snapshot_root: Path,
+    slug: str,
+    page: int,
+) -> MemberTimelinePagePayload:
+    from src.export.contracts import MemberTimelinePagePayload
+
+    file = _safe_subpath(snapshot_root, member_timeline_page_path(slug, page))
+    data = _load_json(file)
+    return MemberTimelinePagePayload.model_validate(data)
+
+
+def load_member_timeline_dimension(
+    snapshot_root: Path,
+    slug: str,
+    dimension: str,
+) -> MemberTimelineDimensionPayload:
+    from src.export.contracts import MemberTimelineDimensionPayload
+
+    file = _safe_subpath(snapshot_root, member_timeline_dimension_path(slug, dimension))
+    data = _load_json(file)
+    return MemberTimelineDimensionPayload.model_validate(data)
+
+
+def load_member_timeline_year(
+    snapshot_root: Path,
+    slug: str,
+    year: int,
+) -> MemberTimelineYearPayload:
+    from src.export.contracts import MemberTimelineYearPayload
+
+    file = _safe_subpath(snapshot_root, member_timeline_year_path(slug, year))
+    data = _load_json(file)
+    return MemberTimelineYearPayload.model_validate(data)
+
+
+def load_history_event(
+    snapshot_root: Path,
+    event_id: str,
+) -> MemberTimelineEventPayload:
+    from src.export.contracts import MemberTimelineEventPayload
+
+    file = _safe_subpath(snapshot_root, history_event_path(event_id))
+    data = _load_json(file)
+    return MemberTimelineEventPayload.model_validate(data)
+
+
+def load_history_event_page(
+    snapshot_root: Path,
+    event_id: str,
+) -> HistoryEventPagePayload:
+    from src.api.contracts import HistoryEventPagePayload
+
+    file = _safe_subpath(snapshot_root, history_event_page_path(event_id))
+    data = _load_json(file)
+    return HistoryEventPagePayload.model_validate(data)
+
+
+def load_history_coverage(snapshot_root: Path) -> HistoryCoveragePayload:
+    from src.export.contracts import HistoryCoveragePayload
+
+    file = _safe_subpath(snapshot_root, history_coverage_path())
+    data = _load_json(file)
+    return HistoryCoveragePayload.model_validate(data)
 
 
 def load_member_change_summary(
@@ -128,6 +442,27 @@ def load_member_change_summary(
     file = _safe_subpath(snapshot_root, member_change_summary_path(slug))
     data = _load_json(file)
     return MemberChangeSummaryPayload.model_validate(data)
+
+
+def load_member_history_coverage(
+    snapshot_root: Path,
+    slug: str,
+) -> MemberHistoryCoveragePayload:
+    from src.export.contracts import MemberHistoryCoveragePayload
+
+    file = _safe_subpath(snapshot_root, member_history_coverage_path(slug))
+    data = _load_json(file)
+    return MemberHistoryCoveragePayload.model_validate(data)
+
+
+def load_member_history_coverage_index(
+    snapshot_root: Path,
+) -> MemberHistoryCoverageIndexPayload:
+    from src.export.contracts import MemberHistoryCoverageIndexPayload
+
+    file = _safe_subpath(snapshot_root, member_history_coverage_index_path())
+    data = _load_json(file)
+    return MemberHistoryCoverageIndexPayload.model_validate(data)
 
 
 def load_member_history_chart(
@@ -223,10 +558,15 @@ def load_snapshot_preset_compare(
     return SnapshotComparePayload.model_validate(data)
 
 
-def load_movement_window(snapshot_root: Path, name: str = "latest") -> MovementWindowPayload:
+def load_movement_window(
+    snapshot_root: Path,
+    name: str = "latest",
+    *,
+    dimension: str | None = None,
+) -> MovementWindowPayload:
     from src.homepage.contracts import MovementWindowPayload
 
-    file = _safe_subpath(snapshot_root, movement_window_path(name))
+    file = _safe_subpath(snapshot_root, movement_window_path(name, dimension=dimension))
     data = _load_json(file)
     return MovementWindowPayload.model_validate(data)
 
@@ -319,7 +659,9 @@ def _normalize_homepage_bootstrap(data: object) -> object:
         return data
     return {
         **data,
-        "featured_lookup_entries": _normalize_current_member_lookup_entries(featured_lookup_entries),
+        "featured_lookup_entries": _normalize_current_member_lookup_entries(
+            featured_lookup_entries
+        ),
     }
 
 

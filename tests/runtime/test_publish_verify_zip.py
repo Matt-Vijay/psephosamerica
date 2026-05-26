@@ -2,6 +2,7 @@
 
 Uses real temp publish trees — no mocks, no binary fixtures.
 """
+
 from __future__ import annotations
 
 import json
@@ -33,9 +34,9 @@ def _feed(zip_code: str = "90210", members: list | None = None) -> ZipFeedPayloa
 
 
 def _serialise(payload: ZipFeedPayload) -> bytes:
-    return json.dumps(
-        payload.model_dump(mode="json"), sort_keys=True, ensure_ascii=False
-    ).encode("utf-8")
+    return json.dumps(payload.model_dump(mode="json"), sort_keys=True, ensure_ascii=False).encode(
+        "utf-8"
+    )
 
 
 def _planned(feed: ZipFeedPayload) -> PlannedFile:
@@ -43,10 +44,7 @@ def _planned(feed: ZipFeedPayload) -> PlannedFile:
 
 
 def _manifest(files: list[PlannedFile]) -> SnapshotManifest:
-    entries = [
-        ManifestEntry(path=f.path, sha256=f.sha256, size_bytes=f.size_bytes)
-        for f in files
-    ]
+    entries = [ManifestEntry(path=f.path, sha256=f.sha256, size_bytes=f.size_bytes) for f in files]
     return SnapshotManifest(
         snapshot_id=_SNAPSHOT_ID,
         created_at=datetime(2026, 4, 14, 0, 0, 0),
@@ -218,6 +216,7 @@ class TestInvalidJson:
         bad_bytes = b"not valid json {"
         bad_path.write_bytes(bad_bytes)
         import hashlib
+
         sha = hashlib.sha256(bad_bytes).hexdigest()
         entry = ManifestEntry(path=zip_path(zip_code), sha256=sha, size_bytes=len(bad_bytes))
         return SnapshotManifest(
@@ -353,6 +352,7 @@ class TestZipCodeMismatch:
         wrong_path.parent.mkdir(parents=True, exist_ok=True)
         wrong_path.write_bytes(content)
         import hashlib
+
         sha = hashlib.sha256(content).hexdigest()
         entry = ManifestEntry(path="zip/11111.json", sha256=sha, size_bytes=len(content))
         return SnapshotManifest(

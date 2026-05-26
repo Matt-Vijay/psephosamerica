@@ -4,7 +4,11 @@ import datetime as dt
 
 import pytest
 
-from src.feed.changes import events_from_evidence_cards, events_from_rule_fires, events_from_score_deltas
+from src.feed.changes import (
+    events_from_evidence_cards,
+    events_from_rule_fires,
+    events_from_score_deltas,
+)
 from src.homepage.builders import build_top_changes
 from src.load.recompute import plan_score_snapshots
 from src.pipeline.conflict_recompute import recompute_conflicts
@@ -81,7 +85,9 @@ def _committee_sector_trade_row() -> dict:
         "disclosure_period_start": dt.date(2025, 1, 3),
         "disclosure_period_end": dt.date(2025, 12, 31),
         "financial_disclosure_id": "fd-1",
+        "source_url": "https://disclosures.house.gov/public_disc/ptr-pdfs/2024/fd-1.pdf",
         "committee_membership_id": "cm-1",
+        "committee_membership_source_url": "https://api.congress.gov/v3/committee/house/HSBA?format=json",
     }
 
 

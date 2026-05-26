@@ -40,6 +40,7 @@ def _safe_slug(value: str) -> str:
 # Raw artifact keys
 # ---------------------------------------------------------------------------
 
+
 def raw_artifact_key(
     source_slug: str,
     fetched_date: _DATE_T,
@@ -53,18 +54,21 @@ def raw_artifact_key(
     """
     if len(sha256) < 8 or not re.fullmatch(r"[0-9a-f]+", sha256):
         raise ValueError(f"Invalid sha256: {sha256!r}")
-    return "/".join([
-        "raw",
-        _safe_slug(source_slug),
-        _as_date_str(fetched_date),
-        sha256[:8],
-        filename,
-    ])
+    return "/".join(
+        [
+            "raw",
+            _safe_slug(source_slug),
+            _as_date_str(fetched_date),
+            sha256[:8],
+            filename,
+        ]
+    )
 
 
 # ---------------------------------------------------------------------------
 # Parsed output keys
 # ---------------------------------------------------------------------------
+
 
 def parsed_output_key(
     source_slug: str,
@@ -84,19 +88,22 @@ def parsed_output_key(
     version_safe = parser_version.lower().strip()
     if not re.fullmatch(r"[a-z0-9_\-\.]+", version_safe):
         raise ValueError(f"Unsafe parser_version: {version_safe!r}")
-    return "/".join([
-        "parsed",
-        _safe_slug(source_slug),
-        _safe_slug(parser_name),
-        version_safe,
-        artifact_sha256[:8],
-        filename,
-    ])
+    return "/".join(
+        [
+            "parsed",
+            _safe_slug(source_slug),
+            _safe_slug(parser_name),
+            version_safe,
+            artifact_sha256[:8],
+            filename,
+        ]
+    )
 
 
 # ---------------------------------------------------------------------------
 # Snapshot output keys
 # ---------------------------------------------------------------------------
+
 
 def snapshot_output_key(
     snapshot_date: _DATE_T,
@@ -111,17 +118,20 @@ def snapshot_output_key(
     bid = bioguide_id.upper().strip()
     if not re.fullmatch(r"[A-Z][0-9]{6}", bid):
         raise ValueError(f"Invalid bioguide_id format: {bid!r}")
-    return "/".join([
-        "snapshots",
-        _as_date_str(snapshot_date),
-        bid,
-        filename,
-    ])
+    return "/".join(
+        [
+            "snapshots",
+            _as_date_str(snapshot_date),
+            bid,
+            filename,
+        ]
+    )
 
 
 # ---------------------------------------------------------------------------
 # Archive manifest keys
 # ---------------------------------------------------------------------------
+
 
 def archive_manifest_key(snapshot_date: _DATE_T) -> str:
     """Storage key for the dated public snapshot manifest.
@@ -129,8 +139,10 @@ def archive_manifest_key(snapshot_date: _DATE_T) -> str:
     Example:
         archives/2025-06-01/manifest.json
     """
-    return "/".join([
-        "archives",
-        _as_date_str(snapshot_date),
-        "manifest.json",
-    ])
+    return "/".join(
+        [
+            "archives",
+            _as_date_str(snapshot_date),
+            "manifest.json",
+        ]
+    )

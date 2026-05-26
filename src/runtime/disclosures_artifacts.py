@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from src.db.repositories import rollback_if_available
 from src.parse.disclosures.acquire import HOUSE_DISCLOSURE_SOURCE, SENATE_DISCLOSURE_SOURCE
 from src.parse.disclosures.artifact_store import write_artifact
 from src.parse.disclosures.discovery import fetch_disclosure_artifacts
@@ -64,14 +65,17 @@ def run_disclosure_artifact_ingest(
     run_id = start_ingestion_run(
         conn,
         data_source["id"],
-        "artifact_ingest",
-        parameters={"chamber": chamber, "year": year, "filing_kind": filing_kind},
+        "ingest",
+        parameters={
+            "stage": "artifact_ingest",
+            "chamber": chamber,
+            "year": year,
+            "filing_kind": filing_kind,
+        },
     )
 
     try:
-        metas = fetch_disclosure_artifacts(
-            chamber, year, filing_kind=filing_kind, client=client
-        )
+        metas = fetch_disclosure_artifacts(chamber, year, filing_kind=filing_kind, client=client)
 
         artifact_rows: list[dict[str, Any]] = []
         for meta in metas:
@@ -80,12 +84,19 @@ def run_disclosure_artifact_ingest(
                     f"unexpected artifact source slug for {chamber}: {meta.source_slug!r}"
                 )
             data = download_artifact_bytes(meta.source_url)
-            row = store_downloaded_artifact(conn, meta, data)
+            row = store_downloaded_artifact(
+                conn,
+                meta,
+                data,
+                ingestion_run_id=run_id,
+                commit=False,
+            )
             artifact_rows.append(row)
             if local_root is not None:
                 write_artifact(local_root, meta, data)
 
     except Exception as exc:
+        rollback_if_available(conn)
         fail_ingestion_run(conn, run_id, str(exc))
         raise
 

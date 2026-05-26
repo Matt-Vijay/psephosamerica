@@ -20,18 +20,32 @@ def _utcnow() -> datetime:
     return datetime.now(tz=timezone.utc)
 
 
-def _insert_returning_id(conn: Any, sql: str, params: tuple[Any, ...]) -> int:
+def _insert_returning_id(
+    conn: Any,
+    sql: str,
+    params: tuple[Any, ...],
+    *,
+    commit: bool = True,
+) -> int:
     from psycopg.rows import dict_row
 
-    with conn.cursor(row_factory=dict_row) as cur:
-        cur.execute(sql, params)
-        row = cast(dict[str, object] | None, cur.fetchone())
-    conn.commit()
-    if row is None:
-        raise ValueError("INSERT ... RETURNING id produced no row")
-    row_id = row.get("id")
-    if not isinstance(row_id, int):
-        raise TypeError(f"expected integer id from INSERT ... RETURNING, got {row_id!r}")
+    try:
+        with conn.cursor(row_factory=dict_row) as cur:
+            cur.execute(sql, params)
+            row = cast(dict[str, object] | None, cur.fetchone())
+        if row is None:
+            raise ValueError("INSERT ... RETURNING id produced no row")
+        row_id = row.get("id")
+        if isinstance(row_id, bool) or not isinstance(row_id, int):
+            raise TypeError(f"expected integer id from INSERT ... RETURNING, got {row_id!r}")
+    except Exception:
+        if commit:
+            rollback = getattr(conn, "rollback", None)
+            if callable(rollback):
+                rollback()
+        raise
+    if commit:
+        conn.commit()
     return row_id
 
 
@@ -52,12 +66,14 @@ def create_source_artifact(
     mime_type: str | None = None,
     fetched_at: datetime | None = None,
     source_record_id: str | None = None,
+    commit: bool = True,
 ) -> dict[str, Any]:
     """Insert a source_artifact row and return it.
 
     storage_uri and sha256 carry UNIQUE constraints; callers must not
     insert the same artifact twice.  fetched_at defaults to now when
-    omitted, recording when the artifact entered the system.
+    omitted, recording when the artifact entered the system.  Pass
+    commit=False when the caller owns a larger transaction.
     """
     effective_fetched_at = fetched_at or _utcnow()
     artifact_id = _insert_returning_id(
@@ -81,6 +97,7 @@ def create_source_artifact(
             effective_fetched_at,
             source_record_id,
         ),
+        commit=commit,
     )
     rows = fetch_all(conn, "SELECT * FROM source_artifact WHERE id = %s", (artifact_id,))
     return rows[0]
@@ -98,12 +115,14 @@ def create_parse_run(
     parser_version: str,
     *,
     ingestion_run_id: int | None = None,
+    commit: bool = True,
 ) -> int:
     """Insert a parse_run row in 'running' status and return its id.
 
     The (source_artifact_id, parser_name, parser_version) triple is
     unique per the schema; callers must not re-create a run for the
-    same artifact and parser combination.
+    same artifact and parser combination.  Pass commit=False when the
+    caller owns a larger transaction.
     """
     return _insert_returning_id(
         conn,
@@ -121,6 +140,7 @@ def create_parse_run(
             _utcnow(),
             ingestion_run_id,
         ),
+        commit=commit,
     )
 
 
@@ -131,6 +151,7 @@ def finish_parse_run(
     page_count: int | None = None,
     ocr_page_count: int | None = None,
     confidence_summary: dict[str, Any] | None = None,
+    commit: bool = True,
 ) -> None:
     """Mark a parse_run as succeeded and record extraction metrics."""
     now = _utcnow()
@@ -154,10 +175,17 @@ def finish_parse_run(
             now,
             run_id,
         ),
+        commit=commit,
     )
 
 
-def fail_parse_run(conn: Any, run_id: int, error_message: str) -> None:
+def fail_parse_run(
+    conn: Any,
+    run_id: int,
+    error_message: str,
+    *,
+    commit: bool = True,
+) -> None:
     """Mark a parse_run as failed and store the error message."""
     now = _utcnow()
     execute_one(
@@ -171,4 +199,5 @@ def fail_parse_run(conn: Any, run_id: int, error_message: str) -> None:
          WHERE id = %s
         """,
         (now, error_message, now, run_id),
+        commit=commit,
     )

@@ -163,6 +163,27 @@ class TestNormalizeBill:
         assert rec.bill_number == 1
         assert rec.introduced_date == datetime.date(2023, 1, 9)
 
+    def test_rejects_boolean_bill_identity_parts(self) -> None:
+        raw = {
+            "congress": True,
+            "type": "HR",
+            "number": 1,
+            "title": "Test Bill",
+        }
+
+        with pytest.raises(ValueError, match="congress must be an integer"):
+            normalize_bill(raw)
+
+        raw = {
+            "congress": 118,
+            "type": "HR",
+            "number": True,
+            "title": "Test Bill",
+        }
+
+        with pytest.raises(ValueError, match="number must be an integer"):
+            normalize_bill(raw)
+
 
 class TestNormalizeCommittee:
     def test_basic_committee(self) -> None:
@@ -351,14 +372,22 @@ class TestVoteCastValidation:
 
     def test_bioguide_only(self) -> None:
         rec = VoteCastRecord(
-            chamber="house", congress=118, session_number=1,
-            roll_call_number=1, vote_option="yea", bioguide_id="P000197",
+            chamber="house",
+            congress=118,
+            session_number=1,
+            roll_call_number=1,
+            vote_option="yea",
+            bioguide_id="P000197",
         )
         assert rec.bioguide_id == "P000197"
 
     def test_lis_only(self) -> None:
         rec = VoteCastRecord(
-            chamber="senate", congress=118, session_number=1,
-            roll_call_number=1, vote_option="nay", lis_member_id="S270",
+            chamber="senate",
+            congress=118,
+            session_number=1,
+            roll_call_number=1,
+            vote_option="nay",
+            lis_member_id="S270",
         )
         assert rec.lis_member_id == "S270"

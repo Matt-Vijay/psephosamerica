@@ -11,6 +11,10 @@ from __future__ import annotations
 import datetime as dt
 from typing import Any
 
+from src.evidence.source_anchor_policy import (
+    describe_missing_source_anchor_urls,
+    has_https_source_url,
+)
 from src.export.contracts import (
     ConfidenceLabel,
     EvidenceBlock,
@@ -95,10 +99,21 @@ def build_evidence_card_payload(
     blocks = assemble_blocks(fact_texts, inference_texts, normative_texts)
     if score_delta != 0 and not any(block.section is EvidenceSection.FACT for block in blocks):
         raise ValueError("Nonzero public evidence cards require at least one fact block")
+    if score_delta != 0 and not source_anchors:
+        raise ValueError("Nonzero public evidence cards require at least one source anchor")
+    if score_delta != 0 and not has_https_source_url(source_anchors):
+        raise ValueError("Nonzero public evidence cards require at least one HTTPS source URL")
+    missing_source_urls = describe_missing_source_anchor_urls(source_anchors)
+    if score_delta != 0 and missing_source_urls:
+        raise ValueError(
+            "Nonzero public evidence cards require HTTPS source URLs for "
+            f"claim-bearing anchors: {missing_source_urls}"
+        )
     member_name = member.get("full_name") or member.get("name", "")
 
     return EvidenceCardPayload(
         evidence_card_id=evidence_card_id,
+        rule_fire_source_record_id=rule_fire.fire_id,
         member_bioguide_id=member["bioguide_id"],
         member_name=member_name,
         member_slug=member["slug"],

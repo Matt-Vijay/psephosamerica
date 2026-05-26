@@ -4,6 +4,7 @@ Linear orchestration: fetch → assemble → plan → write.
 All DB reads complete before the publish pipeline starts so the planner
 closure is a pure data-capture callable with no live I/O.
 """
+
 from __future__ import annotations
 
 import json
@@ -23,6 +24,7 @@ from src.export.contracts import (
     EvidenceCardPayload,
     MemberHistoryPayload,
     MemberProfilePayload,
+    SourceAnchor,
     ZipFeedPayload,
 )
 from src.export.manifest import SnapshotManifest
@@ -38,19 +40,25 @@ from src.homepage.builders import build_featured_lookup_entries
 from src.homepage.contracts import HomepageFeedPayload
 from src.identity.current_member_lookup import build_current_member_lookup
 from src.identity.current_member_lookup import CurrentMemberLookupPayload
+from src.ontology.contracts import OntologyEdgePayload, OntologyNodeRef
+from src.ontology.member_features import build_member_feature_slices
 from src.pipeline.publish_pipeline import Planner, PublishConfig, PublishResult, run_publish
+from src.prediction.contracts import PredictionReadinessPayload
+from src.prediction.readiness import build_prediction_readiness
 from src.query.evidence_card import assemble_evidence_card
 from src.query.homepage_feed import assemble_homepage_payload
 from src.query.member_history import assemble_member_history
 from src.query.member_profile import assemble_member_profile
 from src.query.published_rows import (
     fetch_all_evidence_card_rows,
+    fetch_all_ontology_edge_rows,
     fetch_current_member_slugs,
     fetch_homepage_feed_rows,
     fetch_member_committee_rows,
     fetch_member_row_by_slug,
     fetch_member_rule_fire_rows,
     fetch_member_score_snapshot_rows,
+    fetch_vote_prediction_readiness_rows,
 )
 from src.query.zip_feed import assemble_zip_feed
 from src.query.zip_rows import (
@@ -116,6 +124,49 @@ def _build_member_profiles(
 def _build_evidence_cards(conn: Any) -> list[EvidenceCardPayload]:
     card_rows = fetch_all_evidence_card_rows(conn)
     return [assemble_evidence_card(row) for row in card_rows]
+
+
+def _build_ontology_edges(conn: Any) -> list[OntologyEdgePayload]:
+    return [_ontology_edge_from_row(row) for row in fetch_all_ontology_edge_rows(conn)]
+
+
+def _build_prediction_readiness(
+    conn: Any,
+    *,
+    snapshot_id: str,
+    snapshot_date: date,
+    member_profiles: list[MemberProfilePayload],
+    ontology_edges: list[OntologyEdgePayload],
+) -> PredictionReadinessPayload:
+    return build_prediction_readiness(
+        snapshot_id=snapshot_id,
+        snapshot_date=snapshot_date,
+        member_profiles=member_profiles,
+        ontology_features=build_member_feature_slices(snapshot_id, ontology_edges),
+        vote_rows=fetch_vote_prediction_readiness_rows(conn),
+    )
+
+
+def _ontology_edge_from_row(row: dict[str, Any]) -> OntologyEdgePayload:
+    return OntologyEdgePayload(
+        edge_id=row["edge_id"],
+        edge_type=row["edge_type"],
+        subject=OntologyNodeRef(
+            node_type=row["subject_node_type"],
+            node_id=row["subject_node_id"],
+            label=row.get("subject_node_label"),
+        ),
+        object=OntologyNodeRef(
+            node_type=row["object_node_type"],
+            node_id=row["object_node_id"],
+            label=row.get("object_node_label"),
+        ),
+        source_anchors=[
+            SourceAnchor.model_validate(anchor) for anchor in row.get("source_anchors", [])
+        ],
+        confidence=row.get("confidence", "high"),
+        attributes=row.get("attributes") or {},
+    )
 
 
 def _build_member_histories(
@@ -224,6 +275,10 @@ def _build_artifact_counts(manifest: SnapshotManifest) -> ArtifactCounts:
     return ArtifactCounts(
         members=sum(1 for entry in manifest.entries if entry.path.startswith("members/")),
         evidence=sum(1 for entry in manifest.entries if entry.path.startswith("evidence/")),
+        ontology_edges=sum(1 for entry in manifest.entries if entry.path == "ontology/edges.json"),
+        ontology_member_graphs=sum(
+            1 for entry in manifest.entries if entry.path.startswith("ontology/members/")
+        ),
         zip_feeds=sum(1 for entry in manifest.entries if entry.path.startswith("zip/")),
         homepage_feeds=1,
         current_member_lookups=sum(
@@ -282,8 +337,10 @@ def _make_planner(
     member_histories: list[MemberHistoryPayload],
     zip_feeds: list[ZipFeedPayload],
     evidence_cards: list[EvidenceCardPayload],
+    ontology_edges: list[OntologyEdgePayload],
     current_member_lookup_file: PlannedFile,
     homepage_file: PlannedFile,
+    prediction_readiness: PredictionReadinessPayload,
     *,
     current_member_lookup_payload: CurrentMemberLookupPayload | None = None,
     homepage_payload: HomepageFeedPayload | None = None,
@@ -302,7 +359,9 @@ def _make_planner(
             zip_feeds,
             evidence_cards,
             member_histories=member_histories,
+            ontology_edges=ontology_edges,
             current_member_lookup_file=current_member_lookup_file,
+            prediction_readiness=prediction_readiness,
         )
         feed_payload = (
             homepage_payload
@@ -316,8 +375,7 @@ def _make_planner(
         )
         manifest = SnapshotManifest.model_validate(json.loads(snapshot_files[-1].content))
         zip_entry_files = [
-            _build_zip_entry_file(feed, lookup_payload, manifest)
-            for feed in zip_feeds
+            _build_zip_entry_file(feed, lookup_payload, manifest) for feed in zip_feeds
         ]
         homepage_bootstrap_file = _build_homepage_bootstrap_file(
             feed_payload,
@@ -352,6 +410,14 @@ def publish_snapshot_run(
     member_profiles = _build_member_profiles(conn, member_slugs)
     member_histories = _build_member_histories(conn, member_slugs)
     evidence_cards = _build_evidence_cards(conn)
+    ontology_edges = _build_ontology_edges(conn)
+    prediction_readiness = _build_prediction_readiness(
+        conn,
+        snapshot_id=snapshot_id,
+        snapshot_date=snapshot_date,
+        member_profiles=member_profiles,
+        ontology_edges=ontology_edges,
+    )
     zip_feeds = _build_zip_feeds(conn, zip_bundle_inputs, snapshot_date)
     current_member_lookup_payload = _build_current_member_lookup_payload(
         member_profiles,
@@ -370,8 +436,10 @@ def publish_snapshot_run(
         member_histories,
         zip_feeds,
         evidence_cards,
+        ontology_edges,
         current_member_lookup_file,
         homepage_file,
+        prediction_readiness,
         current_member_lookup_payload=current_member_lookup_payload,
         homepage_payload=homepage_payload,
     )

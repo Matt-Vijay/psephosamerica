@@ -38,8 +38,12 @@ def _resolve_reference_date(
     return max(known_dates)
 
 
-def _row_reference_date(row: dict[str, Any]) -> dt.date | None:
+def row_reference_date(row: dict[str, Any]) -> dt.date | None:
     return _coerce_optional_date(row.get("reference_date") or row.get("snapshot_date"))
+
+
+def _row_reference_date(row: dict[str, Any]) -> dt.date | None:
+    return row_reference_date(row)
 
 
 def _effective_range_end(
@@ -91,6 +95,24 @@ def overdue_days(filed_at: dt.date | None, deadline: dt.date) -> int | None:
     return max(0, (filed_at - deadline).days)
 
 
+def transaction_matches_sector_window(
+    transaction: dict[str, Any],
+    committee_sector: str,
+    service_start: dt.date,
+    service_end: dt.date | None,
+    *,
+    reference_date: dt.date | None = None,
+) -> bool:
+    """True when a transaction is in the same sector and inside service dates."""
+    if transaction.get("sector") != committee_sector:
+        return False
+    txn_date = _coerce_optional_date(transaction.get("transaction_date"))
+    if txn_date is None:
+        return False
+    end = _effective_range_end(service_end, reference_date=reference_date)
+    return service_start <= txn_date <= end
+
+
 def count_matching_transactions(
     transactions: list[dict[str, Any]],
     committee_sector: str,
@@ -100,18 +122,17 @@ def count_matching_transactions(
     reference_date: dt.date | None = None,
 ) -> int:
     """Count transactions matching committee_sector within the service window."""
-    end = _effective_range_end(service_end, reference_date=reference_date)
-
-    count = 0
-    for txn in transactions:
-        if txn.get("sector") != committee_sector:
-            continue
-        txn_date = txn.get("transaction_date")
-        if txn_date is None:
-            continue
-        if service_start <= txn_date <= end:
-            count += 1
-    return count
+    return sum(
+        1
+        for txn in transactions
+        if transaction_matches_sector_window(
+            txn,
+            committee_sector,
+            service_start,
+            service_end,
+            reference_date=reference_date,
+        )
+    )
 
 
 def count_distinct_trade_days(
@@ -123,16 +144,18 @@ def count_distinct_trade_days(
     reference_date: dt.date | None = None,
 ) -> int:
     """Distinct calendar days with matching trades. Uses the same filter as count_matching_transactions."""
-    end = _effective_range_end(service_end, reference_date=reference_date)
-
     trade_days: set[dt.date] = set()
     for txn in transactions:
-        if txn.get("sector") != committee_sector:
+        if not transaction_matches_sector_window(
+            txn,
+            committee_sector,
+            service_start,
+            service_end,
+            reference_date=reference_date,
+        ):
             continue
-        txn_date = txn.get("transaction_date")
-        if txn_date is None:
-            continue
-        if service_start <= txn_date <= end:
+        txn_date = _coerce_optional_date(txn.get("transaction_date"))
+        if txn_date is not None:
             trade_days.add(txn_date)
     return len(trade_days)
 

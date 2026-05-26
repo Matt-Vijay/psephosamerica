@@ -102,12 +102,8 @@ def _compare_payloads(
             )
 
     # scores ─────────────────────────────────────────────────────────────────
-    pub_scores = [
-        (s.dimension, s.current_score, s.rule_fire_count) for s in published.scores
-    ]
-    rea_scores = [
-        (s.dimension, s.current_score, s.rule_fire_count) for s in reassembled.scores
-    ]
+    pub_scores = [(s.dimension, s.current_score, s.rule_fire_count) for s in published.scores]
+    rea_scores = [(s.dimension, s.current_score, s.rule_fire_count) for s in reassembled.scores]
     if pub_scores != rea_scores:
         issues.append(
             _issue(
@@ -129,6 +125,16 @@ def _compare_payloads(
         issues.append(
             _issue(
                 f"recent_rule_fires mismatch: published={pub_fires!r} db={rea_fires!r}",
+                path=path,
+            )
+        )
+
+    if published.top_evidence_card_ids != reassembled.top_evidence_card_ids:
+        issues.append(
+            _issue(
+                f"top_evidence_card_ids mismatch: "
+                f"published={published.top_evidence_card_ids!r} "
+                f"db={reassembled.top_evidence_card_ids!r}",
                 path=path,
             )
         )
@@ -217,7 +223,8 @@ def verify_published_member_profiles_roundtrip(
             continue
         try:
             evidence_cards_by_id[str(public_id)] = assemble_evidence_card(row)
-        except Exception:
+        # Malformed DB rows are ignored so profile checks continue.
+        except Exception:  # nosec B112
             continue
 
     issues: list[PublishRoundtripIssue] = []

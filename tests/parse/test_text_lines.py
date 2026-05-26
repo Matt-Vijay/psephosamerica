@@ -274,6 +274,15 @@ class TestSectionHeadersCanonicalSource:
             assert token in SECTION_HEADERS
 
     def test_part_tokens_present(self) -> None:
-        for token in ("part i", "part ii", "part iii", "part iv", "part v",
-                      "part vi", "part vii", "part viii", "part ix"):
+        for token in (
+            "part i",
+            "part ii",
+            "part iii",
+            "part iv",
+            "part v",
+            "part vi",
+            "part vii",
+            "part viii",
+            "part ix",
+        ):
             assert token in SECTION_HEADERS

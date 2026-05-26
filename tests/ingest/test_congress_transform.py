@@ -34,6 +34,7 @@ from src.ingest.congress.transform import (
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture()
 def house_member() -> MemberRecord:
     return MemberRecord(
@@ -170,6 +171,7 @@ def senate_vote_cast() -> VoteCastRecord:
 # member_row
 # ---------------------------------------------------------------------------
 
+
 class TestMemberRow:
     def test_basic_fields(self, house_member: MemberRecord) -> None:
         row = member_row(house_member)
@@ -215,6 +217,7 @@ class TestMemberRow:
 # member_term_row
 # ---------------------------------------------------------------------------
 
+
 class TestMemberTermRow:
     def test_house_member_district(self, house_member: MemberRecord) -> None:
         row = member_term_row(
@@ -237,7 +240,7 @@ class TestMemberTermRow:
             senate_member,
             congress=118,
             start_date=datetime.date(2023, 1, 3),
-            district=5,   # caller mistake — should be ignored for senators
+            district=5,  # caller mistake — should be ignored for senators
         )
         assert row["district"] is None
         assert row["chamber"] == "senate"
@@ -264,6 +267,7 @@ class TestMemberTermRow:
 # ---------------------------------------------------------------------------
 # committee_row
 # ---------------------------------------------------------------------------
+
 
 class TestCommitteeRow:
     def test_basic_fields(self, committee_record: CommitteeRecord) -> None:
@@ -293,6 +297,7 @@ class TestCommitteeRow:
 # ---------------------------------------------------------------------------
 # committee_membership_row
 # ---------------------------------------------------------------------------
+
 
 class TestCommitteeMembershipRow:
     def test_basic_fields(self) -> None:
@@ -339,6 +344,7 @@ class TestCommitteeMembershipRow:
 # bill_row
 # ---------------------------------------------------------------------------
 
+
 class TestBillRow:
     def test_basic_fields(self, bill_record: BillRecord) -> None:
         row = bill_row(bill_record)
@@ -360,6 +366,7 @@ class TestBillRow:
 # bill_sponsor_row
 # ---------------------------------------------------------------------------
 
+
 class TestBillSponsorRow:
     def test_primary_sponsor(self, bill_record: BillRecord) -> None:
         row = bill_sponsor_row(bill_record, "P000197")
@@ -378,6 +385,7 @@ class TestBillSponsorRow:
 # ---------------------------------------------------------------------------
 # cosponsor_row
 # ---------------------------------------------------------------------------
+
 
 class TestCosponsorRow:
     def test_original_cosponsor(self, cosponsor_record: CosponsorRecord) -> None:
@@ -408,6 +416,7 @@ class TestCosponsorRow:
 # vote_event_row
 # ---------------------------------------------------------------------------
 
+
 class TestVoteEventRow:
     def test_basic_fields(self, vote_event_record: VoteEventRecord) -> None:
         row = vote_event_row(vote_event_record)
@@ -433,6 +442,7 @@ class TestVoteEventRow:
 # ---------------------------------------------------------------------------
 # vote_cast_row
 # ---------------------------------------------------------------------------
+
 
 class TestVoteCastRow:
     def test_house_cast(self, house_vote_cast: VoteCastRecord) -> None:

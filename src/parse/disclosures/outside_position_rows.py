@@ -33,9 +33,7 @@ _DATE_FORMATS: tuple[str, ...] = (
 )
 
 # Cells that carry no date value regardless of their literal content.
-_BLANK_DATE_TOKENS: frozenset[str] = frozenset(
-    {"-", "—", "n/a", "present", "current", "ongoing"}
-)
+_BLANK_DATE_TOKENS: frozenset[str] = frozenset({"-", "—", "n/a", "present", "current", "ongoing"})
 
 
 def _parse_date(raw: str) -> Optional[date]:
@@ -84,12 +82,8 @@ def outside_position_from_cells(
     owner: OwnerType = normalize_owner_label(owner_raw)
     entity_name: str = _clean_cell(entity_name_raw) or entity_name_raw.strip()
     position_title: Optional[str] = _clean_cell(position_title_raw)
-    from_date: Optional[date] = (
-        _parse_date(from_date_raw) if from_date_raw is not None else None
-    )
-    to_date: Optional[date] = (
-        _parse_date(to_date_raw) if to_date_raw is not None else None
-    )
+    from_date: Optional[date] = _parse_date(from_date_raw) if from_date_raw is not None else None
+    to_date: Optional[date] = _parse_date(to_date_raw) if to_date_raw is not None else None
 
     return OutsidePosition(
         line_number=line_number,

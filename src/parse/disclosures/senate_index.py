@@ -15,9 +15,11 @@ Chamber-specific behaviour lives here; do not unify with House logic.
 
 from __future__ import annotations
 
+import json
 import re
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Optional, Sequence, Union
+from urllib.parse import urlparse
 
 if TYPE_CHECKING:
     import httpx
@@ -29,9 +31,12 @@ except ImportError:  # pragma: no cover
 
 
 _SENATE_EFD_BASE = "https://efdsearch.senate.gov"
+_SENATE_EFD_HOST = "efdsearch.senate.gov"
 _SEARCH_HOME = f"{_SENATE_EFD_BASE}/search/"
 _DATA_ENDPOINT = f"{_SENATE_EFD_BASE}/search/report/data/"
 _PAGE_SIZE = 100
+_MAX_PAGES = 1_000
+_MAX_RESPONSE_BYTES = 10 * 1024 * 1024
 
 # The EFD link cell contains an href like /search/view/paper/{doc_id}/
 _DOC_HREF_RE = re.compile(r"/search/view/paper/([^/\"']+)/")
@@ -48,11 +53,11 @@ class SenateIndexRow:
 
     first_name: str
     last_name: str
-    office: str          # e.g. "Senator, TX" — used as a resolution hint
-    report_type: str     # plain-text label, e.g. "Annual Report for CY2023"
-    date_filed: str      # raw date string from the index, e.g. "01/15/2024"
-    doc_id: str          # UUID used as the source_record_id in ArtifactMeta
-    filing_year: int     # caller-supplied; not present in the raw row
+    office: str  # e.g. "Senator, TX" — used as a resolution hint
+    report_type: str  # plain-text label, e.g. "Annual Report for CY2023"
+    date_filed: str  # raw date string from the index, e.g. "01/15/2024"
+    doc_id: str  # UUID used as the source_record_id in ArtifactMeta
+    filing_year: int  # caller-supplied; not present in the raw row
 
 
 def senate_index_url(year: int) -> str:
@@ -150,27 +155,36 @@ def fetch_senate_index(
         raise ImportError("httpx is required for fetch_senate_index")
 
     own_client = client is None
-    http: Any = client if client is not None else _httpx.Client(
-        follow_redirects=True, timeout=30.0
+    http: Any = (
+        client if client is not None else _httpx.Client(follow_redirects=False, timeout=30.0)
     )
     try:
-        resp = http.get(_SEARCH_HOME)
+        resp = http.get(_SEARCH_HOME, follow_redirects=False)
+        _validate_senate_response(resp, _SEARCH_HOME)
         resp.raise_for_status()
         csrftoken = http.cookies.get("csrftoken", "")
 
         agreement_response = http.post(
             _SEARCH_HOME,
-            data={"csrfmiddlewaretoken": csrftoken, "action": "agree",
-                  "agree_statement": "I agree"},
+            data={
+                "csrfmiddlewaretoken": csrftoken,
+                "action": "agree",
+                "agree_statement": "I agree",
+            },
             headers={"Referer": _SEARCH_HOME},
+            follow_redirects=False,
         )
+        _validate_senate_response(agreement_response, _SEARCH_HOME)
         agreement_response.raise_for_status()
 
         all_rows: list[SenateIndexRow] = []
         start = 0
+        page_count = 0
         while True:
-            data_resp = http.post(
-                _DATA_ENDPOINT,
+            if page_count >= _MAX_PAGES:
+                raise ValueError(f"Senate EFD pagination exceeded maximum page count: {_MAX_PAGES}")
+            payload = _fetch_data_payload(
+                http,
                 data={
                     "csrfmiddlewaretoken": csrftoken,
                     "start": start,
@@ -179,23 +193,19 @@ def fetch_senate_index(
                     "submitted_start_date": f"01/01/{year} 00:00:00",
                     "submitted_end_date": f"12/31/{year} 23:59:59",
                 },
-                headers={
-                    "Referer": _SEARCH_HOME,
-                    "X-Requested-With": "XMLHttpRequest",
-                },
             )
-            data_resp.raise_for_status()
-            payload = data_resp.json()
             if not isinstance(payload, dict):
-                raise ValueError(
-                    "Expected Senate EFD DataTables response to be a JSON object"
-                )
+                raise ValueError("Expected Senate EFD DataTables response to be a JSON object")
+            page_count += 1
             batch = parse_senate_index(payload, year=year)
             all_rows.extend(batch)
             records_total_raw = payload.get("recordsTotal", 0)
-            records_total = (
-                records_total_raw if isinstance(records_total_raw, int) else 0
-            )
+            if isinstance(records_total_raw, bool) or not isinstance(
+                records_total_raw,
+                int,
+            ):
+                raise ValueError("Senate EFD recordsTotal must be an integer")
+            records_total = records_total_raw
             start += _PAGE_SIZE
             if not batch or start >= records_total:
                 break
@@ -203,3 +213,109 @@ def fetch_senate_index(
     finally:
         if own_client:
             http.close()
+
+
+def _fetch_data_payload(http: Any, *, data: dict[str, Any]) -> Any:
+    headers = {
+        "Referer": _SEARCH_HOME,
+        "X-Requested-With": "XMLHttpRequest",
+    }
+    if _httpx is not None and isinstance(http, _httpx.Client):
+        with http.stream(
+            "POST",
+            _DATA_ENDPOINT,
+            data=data,
+            headers=headers,
+            follow_redirects=False,
+        ) as response:
+            return _bounded_json_response(response, _DATA_ENDPOINT)
+
+    response = http.post(
+        _DATA_ENDPOINT,
+        data=data,
+        headers=headers,
+        follow_redirects=False,
+    )
+    _validate_senate_response(response, _DATA_ENDPOINT)
+    response.raise_for_status()
+    return response.json()
+
+
+def _bounded_json_response(response: Any, url: str) -> Any:
+    _validate_senate_response(response, url)
+    response.raise_for_status()
+    return json.loads(_bounded_response_bytes(response).decode("utf-8"))
+
+
+def _bounded_response_bytes(response: Any) -> bytes:
+    try:
+        content = getattr(response, "content", None)
+    except Exception as exc:
+        if _httpx is not None and isinstance(exc, _httpx.ResponseNotRead):
+            content = None
+        else:
+            raise
+    if isinstance(content, bytes):
+        if len(content) > _MAX_RESPONSE_BYTES:
+            raise ValueError(
+                f"Senate EFD response exceeds maximum size of {_MAX_RESPONSE_BYTES} bytes"
+            )
+        return content
+
+    iter_bytes = getattr(response, "iter_bytes", None)
+    if not callable(iter_bytes):
+        raise ValueError("Senate EFD response did not provide a readable body")
+
+    total = 0
+    chunks: list[bytes] = []
+    for chunk in iter_bytes():
+        if not isinstance(chunk, bytes):
+            raise ValueError("Senate EFD response yielded non-bytes chunk")
+        total += len(chunk)
+        if total > _MAX_RESPONSE_BYTES:
+            raise ValueError(
+                f"Senate EFD response exceeds maximum size of {_MAX_RESPONSE_BYTES} bytes"
+            )
+        chunks.append(chunk)
+    return b"".join(chunks)
+
+
+def _validate_senate_response(response: Any, url: str) -> None:
+    status_code = getattr(response, "status_code", None)
+    if isinstance(status_code, int) and 300 <= status_code < 400:
+        raise ValueError(f"redirect response rejected for Senate EFD URL: {url!r}")
+
+    response_url = getattr(response, "url", None)
+    if isinstance(response_url, (str, _httpx.URL if _httpx is not None else str)):
+        parsed = urlparse(str(response_url))
+        if parsed.scheme != "https" or parsed.hostname != _SENATE_EFD_HOST:
+            raise ValueError(f"off-origin response rejected for Senate EFD URL: {url!r}")
+
+    length = _content_length(response)
+    if length is not None and length > _MAX_RESPONSE_BYTES:
+        raise ValueError(
+            f"Senate EFD response exceeds maximum size of {_MAX_RESPONSE_BYTES} bytes: {length}"
+        )
+    try:
+        content = getattr(response, "content", None)
+    except Exception as exc:
+        if _httpx is not None and isinstance(exc, _httpx.ResponseNotRead):
+            content = None
+        else:
+            raise
+    if isinstance(content, bytes) and len(content) > _MAX_RESPONSE_BYTES:
+        raise ValueError(f"Senate EFD response exceeds maximum size of {_MAX_RESPONSE_BYTES} bytes")
+
+
+def _content_length(response: Any) -> int | None:
+    headers = getattr(response, "headers", None)
+    get = getattr(headers, "get", None)
+    if get is None:
+        return None
+    raw = get("content-length")
+    if raw is None:
+        return None
+    try:
+        return int(raw)
+    except (TypeError, ValueError):
+        return None

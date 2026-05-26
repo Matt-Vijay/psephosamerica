@@ -29,6 +29,7 @@ from src.rules.models import (
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _cond(fact: str, op: Operator, value: Any = None, *, value_ref: str | None = None) -> Condition:
     return Condition(fact=fact, operator=op, value=value, value_ref=value_ref)
 
@@ -73,6 +74,7 @@ RUN = "run-42"
 # ---------------------------------------------------------------------------
 # evaluate_condition
 # ---------------------------------------------------------------------------
+
 
 class TestEvaluateCondition:
     def test_equals_true(self):
@@ -142,6 +144,7 @@ class TestEvaluateCondition:
 # evaluate_condition_group
 # ---------------------------------------------------------------------------
 
+
 class TestEvaluateConditionGroup:
     def test_all_of_all_true(self):
         g = _all_of(_cond("x", Operator.gte, 1), _cond("y", Operator.equals, "ok"))
@@ -198,6 +201,7 @@ class TestEvaluateConditionGroup:
 # ---------------------------------------------------------------------------
 # evaluate_rule
 # ---------------------------------------------------------------------------
+
 
 class TestEvaluateRule:
     def test_fires_when_conditions_met(self):

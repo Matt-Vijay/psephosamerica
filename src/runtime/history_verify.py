@@ -27,15 +27,24 @@ from src.export.local_store import (
     list_artifact_paths,
     load_current_member_lookup,
     load_evidence_card,
+    load_history_event,
+    load_history_event_page,
     load_history_bootstrap,
+    load_history_coverage,
     load_history_preset_range,
     load_manifest,
     load_homepage_bootstrap,
     load_homepage_feed,
     load_member_change_summary,
     load_member_history,
+    load_member_history_coverage,
+    load_member_history_coverage_index,
     load_member_history_chart,
     load_member_history_page,
+    load_member_timeline_index,
+    load_member_timeline_page,
+    load_member_timeline_dimension,
+    load_member_timeline_year,
     load_member_page,
     load_member_preset_compare,
     load_member_profile,
@@ -52,13 +61,22 @@ from src.export.local_store import (
 from src.export.writer import (
     current_member_lookup_path,
     history_bootstrap_path,
+    history_coverage_path,
     history_preset_range_path,
     homepage_bootstrap_path,
     member_change_summary_path,
     member_history_chart_path,
+    member_history_coverage_path,
+    member_history_coverage_index_path,
+    history_event_page_path,
     member_history_page_path,
+    history_event_path,
     member_page_payload_path,
     member_preset_compare_path,
+    member_timeline_index_path,
+    member_timeline_page_path,
+    member_timeline_dimension_path,
+    member_timeline_year_path,
     member_trend_summary_path,
     movement_window_path,
     snapshot_index_path,
@@ -72,8 +90,16 @@ from src.identity.current_member_lookup import CurrentMemberLookupEntry, build_c
 from src.query.history_products import (
     build_movement_window,
     build_latest_movement_window,
+    build_history_coverage,
     build_member_change_summary,
+    build_member_history_coverage,
+    build_member_history_coverage_index,
     build_member_history_chart,
+    build_member_timeline_events,
+    build_member_timeline_index,
+    build_member_timeline_page,
+    build_member_timeline_dimension,
+    build_member_timeline_year,
     build_member_trend_summary,
     build_member_window_change_summary,
     build_snapshot_compare_payload,
@@ -104,9 +130,7 @@ def _unavailable_stage(stage: str, reason: str) -> HistoryVerifyStageResult:
     return HistoryVerifyStageResult(
         stage=stage,
         checked=0,
-        issues=(
-            _issue(stage, f"skipped: {reason}"),
-        ),
+        issues=(_issue(stage, f"skipped: {reason}"),),
     )
 
 
@@ -124,7 +148,9 @@ def _verify_snapshot_index(
         return HistoryVerifyStageResult(
             stage=stage,
             checked=0,
-            issues=(_issue(stage, f"failed to load snapshot index: {exc}", path=snapshot_index_path()),),
+            issues=(
+                _issue(stage, f"failed to load snapshot index: {exc}", path=snapshot_index_path()),
+            ),
         ), None
 
     issues: list[HistoryVerifyIssue] = []
@@ -251,18 +277,21 @@ def _expected_history_bootstrap(
     histories: list[MemberHistoryPayload],
 ) -> HistoryBootstrapPayload:
     movement_window = _expected_movement_window(snapshot_index, histories)
+    coverage = build_history_coverage(
+        [(entry.snapshot_id, entry.snapshot_date) for entry in snapshot_index.snapshots],
+        histories,
+    )
     summaries = _member_change_summaries(histories)
     preset_set = build_snapshot_compare_presets(
         [(entry.snapshot_id, entry.snapshot_date) for entry in snapshot_index.snapshots]
     )
     featured_member_changes = [
-        summaries[change.slug]
-        for change in movement_window.top_changes
-        if change.slug in summaries
+        summaries[change.slug] for change in movement_window.top_changes if change.slug in summaries
     ][:5]
     return HistoryBootstrapPayload(
         snapshot_index=snapshot_index,
         movement_window=movement_window,
+        coverage=coverage,
         default_compare_preset_key=preset_set.default_preset_key,
         compare_presets=preset_set.presets,
         featured_member_changes=featured_member_changes,
@@ -282,7 +311,11 @@ def _verify_bootstrap(
         return HistoryVerifyStageResult(
             stage=stage,
             checked=0,
-            issues=(_issue(stage, f"failed to load history bootstrap: {exc}", path=history_bootstrap_path()),),
+            issues=(
+                _issue(
+                    stage, f"failed to load history bootstrap: {exc}", path=history_bootstrap_path()
+                ),
+            ),
         )
     try:
         movement_window = load_movement_window(root)
@@ -291,17 +324,32 @@ def _verify_bootstrap(
             stage=stage,
             checked=1,
             issues=(
-                _issue(stage, f"failed to load movement window: {exc}", path=movement_window_path()),
+                _issue(
+                    stage, f"failed to load movement window: {exc}", path=movement_window_path()
+                ),
             ),
         )
 
     expected_bootstrap = _expected_history_bootstrap(snapshot_index, histories)
     expected_movement = expected_bootstrap.movement_window
+    expected_coverage = build_history_coverage(
+        [(entry.snapshot_id, entry.snapshot_date) for entry in snapshot_index.snapshots],
+        histories,
+    )
     if bootstrap != expected_bootstrap:
         issues.append(_issue(stage, "history bootstrap mismatch", path=history_bootstrap_path()))
     if movement_window != expected_movement:
         issues.append(_issue(stage, "movement window mismatch", path=movement_window_path()))
-    return HistoryVerifyStageResult(stage=stage, checked=2, issues=tuple(issues))
+    try:
+        coverage = load_history_coverage(root)
+    except Exception as exc:
+        issues.append(
+            _issue(stage, f"failed to load history coverage: {exc}", path=history_coverage_path())
+        )
+    else:
+        if coverage != expected_coverage:
+            issues.append(_issue(stage, "history coverage mismatch", path=history_coverage_path()))
+    return HistoryVerifyStageResult(stage=stage, checked=3, issues=tuple(issues))
 
 
 def _current_snapshot_summary(root: Path) -> SnapshotSummaryPayload:
@@ -318,6 +366,10 @@ def _current_snapshot_summary(root: Path) -> SnapshotSummaryPayload:
         artifact_counts=ArtifactCounts(
             members=sum(1 for path in artifact_paths if path.startswith("members/")),
             evidence=sum(1 for path in artifact_paths if path.startswith("evidence/")),
+            ontology_edges=sum(1 for path in artifact_paths if path == "ontology/edges.json"),
+            ontology_member_graphs=sum(
+                1 for path in artifact_paths if path.startswith("ontology/members/")
+            ),
             zip_feeds=sum(1 for path in artifact_paths if path.startswith("zip/")),
             homepage_feeds=homepage_feed_count,
             current_member_lookups=sum(
@@ -331,10 +383,7 @@ def _current_member_profiles(root: Path) -> list[Any]:
     members_dir = root / "members"
     if not members_dir.exists():
         return []
-    profiles = [
-        load_member_profile(root, file.stem)
-        for file in sorted(members_dir.glob("*.json"))
-    ]
+    profiles = [load_member_profile(root, file.stem) for file in sorted(members_dir.glob("*.json"))]
     return profiles
 
 
@@ -373,10 +422,7 @@ def _expected_zip_entry(
 ) -> ZipEntryPayload:
     zip_feed = load_zip_feed(root, zip_code)
     snapshot = _current_snapshot_summary(root)
-    lookup_by_bioguide_id = {
-        entry.bioguide_id: entry
-        for entry in lookup_entries
-    }
+    lookup_by_bioguide_id = {entry.bioguide_id: entry for entry in lookup_entries}
     return ZipEntryPayload(
         zip_feed=zip_feed,
         member_lookup_entries=[
@@ -391,9 +437,7 @@ def _expected_zip_entry(
 def _expected_current_member_page(root: Path, slug: str) -> Any:
     profile = load_member_profile(root, slug)
     candidate_ids = profile.top_evidence_card_ids + [
-        fire.evidence_card_id
-        for fire in profile.recent_rule_fires
-        if fire.evidence_card_id
+        fire.evidence_card_id for fire in profile.recent_rule_fires if fire.evidence_card_id
     ]
     evidence_cards: list[EvidenceCardPayload] = []
     seen_ids: set[str] = set()
@@ -418,7 +462,9 @@ def _verify_current_aggregates(root: Path) -> HistoryVerifyStageResult:
 
     members_dir = root / "members"
     member_pages_dir = root / "member-pages"
-    member_slugs = sorted(file.stem for file in members_dir.glob("*.json")) if members_dir.exists() else []
+    member_slugs = (
+        sorted(file.stem for file in members_dir.glob("*.json")) if members_dir.exists() else []
+    )
     member_page_slugs = (
         sorted(file.stem for file in member_pages_dir.glob("*.json"))
         if member_pages_dir.exists()
@@ -551,7 +597,11 @@ def _verify_current_aggregates(root: Path) -> HistoryVerifyStageResult:
                 checked += 1
             except Exception as exc:
                 issues.append(
-                    _issue(stage, f"failed to load homepage bootstrap: {exc}", path=homepage_bootstrap_path())
+                    _issue(
+                        stage,
+                        f"failed to load homepage bootstrap: {exc}",
+                        path=homepage_bootstrap_path(),
+                    )
                 )
             else:
                 expected_bootstrap = _expected_homepage_bootstrap(root, expected_lookup_entries)
@@ -563,7 +613,9 @@ def _verify_current_aggregates(root: Path) -> HistoryVerifyStageResult:
     zip_dir = root / "zip"
     zip_entry_dir = root / "zip-entry"
     zip_codes = sorted(file.stem for file in zip_dir.glob("*.json")) if zip_dir.exists() else []
-    zip_entry_codes = sorted(file.stem for file in zip_entry_dir.glob("*.json")) if zip_entry_dir.exists() else []
+    zip_entry_codes = (
+        sorted(file.stem for file in zip_entry_dir.glob("*.json")) if zip_entry_dir.exists() else []
+    )
 
     for zip_code in zip_entry_codes:
         if zip_code not in zip_codes:
@@ -590,7 +642,9 @@ def _verify_current_aggregates(root: Path) -> HistoryVerifyStageResult:
             zip_entry_payload = load_zip_entry(root, zip_code)
             checked += 1
         except Exception as exc:
-            issues.append(_issue(stage, f"failed to load zip entry for {zip_code}: {exc}", path=path))
+            issues.append(
+                _issue(stage, f"failed to load zip entry for {zip_code}: {exc}", path=path)
+            )
             continue
         expected_zip_entry = _expected_zip_entry(root, zip_code, expected_lookup_entries)
         if zip_entry_payload != expected_zip_entry:
@@ -608,7 +662,9 @@ def _expected_snapshot_compare_payload(
     preset_set = build_snapshot_compare_presets(
         [(entry.snapshot_id, entry.snapshot_date) for entry in snapshot_index.snapshots]
     )
-    preset = next(candidate for candidate in preset_set.presets if candidate.preset_key == preset_key)
+    preset = next(
+        candidate for candidate in preset_set.presets if candidate.preset_key == preset_key
+    )
     return build_snapshot_compare_payload(
         histories,
         start_snapshot_id=preset.start_snapshot_id,
@@ -623,11 +679,14 @@ def _expected_preset_movement_window(
     *,
     preset_key: str,
     snapshot_index: SnapshotIndexPayload,
+    dimension: str | None = None,
 ) -> MovementWindowPayload:
     preset_set = build_snapshot_compare_presets(
         [(entry.snapshot_id, entry.snapshot_date) for entry in snapshot_index.snapshots]
     )
-    preset = next(candidate for candidate in preset_set.presets if candidate.preset_key == preset_key)
+    preset = next(
+        candidate for candidate in preset_set.presets if candidate.preset_key == preset_key
+    )
     return build_movement_window(
         histories,
         window_key=preset.preset_key,
@@ -636,7 +695,49 @@ def _expected_preset_movement_window(
         previous_snapshot_id=preset.start_snapshot_id,
         previous_snapshot_date=preset.start_snapshot_date,
         has_full_window=preset.has_full_window,
+        dimension=dimension,
     )
+
+
+def _expected_dimension_movement_windows(
+    histories: list[MemberHistoryPayload],
+    *,
+    snapshot_index: SnapshotIndexPayload,
+) -> dict[tuple[str, str], MovementWindowPayload]:
+    dimensions = sorted(
+        {
+            dimension_summary.dimension
+            for history in histories
+            for dimension_summary in build_member_history_coverage(history).dimensions
+        }
+    )
+    previous_snapshot = snapshot_index.snapshots[-2] if len(snapshot_index.snapshots) > 1 else None
+    expected: dict[tuple[str, str], MovementWindowPayload] = {}
+    for dimension in dimensions:
+        latest_payload = build_latest_movement_window(
+            histories,
+            latest_snapshot_id=snapshot_index.latest_snapshot_id,
+            latest_snapshot_date=snapshot_index.snapshots[-1].snapshot_date,
+            previous_snapshot_id=previous_snapshot.snapshot_id
+            if previous_snapshot is not None
+            else None,
+            previous_snapshot_date=(
+                previous_snapshot.snapshot_date if previous_snapshot is not None else None
+            ),
+            dimension=dimension,
+        )
+        if latest_payload.top_changes or latest_payload.recent_events:
+            expected[(dimension, "latest")] = latest_payload
+        for preset_key in ("4w", "12w", "cycle"):
+            scoped_payload = _expected_preset_movement_window(
+                histories,
+                preset_key=preset_key,
+                snapshot_index=snapshot_index,
+                dimension=dimension,
+            )
+            if scoped_payload.top_changes or scoped_payload.recent_events:
+                expected[(dimension, preset_key)] = scoped_payload
+    return expected
 
 
 def _expected_history_preset_range(
@@ -648,7 +749,9 @@ def _expected_history_preset_range(
     preset_set = build_snapshot_compare_presets(
         [(entry.snapshot_id, entry.snapshot_date) for entry in snapshot_index.snapshots]
     )
-    preset = next(candidate for candidate in preset_set.presets if candidate.preset_key == preset_key)
+    preset = next(
+        candidate for candidate in preset_set.presets if candidate.preset_key == preset_key
+    )
     return HistoryPresetRangePayload(
         preset=preset,
         movement_window=_expected_preset_movement_window(
@@ -675,6 +778,26 @@ def _verify_snapshot_presets(
     preset_set = build_snapshot_compare_presets(
         [(entry.snapshot_id, entry.snapshot_date) for entry in snapshot_index.snapshots]
     )
+    expected_dimension_windows = _expected_dimension_movement_windows(
+        histories,
+        snapshot_index=snapshot_index,
+    )
+    dimensions_dir = root / "history" / "movement" / "dimensions"
+    expected_dimension_paths = {
+        movement_window_path(preset_key, dimension=dimension)
+        for (dimension, preset_key) in expected_dimension_windows
+    }
+    if dimensions_dir.is_dir():
+        for candidate in sorted(dimensions_dir.glob("*/*.json")):
+            candidate_path = candidate.relative_to(root).as_posix()
+            if candidate_path not in expected_dimension_paths:
+                issues.append(
+                    _issue(
+                        stage,
+                        "unexpected dimension movement window artifact",
+                        path=candidate_path,
+                    )
+                )
     for preset in preset_set.presets:
         range_path = history_preset_range_path(preset.preset_key)
         try:
@@ -706,7 +829,9 @@ def _verify_snapshot_presets(
         try:
             payload = load_snapshot_preset_compare(root, preset.preset_key)
         except Exception as exc:
-            issues.append(_issue(stage, f"failed to load snapshot preset compare: {exc}", path=path))
+            issues.append(
+                _issue(stage, f"failed to load snapshot preset compare: {exc}", path=path)
+            )
             continue
         expected = _expected_snapshot_compare_payload(
             histories,
@@ -715,7 +840,11 @@ def _verify_snapshot_presets(
         )
         checked += 1
         if payload != expected:
-            issues.append(_issue(stage, f"snapshot preset compare mismatch for {preset.preset_key}", path=path))
+            issues.append(
+                _issue(
+                    stage, f"snapshot preset compare mismatch for {preset.preset_key}", path=path
+                )
+            )
         if preset.preset_key == "latest":
             continue
         movement_path = movement_window_path(preset.preset_key)
@@ -744,6 +873,28 @@ def _verify_snapshot_presets(
                     path=movement_path,
                 )
             )
+    for (dimension, preset_key), expected_movement in expected_dimension_windows.items():
+        movement_path = movement_window_path(preset_key, dimension=dimension)
+        try:
+            movement_payload = load_movement_window(root, preset_key, dimension=dimension)
+        except Exception as exc:
+            issues.append(
+                _issue(
+                    stage,
+                    f"failed to load dimension movement window: {exc}",
+                    path=movement_path,
+                )
+            )
+            continue
+        checked += 1
+        if movement_payload != expected_movement:
+            issues.append(
+                _issue(
+                    stage,
+                    f"dimension movement window mismatch for {dimension}:{preset_key}",
+                    path=movement_path,
+                )
+            )
     return HistoryVerifyStageResult(stage=stage, checked=checked, issues=tuple(issues))
 
 
@@ -758,7 +909,9 @@ def _expected_member_preset_compare(
     chart: MemberHistoryChartPayload,
     preset_key: str,
 ) -> MemberWindowComparePayload:
-    preset = next(candidate for candidate in chart.compare_presets if candidate.preset_key == preset_key)
+    preset = next(
+        candidate for candidate in chart.compare_presets if candidate.preset_key == preset_key
+    )
     summary = build_member_window_change_summary(
         history,
         start_snapshot_date=preset.start_snapshot_date,
@@ -792,6 +945,24 @@ def _verify_members(
     checked = 0
     charts: dict[str, MemberHistoryChartPayload] = {}
     snapshot_ids_by_date = _snapshot_ids_by_date(snapshot_index)
+    expected_coverages = [build_member_history_coverage(history) for history in histories]
+    expected_coverage_index = build_member_history_coverage_index(expected_coverages)
+    coverage_index_path = member_history_coverage_index_path()
+    try:
+        coverage_index = load_member_history_coverage_index(root)
+        checked += 1
+        if coverage_index != expected_coverage_index:
+            issues.append(
+                _issue(stage, "member history coverage index mismatch", path=coverage_index_path)
+            )
+    except Exception as exc:
+        issues.append(
+            _issue(
+                stage,
+                f"failed to load member history coverage index: {exc}",
+                path=coverage_index_path,
+            )
+        )
 
     for history in histories:
         slug = history.slug
@@ -806,27 +977,63 @@ def _verify_members(
             summary = load_member_change_summary(root, slug)
             checked += 1
             if summary != expected_summary:
-                issues.append(_issue(stage, f"member change summary mismatch for {slug}", path=member_change_summary_path(slug)))
+                issues.append(
+                    _issue(
+                        stage,
+                        f"member change summary mismatch for {slug}",
+                        path=member_change_summary_path(slug),
+                    )
+                )
         except Exception as exc:
-            issues.append(_issue(stage, f"failed to load member change summary for {slug}: {exc}", path=member_change_summary_path(slug)))
+            issues.append(
+                _issue(
+                    stage,
+                    f"failed to load member change summary for {slug}: {exc}",
+                    path=member_change_summary_path(slug),
+                )
+            )
 
         try:
             chart = load_member_history_chart(root, slug)
             checked += 1
             charts[slug] = chart
             if chart != expected_chart:
-                issues.append(_issue(stage, f"member history chart mismatch for {slug}", path=member_history_chart_path(slug)))
+                issues.append(
+                    _issue(
+                        stage,
+                        f"member history chart mismatch for {slug}",
+                        path=member_history_chart_path(slug),
+                    )
+                )
         except Exception as exc:
             charts[slug] = expected_chart
-            issues.append(_issue(stage, f"failed to load member history chart for {slug}: {exc}", path=member_history_chart_path(slug)))
+            issues.append(
+                _issue(
+                    stage,
+                    f"failed to load member history chart for {slug}: {exc}",
+                    path=member_history_chart_path(slug),
+                )
+            )
 
         try:
             trend = load_member_trend_summary(root, slug)
             checked += 1
             if trend != expected_trend:
-                issues.append(_issue(stage, f"member trend summary mismatch for {slug}", path=member_trend_summary_path(slug)))
+                issues.append(
+                    _issue(
+                        stage,
+                        f"member trend summary mismatch for {slug}",
+                        path=member_trend_summary_path(slug),
+                    )
+                )
         except Exception as exc:
-            issues.append(_issue(stage, f"failed to load member trend summary for {slug}: {exc}", path=member_trend_summary_path(slug)))
+            issues.append(
+                _issue(
+                    stage,
+                    f"failed to load member trend summary for {slug}: {exc}",
+                    path=member_trend_summary_path(slug),
+                )
+            )
 
         chart_for_presets = charts[slug]
         for preset in chart_for_presets.compare_presets:
@@ -835,7 +1042,13 @@ def _verify_members(
                 compare = load_member_preset_compare(root, slug, preset.preset_key)
                 checked += 1
             except Exception as exc:
-                issues.append(_issue(stage, f"failed to load member preset compare for {slug}:{preset.preset_key}: {exc}", path=path))
+                issues.append(
+                    _issue(
+                        stage,
+                        f"failed to load member preset compare for {slug}:{preset.preset_key}: {exc}",
+                        path=path,
+                    )
+                )
                 continue
             expected_compare = _expected_member_preset_compare(
                 root,
@@ -844,7 +1057,13 @@ def _verify_members(
                 preset_key=preset.preset_key,
             )
             if compare != expected_compare:
-                issues.append(_issue(stage, f"member preset compare mismatch for {slug}:{preset.preset_key}", path=path))
+                issues.append(
+                    _issue(
+                        stage,
+                        f"member preset compare mismatch for {slug}:{preset.preset_key}",
+                        path=path,
+                    )
+                )
 
     return HistoryVerifyStageResult(stage=stage, checked=checked, issues=tuple(issues)), charts
 
@@ -883,42 +1102,340 @@ def _verify_member_pages(
             page = load_member_history_page(root, slug)
             checked += 1
         except Exception as exc:
-            issues.append(_issue(stage, f"failed to load member history page for {slug}: {exc}", path=page_path))
+            issues.append(
+                _issue(
+                    stage, f"failed to load member history page for {slug}: {exc}", path=page_path
+                )
+            )
             continue
 
         try:
             member_page = load_member_page(root, slug)
         except Exception as exc:
-            issues.append(_issue(stage, f"failed to load current member page for {slug}: {exc}", path=page_path))
+            issues.append(
+                _issue(
+                    stage, f"failed to load current member page for {slug}: {exc}", path=page_path
+                )
+            )
             continue
 
+        coverage_path = member_history_coverage_path(slug)
         try:
             summary = load_member_change_summary(root, slug)
             trend = load_member_trend_summary(root, slug)
             chart = charts[slug]
             default_compare = load_member_preset_compare(root, slug, chart.default_preset_key)
         except Exception as exc:
-            issues.append(_issue(stage, f"failed to load member page dependency for {slug}: {exc}", path=page_path))
+            issues.append(
+                _issue(
+                    stage,
+                    f"failed to load member page dependency for {slug}: {exc}",
+                    path=page_path,
+                )
+            )
+            continue
+        try:
+            coverage = load_member_history_coverage(root, slug)
+        except Exception as exc:
+            issues.append(
+                _issue(
+                    stage,
+                    f"failed to load member history coverage for {slug}: {exc}",
+                    path=coverage_path,
+                )
+            )
             continue
 
         if page.member_page != member_page:
-            issues.append(_issue(stage, f"embedded member page mismatch for {slug}", path=page_path))
+            issues.append(
+                _issue(stage, f"embedded member page mismatch for {slug}", path=page_path)
+            )
         if page.history != history:
-            issues.append(_issue(stage, f"embedded member history mismatch for {slug}", path=page_path))
+            issues.append(
+                _issue(stage, f"embedded member history mismatch for {slug}", path=page_path)
+            )
         if page.recent_change != summary:
-            issues.append(_issue(stage, f"embedded member change summary mismatch for {slug}", path=page_path))
+            issues.append(
+                _issue(stage, f"embedded member change summary mismatch for {slug}", path=page_path)
+            )
+        if page.coverage != coverage:
+            issues.append(
+                _issue(
+                    stage, f"embedded member history coverage mismatch for {slug}", path=page_path
+                )
+            )
         if page.chart != chart:
-            issues.append(_issue(stage, f"embedded member history chart mismatch for {slug}", path=page_path))
+            issues.append(
+                _issue(stage, f"embedded member history chart mismatch for {slug}", path=page_path)
+            )
         if page.trend_summary != trend:
-            issues.append(_issue(stage, f"embedded member trend summary mismatch for {slug}", path=page_path))
+            issues.append(
+                _issue(stage, f"embedded member trend summary mismatch for {slug}", path=page_path)
+            )
         if page.default_window_compare != default_compare:
-            issues.append(_issue(stage, f"embedded default compare mismatch for {slug}", path=page_path))
+            issues.append(
+                _issue(stage, f"embedded default compare mismatch for {slug}", path=page_path)
+            )
         if page.snapshot_index != snapshot_index:
-            issues.append(_issue(stage, f"embedded snapshot index mismatch for {slug}", path=page_path))
+            issues.append(
+                _issue(stage, f"embedded snapshot index mismatch for {slug}", path=page_path)
+            )
+        expected_coverage = build_member_history_coverage(history)
+        if coverage != expected_coverage:
+            issues.append(
+                _issue(stage, f"member history coverage mismatch for {slug}", path=coverage_path)
+            )
+        try:
+            timeline_index = load_member_timeline_index(root, slug)
+            timeline_page = load_member_timeline_page(root, slug, 1)
+        except Exception as exc:
+            issues.append(
+                _issue(
+                    stage,
+                    f"failed to load member timeline dependency for {slug}: {exc}",
+                    path=page_path,
+                )
+            )
+            continue
+        if page.timeline_index != timeline_index:
+            issues.append(
+                _issue(stage, f"embedded member timeline index mismatch for {slug}", path=page_path)
+            )
+        if page.timeline_page != timeline_page:
+            issues.append(
+                _issue(stage, f"embedded member timeline page mismatch for {slug}", path=page_path)
+            )
 
         expected_history_cards = _load_cards(root, _history_page_expected_card_ids(history))
         if page.history_evidence_cards != expected_history_cards:
-            issues.append(_issue(stage, f"history evidence cards mismatch for {slug}", path=page_path))
+            issues.append(
+                _issue(stage, f"history evidence cards mismatch for {slug}", path=page_path)
+            )
+
+    return HistoryVerifyStageResult(stage=stage, checked=checked, issues=tuple(issues))
+
+
+def _verify_member_timelines(
+    root: Path,
+    histories: list[MemberHistoryPayload],
+) -> HistoryVerifyStageResult:
+    stage = "member_timelines"
+    issues: list[HistoryVerifyIssue] = []
+    checked = 0
+
+    for history in histories:
+        slug = history.slug
+        timeline_events = build_member_timeline_events(history)
+        expected_index = build_member_timeline_index(history)
+        index_path = member_timeline_index_path(slug)
+        try:
+            index = load_member_timeline_index(root, slug)
+            checked += 1
+        except Exception as exc:
+            issues.append(
+                _issue(
+                    stage,
+                    f"failed to load member timeline index for {slug}: {exc}",
+                    path=index_path,
+                )
+            )
+            continue
+        if index != expected_index:
+            issues.append(
+                _issue(stage, f"member timeline index mismatch for {slug}", path=index_path)
+            )
+
+        for bucket in expected_index.year_buckets:
+            year_path = member_timeline_year_path(slug, bucket.year)
+            try:
+                year_payload = load_member_timeline_year(root, slug, bucket.year)
+                checked += 1
+            except Exception as exc:
+                issues.append(
+                    _issue(
+                        stage,
+                        f"failed to load member timeline year for {slug}:{bucket.year}: {exc}",
+                        path=year_path,
+                    )
+                )
+                continue
+            expected_year = build_member_timeline_year(history, year=bucket.year)
+            if year_payload != expected_year:
+                issues.append(
+                    _issue(
+                        stage,
+                        f"member timeline year mismatch for {slug}:{bucket.year}",
+                        path=year_path,
+                    )
+                )
+
+        expected_coverage = build_member_history_coverage(history)
+        expected_dimension_paths = {
+            member_timeline_dimension_path(slug, dimension_summary.dimension)
+            for dimension_summary in expected_coverage.dimensions
+        }
+        dimensions_dir = root / "history" / "member-timelines" / slug / "dimensions"
+        if dimensions_dir.is_dir():
+            for candidate in sorted(dimensions_dir.glob("*.json")):
+                candidate_path = candidate.relative_to(root).as_posix()
+                if candidate_path not in expected_dimension_paths:
+                    issues.append(
+                        _issue(
+                            stage,
+                            f"unexpected member timeline dimension artifact for {slug}",
+                            path=candidate_path,
+                        )
+                    )
+        for dimension_summary in expected_coverage.dimensions:
+            dimension = dimension_summary.dimension
+            dimension_path = member_timeline_dimension_path(slug, dimension)
+            try:
+                dimension_payload = load_member_timeline_dimension(root, slug, dimension)
+                checked += 1
+            except Exception as exc:
+                issues.append(
+                    _issue(
+                        stage,
+                        f"failed to load member timeline dimension for {slug}:{dimension}: {exc}",
+                        path=dimension_path,
+                    )
+                )
+                continue
+            expected_dimension = build_member_timeline_dimension(history, dimension=dimension)
+            if dimension_payload != expected_dimension:
+                issues.append(
+                    _issue(
+                        stage,
+                        f"member timeline dimension mismatch for {slug}:{dimension}",
+                        path=dimension_path,
+                    )
+                )
+
+        for page_number in range(1, expected_index.total_pages + 1):
+            expected_page = build_member_timeline_page(history, page=page_number)
+            page_path = member_timeline_page_path(slug, page_number)
+            try:
+                page = load_member_timeline_page(root, slug, page_number)
+                checked += 1
+            except Exception as exc:
+                issues.append(
+                    _issue(
+                        stage,
+                        f"failed to load member timeline page for {slug}:{page_number}: {exc}",
+                        path=page_path,
+                    )
+                )
+                continue
+            if page != expected_page:
+                issues.append(
+                    _issue(
+                        stage,
+                        f"member timeline page mismatch for {slug}:{page_number}",
+                        path=page_path,
+                    )
+                )
+
+            for event in expected_page.events:
+                event_path = history_event_path(event.event_id)
+                try:
+                    loaded_event = load_history_event(root, event.event_id)
+                    checked += 1
+                except Exception as exc:
+                    issues.append(
+                        _issue(
+                            stage,
+                            f"failed to load history event for {slug}:{event.event_id}: {exc}",
+                            path=event_path,
+                        )
+                    )
+                    continue
+                if loaded_event != event:
+                    issues.append(
+                        _issue(
+                            stage,
+                            f"history event mismatch for {slug}:{event.event_id}",
+                            path=event_path,
+                        )
+                    )
+
+                event_page_path = history_event_page_path(event.event_id)
+                try:
+                    loaded_event_page = load_history_event_page(root, event.event_id)
+                    checked += 1
+                except Exception as exc:
+                    issues.append(
+                        _issue(
+                            stage,
+                            f"failed to load history event page for {slug}:{event.event_id}: {exc}",
+                            path=event_page_path,
+                        )
+                    )
+                    continue
+
+                try:
+                    current_member_page = load_member_page(root, slug)
+                except Exception:
+                    current_member_page = None
+                if event.evidence_card_id:
+                    try:
+                        evidence_card = load_evidence_card(root, event.evidence_card_id)
+                    except Exception:
+                        evidence_card = None
+                else:
+                    evidence_card = None
+                event_position = next(
+                    index
+                    for index, candidate in enumerate(timeline_events)
+                    if candidate.event_id == event.event_id
+                )
+                expected_previous = (
+                    timeline_events[event_position - 1].event_id if event_position > 0 else None
+                )
+                expected_next = (
+                    timeline_events[event_position + 1].event_id
+                    if event_position + 1 < len(timeline_events)
+                    else None
+                )
+                if loaded_event_page.event != event:
+                    issues.append(
+                        _issue(
+                            stage,
+                            f"history event page event mismatch for {slug}:{event.event_id}",
+                            path=event_page_path,
+                        )
+                    )
+                if loaded_event_page.member_page != current_member_page:
+                    issues.append(
+                        _issue(
+                            stage,
+                            f"history event page member context mismatch for {slug}:{event.event_id}",
+                            path=event_page_path,
+                        )
+                    )
+                if loaded_event_page.evidence_card != evidence_card:
+                    issues.append(
+                        _issue(
+                            stage,
+                            f"history event page evidence mismatch for {slug}:{event.event_id}",
+                            path=event_page_path,
+                        )
+                    )
+                if loaded_event_page.previous_event_id != expected_previous:
+                    issues.append(
+                        _issue(
+                            stage,
+                            f"history event page previous_event_id mismatch for {slug}:{event.event_id}",
+                            path=event_page_path,
+                        )
+                    )
+                if loaded_event_page.next_event_id != expected_next:
+                    issues.append(
+                        _issue(
+                            stage,
+                            f"history event page next_event_id mismatch for {slug}:{event.event_id}",
+                            path=event_page_path,
+                        )
+                    )
 
     return HistoryVerifyStageResult(stage=stage, checked=checked, issues=tuple(issues))
 
@@ -930,8 +1447,10 @@ def verify_history_aggregate_local(root: Path) -> HistoryVerifyResult:
             stages=(
                 snapshot_stage,
                 _unavailable_stage("bootstrap", "snapshot index could not be loaded"),
+                _unavailable_stage("current_aggregates", "snapshot index could not be loaded"),
                 _unavailable_stage("snapshot_presets", "snapshot index could not be loaded"),
                 _unavailable_stage("members", "snapshot index could not be loaded"),
+                _unavailable_stage("member_timelines", "snapshot index could not be loaded"),
                 _unavailable_stage("member_pages", "snapshot index could not be loaded"),
             )
         )
@@ -941,6 +1460,7 @@ def verify_history_aggregate_local(root: Path) -> HistoryVerifyResult:
     current_aggregates_stage = _verify_current_aggregates(root)
     snapshot_presets_stage = _verify_snapshot_presets(root, snapshot_index, histories)
     members_stage, charts = _verify_members(root, snapshot_index, histories)
+    member_timelines_stage = _verify_member_timelines(root, histories)
     member_pages_stage = _verify_member_pages(root, snapshot_index, histories, charts)
 
     return HistoryVerifyResult(
@@ -950,6 +1470,7 @@ def verify_history_aggregate_local(root: Path) -> HistoryVerifyResult:
             current_aggregates_stage,
             snapshot_presets_stage,
             members_stage,
+            member_timelines_stage,
             member_pages_stage,
         )
     )

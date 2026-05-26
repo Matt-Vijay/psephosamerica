@@ -2,8 +2,8 @@
 
 Entry point: verify_local_publish(root)
 
-Composes four verification stages in the fixed order:
-    manifest -> profiles -> evidence -> zip
+Composes six verification stages in the fixed order:
+    manifest -> profiles -> evidence -> ontology -> prediction -> zip
 
 The manifest is discovered by scanning root/snapshots/*/manifest.json.
 When exactly one manifest is found it is loaded and forwarded to the three
@@ -17,6 +17,7 @@ coverage may be surfaced as warnings rather than claimed as verified.
 
 No CLI here.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -24,6 +25,8 @@ from pathlib import Path
 from src.export.manifest import SnapshotManifest
 from src.runtime.publish_verify_evidence import verify_local_evidence_cards
 from src.runtime.publish_verify_manifest import inspect_local_manifest, verify_local_manifest
+from src.runtime.publish_verify_ontology import verify_local_ontology_edges
+from src.runtime.publish_verify_prediction import verify_local_prediction_artifacts
 from src.runtime.publish_verify_profiles import verify_local_member_profiles
 from src.runtime.publish_verify_types import (
     PublishVerifyIssue,
@@ -49,13 +52,13 @@ def _unavailable_stage(stage: str, reason: str) -> PublishVerifyStageResult:
 
 
 def verify_local_publish(root: Path) -> PublishVerifyResult:
-    """Run all four verification stages against a local publish tree.
+    """Run all six verification stages against a local publish tree.
 
-    Stage order is fixed: manifest -> profiles -> evidence -> zip.
+    Stage order is fixed: manifest -> profiles -> evidence -> ontology -> prediction -> zip.
 
     If the manifest cannot be loaded after the manifest stage, the
-    remaining three stages are each recorded as an error result so that
-    the caller always receives a complete four-stage ``PublishVerifyResult``.
+    remaining five stages are each recorded as an error result so that
+    the caller always receives a complete six-stage ``PublishVerifyResult``.
 
     Args:
         root: Root directory of the published snapshot tree.
@@ -77,6 +80,8 @@ def verify_local_publish(root: Path) -> PublishVerifyResult:
                 manifest_stage,
                 _unavailable_stage("profiles", skip_reason),
                 _unavailable_stage("evidence", skip_reason),
+                _unavailable_stage("ontology", skip_reason),
+                _unavailable_stage("prediction", skip_reason),
                 _unavailable_stage("zip", skip_reason),
             )
         )
@@ -87,7 +92,13 @@ def verify_local_publish(root: Path) -> PublishVerifyResult:
     # Stage 3: evidence
     evidence_stage = verify_local_evidence_cards(root, manifest)
 
-    # Stage 4: zip
+    # Stage 4: ontology
+    ontology_stage = verify_local_ontology_edges(root, manifest)
+
+    # Stage 5: prediction
+    prediction_stage = verify_local_prediction_artifacts(root, manifest)
+
+    # Stage 6: zip
     zip_stage = verify_local_zip_feeds(root, manifest)
 
     return PublishVerifyResult(
@@ -95,6 +106,8 @@ def verify_local_publish(root: Path) -> PublishVerifyResult:
             manifest_stage,
             profiles_stage,
             evidence_stage,
+            ontology_stage,
+            prediction_stage,
             zip_stage,
         )
     )

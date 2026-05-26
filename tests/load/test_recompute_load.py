@@ -15,11 +15,13 @@ from src.export.contracts import (
     SourceAnchor,
 )
 from src.load.recompute import (
+    plan_ontology_edges,
     plan_evidence_cards,
     plan_rule_fires,
     plan_score_snapshots,
     recompute_load_plan,
 )
+from src.ontology.contracts import OntologyEdgePayload, OntologyNodeRef
 
 
 # ---------------------------------------------------------------------------
@@ -39,6 +41,7 @@ def rule_fire() -> RuleFire:
         member_bioguide_id="P000197",
         dimension="conflict_of_interest_risk",
         severity=Severity.high,
+        source_types_required=["committee_membership", "financial_disclosure"],
         sourced_facts={"trade_date": "2023-06-01", "amount": 50000},
         derived_values={"days_after_vote": 3},
         parameters_used={"threshold_days": 30},
@@ -62,6 +65,7 @@ def rule_fire_amended(rule_fire: RuleFire) -> RuleFire:
 def evidence_card() -> EvidenceCardPayload:
     return EvidenceCardPayload(
         evidence_card_id="card-xyz-001",
+        rule_fire_source_record_id="fire-abc-001",
         member_bioguide_id="P000197",
         member_name="Nancy Pelosi",
         member_slug="nancy-pelosi",
@@ -78,13 +82,40 @@ def evidence_card() -> EvidenceCardPayload:
             SourceAnchor(
                 source_type="financial_disclosure",
                 source_id="fd-source-001",
-                url=None,
+                url="https://disclosures.house.gov/public_disc/ptr-pdfs/2024/fd-source-001.pdf",
                 label="2023 Annual Disclosure",
             )
         ],
         confidence=ConfidenceLabel.HIGH,
         snapshot_date=_SNAPSHOT_DATE,
         created_at=_FIRED_AT,
+    )
+
+
+@pytest.fixture()
+def ontology_edge() -> OntologyEdgePayload:
+    return OntologyEdgePayload(
+        edge_id="ont-edge-abc",
+        edge_type="member_committee_assignment",
+        subject=OntologyNodeRef(
+            node_type="member",
+            node_id="P000197",
+            label="Nancy Pelosi",
+        ),
+        object=OntologyNodeRef(
+            node_type="committee",
+            node_id="HSEN",
+            label="Energy and Commerce",
+        ),
+        source_anchors=[
+            SourceAnchor(
+                source_type="committee_membership",
+                source_id="cm-1",
+                url="https://api.congress.gov/v3/committee/house/HSEN?format=json",
+                label="Committee membership",
+            )
+        ],
+        attributes={"role": "member"},
     )
 
 
@@ -113,7 +144,7 @@ def test_plan_rule_fires_structure(rule_fire: RuleFire) -> None:
 
 def test_plan_rule_fires_row_fields(rule_fire: RuleFire) -> None:
     row = plan_rule_fires([rule_fire])["rows"][0]
-    assert row["_bioguide_id"] == "P000197"
+    assert row["_subject_member_bioguide_id"] == "P000197"
     assert row["rule_id"] == rule_fire.rule_id
     assert row["dimension"] == "conflict_of_interest_risk"
     assert row["rule_version"] == "1"
@@ -125,6 +156,22 @@ def test_plan_rule_fires_row_fields(rule_fire: RuleFire) -> None:
     assert row["derived_values"] == {"days_after_vote": 3}
     assert row["parameters"] == {"threshold_days": 30}
     assert row["explanation"] == rule_fire.explanation
+    assert row["source_types_required"] == [
+        "committee_membership",
+        "financial_disclosure",
+    ]
+
+
+def test_plan_rule_fires_rejects_boolean_recompute_run_id(rule_fire: RuleFire) -> None:
+    bad_fire = rule_fire.model_copy(update={"recompute_run_id": True})
+
+    with pytest.raises(ValueError, match="recompute_run_id must be an integer"):
+        plan_rule_fires([bad_fire])
+
+
+def test_plan_rule_fires_omits_bare_member_id_hint(rule_fire: RuleFire) -> None:
+    row = plan_rule_fires([rule_fire])["rows"][0]
+    assert "_bioguide_id" not in row
 
 
 def test_plan_rule_fires_no_superseded_filing(rule_fire: RuleFire) -> None:
@@ -164,7 +211,8 @@ def test_plan_evidence_cards_structure(evidence_card: EvidenceCardPayload) -> No
 
 def test_plan_evidence_cards_row_fields(evidence_card: EvidenceCardPayload) -> None:
     row = plan_evidence_cards([evidence_card])["rows"][0]
-    assert row["_bioguide_id"] == "P000197"
+    assert row["_member_bioguide_id"] == "P000197"
+    assert row["_rule_fire_source_record_id"] == "fire-abc-001"
     assert row["public_id"] == "card-xyz-001"
     assert row["dimension"] == "conflict_of_interest_risk"
     assert row["score_delta"] == -10.0
@@ -172,6 +220,15 @@ def test_plan_evidence_cards_row_fields(evidence_card: EvidenceCardPayload) -> N
     assert row["confidence_label"] == "HIGH"
     assert row["member_page_slug"] == "nancy-pelosi"
     assert row["source_record_id"] == "card-xyz-001"
+
+
+def test_plan_evidence_cards_requires_rule_fire_source_record_id(
+    evidence_card: EvidenceCardPayload,
+) -> None:
+    card = evidence_card.model_copy(update={"rule_fire_source_record_id": None})
+
+    with pytest.raises(ValueError, match="rule_fire_source_record_id"):
+        plan_evidence_cards([card])
 
 
 def test_plan_evidence_cards_source_anchors(evidence_card: EvidenceCardPayload) -> None:
@@ -200,9 +257,7 @@ def test_plan_evidence_cards_empty() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_plan_score_snapshots_structure(
-    member: dict, delta_rows: list[dict]
-) -> None:
+def test_plan_score_snapshots_structure(member: dict, delta_rows: list[dict]) -> None:
     op = plan_score_snapshots(
         members=[member],
         delta_rows_by_member_id={1: delta_rows},
@@ -215,16 +270,14 @@ def test_plan_score_snapshots_structure(
     assert len(op["rows"]) == 1
 
 
-def test_plan_score_snapshots_row_fields(
-    member: dict, delta_rows: list[dict]
-) -> None:
+def test_plan_score_snapshots_row_fields(member: dict, delta_rows: list[dict]) -> None:
     row = plan_score_snapshots(
         members=[member],
         delta_rows_by_member_id={1: delta_rows},
         snapshot_at=_SNAPSHOT_DATE,
         recompute_run_id=42,
     )["rows"][0]
-    assert row["_bioguide_id"] == "P000197"
+    assert row["_member_bioguide_id"] == "P000197"
     assert row["snapshot_at"] == _SNAPSHOT_DATE
     assert row["recompute_run_id"] == 42
     assert row["score_total"] == 90.0
@@ -257,7 +310,7 @@ def test_plan_score_snapshots_multiple_members() -> None:
     )
     rows = op["rows"]
     assert len(rows) == 2
-    by_bioguide = {r["_bioguide_id"]: r for r in rows}
+    by_bioguide = {r["_member_bioguide_id"]: r for r in rows}
     assert by_bioguide["P000197"]["score_total"] == 95.0
     assert by_bioguide["S000148"]["score_total"] == 100.0
 
@@ -275,6 +328,45 @@ def test_plan_score_snapshots_clamps_below_zero() -> None:
 
 
 # ---------------------------------------------------------------------------
+# plan_ontology_edges
+# ---------------------------------------------------------------------------
+
+
+def test_plan_ontology_edges_structure(ontology_edge: OntologyEdgePayload) -> None:
+    op = plan_ontology_edges([ontology_edge], recompute_run_id=42)
+
+    assert op["table"] == "ontology_edge"
+    assert op["mode"] == "upsert"
+    assert op["conflict_columns"] == ["edge_id"]
+    assert len(op["rows"]) == 1
+
+
+def test_plan_ontology_edges_row_fields(ontology_edge: OntologyEdgePayload) -> None:
+    row = plan_ontology_edges([ontology_edge], recompute_run_id=42)["rows"][0]
+
+    assert row["edge_id"] == "ont-edge-abc"
+    assert row["edge_type"] == "member_committee_assignment"
+    assert row["recompute_run_id"] == 42
+    assert row["subject_node_type"] == "member"
+    assert row["subject_node_id"] == "P000197"
+    assert row["subject_node_label"] == "Nancy Pelosi"
+    assert row["object_node_type"] == "committee"
+    assert row["object_node_id"] == "HSEN"
+    assert row["object_node_label"] == "Energy and Commerce"
+    assert row["_subject_member_bioguide_id"] == "P000197"
+    assert row["_object_member_bioguide_id"] is None
+    assert row["source_anchors"][0]["source_type"] == "committee_membership"
+    assert row["confidence"] == "high"
+    assert row["attributes"] == {"role": "member"}
+
+
+def test_plan_ontology_edges_empty() -> None:
+    op = plan_ontology_edges([], recompute_run_id=42)
+
+    assert op["rows"] == []
+
+
+# ---------------------------------------------------------------------------
 # recompute_load_plan (integration)
 # ---------------------------------------------------------------------------
 
@@ -282,6 +374,7 @@ def test_plan_score_snapshots_clamps_below_zero() -> None:
 def test_recompute_load_plan_order(
     rule_fire: RuleFire,
     evidence_card: EvidenceCardPayload,
+    ontology_edge: OntologyEdgePayload,
     member: dict,
     delta_rows: list[dict],
 ) -> None:
@@ -292,11 +385,13 @@ def test_recompute_load_plan_order(
         delta_rows_by_member_id={1: delta_rows},
         snapshot_at=_SNAPSHOT_DATE,
         recompute_run_id=42,
+        ontology_edges=[ontology_edge],
     )
-    assert len(plan) == 3
+    assert len(plan) == 4
     assert plan[0]["table"] == "rule_fire"
     assert plan[1]["table"] == "evidence_card"
     assert plan[2]["table"] == "score_snapshot"
+    assert plan[3]["table"] == "ontology_edge"
 
 
 def test_recompute_load_plan_all_ops_have_required_keys(

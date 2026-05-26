@@ -82,13 +82,21 @@ def _normalize_recent_fires(
     return [
         {
             "rule_id": f["rule_id"],
-            "evidence_card_id": f["evidence_card_id"],
+            "evidence_card_id": _required_evidence_card_id(f),
             "short_explanation": f["short_explanation"],
             "score_delta": float(f["score_delta"]),
             "snapshot_date": f["snapshot_date"],
         }
         for f in sorted_fires[:limit]
     ]
+
+
+def _required_evidence_card_id(fire: dict[str, Any]) -> str:
+    card_id = fire.get("evidence_card_id")
+    if not isinstance(card_id, str) or not card_id:
+        rule_id = fire.get("rule_id", "<unknown>")
+        raise ValueError(f"rule fire {rule_id!r} is missing evidence_card_id")
+    return card_id
 
 
 def _top_evidence_card_ids(
@@ -130,7 +138,7 @@ def _latest_snapshot_date(snapshot_rows: list[dict[str, Any]]) -> date:
 
 
 def _count_distinct_evidence_cards(fire_rows: list[dict[str, Any]]) -> int:
-    return len({f["evidence_card_id"] for f in fire_rows if f.get("evidence_card_id")})
+    return len({_required_evidence_card_id(fire) for fire in fire_rows})
 
 
 def assemble_member_profile(

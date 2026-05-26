@@ -92,8 +92,8 @@ class ResolutionSummary:
     """Aggregate stats for a :func:`resolve_foreign_keys` call."""
 
     total_rows: int
-    resolved_count: int   # number of hint keys successfully resolved
-    failure_count: int    # number of hint keys that could not be resolved
+    resolved_count: int  # number of hint keys successfully resolved
+    failure_count: int  # number of hint keys that could not be resolved
     failures: list[ResolutionFailure] = field(default_factory=list)
 
     @property
@@ -167,7 +167,6 @@ def _resolve_row(
     out: dict[str, Any] = {}
 
     for key, value in row.items():
-
         # ----------------------------------------------------------------
         # 1. bioguide_id  →  member_id (or *_id)
         # ----------------------------------------------------------------
@@ -175,13 +174,9 @@ def _resolve_row(
             fk_col = _derive_fk_col(key, _BIOGUIDE_SUFFIX, "member_id")
             bio_map: dict[str, int] | None = maps.get("bioguide_map")
             if bio_map is None:
-                failures.append(
-                    ResolutionFailure(row_index, key, value, "lookup_not_provided")
-                )
+                failures.append(ResolutionFailure(row_index, key, value, "lookup_not_provided"))
             elif value not in bio_map:
-                failures.append(
-                    ResolutionFailure(row_index, key, value, "missing")
-                )
+                failures.append(ResolutionFailure(row_index, key, value, "missing"))
             else:
                 out[fk_col] = bio_map[value]
 
@@ -192,13 +187,9 @@ def _resolve_row(
             fk_col = _derive_fk_col(key, _LIS_SUFFIX, "member_id")
             lis_map: dict[str, int] | None = maps.get("lis_member_map")
             if lis_map is None:
-                failures.append(
-                    ResolutionFailure(row_index, key, value, "lookup_not_provided")
-                )
+                failures.append(ResolutionFailure(row_index, key, value, "lookup_not_provided"))
             elif value not in lis_map:
-                failures.append(
-                    ResolutionFailure(row_index, key, value, "missing")
-                )
+                failures.append(ResolutionFailure(row_index, key, value, "missing"))
             else:
                 out[fk_col] = lis_map[value]
 
@@ -209,23 +200,23 @@ def _resolve_row(
             fk_col = _derive_fk_col(key, _COMMITTEE_CODE_SUFFIX, "committee_id")
             cc_map: dict[tuple[str, int], int] | None = maps.get("committee_code_map")
             if cc_map is None:
-                failures.append(
-                    ResolutionFailure(row_index, key, value, "lookup_not_provided")
-                )
+                failures.append(ResolutionFailure(row_index, key, value, "lookup_not_provided"))
             else:
                 congress = row.get("congress")
                 if congress is None:
-                    failures.append(
-                        ResolutionFailure(row_index, key, value, "missing_context")
-                    )
+                    failures.append(ResolutionFailure(row_index, key, value, "missing_context"))
                 else:
-                    lookup_key = (str(value), int(congress))
-                    if lookup_key not in cc_map:
+                    try:
+                        lookup_key = (str(value), _coerce_key_int(congress, "congress"))
+                    except (TypeError, ValueError) as exc:
                         failures.append(
-                            ResolutionFailure(row_index, key, value, "missing")
+                            ResolutionFailure(row_index, key, value, f"invalid_context: {exc}")
                         )
                     else:
-                        out[fk_col] = cc_map[lookup_key]
+                        if lookup_key not in cc_map:
+                            failures.append(ResolutionFailure(row_index, key, value, "missing"))
+                        else:
+                            out[fk_col] = cc_map[lookup_key]
 
         # ----------------------------------------------------------------
         # 4. *_raw  →  strip suffix; look up in raw_id_maps[fk_col]
@@ -235,13 +226,9 @@ def _resolve_row(
             raw_maps: dict[str, dict[str, int]] = maps.get("raw_id_maps") or {}
             sub_map = raw_maps.get(fk_col)
             if sub_map is None:
-                failures.append(
-                    ResolutionFailure(row_index, key, value, "lookup_not_provided")
-                )
+                failures.append(ResolutionFailure(row_index, key, value, "lookup_not_provided"))
             elif value not in sub_map:
-                failures.append(
-                    ResolutionFailure(row_index, key, value, "missing")
-                )
+                failures.append(ResolutionFailure(row_index, key, value, "missing"))
             else:
                 out[fk_col] = sub_map[value]
 
@@ -253,28 +240,22 @@ def _resolve_row(
                 "disclosure_natural_key_map"
             )
             if nk_map is None:
-                failures.append(
-                    ResolutionFailure(row_index, key, value, "lookup_not_provided")
-                )
+                failures.append(ResolutionFailure(row_index, key, value, "lookup_not_provided"))
             else:
                 try:
                     nk_tuple = (
-                        int(value["member_id"]),
-                        int(value["filing_year"]),
+                        _coerce_key_int(value["member_id"], "member_id"),
+                        _coerce_key_int(value["filing_year"], "filing_year"),
                         str(value["filing_type"]),
-                        int(value["amendment_number"]),
+                        _coerce_key_int(value["amendment_number"], "amendment_number"),
                     )
                 except (KeyError, TypeError, ValueError) as exc:
                     failures.append(
-                        ResolutionFailure(
-                            row_index, key, value, f"invalid_natural_key: {exc}"
-                        )
+                        ResolutionFailure(row_index, key, value, f"invalid_natural_key: {exc}")
                     )
                 else:
                     if nk_tuple not in nk_map:
-                        failures.append(
-                            ResolutionFailure(row_index, key, value, "missing")
-                        )
+                        failures.append(ResolutionFailure(row_index, key, value, "missing"))
                     else:
                         out["financial_disclosure_id"] = nk_map[nk_tuple]
 
@@ -286,6 +267,12 @@ def _resolve_row(
 
 def _count_hint_keys(row: dict[str, Any]) -> int:
     return sum(1 for k in row if _is_hint_key(k))
+
+
+def _coerce_key_int(value: Any, field_name: str) -> int:
+    if isinstance(value, bool):
+        raise ValueError(f"{field_name} must be an integer, got bool")
+    return int(value)
 
 
 # ---------------------------------------------------------------------------

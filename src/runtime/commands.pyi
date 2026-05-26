@@ -7,13 +7,21 @@ from typing import Any
 
 from src.parse.disclosures.transform import DisclosureTransformResult
 from src.pipeline.publish_snapshot_run import ZipBundleInputs
+from src.prediction.backtest import PredictionBacktestPayload
+from src.prediction.eval_report import PredictionEvalReportPayload
+from src.prediction.input_inventory import PredictionInputInventoryPayload
+from src.prediction.window_plan import PredictionEvalWindowPlanPayload
 from src.runtime.app import OpenPactRuntime
 from src.runtime.congress import CongressLoadResult
+from src.runtime.congress_archive_materialize import MaterializedCongressArchiveResult
 from src.runtime.congress_options import CongressLoadOptions
 from src.runtime.context import RuntimeContext
 from src.runtime.disclosures import DisclosuresLoadRuntimeResult
 from src.runtime.disclosures_bundle import DisclosuresBundle
+from src.runtime.disclosures_bundle_materialize import MaterializedDisclosuresBundleResult
 from src.runtime.disclosures_bundle_process import DisclosuresBundleProcessResult
+from src.runtime.fec import FecBulkFilePaths, FecLocalLoadResult
+from src.runtime.member_fec_crosswalk import MemberFecCrosswalkLoadResult
 from src.runtime.history_backfill import LocalHistoryBackfillResult
 from src.runtime.history_verify_types import HistoryVerifyResult
 from src.runtime.oracle_contracts import LocalOracleOptions, LocalOracleRunResult
@@ -39,6 +47,13 @@ def load_disclosures(
     ctx: RuntimeContext,
     results: list[DisclosureTransformResult],
 ) -> DisclosuresLoadRuntimeResult: ...
+def load_fec_local(ctx: RuntimeContext, files: FecBulkFilePaths) -> FecLocalLoadResult: ...
+def load_member_fec_crosswalk_local(
+    ctx: RuntimeContext,
+    crosswalk: Path,
+    *,
+    source_url: str | None = ...,
+) -> MemberFecCrosswalkLoadResult: ...
 def process_disclosures_local(
     ctx: RuntimeContext,
     bundle: DisclosuresBundle,
@@ -48,6 +63,9 @@ def process_disclosures_local(
 def recompute_snapshot(
     ctx: RuntimeContext,
     snapshot_date: dt.date,
+    *,
+    statement_rows: list[dict[str, Any]] | None = ...,
+    statement_rows_source: dict[str, Any] | None = ...,
 ) -> RuntimeRecomputeResult: ...
 def publish_snapshot(
     ctx: RuntimeContext,
@@ -83,10 +101,77 @@ def run_history_backfill_local_command(
     overwrite: bool = ...,
     continue_on_error: bool = ...,
     artifact_root: Path | None = ...,
+    input_readiness: Any | None = ...,
 ) -> LocalHistoryBackfillResult: ...
+def run_prediction_backtest_command(
+    ctx: RuntimeContext,
+    *,
+    feature_cutoff: dt.date,
+    label_start: dt.date,
+    label_end: dt.date,
+    model: str = ...,
+    bill_semantics_root: Path | None = ...,
+) -> PredictionBacktestPayload: ...
+def run_prediction_eval_report_command(
+    ctx: RuntimeContext,
+    *,
+    training_feature_cutoff: dt.date,
+    train_start: dt.date,
+    train_end: dt.date,
+    feature_cutoff: dt.date,
+    label_start: dt.date,
+    label_end: dt.date,
+    bill_semantics_root: Path | None = ...,
+) -> PredictionEvalReportPayload: ...
+def run_prediction_eval_window_plan_command(
+    *,
+    start_label_year: int,
+    end_label_year: int,
+    train_years: int = ...,
+    label_years: int = ...,
+    max_feature_cutoff: dt.date | None = ...,
+    output_dir: str = ...,
+    bill_semantics_root: str | None = ...,
+    congress_archive_manifest: str | None = ...,
+    plan_artifact_path: str | None = ...,
+) -> PredictionEvalWindowPlanPayload: ...
+def run_prediction_input_inventory_command(
+    ctx: RuntimeContext,
+    *,
+    training_feature_cutoff: dt.date,
+    train_start: dt.date,
+    train_end: dt.date,
+    feature_cutoff: dt.date,
+    label_start: dt.date,
+    label_end: dt.date,
+) -> PredictionInputInventoryPayload: ...
 def summarize_local_oracle_run_result(result: LocalOracleRunResult) -> dict[str, Any]: ...
-def summarize_local_history_backfill_result(result: LocalHistoryBackfillResult) -> dict[str, Any]: ...
+def summarize_local_history_backfill_result(
+    result: LocalHistoryBackfillResult,
+) -> dict[str, Any]: ...
 def _oracle_summary_ok(summary: dict[str, Any]) -> bool: ...
 def dispatch_command(args: Any) -> dict[str, Any]: ...
+def manifest_from_existing_archive(archive: Any) -> Any: ...
+def validate_congress_archive_manifest(
+    manifest: Any, *, exists: Callable[[Path], bool] = ...
+) -> Any: ...
+def write_manifest(manifest_path: Path, manifest: Any) -> Path: ...
+def materialize_congress_archive(
+    *,
+    api_key: str,
+    archive_root: Path,
+    congress: int,
+    include_votes: bool = ...,
+    house_vote_year: int | None = ...,
+    senate_session: int | None = ...,
+    manifest_path: Path | None = ...,
+) -> MaterializedCongressArchiveResult: ...
+def materialize_disclosures_bundle(
+    *,
+    years: list[int],
+    chamber: str,
+    bundle_path: Path,
+    artifact_root: Path,
+) -> MaterializedDisclosuresBundleResult: ...
 
 COMMAND_REGISTRY: dict[str, Callable[[Any], dict[str, Any]]]

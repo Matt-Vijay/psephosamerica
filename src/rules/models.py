@@ -45,6 +45,7 @@ class Condition(BaseModel):
 
 class ConditionGroup(BaseModel):
     """One level of nesting is supported: a top-level group may contain nested groups."""
+
     missing_data_policy: MissingDataPolicy = MissingDataPolicy.no_fire
     all_of: list[Condition | ConditionGroup] | None = None
     any_of: list[Condition | ConditionGroup] | None = None
@@ -69,12 +70,14 @@ class RuleFire(BaseModel):
       never a mutation of a prior fire.
     - Severity is rule-authored, never changed editorially after the fact.
     """
+
     fire_id: str
     rule_id: str
     rule_version: int = Field(..., ge=1)
     member_bioguide_id: str
     dimension: str
     severity: Severity
+    source_types_required: list[str] = Field(default_factory=list)
 
     sourced_facts: dict[str, Any]
     derived_values: dict[str, Any] = Field(default_factory=dict)

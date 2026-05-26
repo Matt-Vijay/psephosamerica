@@ -206,8 +206,15 @@ class TestPublishVerifyResult:
 
 
 class TestPublishStages:
-    def test_contains_all_four(self) -> None:
-        assert set(PUBLISH_STAGES) == {"manifest", "profiles", "evidence", "zip"}
+    def test_contains_all_six(self) -> None:
+        assert set(PUBLISH_STAGES) == {
+            "manifest",
+            "profiles",
+            "evidence",
+            "ontology",
+            "prediction",
+            "zip",
+        }
 
     def test_is_tuple(self) -> None:
         assert isinstance(PUBLISH_STAGES, tuple)

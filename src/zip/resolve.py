@@ -20,8 +20,8 @@ class ZipDistrictRow:
     """
 
     zip5: str
-    state: str          # two-letter postal abbreviation, upper-case
-    district: int       # 0 for at-large
+    state: str  # two-letter postal abbreviation, upper-case
+    district: int  # 0 for at-large
     population_share: float
 
 
@@ -97,8 +97,7 @@ def select_plurality_district(
     note: str | None = None
     if is_ambiguous:
         other_desc = ", ".join(
-            f"{r.state}-{r.district:02d} ({r.population_share:.0%})"
-            for r in rows_sorted[1:]
+            f"{r.state}-{r.district:02d} ({r.population_share:.0%})" for r in rows_sorted[1:]
         )
         note = (
             f"ZIP {zip5} spans multiple congressional districts. "

@@ -47,7 +47,9 @@ _PATCH = "src.db.load_executor.write_table_batch"
 
 class TestHintTableSkipping:
     def test_hint_table_not_passed_to_writer(self, mock_conn):
-        ops = [_make_op("_fec_linkage_hint", [{"fec_candidate_id": "H1", "fec_committee_id": "C1"}])]
+        ops = [
+            _make_op("_fec_linkage_hint", [{"fec_candidate_id": "H1", "fec_committee_id": "C1"}])
+        ]
         with patch(_PATCH) as mock_write:
             execute_load_plan(mock_conn, ops)
         mock_write.assert_not_called()
@@ -91,7 +93,7 @@ class TestHintKeyStripping:
         ops = [_make_op("member", rows, ["bioguide_id"])]
         captured: list[list[dict]] = []
 
-        def capture(conn, *, table, rows, conflict_columns, mode):
+        def capture(conn, *, table, rows, conflict_columns, mode, commit):
             captured.append(rows)
             return TableWriteResult(table=table)
 
@@ -107,7 +109,7 @@ class TestHintKeyStripping:
         ops = [_make_op("member", rows, ["bioguide_id"])]
         captured: list[list[dict]] = []
 
-        def capture(conn, *, table, rows, conflict_columns, mode):
+        def capture(conn, *, table, rows, conflict_columns, mode, commit):
             captured.append(rows)
             return TableWriteResult(table=table)
 
@@ -124,7 +126,7 @@ class TestHintKeyStripping:
         ops = [_make_op("bill", rows, ["title"])]
         captured: list[list[dict]] = []
 
-        def capture(conn, *, table, rows, conflict_columns, mode):
+        def capture(conn, *, table, rows, conflict_columns, mode, commit):
             captured.append(rows)
             return TableWriteResult(table=table)
 
@@ -133,6 +135,22 @@ class TestHintKeyStripping:
 
         assert "_unknown_hint" not in captured[0][0]
         assert "title" in captured[0][0]
+
+    def test_raw_fk_hint_stripped_when_no_resolver(self, mock_conn):
+        rows = [{"source_record_id": "sub-1", "recipient_fec_committee_id_raw": "C00000001"}]
+        ops = [_make_op("contribution", rows, ["source_record_id"])]
+        captured: list[list[dict]] = []
+
+        def capture(conn, *, table, rows, conflict_columns, mode, commit):
+            captured.append(rows)
+            return TableWriteResult(table=table)
+
+        with patch(_PATCH, side_effect=capture):
+            execute_load_plan(mock_conn, ops, resolvers={})
+
+        assert "recipient_fec_committee_id_raw" not in captured[0][0]
+        assert "recipient_fec_committee_id" not in captured[0][0]
+        assert captured[0][0]["source_record_id"] == "sub-1"
 
 
 # ---------------------------------------------------------------------------
@@ -150,7 +168,7 @@ class TestFKResolution:
         ops = [_make_op("member_term", rows, ["member_id", "congress", "chamber"])]
         captured: list[list[dict]] = []
 
-        def capture(conn, *, table, rows, conflict_columns, mode):
+        def capture(conn, *, table, rows, conflict_columns, mode, commit):
             captured.append(rows)
             return TableWriteResult(table=table, inserted=len(rows))
 
@@ -169,7 +187,7 @@ class TestFKResolution:
         ops = [_make_op("member_term", rows)]
         captured: list[list[dict]] = []
 
-        def capture(conn, *, table, rows, conflict_columns, mode):
+        def capture(conn, *, table, rows, conflict_columns, mode, commit):
             captured.append(rows)
             return TableWriteResult(table=table)
 
@@ -194,7 +212,7 @@ class TestFKResolution:
         ops = [_make_op("committee_membership", rows)]
         captured: list[list[dict]] = []
 
-        def capture(conn, *, table, rows, conflict_columns, mode):
+        def capture(conn, *, table, rows, conflict_columns, mode, commit):
             captured.append(rows)
             return TableWriteResult(table=table, inserted=len(rows))
 
@@ -212,13 +230,16 @@ class TestFKResolution:
         committee_map = {"SSFI00": 15}
         resolvers: Resolvers = {
             "_bioguide_id": ("member_id", lambda row: member_map.get(row["_bioguide_id"])),
-            "_committee_code": ("committee_id", lambda row: committee_map.get(row["_committee_code"])),
+            "_committee_code": (
+                "committee_id",
+                lambda row: committee_map.get(row["_committee_code"]),
+            ),
         }
         rows = [{"role": "chair", "_bioguide_id": "S000148", "_committee_code": "SSFI00"}]
         ops = [_make_op("committee_membership", rows)]
         captured: list[list[dict]] = []
 
-        def capture(conn, *, table, rows, conflict_columns, mode):
+        def capture(conn, *, table, rows, conflict_columns, mode, commit):
             captured.append(rows)
             return TableWriteResult(table=table, inserted=len(rows))
 
@@ -247,6 +268,29 @@ class TestFKResolution:
             execute_load_plan(mock_conn, ops, resolvers=resolvers)
 
         assert call_count[0] == 2
+
+    def test_raw_fk_resolver_fills_fk_column(self, mock_conn):
+        committee_map = {"C00000001": 100}
+        resolvers: Resolvers = {
+            "recipient_fec_committee_id_raw": (
+                "recipient_fec_committee_id",
+                lambda row: committee_map.get(row["recipient_fec_committee_id_raw"]),
+            )
+        }
+        rows = [{"source_record_id": "sub-1", "recipient_fec_committee_id_raw": "C00000001"}]
+        ops = [_make_op("contribution", rows, ["source_record_id"])]
+        captured: list[list[dict]] = []
+
+        def capture(conn, *, table, rows, conflict_columns, mode, commit):
+            captured.append(rows)
+            return TableWriteResult(table=table, inserted=len(rows))
+
+        with patch(_PATCH, side_effect=capture):
+            execute_load_plan(mock_conn, ops, resolvers=resolvers)
+
+        row = captured[0][0]
+        assert row["recipient_fec_committee_id"] == 100
+        assert "recipient_fec_committee_id_raw" not in row
 
 
 # ---------------------------------------------------------------------------
@@ -339,8 +383,10 @@ class TestWriterBoundary:
         ops = [_make_op("vote_event", [{"chamber": "house"}], ["chamber"])]
         captured_kwargs: list[dict] = []
 
-        def capture(conn, *, table, rows, conflict_columns, mode):
-            captured_kwargs.append({"table": table, "conflict_columns": conflict_columns, "mode": mode})
+        def capture(conn, *, table, rows, conflict_columns, mode, commit):
+            captured_kwargs.append(
+                {"table": table, "conflict_columns": conflict_columns, "mode": mode}
+            )
             return TableWriteResult(table=table)
 
         with patch(_PATCH, side_effect=capture):
@@ -349,10 +395,12 @@ class TestWriterBoundary:
         assert captured_kwargs[0]["table"] == "vote_event"
 
     def test_conflict_columns_forwarded(self, mock_conn):
-        ops = [_make_op("vote_event", [{"chamber": "house"}], ["chamber", "congress"], mode="upsert")]
+        ops = [
+            _make_op("vote_event", [{"chamber": "house"}], ["chamber", "congress"], mode="upsert")
+        ]
         captured_kwargs: list[dict] = []
 
-        def capture(conn, *, table, rows, conflict_columns, mode):
+        def capture(conn, *, table, rows, conflict_columns, mode, commit):
             captured_kwargs.append({"conflict_columns": conflict_columns})
             return TableWriteResult(table=table)
 
@@ -365,7 +413,7 @@ class TestWriterBoundary:
         ops = [_make_op("member", [{"slug": "x"}], mode="ignore")]
         captured_modes: list[str] = []
 
-        def capture(conn, *, table, rows, conflict_columns, mode):
+        def capture(conn, *, table, rows, conflict_columns, mode, commit):
             captured_modes.append(mode)
             return TableWriteResult(table=table)
 
@@ -378,7 +426,7 @@ class TestWriterBoundary:
         op = {"table": "member", "rows": [{"slug": "z"}]}  # no "mode" key
         captured_modes: list[str] = []
 
-        def capture(conn, *, table, rows, conflict_columns, mode):
+        def capture(conn, *, table, rows, conflict_columns, mode, commit):
             captured_modes.append(mode)
             return TableWriteResult(table=table)
 
@@ -397,7 +445,7 @@ class TestWriterBoundary:
         ops = [_make_op("member", [{"slug": "a"}])]
         received_conn = []
 
-        def capture(conn, *, table, rows, conflict_columns, mode):
+        def capture(conn, *, table, rows, conflict_columns, mode, commit):
             received_conn.append(conn)
             return TableWriteResult(table=table)
 
@@ -405,3 +453,122 @@ class TestWriterBoundary:
             execute_load_plan(mock_conn, ops)
 
         assert received_conn[0] is mock_conn
+
+
+# ---------------------------------------------------------------------------
+# Transaction boundary
+# ---------------------------------------------------------------------------
+
+
+class _FailingBatchCursor:
+    def __init__(self, conn: "_FailingBatchConnection") -> None:
+        self._conn = conn
+
+    def __enter__(self) -> "_FailingBatchCursor":
+        return self
+
+    def __exit__(self, exc_type: object, exc: object, tb: object) -> bool:
+        return False
+
+    def executemany(self, sql: str, params_seq: object) -> object:
+        self._conn.executemany_calls += 1
+        self._conn.statements.append(sql)
+        if self._conn.executemany_calls == self._conn.fail_on_call:
+            raise RuntimeError("batch failed")
+        return None
+
+
+class _FailingBatchConnection:
+    def __init__(
+        self,
+        *,
+        fail_on_call: int | None = None,
+        fail_commit: bool = False,
+    ) -> None:
+        self.fail_on_call = fail_on_call
+        self.fail_commit = fail_commit
+        self.executemany_calls = 0
+        self.commit_calls = 0
+        self.rollback_calls = 0
+        self.statements: list[str] = []
+
+    def cursor(self, *, row_factory: object | None = None) -> _FailingBatchCursor:
+        return _FailingBatchCursor(self)
+
+    def commit(self) -> None:
+        self.commit_calls += 1
+        if self.fail_commit:
+            raise RuntimeError("commit failed")
+
+    def rollback(self) -> None:
+        self.rollback_calls += 1
+
+
+class TestTransactionBoundary:
+    def test_commit_false_defers_commit_to_caller(self):
+        conn = _FailingBatchConnection()
+        ops = [_make_op("member", [{"bioguide_id": "A000001"}], mode="insert")]
+
+        execute_load_plan(conn, ops, commit=False)
+
+        assert conn.executemany_calls == 1
+        assert conn.commit_calls == 0
+        assert conn.rollback_calls == 0
+
+    def test_commit_true_rejects_autocommit_connection_before_writes(self):
+        conn = _FailingBatchConnection()
+        conn.autocommit = True
+        ops = [_make_op("member", [{"bioguide_id": "A000001"}], mode="insert")]
+
+        with pytest.raises(RuntimeError, match="autocommit"):
+            execute_load_plan(conn, ops)
+
+        assert conn.executemany_calls == 0
+        assert conn.commit_calls == 0
+        assert conn.rollback_calls == 0
+
+    def test_plan_commits_once_after_all_table_batches_succeed(self):
+        conn = _FailingBatchConnection()
+        ops = [
+            _make_op("member", [{"bioguide_id": "A000001"}], mode="insert"),
+            _make_op(
+                "committee",
+                [{"committee_code": "HSAG", "congress": 119}],
+                mode="insert",
+            ),
+        ]
+
+        execute_load_plan(conn, ops)
+
+        assert conn.executemany_calls == 2
+        assert conn.commit_calls == 1
+        assert conn.rollback_calls == 0
+
+    def test_plan_rolls_back_without_partial_commit_when_later_table_fails(self):
+        conn = _FailingBatchConnection(fail_on_call=2)
+        ops = [
+            _make_op("member", [{"bioguide_id": "A000001"}], mode="insert"),
+            _make_op(
+                "committee",
+                [{"committee_code": "HSAG", "congress": 119}],
+                mode="insert",
+            ),
+        ]
+
+        with pytest.raises(RuntimeError, match="batch failed"):
+            execute_load_plan(conn, ops)
+
+        assert conn.executemany_calls == 2
+        assert conn.commit_calls == 0
+        assert conn.rollback_calls == 1
+
+    def test_commit_failure_rolls_back_transaction(self):
+        conn = _FailingBatchConnection(fail_commit=True)
+        ops = [_make_op("member", [{"bioguide_id": "A000001"}], mode="insert")]
+
+        with pytest.raises(RuntimeError, match="commit failed"):
+            execute_load_plan(conn, ops)
+
+        assert conn.executemany_calls == 1
+        assert conn.commit_calls == 1
+        assert conn.rollback_calls == 1

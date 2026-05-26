@@ -146,7 +146,9 @@ class TestBundleResolution:
         assert result[0].index_row is None
 
     def test_bundle_without_matching_year_returns_none(self):
-        bundle = _bundle(chamber="senate", year=2023, rows={"DOC1": _senate_index_row("DOC1", year=2023)})
+        bundle = _bundle(
+            chamber="senate", year=2023, rows={"DOC1": _senate_index_row("DOC1", year=2023)}
+        )
         result = bundle_index_matches([_artifact("senate", 2024, "DOC1")], bundle)
         assert result[0].index_row is None
 
@@ -178,17 +180,32 @@ class TestBundleArtifactIdentity:
 
 class TestBundleMissingFields:
     def test_none_chamber_produces_none_index_row(self):
-        row: dict[str, Any] = {"id": 1, "chamber": None, "filing_year": 2024, "source_record_id": "DOC1"}
+        row: dict[str, Any] = {
+            "id": 1,
+            "chamber": None,
+            "filing_year": 2024,
+            "source_record_id": "DOC1",
+        }
         result = bundle_index_matches([row], _bundle())
         assert result[0].index_row is None
 
     def test_none_filing_year_produces_none_index_row(self):
-        row: dict[str, Any] = {"id": 1, "chamber": "senate", "filing_year": None, "source_record_id": "DOC1"}
+        row: dict[str, Any] = {
+            "id": 1,
+            "chamber": "senate",
+            "filing_year": None,
+            "source_record_id": "DOC1",
+        }
         result = bundle_index_matches([row], _bundle())
         assert result[0].index_row is None
 
     def test_none_chamber_artifact_still_in_result(self):
-        row: dict[str, Any] = {"id": 1, "chamber": None, "filing_year": 2024, "source_record_id": "DOC1"}
+        row: dict[str, Any] = {
+            "id": 1,
+            "chamber": None,
+            "filing_year": 2024,
+            "source_record_id": "DOC1",
+        }
         result = bundle_index_matches([row], _bundle())
         assert len(result) == 1
         assert result[0].artifact is row
@@ -197,7 +214,12 @@ class TestBundleMissingFields:
         s_row = _senate_index_row("DOC1")
         bundle = _bundle(rows={"DOC1": s_row})
         valid = _artifact("senate", 2024, "DOC1", artifact_id=1)
-        invalid: dict[str, Any] = {"id": 2, "chamber": None, "filing_year": 2024, "source_record_id": "DOC1"}
+        invalid: dict[str, Any] = {
+            "id": 2,
+            "chamber": None,
+            "filing_year": 2024,
+            "source_record_id": "DOC1",
+        }
         result = bundle_index_matches([valid, invalid], bundle)
         assert result[0].index_row is s_row
         assert result[1].index_row is None
@@ -212,9 +234,26 @@ class TestBundleYearCoercion:
     def test_string_filing_year_resolved_against_int_keyed_bundle(self):
         s_row = _senate_index_row("DOC1")
         bundle: DisclosuresLookup = {("senate", 2024): {"DOC1": s_row}}
-        row: dict[str, Any] = {"id": 1, "chamber": "senate", "filing_year": "2024", "source_record_id": "DOC1"}
+        row: dict[str, Any] = {
+            "id": 1,
+            "chamber": "senate",
+            "filing_year": "2024",
+            "source_record_id": "DOC1",
+        }
         result = bundle_index_matches([row], bundle)
         assert result[0].index_row is s_row
+
+    def test_boolean_filing_year_does_not_resolve_as_year_one(self):
+        s_row = _senate_index_row("DOC1")
+        bundle: DisclosuresLookup = {("senate", 1): {"DOC1": s_row}}
+        row: dict[str, Any] = {
+            "id": 1,
+            "chamber": "senate",
+            "filing_year": True,
+            "source_record_id": "DOC1",
+        }
+        result = bundle_index_matches([row], bundle)
+        assert result[0].index_row is None
 
 
 # ---------------------------------------------------------------------------
@@ -303,9 +342,7 @@ class TestIndexMatchResultContract:
         bundle_result = bundle_index_matches(artifacts, bundle)
         assert len(bundle_result) == len(artifacts)
 
-        live_expected = [
-            ArtifactIndexMatch(artifact=a, index_row=None) for a in artifacts
-        ]
+        live_expected = [ArtifactIndexMatch(artifact=a, index_row=None) for a in artifacts]
         with patch(_LIVE_FETCH, return_value=live_expected):
             live_result = live_index_matches(artifacts)
         assert len(live_result) == len(artifacts)
@@ -313,6 +350,7 @@ class TestIndexMatchResultContract:
     def test_index_match_result_alias_importable(self):
         """IndexMatchResult is exported from the provider module."""
         from src.runtime.disclosures_index_provider import IndexMatchResult
+
         # It is a generic alias; verify bundle output is assignable.
         result: IndexMatchResult = bundle_index_matches([], _bundle())
         assert result == []

@@ -17,8 +17,10 @@ from src.ingest.congress.archive import (
     MemberDetailSource,
     MembersSource,
     SenateVoteSource,
+    congress_archive_manifest_to_dict,
     manifest_from_archive,
     manifest_from_dict,
+    manifest_from_existing_archive,
     parse_bill_stem,
 )
 
@@ -222,9 +224,7 @@ class TestManifestFromArchive:
 
     def test_manifest_with_senate_votes(self, tmp_path: Path) -> None:
         arch = CongressArchive(tmp_path, congress=119)
-        manifest = manifest_from_archive(
-            arch, senate_vote_keys=[(119, 1, 10), (119, 1, 11)]
-        )
+        manifest = manifest_from_archive(arch, senate_vote_keys=[(119, 1, 10), (119, 1, 11)])
         assert len(manifest.senate_votes) == 2
         assert manifest.senate_votes[0].session_number == 1
 
@@ -234,6 +234,149 @@ class TestManifestFromArchive:
         assert manifest.members.path == arch.members_path()
         assert manifest.committees.path == arch.committees_path()
         assert manifest.bills.path == arch.bills_path()
+
+
+class TestManifestSerialization:
+    def test_to_dict_relativizes_paths_against_root(self, tmp_path: Path) -> None:
+        manifest = CongressArchiveManifest(
+            congress=119,
+            members=MembersSource(path=tmp_path / "members.json", congress=119),
+            committees=CommitteesSource(path=tmp_path / "committees.json", congress=119),
+            bills=BillsSource(path=tmp_path / "bills.json", congress=119),
+            cosponsors=(
+                CosponsorsSource(
+                    path=tmp_path / "cosponsors" / "119_hr_1.json",
+                    congress=119,
+                    bill_type="hr",
+                    bill_number=1,
+                ),
+            ),
+            member_details=(
+                MemberDetailSource(
+                    path=tmp_path / "member_details" / "P000197.json",
+                    bioguide_id="P000197",
+                ),
+            ),
+            bill_details=(
+                BillDetailSource(
+                    path=tmp_path / "bill_details" / "119_hr_1.json",
+                    congress=119,
+                    bill_type="hr",
+                    bill_number=1,
+                ),
+            ),
+            house_votes=(
+                HouseVoteSource(
+                    path=tmp_path / "house" / "2025" / "roll001.xml",
+                    year=2025,
+                    roll_call_number=1,
+                ),
+            ),
+            senate_votes=(
+                SenateVoteSource(
+                    path=tmp_path / "senate" / "vote1191" / "vote_119_1_00003.xml",
+                    congress=119,
+                    session_number=1,
+                    roll_call_number=3,
+                ),
+            ),
+        )
+
+        result = congress_archive_manifest_to_dict(manifest, root=tmp_path)
+
+        assert result == {
+            "congress": 119,
+            "members": "members.json",
+            "committees": "committees.json",
+            "bills": "bills.json",
+            "cosponsors": [
+                {
+                    "congress": 119,
+                    "bill_type": "hr",
+                    "bill_number": 1,
+                    "path": "cosponsors/119_hr_1.json",
+                }
+            ],
+            "member_details": [
+                {
+                    "bioguide_id": "P000197",
+                    "path": "member_details/P000197.json",
+                }
+            ],
+            "bill_details": [
+                {
+                    "congress": 119,
+                    "bill_type": "hr",
+                    "bill_number": 1,
+                    "path": "bill_details/119_hr_1.json",
+                }
+            ],
+            "house_votes": [
+                {
+                    "year": 2025,
+                    "roll_call_number": 1,
+                    "path": "house/2025/roll001.xml",
+                }
+            ],
+            "senate_votes": [
+                {
+                    "congress": 119,
+                    "session_number": 1,
+                    "roll_call_number": 3,
+                    "path": "senate/vote1191/vote_119_1_00003.xml",
+                }
+            ],
+        }
+
+
+class TestManifestFromExistingArchive:
+    def test_scans_existing_archive_tree_including_real_vote_layout(self, tmp_path: Path) -> None:
+        (tmp_path / "members.json").write_text("{}", encoding="utf-8")
+        (tmp_path / "committees.json").write_text("{}", encoding="utf-8")
+        (tmp_path / "bills.json").write_text("{}", encoding="utf-8")
+        member_details_dir = tmp_path / "member_details"
+        member_details_dir.mkdir()
+        (member_details_dir / "P000197.json").write_text("{}", encoding="utf-8")
+        bill_details_dir = tmp_path / "bill_details"
+        bill_details_dir.mkdir()
+        (bill_details_dir / "119_hr_1.json").write_text("{}", encoding="utf-8")
+        cosponsors_dir = tmp_path / "cosponsors"
+        cosponsors_dir.mkdir()
+        (cosponsors_dir / "119_hr_1.json").write_text("{}", encoding="utf-8")
+        house_year_dir = tmp_path / "house" / "2025"
+        house_year_dir.mkdir(parents=True)
+        (house_year_dir / "index.xml").write_text("<votes />", encoding="utf-8")
+        (house_year_dir / "roll001.xml").write_text("<rollcall-vote />", encoding="utf-8")
+        senate_dir = tmp_path / "senate" / "vote1191"
+        senate_dir.mkdir(parents=True)
+        (senate_dir / "vote_summary.xml").write_text("<votes />", encoding="utf-8")
+        (senate_dir / "vote_119_1_00003.xml").write_text("<vote />", encoding="utf-8")
+
+        manifest = manifest_from_existing_archive(CongressArchive(tmp_path, congress=119))
+
+        assert manifest.congress == 119
+        assert [source.bioguide_id for source in manifest.member_details] == ["P000197"]
+        assert [
+            (source.congress, source.bill_type, source.bill_number)
+            for source in manifest.bill_details
+        ] == [(119, "hr", 1)]
+        assert [
+            (source.congress, source.bill_type, source.bill_number)
+            for source in manifest.cosponsors
+        ] == [(119, "hr", 1)]
+        assert [
+            (source.year, source.roll_call_number, source.path.relative_to(tmp_path).as_posix())
+            for source in manifest.house_votes
+        ] == [(2025, 1, "house/2025/roll001.xml")]
+        assert [
+            (
+                source.congress,
+                source.session_number,
+                source.roll_call_number,
+                source.path.relative_to(tmp_path).as_posix(),
+            )
+            for source in manifest.senate_votes
+        ] == [(119, 1, 3, "senate/vote1191/vote_119_1_00003.xml")]
 
 
 # ---------------------------------------------------------------------------
@@ -268,12 +411,68 @@ class TestManifestFromDict:
         manifest = manifest_from_dict(_MINIMAL_DICT, root=root)
         assert manifest.members.path == root / "members.json"
 
+    def test_top_level_paths_must_stay_inside_root(self, tmp_path: Path) -> None:
+        data = {**_MINIMAL_DICT, "members": "../members.json"}
+        with pytest.raises(ValueError, match="members"):
+            manifest_from_dict(data, root=tmp_path)
+
+    def test_top_level_paths_reject_symlink_escape(self, tmp_path: Path) -> None:
+        root = tmp_path / "archive"
+        outside = tmp_path / "outside"
+        outside.mkdir()
+        root.mkdir()
+        (root / "linked").symlink_to(outside, target_is_directory=True)
+        data = {**_MINIMAL_DICT, "members": "linked/members.json"}
+
+        with pytest.raises(ValueError, match="manifest.members"):
+            manifest_from_dict(data, root=root)
+
+    def test_nested_paths_must_stay_inside_root(self, tmp_path: Path) -> None:
+        data = {
+            **_MINIMAL_DICT,
+            "cosponsors": [
+                {
+                    "congress": 119,
+                    "bill_type": "hr",
+                    "bill_number": 1,
+                    "path": "/tmp/outside.json",
+                }
+            ],
+        }
+        with pytest.raises(ValueError, match="cosponsors"):
+            manifest_from_dict(data, root=tmp_path)
+
+    def test_nested_paths_reject_symlink_escape(self, tmp_path: Path) -> None:
+        root = tmp_path / "archive"
+        outside = tmp_path / "outside"
+        outside.mkdir()
+        root.mkdir()
+        (root / "cosponsors").symlink_to(outside, target_is_directory=True)
+        data = {
+            **_MINIMAL_DICT,
+            "cosponsors": [
+                {
+                    "congress": 119,
+                    "bill_type": "hr",
+                    "bill_number": 1,
+                    "path": "cosponsors/119_hr_1.json",
+                }
+            ],
+        }
+
+        with pytest.raises(ValueError, match="cosponsors"):
+            manifest_from_dict(data, root=root)
+
     def test_cosponsor_entries_parsed(self, tmp_path: Path) -> None:
         data = {
             **_MINIMAL_DICT,
             "cosponsors": [
-                {"congress": 119, "bill_type": "hr", "bill_number": 1,
-                 "path": "cosponsors/119_hr_1.json"}
+                {
+                    "congress": 119,
+                    "bill_type": "hr",
+                    "bill_number": 1,
+                    "path": "cosponsors/119_hr_1.json",
+                }
             ],
         }
         manifest = manifest_from_dict(data, root=tmp_path)
@@ -287,9 +486,7 @@ class TestManifestFromDict:
     def test_member_detail_entries_parsed(self, tmp_path: Path) -> None:
         data = {
             **_MINIMAL_DICT,
-            "member_details": [
-                {"bioguide_id": "P000197", "path": "member_details/P000197.json"}
-            ],
+            "member_details": [{"bioguide_id": "P000197", "path": "member_details/P000197.json"}],
         }
         manifest = manifest_from_dict(data, root=tmp_path)
         assert len(manifest.member_details) == 1
@@ -299,8 +496,12 @@ class TestManifestFromDict:
         data = {
             **_MINIMAL_DICT,
             "bill_details": [
-                {"congress": 119, "bill_type": "s", "bill_number": 5,
-                 "path": "bill_details/119_s_5.json"}
+                {
+                    "congress": 119,
+                    "bill_type": "s",
+                    "bill_number": 5,
+                    "path": "bill_details/119_s_5.json",
+                }
             ],
         }
         manifest = manifest_from_dict(data, root=tmp_path)
@@ -331,8 +532,12 @@ class TestManifestFromDict:
         data = {
             **_MINIMAL_DICT,
             "senate_votes": [
-                {"congress": 119, "session_number": 1, "roll_call_number": 10,
-                 "path": "senate_votes/119_1_00010.xml"}
+                {
+                    "congress": 119,
+                    "session_number": 1,
+                    "roll_call_number": 10,
+                    "path": "senate_votes/119_1_00010.xml",
+                }
             ],
         }
         manifest = manifest_from_dict(data, root=tmp_path)
@@ -342,8 +547,15 @@ class TestManifestFromDict:
         assert sv.session_number == 1
 
     def test_missing_required_key_raises(self, tmp_path: Path) -> None:
-        for key in ("congress", "members", "committees", "bills",
-                    "cosponsors", "member_details", "bill_details"):
+        for key in (
+            "congress",
+            "members",
+            "committees",
+            "bills",
+            "cosponsors",
+            "member_details",
+            "bill_details",
+        ):
             data = {k: v for k, v in _MINIMAL_DICT.items() if k != key}
             with pytest.raises(ValueError, match=key):
                 manifest_from_dict(data, root=tmp_path)

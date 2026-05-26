@@ -100,8 +100,8 @@ class TestExtractTextMetrics:
         assert m.avg_chars_per_text_page == 0.0
 
     def test_mixed_pages(self) -> None:
-        short = "x" * 50   # below threshold
-        long = "x" * 300   # above threshold
+        short = "x" * 50  # below threshold
+        long = "x" * 300  # above threshold
         with patch.object(_mod, "_pypdf", _fake_pypdf([short, long, long])):
             m = extract_text_metrics(b"irrelevant")
         assert m.total_pages == 3

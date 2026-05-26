@@ -1,4 +1,5 @@
 """Tests for src/runtime/disclosures_load_from_parse.py."""
+
 from __future__ import annotations
 
 import contextlib
@@ -49,8 +50,7 @@ def _batch_result(n_transformed: int = 1, n_skipped: int = 0) -> BatchTransformR
     return BatchTransformResult(
         transformed=[MagicMock() for _ in range(n_transformed)],
         skipped=[
-            SkippedSession(run_id=None, reason_code="no_parse_result")
-            for _ in range(n_skipped)
+            SkippedSession(run_id=None, reason_code="no_parse_result") for _ in range(n_skipped)
         ],
     )
 
@@ -257,9 +257,7 @@ class TestParseWiring:
     def test_parser_version_forwarded(self):
         conn = MagicMock()
         with _patch_all() as mocks:
-            run_disclosures_parse_load_runtime(
-                conn, local_root=_LOCAL_ROOT, parser_version="2"
-            )
+            run_disclosures_parse_load_runtime(conn, local_root=_LOCAL_ROOT, parser_version="2")
         _, kwargs = mocks["parse"].call_args
         assert kwargs["parser_version"] == "2"
 

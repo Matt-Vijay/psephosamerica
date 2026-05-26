@@ -17,6 +17,7 @@ Flow:
   5. transform             — transform_parse_sessions
   6. load                  — run_disclosures_load_runtime
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -29,12 +30,14 @@ from src.runtime.disclosures import (
     DisclosuresLoadRuntimeResult,
     run_disclosures_load_runtime,
 )
+from src.runtime.disclosures_bundle import DisclosuresBundle
 from src.runtime.disclosures_bundle_files import (
     Sha256Mismatch,
     read_and_verify_entry,
     verify_entry_sha256,
 )
-from src.runtime.disclosures_index_rows import ArtifactIndexMatch
+from src.runtime.disclosures_bundle_validate import validate_disclosures_bundle
+from src.runtime.disclosures_index_rows import ArtifactIndexMatch, filing_year_or_none
 from src.runtime.disclosures_parse import (
     DisclosureParseRuntimeResult,
     run_disclosure_parse_runtime,
@@ -81,11 +84,11 @@ class DisclosuresBundleProcessResult:
 
 
 def _validate_bundle(bundle: Any) -> None:
-    """Raise TypeError if bundle does not expose an 'artifacts' attribute."""
+    """Raise if bundle shape or semantic invariants are invalid."""
     if not hasattr(bundle, "artifacts"):
-        raise TypeError(
-            f"bundle must have an 'artifacts' attribute, got {type(bundle).__name__}"
-        )
+        raise TypeError(f"bundle must have an 'artifacts' attribute, got {type(bundle).__name__}")
+    if isinstance(bundle, DisclosuresBundle):
+        validate_disclosures_bundle(bundle)
 
 
 # ---------------------------------------------------------------------------
@@ -117,9 +120,7 @@ def _build_parse_inputs(
     Raises FileNotFoundError if a staged artifact file is absent.
     Raises ValueError if local_root is None and a bundle storage_uri is relative.
     """
-    entry_by_id: dict[str, Any] = {
-        entry.source_record_id: entry for entry in bundle.artifacts
-    }
+    entry_by_id: dict[str, Any] = {entry.source_record_id: entry for entry in bundle.artifacts}
     inputs: list[DisclosureParseInput] = []
     for row in stage_result.artifact_rows:
         src_id = row.get("source_record_id", "")
@@ -147,9 +148,7 @@ def _read_entry_bytes(
 
     entry_path = Path(entry.storage_uri)
     if not entry_path.is_absolute():
-        raise ValueError(
-            "local_root is required to resolve relative bundle storage_uri values"
-        )
+        raise ValueError("local_root is required to resolve relative bundle storage_uri values")
     if not entry_path.exists():
         raise FileNotFoundError(f"Bundle artifact not found: {entry_path}")
 
@@ -199,7 +198,11 @@ class _BundleIndexProvider:
             if chamber is None or year is None:
                 matches.append(ArtifactIndexMatch(artifact=row, index_row=None))
                 continue
-            key = (chamber, int(year), doc_id)
+            filing_year = filing_year_or_none(year)
+            if filing_year is None:
+                matches.append(ArtifactIndexMatch(artifact=row, index_row=None))
+                continue
+            key = (chamber, filing_year, doc_id)
             matches.append(ArtifactIndexMatch(artifact=row, index_row=self._lookup.get(key)))
         return matches
 

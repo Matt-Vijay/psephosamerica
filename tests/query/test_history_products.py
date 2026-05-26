@@ -9,18 +9,33 @@ import datetime as dt
 from typing import Literal
 
 from src.export.contracts import (
+    HistoryCoverageDimensionPayload,
     MemberChangeSummaryPayload,
+    MemberHistoryCoverageIndexPayload,
+    MemberHistoryCoverageIndexEntryPayload,
+    MemberHistoryCoveragePayload,
     MemberHistoryEvent,
     MemberHistoryPayload,
     MemberHistorySnapshot,
+    MemberTimelineIndexPayload,
+    MemberTimelinePagePayload,
+    MemberTimelineDimensionPayload,
+    MemberTimelineYearPayload,
 )
 from src.feed.changes import FeedEventKind, make_feed_event_id
 from src.homepage.contracts import MovementWindowPayload
 from src.query.history_products import (
+    build_history_coverage,
     build_movement_window,
     build_latest_movement_window,
     build_member_change_summary,
+    build_member_history_coverage,
+    build_member_history_coverage_index,
     build_member_history_chart,
+    build_member_timeline_index,
+    build_member_timeline_dimension,
+    build_member_timeline_page,
+    build_member_timeline_year,
     build_snapshot_compare_presets,
     build_member_trend_summary,
     build_member_window_change_summary,
@@ -91,7 +106,9 @@ def _history(
     )
 
 
-def test_build_member_change_summary_uses_latest_snapshot_recent_events_and_dimension_deltas() -> None:
+def test_build_member_change_summary_uses_latest_snapshot_recent_events_and_dimension_deltas() -> (
+    None
+):
     previous_snapshot_date = dt.date(2026, 1, 1)
     latest_snapshot_date = dt.date(2026, 1, 8)
     history = _history(
@@ -213,7 +230,529 @@ def test_build_member_change_summary_without_previous_snapshot_has_no_dimension_
     assert result.top_evidence_card_ids == ["ec-only"]
 
 
-def test_build_latest_movement_window_uses_latest_events_only_and_surfaces_window_metadata() -> None:
+def test_build_member_timeline_page_chunks_events_with_stable_ids() -> None:
+    history = _history(
+        snapshots=[
+            _snapshot(
+                dt.date(2025, 12, 1),
+                score_total=30.0,
+                score_total_delta=None,
+                dimension_scores={"conflict_of_interest_risk": 30.0},
+            ),
+            _snapshot(
+                dt.date(2026, 1, 15),
+                score_total=45.0,
+                score_total_delta=15.0,
+                dimension_scores={"conflict_of_interest_risk": 45.0},
+            ),
+        ],
+        events=[
+            _event(
+                "latest-a",
+                dimension="conflict_of_interest_risk",
+                evidence_card_id="ec-latest-a",
+                score_delta=8.0,
+                snapshot_date=dt.date(2026, 1, 15),
+                fired_at=dt.datetime(2026, 1, 15, 10, 0, tzinfo=dt.UTC),
+            ),
+            _event(
+                "latest-b",
+                dimension="ethics_enforcement_risk",
+                evidence_card_id="ec-latest-b",
+                score_delta=7.0,
+                snapshot_date=dt.date(2026, 1, 15),
+                fired_at=dt.datetime(2026, 1, 15, 9, 0, tzinfo=dt.UTC),
+            ),
+            _event(
+                "older",
+                dimension="conflict_of_interest_risk",
+                evidence_card_id="ec-older",
+                score_delta=5.0,
+                snapshot_date=dt.date(2025, 12, 20),
+                fired_at=dt.datetime(2025, 12, 20, 8, 0, tzinfo=dt.UTC),
+            ),
+        ],
+    )
+
+    first = build_member_timeline_page(history, page=1, page_size=2)
+    second = build_member_timeline_page(history, page=2, page_size=2)
+    repeated = build_member_timeline_page(history, page=1, page_size=2)
+
+    assert isinstance(first, MemberTimelinePagePayload)
+    assert first.page == 1
+    assert first.total_pages == 2
+    assert first.total_events == 3
+    assert first.next_page == 2
+    assert first.previous_page is None
+    assert [event.evidence_card_id for event in first.events] == [
+        "ec-latest-a",
+        "ec-latest-b",
+    ]
+    assert second.page == 2
+    assert second.previous_page == 1
+    assert second.next_page is None
+    assert [event.evidence_card_id for event in second.events] == ["ec-older"]
+    assert all(event.event_id.startswith("he-") for event in first.events)
+    assert [event.event_id for event in first.events] == [
+        event.event_id for event in repeated.events
+    ]
+
+
+def test_build_member_timeline_page_rejects_page_beyond_total_pages() -> None:
+    history = _history(
+        snapshots=[
+            _snapshot(
+                dt.date(2026, 1, 15),
+                score_total=45.0,
+                score_total_delta=15.0,
+                dimension_scores={"conflict_of_interest_risk": 45.0},
+            )
+        ],
+        events=[
+            _event(
+                "only-event",
+                dimension="conflict_of_interest_risk",
+                evidence_card_id="ec-only",
+                score_delta=8.0,
+                snapshot_date=dt.date(2026, 1, 15),
+                fired_at=dt.datetime(2026, 1, 15, 10, 0, tzinfo=dt.UTC),
+            )
+        ],
+    )
+
+    try:
+        build_member_timeline_page(history, page=2, page_size=25)
+    except ValueError as exc:
+        assert "total pages" in str(exc)
+    else:
+        raise AssertionError("expected page beyond total_pages to be rejected")
+
+
+def test_build_member_timeline_index_tracks_latest_event_and_years() -> None:
+    history = _history(
+        snapshots=[
+            _snapshot(
+                dt.date(2025, 12, 1),
+                score_total=30.0,
+                score_total_delta=None,
+                dimension_scores={"conflict_of_interest_risk": 30.0},
+            ),
+            _snapshot(
+                dt.date(2026, 1, 15),
+                score_total=45.0,
+                score_total_delta=15.0,
+                dimension_scores={"conflict_of_interest_risk": 45.0},
+            ),
+        ],
+        events=[
+            _event(
+                "latest-a",
+                dimension="conflict_of_interest_risk",
+                evidence_card_id="ec-latest-a",
+                score_delta=8.0,
+                snapshot_date=dt.date(2026, 1, 15),
+                fired_at=dt.datetime(2026, 1, 15, 10, 0, tzinfo=dt.UTC),
+            ),
+            _event(
+                "older",
+                dimension="conflict_of_interest_risk",
+                evidence_card_id="ec-older",
+                score_delta=5.0,
+                snapshot_date=dt.date(2025, 12, 20),
+                fired_at=dt.datetime(2025, 12, 20, 8, 0, tzinfo=dt.UTC),
+            ),
+            _event(
+                "oldest",
+                dimension="conflict_of_interest_risk",
+                evidence_card_id="ec-oldest",
+                score_delta=3.0,
+                snapshot_date=dt.date(2024, 2, 5),
+                fired_at=dt.datetime(2024, 2, 5, 8, 0, tzinfo=dt.UTC),
+            ),
+        ],
+    )
+
+    index = build_member_timeline_index(history, page_size=1)
+    first_page = build_member_timeline_page(history, page=1, page_size=1)
+
+    assert isinstance(index, MemberTimelineIndexPayload)
+    assert index.slug == "alice-smith"
+    assert index.latest_snapshot_date == dt.date(2026, 1, 15)
+    assert index.total_events == 3
+    assert index.page_size == 1
+    assert index.total_pages == 3
+    assert index.latest_event_id == first_page.events[0].event_id
+    assert index.latest_event_date == dt.date(2026, 1, 15)
+    assert index.earliest_event_date == dt.date(2024, 2, 5)
+    assert index.available_years == [2026, 2025, 2024]
+    assert [
+        (bucket.year, bucket.event_count, bucket.start_page, bucket.end_page)
+        for bucket in index.year_buckets
+    ] == [
+        (2026, 1, 1, 1),
+        (2025, 1, 2, 2),
+        (2024, 1, 3, 3),
+    ]
+
+
+def test_build_member_history_coverage_summarizes_years_dimensions_and_windows() -> None:
+    history = _history(
+        snapshots=[
+            _snapshot(
+                dt.date(2026, 4, 15),
+                score_total=50.0,
+                score_total_delta=15.0,
+                dimension_scores={
+                    "conflict_of_interest_risk": 35.0,
+                    "transparency_risk": 15.0,
+                },
+            ),
+            _snapshot(
+                dt.date(2026, 3, 18),
+                score_total=35.0,
+                score_total_delta=10.0,
+                dimension_scores={"conflict_of_interest_risk": 35.0},
+            ),
+            _snapshot(
+                dt.date(2026, 1, 15),
+                score_total=15.0,
+                score_total_delta=5.0,
+                dimension_scores={"conflict_of_interest_risk": 15.0},
+            ),
+            _snapshot(
+                dt.date(2026, 1, 1),
+                score_total=10.0,
+                score_total_delta=10.0,
+                dimension_scores={"conflict_of_interest_risk": 10.0},
+            ),
+        ],
+        events=[
+            _event(
+                "latest-conflict",
+                dimension="conflict_of_interest_risk",
+                evidence_card_id="ec-latest",
+                score_delta=15.0,
+                snapshot_date=dt.date(2026, 4, 15),
+                fired_at=dt.datetime(2026, 4, 15, 12, 0, tzinfo=dt.UTC),
+            ),
+            _event(
+                "mid-transparency",
+                dimension="transparency_risk",
+                evidence_card_id="ec-mid",
+                score_delta=10.0,
+                snapshot_date=dt.date(2026, 3, 18),
+                fired_at=dt.datetime(2026, 3, 18, 12, 0, tzinfo=dt.UTC),
+            ),
+            _event(
+                "old-conflict",
+                dimension="conflict_of_interest_risk",
+                evidence_card_id="ec-old",
+                score_delta=5.0,
+                snapshot_date=dt.date(2026, 1, 15),
+                fired_at=dt.datetime(2026, 1, 15, 12, 0, tzinfo=dt.UTC),
+            ),
+        ],
+    )
+
+    result = build_member_history_coverage(history)
+
+    assert isinstance(result, MemberHistoryCoveragePayload)
+    assert result.slug == "alice-smith"
+    assert result.snapshot_count == 4
+    assert result.total_events == 3
+    assert result.earliest_snapshot_date == dt.date(2026, 1, 1)
+    assert result.latest_snapshot_date == dt.date(2026, 4, 15)
+    assert result.available_years == [2026]
+    assert [(year.year, year.event_count) for year in result.years] == [(2026, 3)]
+    assert [(dimension.dimension, dimension.event_count) for dimension in result.dimensions] == [
+        ("conflict_of_interest_risk", 2),
+        ("transparency_risk", 1),
+    ]
+    assert [window.window_key for window in result.windows] == ["4w", "12w", "cycle"]
+    assert result.windows[0].has_full_window is True
+    assert result.windows[0].start_snapshot_date == dt.date(2026, 3, 18)
+
+
+def test_build_history_coverage_summarizes_dimensions_across_members() -> None:
+    histories = [
+        _history(
+            bioguide_id="A000001",
+            slug="alice-smith",
+            snapshots=[
+                _snapshot(
+                    dt.date(2026, 1, 1),
+                    score_total=10.0,
+                    score_total_delta=None,
+                    dimension_scores={"conflict_of_interest_risk": 10.0},
+                )
+            ],
+            events=[
+                _event(
+                    "conflict-a",
+                    dimension="conflict_of_interest_risk",
+                    evidence_card_id="ec-a",
+                    score_delta=5.0,
+                    snapshot_date=dt.date(2026, 1, 1),
+                    fired_at=dt.datetime(2026, 1, 1, 8, 0, tzinfo=dt.UTC),
+                ),
+                _event(
+                    "transparency-a",
+                    dimension="transparency_risk",
+                    evidence_card_id="ec-b",
+                    score_delta=3.0,
+                    snapshot_date=dt.date(2026, 1, 1),
+                    fired_at=dt.datetime(2026, 1, 1, 9, 0, tzinfo=dt.UTC),
+                ),
+            ],
+        ),
+        _history(
+            bioguide_id="B000002",
+            name="Bob Jones",
+            slug="bob-jones",
+            snapshots=[
+                _snapshot(
+                    dt.date(2026, 1, 8),
+                    score_total=20.0,
+                    score_total_delta=10.0,
+                    dimension_scores={"conflict_of_interest_risk": 20.0},
+                )
+            ],
+            events=[
+                _event(
+                    "conflict-b",
+                    dimension="conflict_of_interest_risk",
+                    evidence_card_id="ec-c",
+                    score_delta=10.0,
+                    snapshot_date=dt.date(2026, 1, 8),
+                    fired_at=dt.datetime(2026, 1, 8, 8, 0, tzinfo=dt.UTC),
+                ),
+            ],
+        ),
+    ]
+
+    result = build_history_coverage(
+        [("2026-01-01", dt.date(2026, 1, 1)), ("2026-01-08", dt.date(2026, 1, 8))],
+        histories,
+    )
+
+    assert result.snapshot_count == 2
+    assert result.total_events == 3
+    assert result.dimensions == [
+        HistoryCoverageDimensionPayload(
+            dimension="conflict_of_interest_risk",
+            member_history_count=2,
+            total_events=2,
+            available_years=[2026],
+        ),
+        HistoryCoverageDimensionPayload(
+            dimension="transparency_risk",
+            member_history_count=1,
+            total_events=1,
+            available_years=[2026],
+        ),
+    ]
+
+
+def test_build_member_timeline_year_uses_bucket_start_page() -> None:
+    history = _history(
+        snapshots=[
+            _snapshot(
+                dt.date(2026, 1, 15),
+                score_total=42.0,
+                score_total_delta=4.0,
+                dimension_scores={"conflict_of_interest_risk": 42.0},
+            )
+        ],
+        events=[
+            _event(
+                "r1",
+                dimension="conflict_of_interest_risk",
+                evidence_card_id="ec-1",
+                score_delta=2.0,
+                snapshot_date=dt.date(2026, 1, 15),
+                fired_at=dt.datetime(2026, 1, 15, 9, 0, tzinfo=dt.UTC),
+            ),
+            _event(
+                "r2",
+                dimension="conflict_of_interest_risk",
+                evidence_card_id="ec-2",
+                score_delta=2.0,
+                snapshot_date=dt.date(2025, 12, 15),
+                fired_at=dt.datetime(2025, 12, 15, 9, 0, tzinfo=dt.UTC),
+            ),
+            _event(
+                "r3",
+                dimension="conflict_of_interest_risk",
+                evidence_card_id="ec-3",
+                score_delta=2.0,
+                snapshot_date=dt.date(2025, 11, 10),
+                fired_at=dt.datetime(2025, 11, 10, 9, 0, tzinfo=dt.UTC),
+            ),
+        ],
+    )
+
+    result = build_member_timeline_year(history, year=2025, page_size=1)
+
+    assert isinstance(result, MemberTimelineYearPayload)
+    assert result.year == 2025
+    assert result.year_bucket.year == 2025
+    assert result.year_bucket.start_page == 2
+    assert result.timeline_page.page == 2
+    assert result.timeline_page.events[0].evidence_card_id == "ec-2"
+
+
+def test_build_member_timeline_dimension_filters_events_and_paginates() -> None:
+    history = _history(
+        snapshots=[
+            _snapshot(
+                dt.date(2026, 1, 15),
+                score_total=42.0,
+                score_total_delta=4.0,
+                dimension_scores={"conflict_of_interest_risk": 42.0},
+            )
+        ],
+        events=[
+            _event(
+                "r1",
+                dimension="conflict_of_interest_risk",
+                evidence_card_id="ec-1",
+                score_delta=2.0,
+                snapshot_date=dt.date(2026, 1, 15),
+                fired_at=dt.datetime(2026, 1, 15, 9, 0, tzinfo=dt.UTC),
+            ),
+            _event(
+                "r2",
+                dimension="transparency_risk",
+                evidence_card_id="ec-2",
+                score_delta=2.0,
+                snapshot_date=dt.date(2026, 1, 8),
+                fired_at=dt.datetime(2026, 1, 8, 9, 0, tzinfo=dt.UTC),
+            ),
+            _event(
+                "r3",
+                dimension="conflict_of_interest_risk",
+                evidence_card_id="ec-3",
+                score_delta=2.0,
+                snapshot_date=dt.date(2025, 12, 15),
+                fired_at=dt.datetime(2025, 12, 15, 9, 0, tzinfo=dt.UTC),
+            ),
+        ],
+    )
+
+    result = build_member_timeline_dimension(
+        history,
+        dimension="conflict_of_interest_risk",
+        page_size=1,
+    )
+
+    assert isinstance(result, MemberTimelineDimensionPayload)
+    assert result.dimension == "conflict_of_interest_risk"
+    assert result.timeline_index.total_events == 2
+    assert result.timeline_index.total_pages == 2
+    assert [bucket.year for bucket in result.timeline_index.year_buckets] == [2026, 2025]
+    assert result.timeline_page.page == 1
+    assert [event.evidence_card_id for event in result.timeline_page.events] == ["ec-1"]
+
+
+def test_build_member_history_coverage_index_summarizes_members_with_full_window_flags() -> None:
+    coverages = [
+        MemberHistoryCoveragePayload(
+            bioguide_id="A000001",
+            name="Alice Smith",
+            slug="alice-smith",
+            state="CA",
+            district="12",
+            chamber="house",
+            party="Democrat",
+            earliest_snapshot_date=dt.date(2026, 1, 1),
+            latest_snapshot_date=dt.date(2026, 4, 15),
+            latest_event_date=dt.date(2026, 4, 15),
+            earliest_event_date=dt.date(2026, 1, 1),
+            snapshot_count=5,
+            total_events=4,
+            available_years=[2026],
+            years=[{"year": 2026, "event_count": 4}],
+            dimensions=[{"dimension": "conflict_of_interest_risk", "event_count": 3}],
+            windows=[
+                {
+                    "window_key": "4w",
+                    "requested_days": 28,
+                    "has_full_window": True,
+                    "start_snapshot_date": dt.date(2026, 3, 18),
+                    "end_snapshot_date": dt.date(2026, 4, 15),
+                },
+                {
+                    "window_key": "12w",
+                    "requested_days": 84,
+                    "has_full_window": True,
+                    "start_snapshot_date": dt.date(2026, 1, 15),
+                    "end_snapshot_date": dt.date(2026, 4, 15),
+                },
+                {
+                    "window_key": "cycle",
+                    "requested_days": None,
+                    "has_full_window": True,
+                    "start_snapshot_date": dt.date(2026, 1, 1),
+                    "end_snapshot_date": dt.date(2026, 4, 15),
+                },
+            ],
+        ),
+        MemberHistoryCoveragePayload(
+            bioguide_id="B000002",
+            name="Bob Jones",
+            slug="bob-jones",
+            state="NY",
+            district=None,
+            chamber="senate",
+            party="Independent",
+            earliest_snapshot_date=dt.date(2026, 3, 18),
+            latest_snapshot_date=dt.date(2026, 4, 15),
+            latest_event_date=dt.date(2026, 4, 15),
+            earliest_event_date=dt.date(2026, 3, 18),
+            snapshot_count=2,
+            total_events=1,
+            available_years=[2026],
+            years=[{"year": 2026, "event_count": 1}],
+            dimensions=[{"dimension": "ethics_enforcement_risk", "event_count": 1}],
+            windows=[
+                {
+                    "window_key": "4w",
+                    "requested_days": 28,
+                    "has_full_window": True,
+                    "start_snapshot_date": dt.date(2026, 3, 18),
+                    "end_snapshot_date": dt.date(2026, 4, 15),
+                },
+                {
+                    "window_key": "12w",
+                    "requested_days": 84,
+                    "has_full_window": False,
+                    "start_snapshot_date": dt.date(2026, 3, 18),
+                    "end_snapshot_date": dt.date(2026, 4, 15),
+                },
+                {
+                    "window_key": "cycle",
+                    "requested_days": None,
+                    "has_full_window": True,
+                    "start_snapshot_date": dt.date(2026, 3, 18),
+                    "end_snapshot_date": dt.date(2026, 4, 15),
+                },
+            ],
+        ),
+    ]
+
+    result = build_member_history_coverage_index(coverages)
+
+    assert isinstance(result, MemberHistoryCoverageIndexPayload)
+    assert result.total_members == 2
+    assert [entry.slug for entry in result.members] == ["alice-smith", "bob-jones"]
+    assert isinstance(result.members[0], MemberHistoryCoverageIndexEntryPayload)
+    assert result.members[0].has_full_12w is True
+    assert result.members[1].has_full_12w is False
+
+
+def test_build_latest_movement_window_uses_latest_events_only_and_surfaces_window_metadata() -> (
+    None
+):
     previous_snapshot_date = dt.date(2026, 1, 1)
     latest_snapshot_date = dt.date(2026, 1, 8)
     alice = _history(
@@ -378,6 +917,69 @@ def test_build_movement_window_uses_requested_snapshot_window() -> None:
     assert result.previous_snapshot_id == "2026-01-01"
     assert [event.evidence_card_id for event in result.recent_events] == ["ec-new", "ec-mid"]
     assert result.recent_evidence_card_ids == ["ec-new", "ec-mid"]
+
+
+def test_build_movement_window_filters_requested_dimension() -> None:
+    latest_snapshot_date = dt.date(2026, 1, 15)
+    previous_snapshot_date = dt.date(2026, 1, 1)
+    history = _history(
+        snapshots=[
+            _snapshot(
+                previous_snapshot_date,
+                score_total=10.0,
+                score_total_delta=None,
+                dimension_scores={
+                    "conflict_of_interest_risk": 10.0,
+                    "transparency_risk": 0.0,
+                },
+            ),
+            _snapshot(
+                latest_snapshot_date,
+                score_total=18.0,
+                score_total_delta=8.0,
+                dimension_scores={
+                    "conflict_of_interest_risk": 15.0,
+                    "transparency_risk": 3.0,
+                },
+            ),
+        ],
+        events=[
+            _event(
+                "conflict",
+                dimension="conflict_of_interest_risk",
+                evidence_card_id="ec-conflict",
+                score_delta=5.0,
+                snapshot_date=latest_snapshot_date,
+                fired_at=dt.datetime(2026, 1, 15, 8, 0, tzinfo=dt.UTC),
+            ),
+            _event(
+                "transparency",
+                dimension="transparency_risk",
+                evidence_card_id="ec-transparency",
+                score_delta=3.0,
+                snapshot_date=latest_snapshot_date,
+                fired_at=dt.datetime(2026, 1, 15, 9, 0, tzinfo=dt.UTC),
+            ),
+        ],
+    )
+
+    result = build_movement_window(
+        [history],
+        window_key="latest",
+        latest_snapshot_id="2026-01-15",
+        latest_snapshot_date=latest_snapshot_date,
+        previous_snapshot_id="2026-01-01",
+        previous_snapshot_date=previous_snapshot_date,
+        dimension="transparency_risk",
+        top_n=5,
+        recent_n=5,
+    )
+
+    assert isinstance(result, MovementWindowPayload)
+    assert result.dimension == "transparency_risk"
+    assert [change.dimension for change in result.top_changes] == ["transparency_risk"]
+    assert [event.dimension for event in result.recent_events] == ["transparency_risk"]
+    assert result.recent_evidence_card_ids == ["ec-transparency"]
 
 
 def test_build_member_window_change_summary_compares_requested_window() -> None:

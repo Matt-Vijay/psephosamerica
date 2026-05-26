@@ -69,7 +69,7 @@ class TestWriteTableBatchInsert:
         rows = [{"bioguide_id": "A000001", "chamber": "house"}]
         captured: list[str] = []
 
-        def capture(conn, sql, params):
+        def capture(conn, sql, params, *, commit):
             captured.append(sql)
 
         with patch("src.db.writer.execute_many", side_effect=capture):
@@ -77,13 +77,13 @@ class TestWriteTableBatchInsert:
 
         assert captured
         assert "ON CONFLICT" not in captured[0]
-        assert "INSERT INTO member" in captured[0]
+        assert 'INSERT INTO "member"' in captured[0]
 
     def test_insert_passes_correct_params(self, mock_conn):
         rows = [{"a": 1, "b": 2}, {"a": 3, "b": 4}]
         captured_params: list = []
 
-        def capture(conn, sql, params):
+        def capture(conn, sql, params, *, commit):
             captured_params.extend(params)
 
         with patch("src.db.writer.execute_many", side_effect=capture):
@@ -91,6 +91,19 @@ class TestWriteTableBatchInsert:
 
         assert [1, 2] in captured_params
         assert [3, 4] in captured_params
+
+    def test_insert_adapts_dict_and_list_params_as_jsonb(self, mock_conn):
+        rows = [{"payload": {"a": 1}, "items": [1, 2]}]
+        captured_params: list = []
+
+        def capture(conn, sql, params, *, commit):
+            captured_params.extend(params)
+
+        with patch("src.db.writer.execute_many", side_effect=capture):
+            write_table_batch(mock_conn, table="t", rows=rows, mode="insert")
+
+        assert captured_params
+        assert [type(value).__name__ for value in captured_params[0]] == ["Jsonb", "Jsonb"]
 
 
 # ---------------------------------------------------------------------------
@@ -116,7 +129,7 @@ class TestWriteTableBatchUpsert:
         rows = [{"bioguide_id": "A000001", "last_name": "Smith", "chamber": "senate"}]
         captured: list[str] = []
 
-        def capture(conn, sql, params):
+        def capture(conn, sql, params, *, commit):
             captured.append(sql)
 
         with patch("src.db.writer.execute_many", side_effect=capture):
@@ -128,7 +141,7 @@ class TestWriteTableBatchUpsert:
                 mode="upsert",
             )
 
-        assert "ON CONFLICT (bioguide_id) DO UPDATE SET" in captured[0]
+        assert 'ON CONFLICT ("bioguide_id") DO UPDATE SET' in captured[0]
 
     def test_upsert_multi_row_count(self, mock_conn):
         rows = [{"slug": f"s{i}", "last_name": f"Name{i}"} for i in range(3)]
@@ -177,7 +190,7 @@ class TestWriteTableBatchIgnore:
         rows = [{"bioguide_id": "A000001", "chamber": "senate"}]
         captured: list[str] = []
 
-        def capture(conn, sql, params):
+        def capture(conn, sql, params, *, commit):
             captured.append(sql)
 
         with patch("src.db.writer.execute_many", side_effect=capture):
@@ -196,7 +209,7 @@ class TestWriteTableBatchIgnore:
         rows = [{"slug": "alice"}]
         captured: list[str] = []
 
-        def capture(conn, sql, params):
+        def capture(conn, sql, params, *, commit):
             captured.append(sql)
 
         with patch("src.db.writer.execute_many", side_effect=capture):
@@ -236,7 +249,11 @@ class TestWriteTableBatchInvalidMode:
 class TestWriteTableBatches:
     def test_returns_load_summary(self, mock_conn):
         batches = [
-            {"table": "member", "rows": [{"bioguide_id": "A1", "chamber": "house"}], "mode": "insert"},
+            {
+                "table": "member",
+                "rows": [{"bioguide_id": "A1", "chamber": "house"}],
+                "mode": "insert",
+            },
         ]
         with patch("src.db.writer.execute_many"):
             summary = write_table_batches(mock_conn, batches)
@@ -258,7 +275,7 @@ class TestWriteTableBatches:
         ]
         call_count = []
 
-        def capture(conn, sql, params):
+        def capture(conn, sql, params, *, commit):
             call_count.append(1)
 
         with patch("src.db.writer.execute_many", side_effect=capture):
@@ -272,8 +289,12 @@ class TestWriteTableBatches:
         batches = [
             {"table": "member", "rows": [{"slug": "a"}], "mode": "insert"},
             {"table": "bill", "rows": [], "mode": "insert"},
-            {"table": "committee", "rows": [{"name": "X"}], "mode": "upsert",
-             "conflict_columns": ["name"]},
+            {
+                "table": "committee",
+                "rows": [{"name": "X"}],
+                "mode": "upsert",
+                "conflict_columns": ["name"],
+            },
         ]
         with patch("src.db.writer.execute_many"):
             summary = write_table_batches(mock_conn, batches)
@@ -301,8 +322,12 @@ class TestWriteTableBatches:
     def test_mixed_modes_aggregate(self, mock_conn):
         batches = [
             {"table": "member", "rows": [{"slug": "a"}, {"slug": "b"}], "mode": "insert"},
-            {"table": "bill", "rows": [{"title": "X"}], "conflict_columns": ["title"],
-             "mode": "ignore"},
+            {
+                "table": "bill",
+                "rows": [{"title": "X"}],
+                "conflict_columns": ["title"],
+                "mode": "ignore",
+            },
         ]
         with patch("src.db.writer.execute_many"):
             summary = write_table_batches(mock_conn, batches)
@@ -314,7 +339,7 @@ class TestWriteTableBatches:
         batches = [{"table": "member", "rows": [{"slug": "z"}]}]
         captured: list[str] = []
 
-        def capture(conn, sql, params):
+        def capture(conn, sql, params, *, commit):
             captured.append(sql)
 
         with patch("src.db.writer.execute_many", side_effect=capture):
@@ -332,3 +357,93 @@ class TestWriteTableBatches:
             summary = write_table_batches(mock_conn, batches)
         names = [r.table for r in summary.table_results]
         assert names == ["member", "committee"]
+
+    def test_default_batches_commit_once_after_all_tables_succeed(self, mock_conn):
+        batches = [
+            {"table": "member", "rows": [{"slug": "a"}], "mode": "insert"},
+            {"table": "committee", "rows": [{"name": "x"}], "mode": "insert"},
+        ]
+        commits: list[bool] = []
+
+        def capture(conn, sql, params, *, commit):
+            commits.append(commit)
+
+        with patch("src.db.writer.execute_many", side_effect=capture):
+            write_table_batches(mock_conn, batches)
+
+        assert commits == [False, False]
+        mock_conn.commit.assert_called_once_with()
+        mock_conn.rollback.assert_not_called()
+
+    def test_default_batches_commit_failure_rolls_back(self, mock_conn):
+        batches = [{"table": "member", "rows": [{"slug": "a"}], "mode": "insert"}]
+        mock_conn.commit.side_effect = RuntimeError("commit failed")
+
+        with (
+            patch("src.db.writer.execute_many"),
+            pytest.raises(RuntimeError, match="commit failed"),
+        ):
+            write_table_batches(mock_conn, batches)
+
+        mock_conn.commit.assert_called_once_with()
+        mock_conn.rollback.assert_called_once_with()
+
+    def test_default_batches_roll_back_without_partial_commit_when_later_batch_fails(
+        self, mock_conn
+    ):
+        batches = [
+            {"table": "member", "rows": [{"slug": "a"}], "mode": "insert"},
+            {"table": "committee", "rows": [{"name": "x"}], "mode": "insert"},
+        ]
+        commits: list[bool] = []
+
+        def capture(conn, sql, params, *, commit):
+            commits.append(commit)
+            if len(commits) == 2:
+                raise RuntimeError("committee failed")
+
+        with (
+            patch("src.db.writer.execute_many", side_effect=capture),
+            pytest.raises(RuntimeError, match="committee failed"),
+        ):
+            write_table_batches(mock_conn, batches)
+
+        assert commits == [False, False]
+        mock_conn.commit.assert_not_called()
+        mock_conn.rollback.assert_called_once_with()
+
+    def test_commit_false_defers_all_batch_commits(self, mock_conn):
+        batches = [
+            {"table": "member", "rows": [{"slug": "a"}], "mode": "insert"},
+            {"table": "committee", "rows": [{"name": "x"}], "mode": "insert"},
+        ]
+        commits: list[bool] = []
+
+        def capture(conn, sql, params, *, commit):
+            commits.append(commit)
+
+        with patch("src.db.writer.execute_many", side_effect=capture):
+            write_table_batches(mock_conn, batches, commit=False)
+
+        assert commits == [False, False]
+
+    def test_commit_false_later_batch_failure_does_not_commit_prior_batch(self, mock_conn):
+        batches = [
+            {"table": "member", "rows": [{"slug": "a"}], "mode": "insert"},
+            {"table": "committee", "rows": [{"name": "x"}], "mode": "insert"},
+        ]
+        commits: list[bool] = []
+
+        def capture(conn, sql, params, *, commit):
+            commits.append(commit)
+            if len(commits) == 2:
+                raise RuntimeError("committee failed")
+
+        with (
+            patch("src.db.writer.execute_many", side_effect=capture),
+            pytest.raises(RuntimeError, match="committee failed"),
+        ):
+            write_table_batches(mock_conn, batches, commit=False)
+
+        assert commits == [False, False]
+        mock_conn.commit.assert_not_called()

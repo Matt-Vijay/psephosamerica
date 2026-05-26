@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from pathlib import PurePosixPath
+from uuid import uuid4
 
+from src.core.path_safety import is_confined_relative_path, safe_join_confined
 from .builders import sha256_hex
 from .manifest import SnapshotManifest
 from .writer import PlannedFile
@@ -13,18 +14,15 @@ def _ensure_parents(target: Path) -> None:
     target.parent.mkdir(parents=True, exist_ok=True)
 
 
-def _is_confined(path: str) -> bool:
-    pure = PurePosixPath(path)
-    return not pure.is_absolute() and ".." not in pure.parts
-
-
 def _validate_planned_files(files: list[PlannedFile]) -> None:
     seen_paths: set[str] = set()
     duplicate_paths: set[str] = set()
 
     for planned in files:
-        if not _is_confined(planned.path):
-            raise ValueError(f"planned file path must stay confined to target root: {planned.path!r}")
+        if not is_confined_relative_path(planned.path):
+            raise ValueError(
+                f"planned file path must stay confined to target root: {planned.path!r}"
+            )
         if planned.path in seen_paths:
             duplicate_paths.add(planned.path)
         seen_paths.add(planned.path)
@@ -38,9 +36,18 @@ def write_planned_files(files: list[PlannedFile], target_dir: Path) -> None:
     _validate_planned_files(files)
     # Parent directories are created as needed.  Existing files are overwritten.
     for planned in files:
-        dest = target_dir / planned.path
+        dest = safe_join_confined(target_dir, planned.path, label="planned file path")
         _ensure_parents(dest)
-        dest.write_bytes(planned.content)
+        _write_bytes_atomic(dest, planned.content)
+
+
+def _write_bytes_atomic(path: Path, content: bytes) -> None:
+    temp_path = path.with_name(f".{path.name}.{uuid4().hex}.tmp")
+    try:
+        temp_path.write_bytes(content)
+        temp_path.replace(path)
+    finally:
+        temp_path.unlink(missing_ok=True)
 
 
 def read_manifest(manifest_file: Path) -> SnapshotManifest:
@@ -57,11 +64,15 @@ def verify_written_files(
     failures: list[str] = []
     seen_paths: set[str] = set()
     for planned in files:
-        if not _is_confined(planned.path) or planned.path in seen_paths:
+        if not is_confined_relative_path(planned.path) or planned.path in seen_paths:
             failures.append(planned.path)
             continue
         seen_paths.add(planned.path)
-        dest = target_dir / planned.path
+        try:
+            dest = safe_join_confined(target_dir, planned.path, label="planned file path")
+        except ValueError:
+            failures.append(planned.path)
+            continue
         if not dest.exists():
             failures.append(planned.path)
             continue

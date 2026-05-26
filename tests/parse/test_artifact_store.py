@@ -6,6 +6,9 @@ No network calls; all I/O uses tmp_path.
 from __future__ import annotations
 
 import hashlib
+from dataclasses import replace
+from pathlib import Path
+from uuid import UUID
 
 import pytest
 
@@ -59,6 +62,16 @@ class TestArtifactPath:
         assert "B000001" in p.parts
         assert p.name == "DOC123.pdf"
 
+    def test_rejects_storage_key_escape(self, tmp_path):
+        meta = replace(HOUSE_META, storage_key="../outside.pdf")
+        with pytest.raises(ValueError, match="storage_key"):
+            artifact_path(tmp_path, meta)
+
+    def test_rejects_intra_root_traversal(self, tmp_path):
+        meta = replace(HOUSE_META, storage_key="disclosures/../outside.pdf")
+        with pytest.raises(ValueError, match="storage_key"):
+            artifact_path(tmp_path, meta)
+
 
 class TestWriteArtifact:
     def test_creates_file_with_correct_content(self, tmp_path):
@@ -79,10 +92,60 @@ class TestWriteArtifact:
         write_artifact(tmp_path, HOUSE_META, PDF_BYTES)
         assert (tmp_path / HOUSE_META.storage_key).read_bytes() == PDF_BYTES
 
+    def test_write_uses_unique_temp_file_before_replace(self, tmp_path, monkeypatch):
+        dest = tmp_path / HOUSE_META.storage_key
+        seen_temp_names: list[str] = []
+        original_open = Path.open
+
+        def guarded_open(path: Path, *args: object, **kwargs: object):
+            mode = str(args[0]) if args else str(kwargs.get("mode", "r"))
+            if path == dest and any(flag in mode for flag in ("w", "a", "x", "+")):
+                raise AssertionError("direct final-path write")
+            if path.name.startswith(f".{dest.name}.") and path.name.endswith(".tmp"):
+                token = path.name.removeprefix(f".{dest.name}.").removesuffix(".tmp")
+                UUID(token)
+                seen_temp_names.append(path.name)
+            return original_open(path, *args, **kwargs)
+
+        monkeypatch.setattr(Path, "open", guarded_open)
+
+        write_artifact(tmp_path, HOUSE_META, PDF_BYTES)
+
+        assert len(seen_temp_names) == 1
+        assert dest.read_bytes() == PDF_BYTES
+
+    def test_write_cleans_temp_file_when_replace_fails(self, tmp_path, monkeypatch):
+        dest = tmp_path / HOUSE_META.storage_key
+        original_replace = Path.replace
+
+        def failing_replace(path: Path, target: Path) -> Path:
+            if target == dest:
+                raise RuntimeError("replace failed")
+            return original_replace(path, target)
+
+        monkeypatch.setattr(Path, "replace", failing_replace)
+
+        with pytest.raises(RuntimeError, match="replace failed"):
+            write_artifact(tmp_path, HOUSE_META, PDF_BYTES)
+
+        assert not dest.exists()
+        assert list(dest.parent.glob(f".{dest.name}.*.tmp")) == []
+
     def test_senate_artifact_written_to_senate_path(self, tmp_path):
         write_artifact(tmp_path, SENATE_META, b"senate data")
         dest = tmp_path / SENATE_META.storage_key
         assert dest.read_bytes() == b"senate data"
+
+    def test_write_rejects_symlinked_parent_escape(self, tmp_path):
+        outside = tmp_path.parent / f"{tmp_path.name}-outside"
+        outside.mkdir()
+        (tmp_path / "disclosures").symlink_to(outside, target_is_directory=True)
+        meta = replace(HOUSE_META, storage_key="disclosures/house/2024/DOC123.pdf")
+
+        with pytest.raises(ValueError, match="storage_key"):
+            write_artifact(tmp_path, meta, PDF_BYTES)
+
+        assert not (outside / "house" / "2024" / "DOC123.pdf").exists()
 
 
 class TestReadArtifact:

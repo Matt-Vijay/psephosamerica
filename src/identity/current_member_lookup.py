@@ -5,12 +5,12 @@ import unicodedata
 from datetime import date
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import Field
 
-from src.export.contracts import MemberProfilePayload
+from src.export.contracts import ExportContractModel, MemberProfilePayload
 
 
-class CurrentMemberLookupEntry(BaseModel):
+class CurrentMemberLookupEntry(ExportContractModel):
     bioguide_id: str = Field(serialization_alias="b")
     slug: str = Field(serialization_alias="s")
     name: str = Field(serialization_alias="n")
@@ -20,7 +20,7 @@ class CurrentMemberLookupEntry(BaseModel):
     chamber: Literal["house", "senate"] = Field(serialization_alias="c")
 
 
-class CurrentMemberLookupPayload(BaseModel):
+class CurrentMemberLookupPayload(ExportContractModel):
     version: int = Field(default=1, serialization_alias="v")
     snapshot_date: date = Field(serialization_alias="sd")
     members: list[CurrentMemberLookupEntry] = Field(serialization_alias="m")
@@ -136,7 +136,9 @@ def validate_current_member_lookup(
                 f"{member.search_name!r} != {expected_search_name!r}"
             )
         if member.bioguide_id in seen_bioguide_ids:
-            raise ValueError(f"duplicate bioguide_id in current-member lookup: {member.bioguide_id}")
+            raise ValueError(
+                f"duplicate bioguide_id in current-member lookup: {member.bioguide_id}"
+            )
         if member.slug in seen_slugs:
             raise ValueError(f"duplicate slug in current-member lookup: {member.slug}")
         seen_bioguide_ids.add(member.bioguide_id)

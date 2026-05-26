@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import datetime as dt
 
+import pytest
+
 from src.export.contracts import MemberProfilePayload
 from src.query.member_profile import (
     _count_distinct_evidence_cards,
@@ -297,7 +299,8 @@ class TestTopEvidenceCardIds:
                 "snapshot_date": dt.date(2024, 7, 1),
             }
         ]
-        assert _top_evidence_card_ids(rows) == ["ec-002", "ec-001", "ec-003"]
+        with pytest.raises(ValueError, match="evidence_card_id"):
+            _top_evidence_card_ids(rows)
 
 
 # ---------------------------------------------------------------------------
@@ -377,7 +380,8 @@ class TestCountDistinctEvidenceCards:
 
     def test_missing_evidence_card_id_ignored(self):
         fires = [{"evidence_card_id": None, "rule_id": "r.v1"}]
-        assert _count_distinct_evidence_cards(fires) == 0
+        with pytest.raises(ValueError, match="evidence_card_id"):
+            _count_distinct_evidence_cards(fires)
 
 
 # ---------------------------------------------------------------------------
@@ -387,39 +391,27 @@ class TestCountDistinctEvidenceCards:
 
 class TestAssembleMemberProfile:
     def test_returns_member_profile_payload(self):
-        result = assemble_member_profile(
-            MEMBER_ROW, SNAPSHOT_ROWS, FIRE_ROWS, COMMITTEE_ROWS
-        )
+        result = assemble_member_profile(MEMBER_ROW, SNAPSHOT_ROWS, FIRE_ROWS, COMMITTEE_ROWS)
         assert isinstance(result, MemberProfilePayload)
 
     def test_bioguide_id(self):
-        result = assemble_member_profile(
-            MEMBER_ROW, SNAPSHOT_ROWS, FIRE_ROWS, COMMITTEE_ROWS
-        )
+        result = assemble_member_profile(MEMBER_ROW, SNAPSHOT_ROWS, FIRE_ROWS, COMMITTEE_ROWS)
         assert result.bioguide_id == "A000001"
 
     def test_name(self):
-        result = assemble_member_profile(
-            MEMBER_ROW, SNAPSHOT_ROWS, FIRE_ROWS, COMMITTEE_ROWS
-        )
+        result = assemble_member_profile(MEMBER_ROW, SNAPSHOT_ROWS, FIRE_ROWS, COMMITTEE_ROWS)
         assert result.name == "Jane Smith"
 
     def test_snapshot_date_from_latest_row(self):
-        result = assemble_member_profile(
-            MEMBER_ROW, SNAPSHOT_ROWS, FIRE_ROWS, COMMITTEE_ROWS
-        )
+        result = assemble_member_profile(MEMBER_ROW, SNAPSHOT_ROWS, FIRE_ROWS, COMMITTEE_ROWS)
         assert result.snapshot_date == dt.date(2024, 6, 1)
 
     def test_total_evidence_cards(self):
-        result = assemble_member_profile(
-            MEMBER_ROW, SNAPSHOT_ROWS, FIRE_ROWS, COMMITTEE_ROWS
-        )
+        result = assemble_member_profile(MEMBER_ROW, SNAPSHOT_ROWS, FIRE_ROWS, COMMITTEE_ROWS)
         assert result.total_evidence_cards == 3
 
     def test_top_evidence_card_ids_surface_recent_cards(self):
-        result = assemble_member_profile(
-            MEMBER_ROW, SNAPSHOT_ROWS, FIRE_ROWS, COMMITTEE_ROWS
-        )
+        result = assemble_member_profile(MEMBER_ROW, SNAPSHOT_ROWS, FIRE_ROWS, COMMITTEE_ROWS)
         assert result.top_evidence_card_ids == ["ec-002", "ec-001", "ec-003"]
 
     def test_scores_sorted_by_dimension(self):
@@ -433,9 +425,7 @@ class TestAssembleMemberProfile:
         assert [s.dimension for s in result.scores] == ["aaa", "zzz"]
 
     def test_recent_fires_limited_and_sorted(self):
-        result = assemble_member_profile(
-            MEMBER_ROW, SNAPSHOT_ROWS, FIRE_ROWS, COMMITTEE_ROWS
-        )
+        result = assemble_member_profile(MEMBER_ROW, SNAPSHOT_ROWS, FIRE_ROWS, COMMITTEE_ROWS)
         dates = [f.snapshot_date for f in result.recent_rule_fires]
         assert dates == sorted(dates, reverse=True)
 
@@ -443,9 +433,7 @@ class TestAssembleMemberProfile:
         dup_committees = COMMITTEE_ROWS + [
             {"committee_name": "Committee on Energy", "role": "member"}
         ]
-        result = assemble_member_profile(
-            MEMBER_ROW, SNAPSHOT_ROWS, FIRE_ROWS, dup_committees
-        )
+        result = assemble_member_profile(MEMBER_ROW, SNAPSHOT_ROWS, FIRE_ROWS, dup_committees)
         energy = [c for c in result.committees if c.committee_name == "Committee on Energy"]
         assert len(energy) == 1
 
@@ -455,9 +443,7 @@ class TestAssembleMemberProfile:
         assert result.total_evidence_cards == 3
 
     def test_empty_fire_rows(self):
-        result = assemble_member_profile(
-            MEMBER_ROW, SNAPSHOT_ROWS, [], COMMITTEE_ROWS
-        )
+        result = assemble_member_profile(MEMBER_ROW, SNAPSHOT_ROWS, [], COMMITTEE_ROWS)
         assert result.recent_rule_fires == []
         assert result.total_evidence_cards == 0
 
@@ -471,13 +457,21 @@ class TestAssembleMemberProfile:
         assert result.district is None
 
     def test_chamber_forwarded(self):
-        result = assemble_member_profile(
-            MEMBER_ROW, SNAPSHOT_ROWS, FIRE_ROWS, COMMITTEE_ROWS
-        )
+        result = assemble_member_profile(MEMBER_ROW, SNAPSHOT_ROWS, FIRE_ROWS, COMMITTEE_ROWS)
         assert result.chamber == "house"
 
     def test_party_forwarded(self):
-        result = assemble_member_profile(
-            MEMBER_ROW, SNAPSHOT_ROWS, FIRE_ROWS, COMMITTEE_ROWS
-        )
+        result = assemble_member_profile(MEMBER_ROW, SNAPSHOT_ROWS, FIRE_ROWS, COMMITTEE_ROWS)
         assert result.party == "D"
+
+    def test_orphan_rule_fire_without_evidence_card_rejected(self):
+        orphan = {
+            "rule_id": "orphan.v1",
+            "dimension": "conflict_of_interest_risk",
+            "evidence_card_id": None,
+            "short_explanation": "Missing card.",
+            "score_delta": 1.0,
+            "snapshot_date": dt.date(2024, 7, 1),
+        }
+        with pytest.raises(ValueError, match="evidence_card_id"):
+            assemble_member_profile(MEMBER_ROW, SNAPSHOT_ROWS, [orphan], COMMITTEE_ROWS)

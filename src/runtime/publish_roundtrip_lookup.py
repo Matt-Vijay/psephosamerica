@@ -47,7 +47,9 @@ def _issue(
     )
 
 
-def _member_tuples(payload: CurrentMemberLookupPayload) -> list[tuple[str, str, str, str, str, str | None, str]]:
+def _member_tuples(
+    payload: CurrentMemberLookupPayload,
+) -> list[tuple[str, str, str, str, str, str | None, str]]:
     return [
         (
             member.bioguide_id,
@@ -139,9 +141,7 @@ def verify_published_current_member_lookup_roundtrip(
     rea_members = _member_tuples(reassembled)
     if pub_members != rea_members:
         issues.append(
-            _issue(
-                f"lookup members mismatch: published={pub_members!r} db={rea_members!r}"
-            )
+            _issue(f"lookup members mismatch: published={pub_members!r} db={rea_members!r}")
         )
 
     return PublishRoundtripStageResult(

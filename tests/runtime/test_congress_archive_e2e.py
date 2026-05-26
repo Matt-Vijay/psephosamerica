@@ -22,7 +22,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.ingest.congress.archive import CongressArchive, manifest_from_archive
+from src.ingest.congress.archive import CongressArchive, manifest_from_existing_archive
+from src.ingest.congress.archive_manifest import write_manifest
 from src.runtime.congress_archive import run_congress_archive_load
 from src.runtime.congress_options import CongressLoadOptions
 
@@ -286,50 +287,8 @@ class _ArchiveFixture:
     def write_manifest(self) -> Path:
         """Write a manifest.json covering all files present in the tree and return its path."""
         archive = CongressArchive(self.root, self.congress)
-        bill_keys = [(_CONGRESS, _BILL_TYPE, _BILL_NUMBER)]
-        bioguide_ids = [_BIOGUIDE]
-
-        manifest = manifest_from_archive(
-            archive,
-            bill_keys=bill_keys,
-            bioguide_ids=bioguide_ids,
-        )
-
-        manifest_dict: dict[str, Any] = {
-            "congress": manifest.congress,
-            "members": "members.json",
-            "committees": "committees.json",
-            "bills": "bills.json",
-            "cosponsors": [
-                {
-                    "congress": src.congress,
-                    "bill_type": src.bill_type,
-                    "bill_number": src.bill_number,
-                    "path": str(src.path.relative_to(self.root)),
-                }
-                for src in manifest.cosponsors
-            ],
-            "member_details": [
-                {
-                    "bioguide_id": src.bioguide_id,
-                    "path": str(src.path.relative_to(self.root)),
-                }
-                for src in manifest.member_details
-            ],
-            "bill_details": [
-                {
-                    "congress": src.congress,
-                    "bill_type": src.bill_type,
-                    "bill_number": src.bill_number,
-                    "path": str(src.path.relative_to(self.root)),
-                }
-                for src in manifest.bill_details
-            ],
-        }
-
-        manifest_path = self.root / "manifest.json"
-        manifest_path.write_text(json.dumps(manifest_dict), encoding="utf-8")
-        return manifest_path
+        manifest = manifest_from_existing_archive(archive)
+        return write_manifest(self.root / "manifest.json", manifest)
 
 
 # ---------------------------------------------------------------------------

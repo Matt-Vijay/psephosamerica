@@ -13,6 +13,7 @@ Covers:
   - Verify / roundtrip verify topology against real temp trees
   - Published-read inspect helpers are importable and callable
 """
+
 from __future__ import annotations
 
 import datetime as dt
@@ -78,6 +79,7 @@ class TestKeyRuntimeEntryPointsCallable:
 class TestRuntimeContextBuilds:
     def _fake_settings(self):
         from src.core.settings import Settings
+
         return Settings()
 
     def _fake_taxonomy(self):
@@ -164,7 +166,7 @@ class TestPathHelpers:
 
 
 # ---------------------------------------------------------------------------
-# 4. Source registry covers the four canonical pipeline stages
+# 4. Source registry covers canonical pipeline/source stages
 # ---------------------------------------------------------------------------
 
 
@@ -173,6 +175,8 @@ class TestSourceRegistry:
         "congress-gov-api",
         "house-disclosures",
         "senate-disclosures",
+        "fec-bulk",
+        "member-fec-crosswalk",
         "financial-disclosures",
         "conflict-recompute",
         "snapshot-publish",
@@ -181,7 +185,7 @@ class TestSourceRegistry:
     def test_all_sources_returns_tuple(self):
         assert isinstance(runtime.all_sources(), tuple)
 
-    def test_all_four_slugs_present(self):
+    def test_all_slugs_present(self):
         slugs = {s.slug for s in runtime.all_sources()}
         assert self._EXPECTED_SLUGS == slugs
 
@@ -215,6 +219,7 @@ class TestCongressLoadDelegates:
 
     def test_delegates_to_pipeline(self):
         from src.db.load_report import WarnErrorSummary, build_load_summary
+
         conn = MagicMock()
         inputs = MagicMock()
         fake_ds = {"id": 1, "slug": "congress-gov-api"}
@@ -263,6 +268,7 @@ class TestRecomputeDelegates:
 
     def _empty_result(self):
         from src.pipeline.recompute_run import RecomputeRunResult
+
         return RecomputeRunResult()
 
     def test_delegates_to_pipeline(self):
@@ -276,9 +282,7 @@ class TestRecomputeDelegates:
             patch(f"{self._MOD}.finish_ingestion_run"),
             patch(f"{self._MOD}.fail_ingestion_run"),
         ):
-            result = runtime.run_recompute_runtime(
-                conn, dt.date(2026, 1, 1), taxonomy=MagicMock()
-            )
+            result = runtime.run_recompute_runtime(conn, dt.date(2026, 1, 1), taxonomy=MagicMock())
 
         mock_run.assert_called_once()
         assert isinstance(result, runtime.RuntimeRecomputeResult)
@@ -325,15 +329,15 @@ class TestPublishDelegates:
         with (
             patch(f"{self._MOD}.ensure_data_source", return_value=fake_ds),
             patch(f"{self._MOD}.start_ingestion_run", return_value=20),
-            patch(f"{self._MOD}.publish_snapshot_run", return_value=self._ok_publish_result()) as mock_pub,
+            patch(
+                f"{self._MOD}.publish_snapshot_run", return_value=self._ok_publish_result()
+            ) as mock_pub,
             patch(f"{self._MOD}._make_staging_dir", return_value=staging_dir) as mock_make_staging,
             patch(f"{self._MOD}._promote_staging_dir") as mock_promote,
             patch(f"{self._MOD}.finish_ingestion_run"),
             patch(f"{self._MOD}.fail_ingestion_run"),
         ):
-            result = runtime.run_publish_runtime(
-                conn, dt.date(2026, 4, 1), target_dir, MagicMock()
-            )
+            result = runtime.run_publish_runtime(conn, dt.date(2026, 4, 1), target_dir, MagicMock())
 
         mock_make_staging.assert_called_once_with(target_dir, "2026-04-01")
         mock_pub.assert_called_once()
@@ -404,6 +408,7 @@ class TestZipBundleShape:
 
     def test_round_trip_returns_zip_bundle_inputs(self):
         from src.pipeline.publish_snapshot_run import ZipBundleInputs
+
         result = runtime.zip_bundle_from_dict(self._minimal_bundle())
         assert isinstance(result, ZipBundleInputs)
 
@@ -425,9 +430,11 @@ class TestZipBundleShape:
 
     def test_load_zip_bundle_reads_file(self, tmp_path):
         import json
+
         bundle_path = tmp_path / "bundle.json"
         bundle_path.write_text(json.dumps(self._minimal_bundle()), encoding="utf-8")
         from src.pipeline.publish_snapshot_run import ZipBundleInputs
+
         result = runtime.load_zip_bundle(bundle_path)
         assert isinstance(result, ZipBundleInputs)
 
@@ -497,8 +504,14 @@ class TestSmokeProcessDisclosuresDelegates:
             summary = runtime.smoke_process_disclosures(conn, Path("/tmp/artifacts"))
 
         expected_keys = {
-            "run_id", "source_slug", "parsed", "parse_succeeded",
-            "parse_failed", "transformed", "total_written", "load_ok",
+            "run_id",
+            "source_slug",
+            "parsed",
+            "parse_succeeded",
+            "parse_failed",
+            "transformed",
+            "total_written",
+            "load_ok",
         }
         assert set(summary.keys()) == expected_keys
 
@@ -596,6 +609,7 @@ class TestSmokeOraclePathDelegates:
 
     def _empty_zip_bundle(self):
         from src.pipeline.publish_snapshot_run import ZipBundleInputs
+
         return ZipBundleInputs(
             zip5_codes=[],
             zip_district_rows=[],
@@ -611,9 +625,16 @@ class TestSmokeOraclePathDelegates:
         zip_bundle = self._empty_zip_bundle()
 
         with (
-            patch(f"{self._MOD}.smoke_process_disclosures", return_value=self._fake_disclosures_summary()) as mock_disc,
-            patch(f"{self._MOD}.run_recompute_runtime", return_value=self._fake_recompute_result()) as mock_recompute,
-            patch(f"{self._MOD}.run_publish_runtime", return_value=self._fake_publish_result()) as mock_pub,
+            patch(
+                f"{self._MOD}.smoke_process_disclosures",
+                return_value=self._fake_disclosures_summary(),
+            ) as mock_disc,
+            patch(
+                f"{self._MOD}.run_recompute_runtime", return_value=self._fake_recompute_result()
+            ) as mock_recompute,
+            patch(
+                f"{self._MOD}.run_publish_runtime", return_value=self._fake_publish_result()
+            ) as mock_pub,
         ):
             result = runtime.smoke_oracle_path(
                 conn, local_root, snapshot_date, target_dir, zip_bundle
@@ -630,7 +651,10 @@ class TestSmokeOraclePathDelegates:
         zip_bundle = self._empty_zip_bundle()
 
         with (
-            patch(f"{self._MOD}.smoke_process_disclosures", return_value=self._fake_disclosures_summary()),
+            patch(
+                f"{self._MOD}.smoke_process_disclosures",
+                return_value=self._fake_disclosures_summary(),
+            ),
             patch(f"{self._MOD}.run_recompute_runtime", return_value=self._fake_recompute_result()),
             patch(f"{self._MOD}.run_publish_runtime", return_value=self._fake_publish_result()),
         ):
@@ -791,7 +815,9 @@ class TestLocalOracleTopology:
                 options=self._options(tmp_path),
             )
 
-        assert {"run_id", "parse_succeeded", "parse_failed", "total_written", "load_ok"} <= set(result.disclosures)
+        assert {"run_id", "parse_succeeded", "parse_failed", "total_written", "load_ok"} <= set(
+            result.disclosures
+        )
         assert {"run_id", "rule_fires", "evidence_cards"} <= set(result.recompute)
         assert {"run_id", "snapshot_id", "written_count", "succeeded"} <= set(result.publish)
 
@@ -865,7 +891,9 @@ class TestVerifyTopology:
         manifest_file.parent.mkdir(parents=True, exist_ok=True)
         manifest_data = {
             "snapshot_id": self._SNAPSHOT_ID,
-            "created_at": datetime.datetime(2026, 4, 15, 0, 0, 0, tzinfo=datetime.timezone.utc).isoformat(),
+            "created_at": datetime.datetime(
+                2026, 4, 15, 0, 0, 0, tzinfo=datetime.timezone.utc
+            ).isoformat(),
             "entries": entries,
             "total_files": len(entries),
             "total_bytes": sum(e["size_bytes"] for e in entries),
@@ -893,7 +921,7 @@ class TestVerifyTopology:
 
     # -- local oracle: stage ordering matches PUBLISH_STAGES -----------------
 
-    def test_four_stages_in_canonical_order(self, tmp_path: Path):
+    def test_five_stages_in_canonical_order(self, tmp_path: Path):
         """Stage names must match PUBLISH_STAGES in order."""
         self._write_manifest(tmp_path, [])
         result = runtime.verify_publish_local(tmp_path)
@@ -917,7 +945,7 @@ class TestVerifyTopology:
         manifest_stage = result.stage_result("manifest")
         assert manifest_stage is not None
         assert manifest_stage.checked == 1
-        for name in ("profiles", "evidence", "zip"):
+        for name in ("profiles", "evidence", "ontology", "zip"):
             s = result.stage_result(name)
             assert s is not None
             assert s.checked == 0
@@ -1116,7 +1144,9 @@ class TestHistoryAggregateVerifyTopology:
     def test_verify_history_aggregate_called_once(self, tmp_path: Path):
         ok_result = self._ok_history_verify_result()
 
-        with patch(f"{self._MOD}._verify_local_history_aggregate", return_value=ok_result) as mock_verify:
+        with patch(
+            f"{self._MOD}._verify_local_history_aggregate", return_value=ok_result
+        ) as mock_verify:
             runtime.verify_history_aggregate_local(tmp_path)
 
         mock_verify.assert_called_once_with(tmp_path)

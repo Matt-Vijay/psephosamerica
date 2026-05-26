@@ -14,6 +14,7 @@ from src.ingest.fec.normalize import (
 # normalize_donor_name
 # ---------------------------------------------------------------------------
 
+
 class TestNormalizeDonorName:
     def test_empty_and_none(self):
         assert normalize_donor_name(None) == ""
@@ -45,6 +46,7 @@ class TestNormalizeDonorName:
 # ---------------------------------------------------------------------------
 # normalize_employer
 # ---------------------------------------------------------------------------
+
 
 class TestNormalizeEmployer:
     def test_empty_and_none(self):
@@ -85,6 +87,7 @@ class TestNormalizeEmployer:
 # normalize_occupation
 # ---------------------------------------------------------------------------
 
+
 class TestNormalizeOccupation:
     def test_empty_and_none(self):
         assert normalize_occupation(None) == ""
@@ -104,6 +107,7 @@ class TestNormalizeOccupation:
 # ---------------------------------------------------------------------------
 # normalize_committee_id
 # ---------------------------------------------------------------------------
+
 
 class TestNormalizeCommitteeId:
     def test_empty_and_none(self):

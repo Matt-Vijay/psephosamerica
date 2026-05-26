@@ -42,4 +42,5 @@ def connect(settings: DBSettings) -> Any:
         dbname=kwargs["dbname"],
         user=kwargs["user"],
         password=kwargs["password"],
+        autocommit=False,
     )

@@ -52,9 +52,11 @@ def group_artifacts_by_chamber_year(
         year_value = row.get("filing_year")
         if chamber_value not in ("house", "senate") or year_value is None:
             continue
+        year = filing_year_or_none(year_value)
+        if year is None:
+            continue
         chamber: DisclosureChamber = chamber_value
-        year = int(year_value)
-        key = (chamber, int(year))
+        key = (chamber, year)
         groups.setdefault(key, []).append(row)
     return groups
 
@@ -88,9 +90,21 @@ def fetch_index_rows_for_artifacts(
             matches.append(ArtifactIndexMatch(artifact=row, index_row=None))
             continue
         artifact_chamber: DisclosureChamber = chamber_value
-        year = int(year_value)
-        lookup = lookups.get((artifact_chamber, int(year)), {})
+        artifact_year = filing_year_or_none(year_value)
+        if artifact_year is None:
+            matches.append(ArtifactIndexMatch(artifact=row, index_row=None))
+            continue
+        lookup = lookups.get((artifact_chamber, artifact_year), {})
         source_record_id = row.get("source_record_id")
         doc_id = "" if source_record_id is None else str(source_record_id)
         matches.append(ArtifactIndexMatch(artifact=row, index_row=lookup.get(doc_id)))
     return matches
+
+
+def filing_year_or_none(value: Any) -> int | None:
+    if isinstance(value, bool):
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None

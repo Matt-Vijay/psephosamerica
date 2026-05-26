@@ -8,6 +8,8 @@ from __future__ import annotations
 import json
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from src.provenance.store import (
     ensure_data_source,
     fail_ingestion_run,
@@ -71,7 +73,10 @@ class TestEnsureDataSource:
         row = {**self._ROW, "base_url": "https://api.congress.gov"}
         with patch(_EXECUTE_ONE) as mock_exec, patch(_FETCH_ALL, return_value=[row]):
             ensure_data_source(
-                conn, "congress-api", "Congress.gov API", "official",
+                conn,
+                "congress-api",
+                "Congress.gov API",
+                "official",
                 base_url="https://api.congress.gov",
             )
 
@@ -107,10 +112,24 @@ class TestStartIngestionRun:
         run_id = start_ingestion_run(conn, data_source_id=1, run_type="ingest")
         assert run_id == 42
 
+    def test_rejects_boolean_returning_id(self):
+        conn, _cur = _conn_for_insert(True)
+
+        with pytest.raises(TypeError, match="expected integer id"):
+            start_ingestion_run(conn, data_source_id=1, run_type="ingest")
+
+        conn.rollback.assert_called_once()
+        conn.commit.assert_not_called()
+
     def test_commits_after_insert(self):
         conn, _cur = _conn_for_insert(7)
         start_ingestion_run(conn, data_source_id=1, run_type="ingest")
         conn.commit.assert_called_once()
+
+    def test_commit_false_defers_insert_commit(self):
+        conn, _cur = _conn_for_insert(7)
+        start_ingestion_run(conn, data_source_id=1, run_type="ingest", commit=False)
+        conn.commit.assert_not_called()
 
     def test_sql_sets_running_status(self):
         conn, cur = _conn_for_insert(8)
@@ -139,6 +158,31 @@ class TestStartIngestionRun:
         params = cur.execute.call_args[0][1]
         assert 5 in params
         assert "recompute" in params
+
+    def test_rolls_back_when_insert_returning_id_is_missing(self):
+        conn, cur = _conn_for_insert(12)
+        cur.fetchone.return_value = None
+
+        with pytest.raises(ValueError, match="RETURNING id produced no row"):
+            start_ingestion_run(conn, data_source_id=5, run_type="ingest")
+
+        conn.rollback.assert_called_once()
+        conn.commit.assert_not_called()
+
+    def test_commit_false_does_not_roll_back_missing_returning_id(self):
+        conn, cur = _conn_for_insert(12)
+        cur.fetchone.return_value = None
+
+        with pytest.raises(ValueError, match="RETURNING id produced no row"):
+            start_ingestion_run(
+                conn,
+                data_source_id=5,
+                run_type="ingest",
+                commit=False,
+            )
+
+        conn.rollback.assert_not_called()
+        conn.commit.assert_not_called()
 
 
 # ---------------------------------------------------------------------------
@@ -190,6 +234,13 @@ class TestFinishIngestionRun:
         non_none = [p for p in params if p is not None]
         assert len(non_none) >= 1
 
+    def test_commit_false_forwarded(self):
+        conn = MagicMock()
+        with patch(_EXECUTE_ONE) as mock_exec:
+            finish_ingestion_run(conn, run_id=10, record_count=1, commit=False)
+
+        assert mock_exec.call_args.kwargs["commit"] is False
+
 
 # ---------------------------------------------------------------------------
 # fail_ingestion_run
@@ -239,3 +290,10 @@ class TestFailIngestionRun:
         assert "finished_at" in sql
         non_none = [p for p in params if p is not None]
         assert len(non_none) >= 1
+
+    def test_commit_false_forwarded(self):
+        conn = MagicMock()
+        with patch(_EXECUTE_ONE) as mock_exec:
+            fail_ingestion_run(conn, run_id=22, error_message="err", commit=False)
+
+        assert mock_exec.call_args.kwargs["commit"] is False

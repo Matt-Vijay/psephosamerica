@@ -243,7 +243,9 @@ class TestAmountRangeCoverage:
             ("Over $50,000,000", Decimal("50000001"), Decimal("50000001")),
         ],
     )
-    def test_recognized_labels(self, label: str, expected_min: Decimal, expected_max: Decimal) -> None:
+    def test_recognized_labels(
+        self, label: str, expected_min: Decimal, expected_max: Decimal
+    ) -> None:
         t = transaction_from_cells(**_cells(amount_raw=label))
         assert t.amount_min == expected_min
         assert t.amount_max == expected_max
@@ -274,16 +276,18 @@ class TestTransactionRowsFromTable:
         assert [t.line_number for t in result] == [5, 6]
 
     def test_row_fields_passed_through(self) -> None:
-        rows = [_row(
-            owner="SP",
-            issuer_name="Tesla Inc",
-            tx_type="S",
-            tx_date="09/30/2023",
-            amount="$50,001 - $100,000",
-            ticker="TSLA",
-            description="Common Stock",
-            source_record_id="TX-007",
-        )]
+        rows = [
+            _row(
+                owner="SP",
+                issuer_name="Tesla Inc",
+                tx_type="S",
+                tx_date="09/30/2023",
+                amount="$50,001 - $100,000",
+                ticker="TSLA",
+                description="Common Stock",
+                source_record_id="TX-007",
+            )
+        ]
         t = transaction_rows_from_table(rows)[0]
         assert t.owner_type == OwnerType.SPOUSE
         assert t.issuer_name == "Tesla Inc"
@@ -296,7 +300,15 @@ class TestTransactionRowsFromTable:
         assert t.source_record_id == "TX-007"
 
     def test_optional_keys_default_gracefully(self) -> None:
-        rows = [{"owner": "self", "issuer_name": "Acme", "tx_type": "P", "tx_date": "01/01/2023", "amount": ""}]
+        rows = [
+            {
+                "owner": "self",
+                "issuer_name": "Acme",
+                "tx_type": "P",
+                "tx_date": "01/01/2023",
+                "amount": "",
+            }
+        ]
         t = transaction_rows_from_table(rows)[0]
         assert t.issuer_ticker is None
         assert t.asset_description is None

@@ -35,9 +35,11 @@ from src.api.contracts import (
     MovementFeedPayload,
     SnapshotSummaryPayload,
 )
+from src.export.contracts import EvidenceCardPayload
 from src.export.local_store import (
     list_artifact_paths,
     load_current_member_lookup,
+    load_evidence_card,
     load_homepage_bootstrap,
     load_homepage_feed,
     load_latest_manifest,
@@ -101,7 +103,9 @@ def _load_published_homepage_bootstrap(
         return load_homepage_bootstrap(root), None
     except Exception as exc:
         if isinstance(exc, FileNotFoundError):
-            return None, _issue(f"homepage bootstrap file missing: {_BOOTSTRAP_PATH}", path=_BOOTSTRAP_PATH)
+            return None, _issue(
+                f"homepage bootstrap file missing: {_BOOTSTRAP_PATH}", path=_BOOTSTRAP_PATH
+            )
         return None, _issue(f"homepage bootstrap failed to parse: {exc}", path=_BOOTSTRAP_PATH)
 
 
@@ -135,6 +139,10 @@ def _build_expected_bootstrap(
         artifact_counts=ArtifactCounts(
             members=sum(1 for path in artifact_paths if path.startswith("members/")),
             evidence=sum(1 for path in artifact_paths if path.startswith("evidence/")),
+            ontology_edges=sum(1 for path in artifact_paths if path == "ontology/edges.json"),
+            ontology_member_graphs=sum(
+                1 for path in artifact_paths if path.startswith("ontology/members/")
+            ),
             zip_feeds=sum(1 for path in artifact_paths if path.startswith("zip/")),
             homepage_feeds=1,
             current_member_lookups=sum(
@@ -142,6 +150,9 @@ def _build_expected_bootstrap(
             ),
         ),
     )
+    evidence_card_ids = _movement_evidence_card_ids(homepage_payload)
+    evidence_cards = _load_movement_evidence_cards(root, evidence_card_ids)
+    found_card_ids = {card.evidence_card_id for card in evidence_cards}
     return HomepageBootstrapPayload(
         snapshot=snapshot,
         movement=MovementFeedPayload(
@@ -149,6 +160,12 @@ def _build_expected_bootstrap(
             top_changes=homepage_payload.top_changes,
             recent_events=homepage_payload.recent_events,
             recent_evidence_card_ids=homepage_payload.recent_evidence_card_ids,
+            evidence_cards=evidence_cards,
+            missing_evidence_card_ids=[
+                evidence_card_id
+                for evidence_card_id in evidence_card_ids
+                if evidence_card_id not in found_card_ids
+            ],
         ),
         featured_lookup_entries=build_featured_lookup_entries(
             homepage_payload.top_changes,
@@ -156,6 +173,35 @@ def _build_expected_bootstrap(
             lookup.members,
         ),
     )
+
+
+def _movement_evidence_card_ids(homepage_payload: HomepageFeedPayload) -> list[str]:
+    evidence_card_ids: list[str] = []
+    seen_ids: set[str] = set()
+    for change in homepage_payload.top_changes:
+        for card_id in change.top_evidence_card_ids:
+            if card_id and card_id not in seen_ids:
+                seen_ids.add(card_id)
+                evidence_card_ids.append(card_id)
+    for event in homepage_payload.recent_events:
+        event_card_id = event.evidence_card_id
+        if event_card_id and event_card_id not in seen_ids:
+            seen_ids.add(event_card_id)
+            evidence_card_ids.append(event_card_id)
+    return evidence_card_ids
+
+
+def _load_movement_evidence_cards(
+    root: Path,
+    evidence_card_ids: list[str],
+) -> list[EvidenceCardPayload]:
+    cards: list[EvidenceCardPayload] = []
+    for evidence_card_id in evidence_card_ids:
+        try:
+            cards.append(load_evidence_card(root, evidence_card_id))
+        except FileNotFoundError:
+            continue
+    return cards
 
 
 def _compare_payloads(
@@ -189,23 +235,13 @@ def _compare_payloads(
     db_top_changes = [_top_change_signature(summary) for summary in db.top_changes]
     top_changes_mismatch = _first_sequence_mismatch(pub_top_changes, db_top_changes)
     if top_changes_mismatch is not None:
-        issues.append(
-            _issue(
-                "top_changes mismatch: "
-                f"{top_changes_mismatch}"
-            )
-        )
+        issues.append(_issue(f"top_changes mismatch: {top_changes_mismatch}"))
 
     pub_recent_events = [_recent_event_signature(event) for event in published.recent_events]
     db_recent_events = [_recent_event_signature(event) for event in db.recent_events]
     recent_events_mismatch = _first_sequence_mismatch(pub_recent_events, db_recent_events)
     if recent_events_mismatch is not None:
-        issues.append(
-            _issue(
-                "recent_events mismatch: "
-                f"{recent_events_mismatch}"
-            )
-        )
+        issues.append(_issue(f"recent_events mismatch: {recent_events_mismatch}"))
 
     if published.recent_evidence_card_ids != db.recent_evidence_card_ids:
         issues.append(
@@ -232,7 +268,18 @@ def _compare_bootstrap_payloads(
                 path=_BOOTSTRAP_PATH,
             )
         )
-    if published.movement != expected.movement:
+    published_movement = published.movement
+    if not published_movement.evidence_cards and not published_movement.missing_evidence_card_ids:
+        # Legacy bootstrap artifacts predate resolved movement evidence fields.
+        # Keep the older contract loadable while still comparing all original
+        # movement fields.
+        published_movement = published_movement.model_copy(
+            update={
+                "evidence_cards": expected.movement.evidence_cards,
+                "missing_evidence_card_ids": expected.movement.missing_evidence_card_ids,
+            }
+        )
+    if published_movement != expected.movement:
         issues.append(
             _issue(
                 "bootstrap movement mismatch",
@@ -288,10 +335,7 @@ def _first_sequence_mismatch(
 
     for index, (published_item, db_item) in enumerate(zip(published, db)):
         if published_item != db_item:
-            return (
-                f"index={index} published={published_item!r} "
-                f"db={db_item!r}"
-            )
+            return f"index={index} published={published_item!r} db={db_item!r}"
     return None
 
 
@@ -341,24 +385,18 @@ def verify_published_homepage_roundtrip(
     # Stage 1: load published file (terminal on failure).
     published, load_issue = _load_published_homepage(root)
     if load_issue is not None:
-        return PublishRoundtripStageResult(
-            stage=_STAGE, checked=0, issues=(load_issue,)
-        )
+        return PublishRoundtripStageResult(stage=_STAGE, checked=0, issues=(load_issue,))
     assert published is not None
     bootstrap, bootstrap_issue = _load_published_homepage_bootstrap(root)
     if bootstrap_issue is not None:
-        return PublishRoundtripStageResult(
-            stage=_STAGE, checked=0, issues=(bootstrap_issue,)
-        )
+        return PublishRoundtripStageResult(stage=_STAGE, checked=0, issues=(bootstrap_issue,))
     assert bootstrap is not None
 
     # Stage 2: build DB payload.
     db_payload = _build_db_payload(conn, snapshot_date)
     expected_bootstrap = _build_expected_bootstrap(db_payload, root=root)
     if isinstance(expected_bootstrap, PublishRoundtripIssue):
-        return PublishRoundtripStageResult(
-            stage=_STAGE, checked=0, issues=(expected_bootstrap,)
-        )
+        return PublishRoundtripStageResult(stage=_STAGE, checked=0, issues=(expected_bootstrap,))
 
     # Stage 3: compare typed payloads.
     issues = _compare_payloads(published, db_payload)

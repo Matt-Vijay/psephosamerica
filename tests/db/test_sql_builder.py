@@ -8,18 +8,18 @@ from src.db.sql import build_insert, build_upsert, derive_update_columns
 # build_insert
 # ---------------------------------------------------------------------------
 
+
 class TestBuildInsert:
     def test_single_column(self):
         sql, params = build_insert("member", {"bioguide_id": "A000001"})
-        assert sql == "INSERT INTO member (bioguide_id) VALUES (%s)"
+        assert sql == 'INSERT INTO "member" ("bioguide_id") VALUES (%s)'
         assert params == ["A000001"]
 
     def test_multiple_columns_order_preserved(self):
         row = {"bioguide_id": "A000001", "last_name": "Smith", "chamber": "house"}
         sql, params = build_insert("member", row)
         assert sql == (
-            "INSERT INTO member (bioguide_id, last_name, chamber)"
-            " VALUES (%s, %s, %s)"
+            'INSERT INTO "member" ("bioguide_id", "last_name", "chamber") VALUES (%s, %s, %s)'
         )
         assert params == ["A000001", "Smith", "house"]
 
@@ -35,7 +35,18 @@ class TestBuildInsert:
 
     def test_table_name_is_literal(self):
         sql, _ = build_insert("financial_disclosure", {"filing_year": 2024})
-        assert sql.startswith("INSERT INTO financial_disclosure")
+        assert sql.startswith('INSERT INTO "financial_disclosure"')
+
+    def test_reserved_table_name_is_quoted(self):
+        sql, _ = build_insert(
+            "transaction",
+            {"financial_disclosure_id": 1, "line_number": 1},
+        )
+        assert sql.startswith('INSERT INTO "transaction"')
+
+    def test_invalid_identifier_rejected(self):
+        with pytest.raises(ValueError, match="invalid SQL identifier"):
+            build_insert("member; DROP TABLE member", {"bioguide_id": "A000001"})
 
     def test_placeholders_count_matches_columns(self):
         row = {f"col{i}": i for i in range(5)}
@@ -47,6 +58,7 @@ class TestBuildInsert:
 # ---------------------------------------------------------------------------
 # derive_update_columns
 # ---------------------------------------------------------------------------
+
 
 class TestDeriveUpdateColumns:
     def test_excludes_listed_columns(self):
@@ -77,14 +89,15 @@ class TestDeriveUpdateColumns:
 # build_upsert
 # ---------------------------------------------------------------------------
 
+
 class TestBuildUpsert:
     def test_basic_upsert_structure(self):
         row = {"bioguide_id": "A000001", "last_name": "Smith", "chamber": "house"}
         sql, params = build_upsert("member", row, conflict_columns=["bioguide_id"])
-        assert "INSERT INTO member" in sql
-        assert "ON CONFLICT (bioguide_id) DO UPDATE SET" in sql
-        assert "last_name = %s" in sql
-        assert "chamber = %s" in sql
+        assert 'INSERT INTO "member"' in sql
+        assert 'ON CONFLICT ("bioguide_id") DO UPDATE SET' in sql
+        assert '"last_name" = %s' in sql
+        assert '"chamber" = %s' in sql
         # bioguide_id should NOT appear in the SET clause
         set_part = sql.split("DO UPDATE SET")[1]
         assert "bioguide_id" not in set_part
@@ -108,8 +121,8 @@ class TestBuildUpsert:
         sql, params = build_upsert(
             "member_term", row, conflict_columns=["member_id", "congress", "chamber", "start_date"]
         )
-        assert "ON CONFLICT (member_id, congress, chamber, start_date)" in sql
-        assert "is_current = %s" in sql
+        assert 'ON CONFLICT ("member_id", "congress", "chamber", "start_date")' in sql
+        assert '"is_current" = %s' in sql
         set_part = sql.split("DO UPDATE SET")[1]
         for c in ["member_id", "congress", "chamber", "start_date"]:
             assert c not in set_part

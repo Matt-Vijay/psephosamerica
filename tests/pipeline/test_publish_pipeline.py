@@ -28,14 +28,17 @@ from src.pipeline.stages import PipelineResult, StageResult
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _planned_file(path: str = "test/file.json", content: bytes = b'{"x":1}') -> PlannedFile:
     return PlannedFile.from_bytes(path, content)
 
 
 def _planner(*files: PlannedFile) -> Planner:
     """Return a zero-argument callable that yields the given planned files."""
+
     def _fn() -> list[PlannedFile]:
         return list(files)
+
     return _fn
 
 
@@ -46,6 +49,7 @@ def _empty_planner() -> Planner:
 # ---------------------------------------------------------------------------
 # PublishConfig
 # ---------------------------------------------------------------------------
+
 
 class TestPublishConfig:
     def test_is_frozen(self, tmp_path: Path) -> None:
@@ -65,6 +69,7 @@ class TestPublishConfig:
 # ---------------------------------------------------------------------------
 # PublishResult
 # ---------------------------------------------------------------------------
+
 
 class TestPublishResult:
     def _succeeded_pipeline(self) -> PipelineResult:
@@ -117,6 +122,7 @@ class TestPublishResult:
 # Stage builders — plan
 # ---------------------------------------------------------------------------
 
+
 class TestPlanStage:
     def test_stores_planned_files_in_context(self) -> None:
         pf = _planned_file()
@@ -157,6 +163,7 @@ class TestPlanStage:
 # Stage builders — write
 # ---------------------------------------------------------------------------
 
+
 class TestWriteStage:
     def test_writes_files_to_disk(self, tmp_path: Path) -> None:
         pf = _planned_file("sub/data.json", b'{"ok":true}')
@@ -191,6 +198,7 @@ class TestWriteStage:
 # ---------------------------------------------------------------------------
 # Stage builders — verify
 # ---------------------------------------------------------------------------
+
 
 class TestVerifyStage:
     def _write(self, tmp_path: Path, pf: PlannedFile) -> None:
@@ -247,6 +255,7 @@ class TestVerifyStage:
 # run_publish — integration over tmp_path
 # ---------------------------------------------------------------------------
 
+
 class TestRunPublish:
     def test_happy_path(self, tmp_path: Path) -> None:
         pf = _planned_file("members/alice.json", b'{"name":"alice"}')
@@ -301,10 +310,7 @@ class TestRunPublish:
 
         cfg = PublishConfig(snapshot_id="snap", target_dir=tmp_path)
         result = run_publish(cfg, bad)
-        stage_statuses = {
-            r.stage_name: r.status
-            for r in result.pipeline_result.stage_results
-        }
+        stage_statuses = {r.stage_name: r.status for r in result.pipeline_result.stage_results}
         assert stage_statuses["plan"] == "failed"
         assert stage_statuses["write"] == "skipped"
         assert stage_statuses["verify"] == "skipped"
@@ -316,10 +322,7 @@ class TestRunPublish:
         cfg = PublishConfig(snapshot_id="snap", target_dir=tmp_path, stop_on_failure=False)
         result = run_publish(cfg, bad)
         # write and verify run but fail (KeyError on missing context key)
-        stage_statuses = {
-            r.stage_name: r.status
-            for r in result.pipeline_result.stage_results
-        }
+        stage_statuses = {r.stage_name: r.status for r in result.pipeline_result.stage_results}
         assert stage_statuses["plan"] == "failed"
         # write/verify also failed since context["planned_files"] is absent
         assert stage_statuses["write"] == "failed"

@@ -20,13 +20,15 @@ Irreducible DB fetch boundaries patched at sub-module level:
   Evidence stage (publish_roundtrip_evidence):
     src.runtime.publish_roundtrip_evidence.fetch_all_evidence_card_rows
 
-Focused ZIP/homepage stage stubs
---------------------------------
+Focused ontology/prediction/ZIP/homepage stage stubs
+-----------------------------------------
 The profiles and evidence stages run through their real roundtrip logic in
-this file. ZIP and homepage remain stubbed here so the test module can stay
+this file. Ontology, prediction, ZIP, and homepage remain stubbed here so the test module can stay
 focused on the DB-backed member/evidence roundtrip without duplicating
-separate ZIP/homepage fixture setup in every case.
+separate ontology/prediction/ZIP/homepage fixture setup in every case.
 
+  src.runtime.publish_roundtrip.verify_published_ontology_roundtrip → _ontology_stub
+  src.runtime.publish_roundtrip.verify_published_prediction_roundtrip → _prediction_stub
   src.runtime.publish_roundtrip.verify_published_zip_roundtrip    → _zip_stub
   src.runtime.publish_roundtrip.verify_published_homepage_roundtrip → _homepage_stub
 
@@ -72,12 +74,32 @@ _FETCH_COMMITTEES = "src.runtime.publish_roundtrip_profiles.fetch_member_committ
 _FETCH_PROFILE_CARDS = "src.runtime.publish_roundtrip_profiles.fetch_all_evidence_card_rows"
 _FETCH_ALL_CARDS = "src.runtime.publish_roundtrip_evidence.fetch_all_evidence_card_rows"
 
+_VERIFY_ONTOLOGY = "src.runtime.publish_roundtrip.verify_published_ontology_roundtrip"
+_VERIFY_PREDICTION = "src.runtime.publish_roundtrip.verify_published_prediction_roundtrip"
 _VERIFY_ZIP = "src.runtime.publish_roundtrip.verify_published_zip_roundtrip"
 _VERIFY_HOMEPAGE = "src.runtime.publish_roundtrip.verify_published_homepage_roundtrip"
 
 # ---------------------------------------------------------------------------
-# Focused stubs for zip and homepage sub-verifiers
+# Focused stubs for ontology, zip, and homepage sub-verifiers
 # ---------------------------------------------------------------------------
+
+
+def _ontology_stub(
+    conn: Any,
+    root: Path,
+    manifest: Any,
+) -> PublishRoundtripStageResult:
+    """Stand-in for verify_published_ontology_roundtrip with the real three-arg contract."""
+    return PublishRoundtripStageResult(stage="ontology", checked=0, issues=())
+
+
+def _prediction_stub(
+    conn: Any,
+    root: Path,
+    manifest: Any,
+) -> PublishRoundtripStageResult:
+    """Stand-in for verify_published_prediction_roundtrip with the real three-arg contract."""
+    return PublishRoundtripStageResult(stage="prediction", checked=0, issues=())
 
 
 def _zip_stub(
@@ -217,6 +239,8 @@ def _run_roundtrip(root: Path, rt: PublishedRoundtrip) -> PublishRoundtripResult
         patch(_FETCH_COMMITTEES, side_effect=_committees),
         patch(_FETCH_PROFILE_CARDS, side_effect=_all_cards),
         patch(_FETCH_ALL_CARDS, side_effect=_all_cards),
+        patch(_VERIFY_ONTOLOGY, side_effect=_ontology_stub),
+        patch(_VERIFY_PREDICTION, side_effect=_prediction_stub),
         patch(_VERIFY_ZIP, side_effect=_zip_stub),
         patch(_VERIFY_HOMEPAGE, side_effect=_homepage_stub),
     ):
@@ -224,14 +248,14 @@ def _run_roundtrip(root: Path, rt: PublishedRoundtrip) -> PublishRoundtripResult
 
 
 def _make_valid_tree(tmp_path: Path) -> PublishedRoundtrip:
-    """Build a complete publish tree (all six stages pass) and return roundtrip."""
+    """Build a complete publish tree (all eight stages pass) and return roundtrip."""
     rt = make_roundtrip(tmp_path)
     _write_feed_json(tmp_path)
     return rt
 
 
 # ---------------------------------------------------------------------------
-# Valid trees — should pass all six stages
+# Valid trees — should pass all eight stages
 # ---------------------------------------------------------------------------
 
 
@@ -253,11 +277,20 @@ class TestVerifyRoundtripValidTree:
         result = _run_roundtrip(tmp_path, rt)
         assert result.total_errors == 0
 
-    def test_five_stages_present(self, tmp_path: Path) -> None:
+    def test_eight_stages_present(self, tmp_path: Path) -> None:
         rt = _make_valid_tree(tmp_path)
         result = _run_roundtrip(tmp_path, rt)
         stage_names = {s.stage for s in result.stages}
-        assert {"snapshot", "profiles", "evidence", "zip", "homepage", "lookup"} == stage_names
+        assert {
+            "snapshot",
+            "profiles",
+            "evidence",
+            "ontology",
+            "prediction",
+            "zip",
+            "homepage",
+            "lookup",
+        } == stage_names
 
     def test_all_stages_ok_for_valid_tree(self, tmp_path: Path) -> None:
         rt = _make_valid_tree(tmp_path)
@@ -294,8 +327,12 @@ class TestVerifyRoundtripValidTree:
             make_member_row_set(bioguide_id="B000002", slug="bob-jones", full_name="Bob Jones"),
         ]
         card_sets = [
-            make_evidence_card_row_set(public_id="ec-a001", member_slug="alice-smith", bioguide_id="A000001"),
-            make_evidence_card_row_set(public_id="ec-b002", member_slug="bob-jones", bioguide_id="B000002"),
+            make_evidence_card_row_set(
+                public_id="ec-a001", member_slug="alice-smith", bioguide_id="A000001"
+            ),
+            make_evidence_card_row_set(
+                public_id="ec-b002", member_slug="bob-jones", bioguide_id="B000002"
+            ),
         ]
         zip_sets = [make_zip_feed_row_set(zip_code="94102")]
         rt = make_roundtrip(
@@ -422,8 +459,14 @@ class TestVerifyRoundtripProfilesStage:
             patch(_FETCH_SCORE_ROWS, return_value=[]),
             patch(_FETCH_RULE_FIRES, return_value=[]),
             patch(_FETCH_COMMITTEES, return_value=[]),
-            patch(_FETCH_PROFILE_CARDS, side_effect=lambda c: [rs.row for rs in rt.evidence_card_row_sets]),
-            patch(_FETCH_ALL_CARDS, side_effect=lambda c: [rs.row for rs in rt.evidence_card_row_sets]),
+            patch(
+                _FETCH_PROFILE_CARDS,
+                side_effect=lambda c: [rs.row for rs in rt.evidence_card_row_sets],
+            ),
+            patch(
+                _FETCH_ALL_CARDS, side_effect=lambda c: [rs.row for rs in rt.evidence_card_row_sets]
+            ),
+            patch(_VERIFY_ONTOLOGY, side_effect=_ontology_stub),
             patch(_VERIFY_ZIP, side_effect=_zip_stub),
             patch(_VERIFY_HOMEPAGE, side_effect=_homepage_stub),
         ):
@@ -483,7 +526,9 @@ class TestVerifyRoundtripEvidenceStage:
         snapshot_stage = result.stage_result("snapshot")
         assert snapshot_stage is not None
         error_paths = [i.path for i in snapshot_stage.issues if i.severity == "error"]
-        assert any(path is not None and "ec-target-001" in path for path in error_paths), error_paths
+        assert any(path is not None and "ec-target-001" in path for path in error_paths), (
+            error_paths
+        )
 
     def test_card_absent_from_db_fails_evidence_stage(self, tmp_path: Path) -> None:
         """fetch_all_evidence_card_rows returning [] causes card-not-in-DB errors."""
@@ -498,6 +543,7 @@ class TestVerifyRoundtripEvidenceStage:
             patch(_FETCH_COMMITTEES, side_effect=_committees),
             patch(_FETCH_PROFILE_CARDS, return_value=[]),
             patch(_FETCH_ALL_CARDS, return_value=[]),
+            patch(_VERIFY_ONTOLOGY, side_effect=_ontology_stub),
             patch(_VERIFY_ZIP, side_effect=_zip_stub),
             patch(_VERIFY_HOMEPAGE, side_effect=_homepage_stub),
         ):
@@ -604,7 +650,16 @@ class TestVerifyRoundtripResultShape:
     def test_stage_result_by_name_returns_correct_stage(self, tmp_path: Path) -> None:
         rt = _make_valid_tree(tmp_path)
         result = _run_roundtrip(tmp_path, rt)
-        for name in ("snapshot", "profiles", "evidence", "zip", "homepage", "lookup"):
+        for name in (
+            "snapshot",
+            "profiles",
+            "evidence",
+            "ontology",
+            "prediction",
+            "zip",
+            "homepage",
+            "lookup",
+        ):
             stage = result.stage_result(name)
             assert stage is not None, f"stage {name!r} missing"
 
@@ -645,18 +700,27 @@ class TestVerifyRoundtripResultShape:
         stage_names_with_issues = {i.stage for i in issues}
         assert "profiles" in stage_names_with_issues or "homepage" in stage_names_with_issues
 
-    def test_six_stages_in_result(self, tmp_path: Path) -> None:
+    def test_eight_stages_in_result(self, tmp_path: Path) -> None:
         rt = _make_valid_tree(tmp_path)
         result = _run_roundtrip(tmp_path, rt)
-        assert len(result.stages) == 6
+        assert len(result.stages) == 8
 
-    def test_stage_order_is_snapshot_profiles_evidence_zip_homepage_lookup(
+    def test_stage_order_is_snapshot_profiles_evidence_ontology_prediction_zip_homepage_lookup(
         self, tmp_path: Path
     ) -> None:
         rt = _make_valid_tree(tmp_path)
         result = _run_roundtrip(tmp_path, rt)
         names = [s.stage for s in result.stages]
-        assert names == ["snapshot", "profiles", "evidence", "zip", "homepage", "lookup"]
+        assert names == [
+            "snapshot",
+            "profiles",
+            "evidence",
+            "ontology",
+            "prediction",
+            "zip",
+            "homepage",
+            "lookup",
+        ]
 
 
 # ---------------------------------------------------------------------------
@@ -686,6 +750,7 @@ class TestConnForwarding:
             patch(_FETCH_COMMITTEES, side_effect=_committees),
             patch(_FETCH_PROFILE_CARDS, side_effect=_all_cards),
             patch(_FETCH_ALL_CARDS, side_effect=_all_cards),
+            patch(_VERIFY_ONTOLOGY, side_effect=_ontology_stub),
             patch(_VERIFY_ZIP, side_effect=_zip_stub),
             patch(_VERIFY_HOMEPAGE, side_effect=_homepage_stub),
         ):
@@ -713,6 +778,7 @@ class TestConnForwarding:
             patch(_FETCH_COMMITTEES, side_effect=_committees),
             patch(_FETCH_PROFILE_CARDS, side_effect=_capture_cards),
             patch(_FETCH_ALL_CARDS, side_effect=_capture_cards),
+            patch(_VERIFY_ONTOLOGY, side_effect=_ontology_stub),
             patch(_VERIFY_ZIP, side_effect=_zip_stub),
             patch(_VERIFY_HOMEPAGE, side_effect=_homepage_stub),
         ):
@@ -734,6 +800,7 @@ class TestConnForwarding:
             patch(_FETCH_COMMITTEES, side_effect=_committees) as p_committees,
             patch(_FETCH_PROFILE_CARDS, side_effect=_all_cards) as p_profile_cards,
             patch(_FETCH_ALL_CARDS, side_effect=_all_cards) as p_cards,
+            patch(_VERIFY_ONTOLOGY, side_effect=_ontology_stub),
             patch(_VERIFY_ZIP, side_effect=_zip_stub),
             patch(_VERIFY_HOMEPAGE, side_effect=_homepage_stub),
         ):

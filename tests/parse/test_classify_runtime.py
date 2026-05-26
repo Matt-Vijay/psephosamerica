@@ -215,10 +215,14 @@ class TestClassifyArtifactBytes:
             avg_chars=300.0,
             headers=frozenset({"part i"}),
         )
-        senate_result = classify_artifact_bytes(b"fake", Chamber.SENATE, extractor=_extractor_for(m_80))
+        senate_result = classify_artifact_bytes(
+            b"fake", Chamber.SENATE, extractor=_extractor_for(m_80)
+        )
         assert senate_result.pdf_kind == PdfKind.TEXT
 
-        house_result = classify_artifact_bytes(b"fake", Chamber.HOUSE, extractor=_extractor_for(m_80))
+        house_result = classify_artifact_bytes(
+            b"fake", Chamber.HOUSE, extractor=_extractor_for(m_80)
+        )
         assert house_result.pdf_kind == PdfKind.MIXED
 
     def test_extractor_receives_the_original_bytes(self) -> None:
@@ -325,10 +329,7 @@ class TestClassifyFromPages:
 
     def test_header_repeated_on_every_page_triggers_duplicate_header_rows(self) -> None:
         """'schedule a' on all 10 pages → has_duplicate_header_rows → DUPLICATE_HEADER_ROWS trigger."""
-        pages = [
-            PageText(page_number=i, text=_REPEATED_SCHEDULE_A)
-            for i in range(1, 11)
-        ]
+        pages = [PageText(page_number=i, text=_REPEATED_SCHEDULE_A) for i in range(1, 11)]
         result = classify_from_pages(pages, Chamber.SENATE)
         assert ReviewTrigger.DUPLICATE_HEADER_ROWS in result.review_triggers
         assert result.needs_review
@@ -348,8 +349,7 @@ class TestClassifyFromPages:
         """Lowering the fraction threshold flags repeated headers sooner."""
         # 3/10 = 30 % — below default 50 %, above custom 20 %
         pages = [
-            PageText(page_number=i, text="schedule a\n" + _HOLDING_PAGE)
-            for i in range(1, 4)
+            PageText(page_number=i, text="schedule a\n" + _HOLDING_PAGE) for i in range(1, 4)
         ] + _make_good_pages(7, start=4)
         without_custom = classify_from_pages(pages, Chamber.SENATE, repeated_header_fraction=0.5)
         assert ReviewTrigger.DUPLICATE_HEADER_ROWS not in without_custom.review_triggers
@@ -383,8 +383,7 @@ class TestClassifyFromPages:
     def test_doc_with_no_known_headers_triggers_missing_headers(self) -> None:
         """Pages with no known section headers → MISSING_SECTION_HEADERS."""
         bare_pages = [
-            PageText(page_number=i, text="Apple Inc. AAPL 1000001 Self Stock")
-            for i in range(1, 6)
+            PageText(page_number=i, text="Apple Inc. AAPL 1000001 Self Stock") for i in range(1, 6)
         ]
         result = classify_from_pages(bare_pages, Chamber.SENATE)
         assert ReviewTrigger.MISSING_SECTION_HEADERS in result.review_triggers
@@ -399,29 +398,37 @@ class TestClassifyFromPages:
         assert result.needs_review
 
     def test_member_name_mismatch_triggers_review(self) -> None:
-        pages = [PageText(page_number=1, text="schedule a\n" + _HOLDING_PAGE)] + _make_good_pages(4, start=2)
+        pages = [PageText(page_number=1, text="schedule a\n" + _HOLDING_PAGE)] + _make_good_pages(
+            4, start=2
+        )
         result = classify_from_pages(pages, Chamber.SENATE, member_name_match_score=0.5)
         assert ReviewTrigger.MEMBER_IDENTITY_MISMATCH in result.review_triggers
 
     def test_high_member_name_score_no_mismatch(self) -> None:
-        pages = [PageText(page_number=1, text="schedule a\n" + _HOLDING_PAGE)] + _make_good_pages(4, start=2)
+        pages = [PageText(page_number=1, text="schedule a\n" + _HOLDING_PAGE)] + _make_good_pages(
+            4, start=2
+        )
         result = classify_from_pages(pages, Chamber.SENATE, member_name_match_score=0.95)
         assert ReviewTrigger.MEMBER_IDENTITY_MISMATCH not in result.review_triggers
 
     def test_unresolved_trusts_flag_forwarded(self) -> None:
-        pages = [PageText(page_number=1, text="schedule a\n" + _HOLDING_PAGE)] + _make_good_pages(4, start=2)
-        result = classify_from_pages(
-            pages, Chamber.SENATE, has_unresolved_options_or_trusts=True
+        pages = [PageText(page_number=1, text="schedule a\n" + _HOLDING_PAGE)] + _make_good_pages(
+            4, start=2
         )
+        result = classify_from_pages(pages, Chamber.SENATE, has_unresolved_options_or_trusts=True)
         assert ReviewTrigger.UNRESOLVED_OPTIONS_OR_TRUSTS in result.review_triggers
 
     def test_impossible_dates_flag_forwarded(self) -> None:
-        pages = [PageText(page_number=1, text="schedule a\n" + _HOLDING_PAGE)] + _make_good_pages(4, start=2)
+        pages = [PageText(page_number=1, text="schedule a\n" + _HOLDING_PAGE)] + _make_good_pages(
+            4, start=2
+        )
         result = classify_from_pages(pages, Chamber.SENATE, has_impossible_dates=True)
         assert ReviewTrigger.IMPOSSIBLE_DATE in result.review_triggers
 
     def test_non_standard_amounts_flag_forwarded(self) -> None:
-        pages = [PageText(page_number=1, text="schedule a\n" + _HOLDING_PAGE)] + _make_good_pages(4, start=2)
+        pages = [PageText(page_number=1, text="schedule a\n" + _HOLDING_PAGE)] + _make_good_pages(
+            4, start=2
+        )
         result = classify_from_pages(pages, Chamber.SENATE, has_non_standard_amounts=True)
         assert ReviewTrigger.NON_STANDARD_AMOUNTS in result.review_triggers
 
@@ -455,7 +462,5 @@ class TestClassifyFromPages:
 
         # Custom set includes "holdings table": it appears on 4/4 pages (100 %) →
         # ceil(0.5 * 4) = 2 ≤ 4 → triggers DUPLICATE_HEADER_ROWS.
-        result_custom = classify_from_pages(
-            pages, Chamber.SENATE, known_headers=custom_with_extra
-        )
+        result_custom = classify_from_pages(pages, Chamber.SENATE, known_headers=custom_with_extra)
         assert ReviewTrigger.DUPLICATE_HEADER_ROWS in result_custom.review_triggers

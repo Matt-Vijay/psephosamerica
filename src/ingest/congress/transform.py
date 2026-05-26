@@ -44,7 +44,7 @@ def member_row(record: MemberRecord) -> dict[str, Any]:
     return {
         "bioguide_id": record.bioguide_id,
         "lis_member_id": record.lis_member_id,
-        "fec_candidate_id": None,          # resolved via FEC crosswalk, not here
+        "fec_candidate_id": None,  # resolved via FEC crosswalk, not here
         "slug": _to_slug(record.bioguide_id),
         "first_name": record.first_name,
         "middle_name": record.middle_name,
@@ -103,7 +103,7 @@ def committee_row(record: CommitteeRecord) -> dict[str, Any]:
         "name": record.name,
         "parent_committee_id": None,
         "jurisdiction_basis": None,
-        "review_tier": "review_required",   # conservative default; updated by mapping layer
+        "review_tier": "review_required",  # conservative default; updated by mapping layer
         "is_active": True,
         "source_artifact_id": None,
         "source_record_id": record.source_url,

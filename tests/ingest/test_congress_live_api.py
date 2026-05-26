@@ -451,9 +451,13 @@ class TestFetchCosponsorsForBills:
             for i in range(1, 4)
         ]
         cosponsors_by_number = {
-            1: [CosponsorRecord(congress=119, bill_type="hr", bill_number=1, bioguide_id="X000001")],
+            1: [
+                CosponsorRecord(congress=119, bill_type="hr", bill_number=1, bioguide_id="X000001")
+            ],
             2: [],
-            3: [CosponsorRecord(congress=119, bill_type="hr", bill_number=3, bioguide_id="X000003")],
+            3: [
+                CosponsorRecord(congress=119, bill_type="hr", bill_number=3, bioguide_id="X000003")
+            ],
         }
 
         def _side_effect(congress, bill_type, bill_number):
@@ -479,6 +483,8 @@ class TestPaginatedFetchMembers:
         assert len(result) == 2
         assert result[0].bioguide_id == "A000001"
         assert result[1].bioguide_id == "B000002"
+        assert result[0].source_url == members_url(119)
+        assert result[1].source_url == members_url(119)
 
     def test_empty_page_returns_empty_list(self):
         fixture = CongressLiveFixture()
@@ -499,6 +505,8 @@ class TestPaginatedFetchMembers:
         assert len(result) == 2
         assert result[0].bioguide_id == "A000001"
         assert result[1].bioguide_id == "B000002"
+        assert result[0].source_url == members_url(119)
+        assert result[1].source_url == page2_url
 
     def test_empty_page_with_next_url_terminates_pagination(self):
         # An empty page stops iteration even if pagination.next is present.
@@ -569,6 +577,8 @@ class TestPaginatedFetchCommittees:
         assert len(result) == 2
         assert result[0].committee_code == "hjud00"
         assert result[1].committee_code == "hnat00"
+        assert result[0].source_url == committees_url(119)
+        assert result[1].source_url == page2_url
 
 
 # ---------------------------------------------------------------------------
@@ -604,6 +614,8 @@ class TestPaginatedFetchBills:
         assert len(result) == 2
         assert result[0].bill_number == 1
         assert result[1].bill_number == 2
+        assert result[0].source_url == bills_url(119)
+        assert result[1].source_url == page2_url
 
     def test_bill_type_filter_uses_separate_route(self):
         fixture = CongressLiveFixture()
@@ -623,9 +635,7 @@ class TestPaginatedFetchCosponsors:
     def test_single_bill_with_cosponsors(self):
         fixture = CongressLiveFixture()
         fixture.add_bills_page([_RAW_BILL_1], congress=119)
-        fixture.add_cosponsors_page(
-            [_RAW_COSPONSOR_X], congress=119, bill_type="hr", bill_number=1
-        )
+        fixture.add_cosponsors_page([_RAW_COSPONSOR_X], congress=119, bill_type="hr", bill_number=1)
         client = fixture.build_client()
         bills = fetch_bills(client, congress=119)
         result = fetch_cosponsors_for_bills(client, bills)
@@ -635,9 +645,7 @@ class TestPaginatedFetchCosponsors:
     def test_bill_with_no_cosponsors_contributes_nothing(self):
         fixture = CongressLiveFixture()
         fixture.add_bills_page([_RAW_BILL_1], congress=119)
-        fixture.add_cosponsors_page(
-            [], congress=119, bill_type="hr", bill_number=1
-        )
+        fixture.add_cosponsors_page([], congress=119, bill_type="hr", bill_number=1)
         client = fixture.build_client()
         bills = fetch_bills(client, congress=119)
         result = fetch_cosponsors_for_bills(client, bills)
@@ -646,12 +654,8 @@ class TestPaginatedFetchCosponsors:
     def test_two_bills_one_with_no_cosponsors_preserves_order(self):
         fixture = CongressLiveFixture()
         fixture.add_bills_page([_RAW_BILL_1, _RAW_BILL_2], congress=119)
-        fixture.add_cosponsors_page(
-            [_RAW_COSPONSOR_X], congress=119, bill_type="hr", bill_number=1
-        )
-        fixture.add_cosponsors_page(
-            [], congress=119, bill_type="hr", bill_number=2
-        )
+        fixture.add_cosponsors_page([_RAW_COSPONSOR_X], congress=119, bill_type="hr", bill_number=1)
+        fixture.add_cosponsors_page([], congress=119, bill_type="hr", bill_number=2)
         client = fixture.build_client()
         bills = fetch_bills(client, congress=119)
         result = fetch_cosponsors_for_bills(client, bills)
@@ -661,18 +665,16 @@ class TestPaginatedFetchCosponsors:
     def test_two_cosponsors_across_two_bills_in_bill_order(self):
         fixture = CongressLiveFixture()
         fixture.add_bills_page([_RAW_BILL_1, _RAW_BILL_2], congress=119)
-        fixture.add_cosponsors_page(
-            [_RAW_COSPONSOR_X], congress=119, bill_type="hr", bill_number=1
-        )
-        fixture.add_cosponsors_page(
-            [_RAW_COSPONSOR_Y], congress=119, bill_type="hr", bill_number=2
-        )
+        fixture.add_cosponsors_page([_RAW_COSPONSOR_X], congress=119, bill_type="hr", bill_number=1)
+        fixture.add_cosponsors_page([_RAW_COSPONSOR_Y], congress=119, bill_type="hr", bill_number=2)
         client = fixture.build_client()
         bills = fetch_bills(client, congress=119)
         result = fetch_cosponsors_for_bills(client, bills)
         assert len(result) == 2
         assert result[0].bioguide_id == "X000099"
         assert result[1].bioguide_id == "Y000088"
+        assert result[0].source_url == cosponsors_url(119, "hr", 1)
+        assert result[1].source_url == cosponsors_url(119, "hr", 2)
 
     def test_cosponsor_two_pages_for_single_bill(self):
         page2_url = cosponsors_url(119, "hr", 1, offset=250)
@@ -697,6 +699,8 @@ class TestPaginatedFetchCosponsors:
         assert len(result) == 2
         assert result[0].bioguide_id == "X000099"
         assert result[1].bioguide_id == "Y000088"
+        assert result[0].source_url == cosponsors_url(119, "hr", 1)
+        assert result[1].source_url == page2_url
 
     def test_empty_bills_list_makes_no_cosponsor_requests(self):
         # No cosponsor routes registered; iter on empty bills must not hit the network.

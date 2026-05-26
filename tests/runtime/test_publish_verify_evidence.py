@@ -10,7 +10,13 @@ import json
 from datetime import date, datetime
 from pathlib import Path
 
-from src.export.contracts import ConfidenceLabel, EvidenceCardPayload
+from src.export.contracts import (
+    ConfidenceLabel,
+    EvidenceBlock,
+    EvidenceCardPayload,
+    EvidenceSection,
+    SourceAnchor,
+)
 from src.export.manifest import ManifestEntry, SnapshotManifest, manifest_root_sha256
 from src.export.writer import evidence_path, serialize_payload
 from src.runtime.publish_verify_evidence import verify_local_evidence_cards
@@ -35,8 +41,17 @@ def _card(card_id: str = "ec-001") -> EvidenceCardPayload:
         rule_version=1,
         score_delta=-2.5,
         short_explanation="Trade overlaps committee jurisdiction.",
-        blocks=[],
-        source_anchors=[],
+        blocks=[
+            EvidenceBlock(section=EvidenceSection.FACT, text="PTR disclosed a trade."),
+        ],
+        source_anchors=[
+            SourceAnchor(
+                source_type="financial_disclosure",
+                source_id="fd-1",
+                url="https://disclosures.house.gov/public_disc/ptr-pdfs/2024/1.pdf",
+                label="Financial disclosure",
+            )
+        ],
         confidence=ConfidenceLabel.MEDIUM,
         snapshot_date=SNAPSHOT_DATE,
         created_at=datetime(2026, 4, 14, 8, 0, 0),
@@ -249,6 +264,151 @@ class TestVerifyLocalEvidenceCardsIdMismatch:
         assert "mismatch" in issue.message
         assert "ec-wrong-id" in issue.message
         assert "ec-real-id" in issue.message
+
+
+# ---------------------------------------------------------------------------
+# Source anchors
+# ---------------------------------------------------------------------------
+
+
+class TestVerifyLocalEvidenceCardsSourceAnchors:
+    def test_nonzero_score_card_without_source_anchor_is_error(self, tmp_path: Path) -> None:
+        card = _card("ec-unanchored").model_copy(update={"source_anchors": []})
+        _write_card(tmp_path, card)
+
+        result = verify_local_evidence_cards(tmp_path, _manifest_with_cards("ec-unanchored"))
+
+        assert result.ok is False
+        assert result.error_count == 1
+        issue = result.issues[0]
+        assert issue.path == evidence_path("ec-unanchored")
+        assert "source anchor" in issue.message
+
+    def test_nonzero_score_card_without_source_url_is_error(self, tmp_path: Path) -> None:
+        card = _card("ec-no-source-url").model_copy(
+            update={
+                "source_anchors": [
+                    SourceAnchor(
+                        source_type="financial_disclosure",
+                        source_id="fd-1",
+                        url=None,
+                        label="Financial disclosure",
+                    )
+                ]
+            }
+        )
+        _write_card(tmp_path, card)
+
+        result = verify_local_evidence_cards(tmp_path, _manifest_with_cards("ec-no-source-url"))
+
+        assert result.ok is False
+        assert result.error_count == 1
+        issue = result.issues[0]
+        assert issue.path == evidence_path("ec-no-source-url")
+        assert "source URL" in issue.message
+
+    def test_nonzero_score_card_with_http_source_url_is_error(self, tmp_path: Path) -> None:
+        card = _card("ec-http-source").model_copy(
+            update={
+                "source_anchors": [
+                    SourceAnchor(
+                        source_type="financial_disclosure",
+                        source_id="fd-1",
+                        url="http://disclosures.house.gov/public_disc/ptr-pdfs/2024/1",
+                        label="Financial disclosure",
+                    )
+                ]
+            }
+        )
+        _write_card(tmp_path, card)
+
+        result = verify_local_evidence_cards(tmp_path, _manifest_with_cards("ec-http-source"))
+
+        assert result.ok is False
+        assert result.error_count == 1
+        assert "source URL" in result.issues[0].message
+
+    def test_nonzero_score_card_requires_url_on_claim_bearing_anchor(self, tmp_path: Path) -> None:
+        card = _card("ec-claim-anchor-no-url").model_copy(
+            update={
+                "source_anchors": [
+                    SourceAnchor(
+                        source_type="financial_disclosure",
+                        source_id="fd-1",
+                        url=None,
+                        label="Financial disclosure",
+                    ),
+                    SourceAnchor(
+                        source_type="committee_membership",
+                        source_id="committee-science",
+                        url="https://www.congress.gov/committees/science",
+                        label="Science Committee",
+                    ),
+                ]
+            }
+        )
+        _write_card(tmp_path, card)
+
+        result = verify_local_evidence_cards(
+            tmp_path,
+            _manifest_with_cards("ec-claim-anchor-no-url"),
+        )
+
+        assert result.ok is False
+        assert result.error_count == 1
+        assert "financial_disclosure fd-1" in result.issues[0].message
+
+    def test_nonzero_score_card_requires_official_claim_source_anchor(self, tmp_path: Path) -> None:
+        card = _card("ec-metadata-only-source").model_copy(
+            update={
+                "source_anchors": [
+                    SourceAnchor(
+                        source_type="rule_context",
+                        source_id="context-1",
+                        url="https://example.com/context",
+                        label="Rule context",
+                    )
+                ]
+            }
+        )
+        _write_card(tmp_path, card)
+
+        result = verify_local_evidence_cards(
+            tmp_path,
+            _manifest_with_cards("ec-metadata-only-source"),
+        )
+
+        assert result.ok is False
+        assert result.error_count == 1
+        assert "official source" in result.issues[0].message
+
+    def test_nonzero_score_card_rejects_duplicate_source_anchor_keys(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        card = _card("ec-duplicate-source-anchor")
+        payload = card.model_dump(mode="json")
+        payload["source_anchors"].append(dict(payload["source_anchors"][0]))
+        path = tmp_path / evidence_path("ec-duplicate-source-anchor")
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(payload, sort_keys=True), encoding="utf-8")
+
+        result = verify_local_evidence_cards(
+            tmp_path,
+            _manifest_with_cards("ec-duplicate-source-anchor"),
+        )
+
+        assert result.ok is False
+        assert result.error_count == 1
+        assert "duplicate source anchors" in result.issues[0].message
+
+    def test_zero_score_card_without_source_anchor_is_allowed(self, tmp_path: Path) -> None:
+        card = _card("ec-zero").model_copy(update={"score_delta": 0.0, "source_anchors": []})
+        _write_card(tmp_path, card)
+
+        result = verify_local_evidence_cards(tmp_path, _manifest_with_cards("ec-zero"))
+
+        assert result.ok is True
 
 
 # ---------------------------------------------------------------------------

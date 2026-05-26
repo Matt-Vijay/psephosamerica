@@ -45,8 +45,7 @@ def extract_text_pages(data: bytes) -> list[str]:
     """
     if _pypdf is None:
         raise ImportError(
-            "pypdf is required for PDF text extraction; "
-            "install with: pip install 'openpact[pdf]'"
+            "pypdf is required for PDF text extraction; install with: pip install 'openpact[pdf]'"
         )
     reader = _pypdf.PdfReader(io.BytesIO(data))
     return [page.extract_text() or "" for page in reader.pages]
@@ -70,9 +69,7 @@ def extract_text_metrics(data: bytes) -> TextMetrics:
     text_bearing = [p for p in pages if len(p) >= _MIN_CHARS_TEXT_PAGE]
     n_text_pages = len(text_bearing)
 
-    avg_chars = (
-        sum(len(p) for p in text_bearing) / n_text_pages if n_text_pages > 0 else 0.0
-    )
+    avg_chars = sum(len(p) for p in text_bearing) / n_text_pages if n_text_pages > 0 else 0.0
 
     detected: set[str] = set()
     for page_text in pages:

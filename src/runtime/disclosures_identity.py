@@ -54,14 +54,10 @@ def disclosure_identity_from_index_row(
     key = chamber.lower()
     if key == "house":
         if not isinstance(row, HouseIndexRow):
-            raise TypeError(
-                f"chamber='house' requires a HouseIndexRow, got {type(row).__name__}"
-            )
+            raise TypeError(f"chamber='house' requires a HouseIndexRow, got {type(row).__name__}")
         return house_identity_from_index_row(row)
     if key == "senate":
         if not isinstance(row, SenateIndexRow):
-            raise TypeError(
-                f"chamber='senate' requires a SenateIndexRow, got {type(row).__name__}"
-            )
+            raise TypeError(f"chamber='senate' requires a SenateIndexRow, got {type(row).__name__}")
         return senate_identity_from_index_row(row)
     raise ValueError(f"Unknown chamber: {chamber!r}. Expected 'house' or 'senate'.")

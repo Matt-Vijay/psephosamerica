@@ -63,11 +63,11 @@ class TestVerifyLocalPublishValidTree:
         # At least one member profile and one evidence card are present by default.
         assert result.total_checked >= 2
 
-    def test_four_stages_present(self, tmp_path: Path) -> None:
+    def test_six_stages_present(self, tmp_path: Path) -> None:
         root = _ok_snap(tmp_path)
         result = verify_local_publish(root)
         stage_names = {s.stage for s in result.stages}
-        assert {"manifest", "profiles", "evidence", "zip"} == stage_names
+        assert {"manifest", "profiles", "evidence", "ontology", "prediction", "zip"} == stage_names
 
     def test_all_stages_ok_for_valid_tree(self, tmp_path: Path) -> None:
         root = _ok_snap(tmp_path)
@@ -81,8 +81,18 @@ class TestVerifyLocalPublishValidTree:
             make_member_profile(bioguide_id="B000002", slug="bob-jones", name="Bob Jones"),
         ]
         cards = [
-            make_evidence_card(evidence_card_id="ec-a001", member_slug="alice-smith", member_bioguide_id="A000001", member_name="Alice Smith"),
-            make_evidence_card(evidence_card_id="ec-b002", member_slug="bob-jones", member_bioguide_id="B000002", member_name="Bob Jones"),
+            make_evidence_card(
+                evidence_card_id="ec-a001",
+                member_slug="alice-smith",
+                member_bioguide_id="A000001",
+                member_name="Alice Smith",
+            ),
+            make_evidence_card(
+                evidence_card_id="ec-b002",
+                member_slug="bob-jones",
+                member_bioguide_id="B000002",
+                member_name="Bob Jones",
+            ),
         ]
         make_snapshot(tmp_path, member_profiles=profiles, evidence_cards=cards)
         result = verify_local_publish(tmp_path)
@@ -354,7 +364,7 @@ class TestVerifyResultShape:
     def test_stage_result_by_name(self, tmp_path: Path) -> None:
         root = _ok_snap(tmp_path)
         result = verify_local_publish(root)
-        for name in ("manifest", "profiles", "evidence", "zip"):
+        for name in ("manifest", "profiles", "evidence", "ontology", "zip"):
             stage = result.stage_result(name)
             assert stage is not None, f"stage {name!r} missing from result"
 

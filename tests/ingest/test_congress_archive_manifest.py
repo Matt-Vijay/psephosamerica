@@ -18,7 +18,7 @@ from src.ingest.congress.archive import (
     HouseVoteSource,
     SenateVoteSource,
 )
-from src.ingest.congress.archive_manifest import load_manifest
+from src.ingest.congress.archive_manifest import load_manifest, write_manifest
 
 
 # ---------------------------------------------------------------------------
@@ -107,9 +107,7 @@ class TestLoadManifestHappyPath:
     def test_member_detail_entries(self, tmp_path: Path) -> None:
         data = {
             **_MINIMAL,
-            "member_details": [
-                {"bioguide_id": "P000197", "path": "member_details/P000197.json"}
-            ],
+            "member_details": [{"bioguide_id": "P000197", "path": "member_details/P000197.json"}],
         }
         p = _write_manifest(tmp_path, data)
         m = load_manifest(p)
@@ -249,3 +247,119 @@ class TestLoadManifestErrors:
         p = _write_manifest(tmp_path, data)
         with pytest.raises(ValueError, match="bill_number"):
             load_manifest(p)
+
+
+class TestWriteManifest:
+    def _minimal_manifest(self, tmp_path: Path) -> CongressArchiveManifest:
+        return CongressArchiveManifest(
+            congress=119,
+            members=MembersSource(path=tmp_path / "members.json", congress=119),
+            committees=CommitteesSource(path=tmp_path / "committees.json", congress=119),
+            bills=BillsSource(path=tmp_path / "bills.json", congress=119),
+            cosponsors=(),
+            member_details=(),
+            bill_details=(),
+            house_votes=(),
+            senate_votes=(),
+        )
+
+    def test_write_manifest_roundtrips_through_loader(self, tmp_path: Path) -> None:
+        manifest = CongressArchiveManifest(
+            congress=119,
+            members=MembersSource(path=tmp_path / "members.json", congress=119),
+            committees=CommitteesSource(path=tmp_path / "committees.json", congress=119),
+            bills=BillsSource(path=tmp_path / "bills.json", congress=119),
+            cosponsors=(
+                CosponsorsSource(
+                    path=tmp_path / "cosponsors" / "119_hr_1.json",
+                    congress=119,
+                    bill_type="hr",
+                    bill_number=1,
+                ),
+            ),
+            member_details=(
+                MemberDetailSource(
+                    path=tmp_path / "member_details" / "P000197.json",
+                    bioguide_id="P000197",
+                ),
+            ),
+            bill_details=(
+                BillDetailSource(
+                    path=tmp_path / "bill_details" / "119_hr_1.json",
+                    congress=119,
+                    bill_type="hr",
+                    bill_number=1,
+                ),
+            ),
+            house_votes=(
+                HouseVoteSource(
+                    path=tmp_path / "house" / "2025" / "roll001.xml",
+                    year=2025,
+                    roll_call_number=1,
+                ),
+            ),
+            senate_votes=(
+                SenateVoteSource(
+                    path=tmp_path / "senate" / "vote1191" / "vote_119_1_00003.xml",
+                    congress=119,
+                    session_number=1,
+                    roll_call_number=3,
+                ),
+            ),
+        )
+
+        manifest_path = write_manifest(tmp_path / "manifest.json", manifest)
+        loaded = load_manifest(manifest_path)
+
+        assert manifest_path == tmp_path / "manifest.json"
+        assert loaded == manifest
+
+    def test_write_manifest_uses_unique_temp_file_before_replace(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        manifest = self._minimal_manifest(tmp_path)
+        final_path = tmp_path / "manifest.json"
+        seen_temp_names: list[str] = []
+        original_open = Path.open
+
+        def guarded_open(path: Path, *args: object, **kwargs: object):
+            mode = args[0] if args else kwargs.get("mode", "r")
+            if path == final_path and isinstance(mode, str) and "w" in mode:
+                raise AssertionError("write_manifest wrote directly to final path")
+            if path.name.startswith(".manifest.json.") and path.name.endswith(".tmp"):
+                seen_temp_names.append(path.name)
+            return original_open(path, *args, **kwargs)
+
+        monkeypatch.setattr(Path, "open", guarded_open)
+
+        assert write_manifest(final_path, manifest) == final_path
+
+        assert len(seen_temp_names) == 1
+        assert load_manifest(final_path) == manifest
+
+    def test_write_manifest_cleans_temp_file_when_replace_fails(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        manifest = self._minimal_manifest(tmp_path)
+        final_path = tmp_path / "manifest.json"
+        original_replace = Path.replace
+        temp_paths: list[Path] = []
+
+        def failing_replace(path: Path, target: Path) -> Path:
+            if target == final_path and path.name.startswith(".manifest.json."):
+                temp_paths.append(path)
+                raise OSError("replace failed")
+            return original_replace(path, target)
+
+        monkeypatch.setattr(Path, "replace", failing_replace)
+
+        with pytest.raises(OSError, match="replace failed"):
+            write_manifest(final_path, manifest)
+
+        assert not final_path.exists()
+        assert temp_paths
+        assert all(not path.exists() for path in temp_paths)

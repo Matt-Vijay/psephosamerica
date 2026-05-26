@@ -16,7 +16,7 @@ def run(argv: list[str]) -> int:
         args = parse_args(argv)
         result = runtime_commands.dispatch_command(args)
     except SystemExit as exc:
-        return int(exc.code) if isinstance(exc.code, int) else 1
+        return exc.code if type(exc.code) is int else 1
     except Exception as exc:  # noqa: BLE001
         print(as_json({"ok": False, "error": str(exc)}))
         return 1

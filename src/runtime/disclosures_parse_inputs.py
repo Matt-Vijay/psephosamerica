@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from src.core.path_safety import safe_join_confined
 from src.query.source_artifact_rows import fetch_unparsed_disclosure_artifact_rows
 
 
@@ -35,7 +36,11 @@ def load_unparsed_disclosure_artifacts(
     rows = fetch_unparsed_disclosure_artifact_rows(conn, chamber=chamber, limit=limit)
     inputs: list[DisclosureParseInput] = []
     for row in rows:
-        path = local_root / row["storage_uri"]
+        path = safe_join_confined(
+            local_root,
+            row["storage_uri"],
+            label="storage_uri",
+        )
         if not path.exists():
             raise FileNotFoundError(f"Artifact not found: {path}")
         inputs.append(

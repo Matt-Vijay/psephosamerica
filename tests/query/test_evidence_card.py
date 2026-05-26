@@ -48,7 +48,7 @@ BASE_ROW: dict = {
         {
             "source_type": "financial_disclosure",
             "source_id": "fd_001",
-            "url": "https://example.gov/fd/001",
+            "url": "https://disclosures.house.gov/public_disc/ptr-pdfs/2024/001.pdf",
             "label": "PTR filed 2024-01-15",
         }
     ],
@@ -169,7 +169,7 @@ class TestParseAnchors:
             {
                 "source_type": "financial_disclosure",
                 "source_id": "fd_001",
-                "url": "https://example.gov/fd/001",
+                "url": "https://disclosures.house.gov/public_disc/ptr-pdfs/2024/001.pdf",
                 "label": "PTR 2024-01-15",
             }
         ]
@@ -177,7 +177,7 @@ class TestParseAnchors:
         assert len(result) == 1
         assert result[0].source_type == "financial_disclosure"
         assert result[0].source_id == "fd_001"
-        assert result[0].url == "https://example.gov/fd/001"
+        assert result[0].url == "https://disclosures.house.gov/public_disc/ptr-pdfs/2024/001.pdf"
         assert result[0].label == "PTR 2024-01-15"
 
     def test_url_optional(self):
@@ -205,14 +205,14 @@ class TestParseAnchors:
             {
                 "source_type": "financial_disclosure",
                 "source_id": "fd_001",
-                "url": "https://example.gov/fd/001",
+                "url": "https://disclosures.house.gov/public_disc/ptr-pdfs/2024/001.pdf",
                 "label": "Longer disclosure label",
             },
         ]
         result = _parse_anchors(raw)
         assert len(result) == 1
         assert result[0].label == "Longer disclosure label"
-        assert result[0].url == "https://example.gov/fd/001"
+        assert result[0].url == "https://disclosures.house.gov/public_disc/ptr-pdfs/2024/001.pdf"
 
     def test_anchors_sorted_by_source_identity(self):
         raw = [
@@ -336,6 +336,12 @@ class TestAssembleEvidenceCard:
         result = assemble_evidence_card(row)
         assert result.rule_version == 2
 
+    def test_rule_version_rejects_boolean(self):
+        row = {**BASE_ROW, "rule_version": True}
+
+        with pytest.raises(ValueError, match="rule_version must be an integer"):
+            assemble_evidence_card(row)
+
     def test_score_delta_is_float(self):
         result = assemble_evidence_card(BASE_ROW)
         assert result.score_delta == -10.0
@@ -361,12 +367,24 @@ class TestAssembleEvidenceCard:
         assert result.blocks[2].text == "Late disclosure reduces transparency."
 
     def test_empty_json_columns_produce_no_blocks(self):
-        row = {**BASE_ROW, "facts": {}, "inferences": {}, "normative_judgments": {}}
+        row = {
+            **BASE_ROW,
+            "score_delta": 0.0,
+            "facts": {},
+            "inferences": {},
+            "normative_judgments": {},
+        }
         result = assemble_evidence_card(row)
         assert result.blocks == []
 
     def test_none_json_columns_produce_no_blocks(self):
-        row = {**BASE_ROW, "facts": None, "inferences": None, "normative_judgments": None}
+        row = {
+            **BASE_ROW,
+            "score_delta": 0.0,
+            "facts": None,
+            "inferences": None,
+            "normative_judgments": None,
+        }
         result = assemble_evidence_card(row)
         assert result.blocks == []
 
@@ -376,30 +394,112 @@ class TestAssembleEvidenceCard:
         assert result.source_anchors[0].source_id == "fd_001"
 
     def test_empty_source_anchors(self):
-        row = {**BASE_ROW, "source_anchors": []}
+        row = {**BASE_ROW, "score_delta": 0.0, "source_anchors": []}
         result = assemble_evidence_card(row)
         assert result.source_anchors == []
+
+    def test_nonzero_card_requires_source_anchors(self):
+        row = {**BASE_ROW, "source_anchors": []}
+        with pytest.raises(ValueError, match="source anchor"):
+            assemble_evidence_card(row)
+
+    def test_nonzero_card_requires_source_url(self):
+        row = {
+            **BASE_ROW,
+            "source_anchors": [
+                {
+                    "source_type": "financial_disclosure",
+                    "source_id": "fd_001",
+                    "label": "Financial disclosure",
+                }
+            ],
+        }
+        with pytest.raises(ValueError, match="source URL"):
+            assemble_evidence_card(row)
+
+    def test_nonzero_card_rejects_non_https_source_url(self):
+        row = {
+            **BASE_ROW,
+            "source_anchors": [
+                {
+                    "source_type": "financial_disclosure",
+                    "source_id": "fd_001",
+                    "url": "http://disclosures.house.gov/public_disc/ptr-pdfs/2024/001",
+                    "label": "Financial disclosure",
+                }
+            ],
+        }
+        with pytest.raises(ValueError, match="source URL"):
+            assemble_evidence_card(row)
+
+    def test_nonzero_card_requires_url_on_claim_bearing_anchor(self):
+        row = {
+            **BASE_ROW,
+            "source_anchors": [
+                {
+                    "source_type": "financial_disclosure",
+                    "source_id": "fd_001",
+                    "label": "Financial disclosure",
+                },
+                {
+                    "source_type": "committee_membership",
+                    "source_id": "committee_science",
+                    "url": "https://www.congress.gov/committees/science",
+                    "label": "Science Committee",
+                },
+            ],
+        }
+        with pytest.raises(ValueError, match="financial_disclosure.*fd_001"):
+            assemble_evidence_card(row)
+
+    def test_nonzero_card_requires_official_claim_source_anchor(self):
+        row = {
+            **BASE_ROW,
+            "source_anchors": [
+                {
+                    "source_type": "rule_context",
+                    "source_id": "context-1",
+                    "url": "https://example.com/context",
+                    "label": "Rule context",
+                }
+            ],
+        }
+
+        with pytest.raises(ValueError, match="official source"):
+            assemble_evidence_card(row)
+
+    def test_nonzero_card_requires_fact_block(self):
+        row = {**BASE_ROW, "facts": {}, "inferences": {}, "normative_judgments": {}}
+        with pytest.raises(ValueError, match="fact block"):
+            assemble_evidence_card(row)
 
     def test_source_anchors_deduplicated_and_sorted(self):
         row = {
             **BASE_ROW,
             "source_anchors": [
-                {"source_type": "b_type", "source_id": "2", "label": "second"},
+                {"source_type": "rule_context", "source_id": "2", "label": "second"},
                 {
-                    "source_type": "a_type",
+                    "source_type": "financial_disclosure",
                     "source_id": "1",
-                    "url": "https://example.gov/a/1",
+                    "url": "https://disclosures.house.gov/public_disc/ptr-pdfs/2024/1.pdf",
                     "label": "primary anchor",
                 },
-                {"source_type": "a_type", "source_id": "1", "label": "duplicate anchor"},
+                {
+                    "source_type": "financial_disclosure",
+                    "source_id": "1",
+                    "label": "duplicate anchor",
+                },
             ],
         }
         result = assemble_evidence_card(row)
         assert [(anchor.source_type, anchor.source_id) for anchor in result.source_anchors] == [
-            ("a_type", "1"),
-            ("b_type", "2"),
+            ("financial_disclosure", "1"),
+            ("rule_context", "2"),
         ]
-        assert result.source_anchors[0].url == "https://example.gov/a/1"
+        assert (
+            result.source_anchors[0].url
+            == "https://disclosures.house.gov/public_disc/ptr-pdfs/2024/1.pdf"
+        )
 
     def test_confidence_high(self):
         result = assemble_evidence_card(BASE_ROW)

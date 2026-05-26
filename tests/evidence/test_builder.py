@@ -71,13 +71,14 @@ def _make_anchor(n: int = 1) -> SourceAnchor:
         source_type="financial_disclosure",
         source_id=f"fd-{n}",
         label=f"Financial Disclosure #{n}",
-        url=f"https://example.gov/fd/{n}",
+        url=f"https://disclosures.house.gov/public_disc/ptr-pdfs/2024/{n}.pdf",
     )
 
 
 # ---------------------------------------------------------------------------
 # build_source_anchor
 # ---------------------------------------------------------------------------
+
 
 class TestBuildSourceAnchor:
     def test_returns_source_anchor(self):
@@ -104,6 +105,7 @@ class TestBuildSourceAnchor:
 # ---------------------------------------------------------------------------
 # build_evidence_block / section-specific helpers
 # ---------------------------------------------------------------------------
+
 
 class TestBuildEvidenceBlock:
     def test_returns_evidence_block(self):
@@ -132,6 +134,7 @@ class TestBuildEvidenceBlock:
 # ---------------------------------------------------------------------------
 # assemble_blocks
 # ---------------------------------------------------------------------------
+
 
 class TestAssembleBlocks:
     def test_empty_all_sections(self):
@@ -189,6 +192,7 @@ class TestAssembleBlocks:
 # build_evidence_card_payload
 # ---------------------------------------------------------------------------
 
+
 class TestBuildEvidenceCardPayload:
     def _build(self, **overrides: object) -> EvidenceCardPayload:
         defaults: dict = {
@@ -228,6 +232,7 @@ class TestBuildEvidenceCardPayload:
         assert payload.rule_version == 1
         assert payload.dimension == "conflict_of_interest_risk"
         assert "30 days" in payload.short_explanation
+        assert payload.rule_fire_source_record_id == "fire-abc-123"
 
     def test_score_delta_preserved(self):
         payload = self._build(score_delta=-5.0)
@@ -286,9 +291,60 @@ class TestBuildEvidenceCardPayload:
         assert payload.source_anchors[0].source_id == "fd-1"
         assert payload.source_anchors[1].source_id == "fd-2"
 
-    def test_empty_source_anchors_allowed(self):
-        payload = self._build(source_anchors=[])
+    def test_empty_source_anchors_allowed_for_zero_delta_card(self):
+        payload = self._build(source_anchors=[], score_delta=0.0)
         assert payload.source_anchors == []
+
+    def test_nonzero_score_delta_requires_source_anchor(self):
+        with pytest.raises(ValueError, match="source anchor"):
+            self._build(source_anchors=[])
+
+    def test_nonzero_score_delta_requires_source_url(self):
+        anchor = build_source_anchor(
+            source_type="financial_disclosure",
+            source_id="fd-no-url",
+            label="Disclosure without URL",
+        )
+        with pytest.raises(ValueError, match="source URL"):
+            self._build(source_anchors=[anchor])
+
+    def test_nonzero_score_delta_rejects_non_https_source_url(self):
+        anchor = build_source_anchor(
+            source_type="financial_disclosure",
+            source_id="fd-http",
+            label="Disclosure over HTTP",
+            url="http://disclosures.house.gov/public_disc/ptr-pdfs/2024/1",
+        )
+        with pytest.raises(ValueError, match="source URL"):
+            self._build(source_anchors=[anchor])
+
+    def test_nonzero_score_delta_requires_url_on_claim_bearing_anchor(self):
+        anchors = [
+            build_source_anchor(
+                source_type="financial_disclosure",
+                source_id="fd-no-url",
+                label="Disclosure without URL",
+            ),
+            build_source_anchor(
+                source_type="committee_membership",
+                source_id="committee-science",
+                label="Science Committee",
+                url="https://www.congress.gov/committees/science",
+            ),
+        ]
+        with pytest.raises(ValueError, match="financial_disclosure.*fd-no-url"):
+            self._build(source_anchors=anchors)
+
+    def test_nonzero_score_delta_requires_official_claim_source_anchor(self):
+        anchor = build_source_anchor(
+            source_type="rule_context",
+            source_id="context-1",
+            label="Rule context",
+            url="https://example.com/context",
+        )
+
+        with pytest.raises(ValueError, match="official source"):
+            self._build(source_anchors=[anchor])
 
     def test_no_blocks_when_all_sections_empty(self):
         payload = self._build(

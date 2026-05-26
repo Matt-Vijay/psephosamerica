@@ -199,11 +199,11 @@ class TestCleanMultiPagePTR:
         types = _tx_types(result)
         # rows 1,4,5 are Purchase; rows 2,3,6 are Sale
         assert types[0] == TransactionType.PURCHASE  # Apple Purchase
-        assert types[1] == TransactionType.SALE       # MSFT Sale (Full)
-        assert types[2] == TransactionType.SALE       # AMZN Sale (Partial)
-        assert types[3] == TransactionType.PURCHASE   # Tesla Purchase
-        assert types[4] == TransactionType.PURCHASE   # Nvidia Purchase
-        assert types[5] == TransactionType.SALE       # Alphabet Sale
+        assert types[1] == TransactionType.SALE  # MSFT Sale (Full)
+        assert types[2] == TransactionType.SALE  # AMZN Sale (Partial)
+        assert types[3] == TransactionType.PURCHASE  # Tesla Purchase
+        assert types[4] == TransactionType.PURCHASE  # Nvidia Purchase
+        assert types[5] == TransactionType.SALE  # Alphabet Sale
 
     def test_owner_types(self) -> None:
         result = parse_house_ptr(_CLEAN_PAGES, member_bioguide_id="J000123")

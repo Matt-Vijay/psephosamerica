@@ -7,6 +7,7 @@ Flow:
   2. transform_parse_sessions      — build DisclosureTransformResult per succeeded session
   3. run_disclosures_load_runtime  — provenance-tracked FK-safe canonical load
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass

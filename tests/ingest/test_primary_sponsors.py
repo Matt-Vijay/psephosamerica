@@ -20,6 +20,7 @@ from src.load.congress import PrimarySponsorSpec as LoadPrimarySponsorSpec
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture()
 def bill() -> BillRecord:
     return BillRecord(
@@ -53,9 +54,12 @@ def _detail(sponsors: list[dict]) -> dict:
 # Happy path
 # ---------------------------------------------------------------------------
 
+
 class TestHappyPath:
     def test_returns_spec_with_correct_identity(self, bill: BillRecord) -> None:
-        detail = _detail([{"bioguideId": "P000197", "url": "https://api.congress.gov/v3/member/P000197"}])
+        detail = _detail(
+            [{"bioguideId": "P000197", "url": "https://api.congress.gov/v3/member/P000197"}]
+        )
         spec = primary_sponsor_spec_from_bill_detail(detail, bill)
         assert isinstance(spec, LoadPrimarySponsorSpec)
         assert spec.bioguide_id == "P000197"
@@ -88,10 +92,12 @@ class TestHappyPath:
 
     def test_only_first_sponsor_used(self, bill: BillRecord) -> None:
         """Even when multiple sponsors are listed, only the first is used."""
-        detail = _detail([
-            {"bioguideId": "P000197"},
-            {"bioguideId": "S000148"},
-        ])
+        detail = _detail(
+            [
+                {"bioguideId": "P000197"},
+                {"bioguideId": "S000148"},
+            ]
+        )
         spec = primary_sponsor_spec_from_bill_detail(detail, bill)
         assert spec is not None
         assert spec.bioguide_id == "P000197"
@@ -119,6 +125,7 @@ class TestHappyPath:
 # ---------------------------------------------------------------------------
 # None cases
 # ---------------------------------------------------------------------------
+
 
 class TestReturnNone:
     def test_empty_sponsors_list(self, bill: BillRecord) -> None:
@@ -154,6 +161,7 @@ class TestReturnNone:
 # ---------------------------------------------------------------------------
 # Edge cases
 # ---------------------------------------------------------------------------
+
 
 class TestEdgeCases:
     def test_bioguide_id_stripped(self, bill: BillRecord) -> None:

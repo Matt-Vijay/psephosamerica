@@ -15,8 +15,14 @@ from unittest.mock import MagicMock, patch
 
 from src.api.read_service import get_homepage_bootstrap, get_zip_entry
 from src.export.filesystem import write_planned_files
-from src.export.writer import PlannedFile, homepage_bootstrap_path, serialize_payload, zip_entry_path
+from src.export.writer import (
+    PlannedFile,
+    homepage_bootstrap_path,
+    serialize_payload,
+    zip_entry_path,
+)
 from src.runtime.main import run
+from src.runtime.publish_roundtrip_types import PublishRoundtripStageResult
 from tests.support.published_roundtrip_fixtures import (
     PublishedRoundtrip,
     assemble_from_homepage_feed_row_set,
@@ -33,6 +39,8 @@ _FETCH_RULE_FIRES = "src.runtime.publish_roundtrip_profiles.fetch_member_rule_fi
 _FETCH_COMMITTEES = "src.runtime.publish_roundtrip_profiles.fetch_member_committee_rows"
 _FETCH_PROFILE_CARDS = "src.runtime.publish_roundtrip_profiles.fetch_all_evidence_card_rows"
 _FETCH_ALL_CARDS = "src.runtime.publish_roundtrip_evidence.fetch_all_evidence_card_rows"
+_FETCH_ONTOLOGY_ROWS = "src.runtime.publish_roundtrip_ontology.fetch_all_ontology_edge_rows"
+_VERIFY_PREDICTION = "src.runtime.publish_roundtrip.verify_published_prediction_roundtrip"
 _FETCH_ZIP_ROWS = "src.runtime.publish_roundtrip_zip.fetch_zip_member_summary_rows"
 _FETCH_ZIP_EVIDENCE = "src.runtime.publish_roundtrip_zip.fetch_recent_evidence_ids_by_bioguide"
 _FETCH_HOMEPAGE_ROWS = "src.runtime.publish_roundtrip_homepage.fetch_homepage_feed_rows"
@@ -119,6 +127,10 @@ def _zip_evidence(rt: PublishedRoundtrip) -> dict[str, list[str]]:
     return evidence_by_member
 
 
+def _prediction_stub(conn, root, manifest):
+    return PublishRoundtripStageResult(stage="prediction", checked=0, issues=())
+
+
 def _run_and_parse(
     publish_root: Path,
     capsys,
@@ -128,6 +140,7 @@ def _run_and_parse(
     conn = MagicMock(name="conn")
 
     if roundtrip is None:
+
         def by_slug(conn, slug: str):
             return None
 
@@ -159,6 +172,8 @@ def _run_and_parse(
         patch(_FETCH_COMMITTEES, side_effect=committees),
         patch(_FETCH_PROFILE_CARDS, return_value=all_cards),
         patch(_FETCH_ALL_CARDS, return_value=all_cards),
+        patch(_FETCH_ONTOLOGY_ROWS, return_value=[]),
+        patch(_VERIFY_PREDICTION, side_effect=_prediction_stub),
         patch(_FETCH_ZIP_ROWS, return_value=zip_rows),
         patch(_FETCH_ZIP_EVIDENCE, return_value=zip_evidence),
         patch(_FETCH_HOMEPAGE_ROWS, return_value=homepage_rows),
@@ -202,7 +217,16 @@ class TestRunVerifyPublishRoundtripValidTree:
         rt = _make_valid_tree(tmp_path)
         _, out = _run_and_parse(tmp_path, capsys, roundtrip=rt)
         names = [stage["stage"] for stage in out["roundtrip"]["stages"]]
-        assert names == ["snapshot", "profiles", "evidence", "zip", "homepage", "lookup"]
+        assert names == [
+            "snapshot",
+            "profiles",
+            "evidence",
+            "ontology",
+            "prediction",
+            "zip",
+            "homepage",
+            "lookup",
+        ]
 
     def test_multiple_members_and_cards_ok(self, tmp_path: Path, capsys) -> None:
         member_sets = [
@@ -210,8 +234,12 @@ class TestRunVerifyPublishRoundtripValidTree:
             make_member_row_set(bioguide_id="B000002", slug="bob-jones", full_name="Bob Jones"),
         ]
         evidence_sets = [
-            make_evidence_card_row_set(public_id="ec-a001", member_slug="alice-smith", bioguide_id="A000001"),
-            make_evidence_card_row_set(public_id="ec-b002", member_slug="bob-jones", bioguide_id="B000002"),
+            make_evidence_card_row_set(
+                public_id="ec-a001", member_slug="alice-smith", bioguide_id="A000001"
+            ),
+            make_evidence_card_row_set(
+                public_id="ec-b002", member_slug="bob-jones", bioguide_id="B000002"
+            ),
         ]
         zip_sets = [
             make_zip_feed_row_set(zip_code="94102"),
@@ -289,13 +317,17 @@ class TestRunVerifyPublishRoundtripOutputShape:
     def test_roundtrip_summary_has_expected_keys(self, tmp_path: Path, capsys) -> None:
         rt = _make_valid_tree(tmp_path)
         _, out = _run_and_parse(tmp_path, capsys, roundtrip=rt)
-        assert set(out["roundtrip"]) == {
+        assert {
             "ok",
             "total_checked",
             "total_errors",
             "total_warnings",
             "stages",
-        }
+            "issues",
+            "issues_truncated",
+        }.issubset(out["roundtrip"])
+        assert isinstance(out["roundtrip"]["issues"], list)
+        assert out["roundtrip"]["issues_truncated"] is False
 
     def test_each_stage_has_stable_keys(self, tmp_path: Path, capsys) -> None:
         rt = _make_valid_tree(tmp_path)

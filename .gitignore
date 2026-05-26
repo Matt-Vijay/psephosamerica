@@ -16,6 +16,13 @@ build/
 .next/
 node_modules/
 
+# Generated local pipeline artifacts
+out/
+data/fec/
+data/prepared/
+data/raw/
+data/crosswalks/member_fec.csv
+
 # Local config
 .env
 .env.*

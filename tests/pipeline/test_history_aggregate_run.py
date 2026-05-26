@@ -1,16 +1,27 @@
 from __future__ import annotations
 
 import datetime as dt
+import json
 from pathlib import Path
+
+import pytest
 
 from src.api.read_service import get_zip_entry
 from src.export.filesystem import write_planned_files
 from src.export.local_store import (
     list_snapshot_ids,
     load_evidence_card,
+    load_history_event,
+    load_history_event_page,
+    load_history_coverage,
     load_member_change_summary,
     load_member_history,
+    load_member_history_coverage,
+    load_member_history_coverage_index,
     load_member_history_page,
+    load_member_timeline_index,
+    load_member_timeline_dimension,
+    load_member_timeline_page,
     load_member_page,
     load_member_preset_compare,
     load_member_profile,
@@ -20,6 +31,7 @@ from src.export.local_store import (
     load_zip_entry,
 )
 from src.pipeline.history_aggregate_run import (
+    _EvidenceCardResolver,
     build_aggregated_member_histories,
     build_snapshot_index,
     merge_member_history_payloads,
@@ -28,14 +40,25 @@ from src.pipeline.history_aggregate_run import (
 from src.export.writer import (
     PlannedFile,
     history_preset_range_path,
+    history_event_path,
+    history_event_page_path,
+    history_coverage_path,
     member_change_summary_path,
+    member_history_path,
+    member_history_coverage_path,
+    member_history_coverage_index_path,
     member_history_page_path,
+    member_timeline_index_path,
+    member_timeline_page_path,
+    member_timeline_dimension_path,
+    member_timeline_year_path,
     member_page_payload_path,
     member_preset_compare_path,
     movement_window_path,
     serialize_payload,
     snapshot_preset_compare_path,
     zip_entry_path,
+    evidence_path,
 )
 from src.export.contracts import MemberHistoryPayload
 from tests.support.published_snapshot_fixtures import (
@@ -135,20 +158,26 @@ def test_build_aggregated_member_histories_merges_same_slug_across_roots(tmp_pat
     ]
 
 
-def test_write_history_aggregate_writes_latest_current_state_and_merged_history(tmp_path: Path) -> None:
+def test_write_history_aggregate_writes_latest_current_state_and_merged_history(
+    tmp_path: Path,
+) -> None:
     first_root = tmp_path / "2026-01-06"
     second_root = tmp_path / "2026-01-13"
     target_root = tmp_path / "aggregate"
     make_snapshot(
         first_root,
         snapshot_id="2026-01-06",
-        member_profiles=[make_member_profile(name="Early Nancy", snapshot_date=dt.date(2026, 1, 6))],
+        member_profiles=[
+            make_member_profile(name="Early Nancy", snapshot_date=dt.date(2026, 1, 6))
+        ],
         member_histories=[_history(dt.date(2026, 1, 6), score_total=40.0, name="Early Nancy")],
     )
     make_snapshot(
         second_root,
         snapshot_id="2026-01-13",
-        member_profiles=[make_member_profile(name="Latest Nancy", snapshot_date=dt.date(2026, 1, 13))],
+        member_profiles=[
+            make_member_profile(name="Latest Nancy", snapshot_date=dt.date(2026, 1, 13))
+        ],
         member_histories=[_history(dt.date(2026, 1, 13), score_total=55.0, name="Latest Nancy")],
     )
 
@@ -295,6 +324,76 @@ def test_write_history_aggregate_copies_historical_evidence_cards_from_older_roo
     assert copied_old.snapshot_date == old_snapshot_date
 
 
+def test_write_history_aggregate_emits_dimension_movement_windows(tmp_path: Path) -> None:
+    first_root = tmp_path / "2026-01-06"
+    second_root = tmp_path / "2026-01-13"
+    target_root = tmp_path / "aggregate"
+    first_date = dt.date(2026, 1, 6)
+    second_date = dt.date(2026, 1, 13)
+
+    first_history = _history(
+        first_date,
+        score_total=40.0,
+        dimension_scores={
+            "conflict_of_interest_risk": 30.0,
+            "transparency_risk": 10.0,
+        },
+        evidence_card_id="ec-0001",
+    ).model_copy(
+        update={
+            "events": [
+                event.model_copy(update={"dimension": "transparency_risk"})
+                for event in _history(
+                    first_date,
+                    score_total=40.0,
+                    dimension_scores={
+                        "conflict_of_interest_risk": 30.0,
+                        "transparency_risk": 10.0,
+                    },
+                    evidence_card_id="ec-0001",
+                ).events
+            ]
+        }
+    )
+    second_history = _history(
+        second_date,
+        score_total=55.0,
+        dimension_scores={
+            "conflict_of_interest_risk": 35.0,
+            "transparency_risk": 20.0,
+        },
+        evidence_card_id="ec-0002",
+    ).model_copy(
+        update={
+            "events": [
+                event.model_copy(update={"dimension": "transparency_risk"})
+                for event in _history(
+                    second_date,
+                    score_total=55.0,
+                    dimension_scores={
+                        "conflict_of_interest_risk": 35.0,
+                        "transparency_risk": 20.0,
+                    },
+                    evidence_card_id="ec-0002",
+                ).events
+            ]
+        }
+    )
+
+    make_snapshot(first_root, snapshot_id="2026-01-06", member_histories=[first_history])
+    make_snapshot(second_root, snapshot_id="2026-01-13", member_histories=[second_history])
+
+    write_history_aggregate([first_root, second_root], target_root)
+
+    assert (target_root / movement_window_path(dimension="transparency_risk")).is_file()
+    assert (target_root / movement_window_path("4w", dimension="transparency_risk")).is_file()
+    assert not (target_root / movement_window_path(dimension="ethics_enforcement_risk")).exists()
+
+    movement = load_movement_window(target_root, dimension="transparency_risk")
+    assert movement.dimension == "transparency_risk"
+    assert [change.dimension for change in movement.top_changes] == ["transparency_risk"]
+
+
 def test_write_history_aggregate_writes_member_preset_compare_artifacts(
     tmp_path: Path,
 ) -> None:
@@ -392,9 +491,7 @@ def test_write_history_aggregate_writes_snapshot_preset_compare_artifacts(
     cycle_compare = load_snapshot_preset_compare(target_root, "cycle")
     assert cycle_compare.start_snapshot_id == "2026-01-06"
     assert cycle_compare.end_snapshot_id == "2026-01-20"
-    assert [summary.slug for summary in cycle_compare.featured_member_changes] == [
-        "nancy-pelosi"
-    ]
+    assert [summary.slug for summary in cycle_compare.featured_member_changes] == ["nancy-pelosi"]
 
 
 def test_write_history_aggregate_writes_member_history_page_artifact(
@@ -413,7 +510,9 @@ def test_write_history_aggregate_writes_member_history_page_artifact(
                 created_at=dt.datetime(2026, 1, 6, tzinfo=dt.UTC),
             )
         ],
-        member_histories=[_history(dt.date(2026, 1, 6), score_total=40.0, evidence_card_id="ec-old")],
+        member_histories=[
+            _history(dt.date(2026, 1, 6), score_total=40.0, evidence_card_id="ec-old")
+        ],
     )
     make_snapshot(
         second_root,
@@ -425,7 +524,9 @@ def test_write_history_aggregate_writes_member_history_page_artifact(
                 created_at=dt.datetime(2026, 1, 13, tzinfo=dt.UTC),
             )
         ],
-        member_histories=[_history(dt.date(2026, 1, 13), score_total=55.0, evidence_card_id="ec-latest")],
+        member_histories=[
+            _history(dt.date(2026, 1, 13), score_total=55.0, evidence_card_id="ec-latest")
+        ],
     )
 
     write_history_aggregate([first_root, second_root], target_root)
@@ -435,6 +536,444 @@ def test_write_history_aggregate_writes_member_history_page_artifact(
     assert page.member_page.profile.slug == "nancy-pelosi"
     assert page.recent_change.slug == "nancy-pelosi"
     assert page.default_window_compare.summary.score_total_delta == 15.0
+    assert page.coverage is not None
+    assert page.coverage.snapshot_count == 2
+    assert page.timeline_index is not None
+    assert page.timeline_page is not None
+    assert page.timeline_index.total_events == 2
+    assert [event.evidence_card_id for event in page.timeline_page.events] == [
+        "ec-latest",
+        "ec-old",
+    ]
+
+
+def test_write_history_aggregate_prunes_stale_generated_files_on_rerun(
+    tmp_path: Path,
+) -> None:
+    first_root = tmp_path / "2026-01-06"
+    second_root = tmp_path / "2026-01-13"
+    target_root = tmp_path / "aggregate"
+    stale_history = _history(
+        dt.date(2026, 1, 6),
+        score_total=12.0,
+        name="Retired Member",
+    ).model_copy(
+        update={
+            "bioguide_id": "R000001",
+            "slug": "retired-member",
+            "name": "Retired Member",
+        }
+    )
+    make_snapshot(
+        first_root,
+        snapshot_id="2026-01-06",
+        member_profiles=[
+            make_member_profile(snapshot_date=dt.date(2026, 1, 6)),
+            make_member_profile(
+                bioguide_id="R000001",
+                slug="retired-member",
+                name="Retired Member",
+                snapshot_date=dt.date(2026, 1, 6),
+            ),
+        ],
+        member_histories=[
+            _history(dt.date(2026, 1, 6), score_total=40.0),
+            stale_history,
+        ],
+    )
+    make_snapshot(
+        second_root,
+        snapshot_id="2026-01-13",
+        member_histories=[_history(dt.date(2026, 1, 13), score_total=55.0)],
+    )
+
+    write_history_aggregate([first_root], target_root)
+    assert (target_root / member_history_path("retired-member")).is_file()
+
+    write_history_aggregate([second_root], target_root)
+
+    assert not (target_root / member_history_path("retired-member")).exists()
+    assert not (target_root / member_history_page_path("retired-member")).exists()
+    assert not (target_root / member_page_payload_path("retired-member")).exists()
+
+
+def test_write_history_aggregate_rejects_missing_referenced_evidence(
+    tmp_path: Path,
+) -> None:
+    source_root = tmp_path / "2026-01-06"
+    target_root = tmp_path / "aggregate"
+    make_snapshot(
+        source_root,
+        snapshot_id="2026-01-06",
+        evidence_cards=[],
+        member_histories=[
+            _history(
+                dt.date(2026, 1, 6),
+                score_total=40.0,
+                evidence_card_id="missing-evidence-card",
+            )
+        ],
+    )
+
+    with pytest.raises(ValueError, match="missing evidence card"):
+        write_history_aggregate([source_root], target_root)
+
+
+def test_evidence_resolver_copy_planned_rejects_invalid_evidence_sidecar(
+    tmp_path: Path,
+) -> None:
+    source_root = tmp_path / "2026-01-06"
+    make_snapshot(source_root, snapshot_id="2026-01-06")
+    evidence_file = source_root / evidence_path("ec-0001")
+    payload = json.loads(evidence_file.read_text(encoding="utf-8"))
+    payload["source_anchors"][0]["url"] = None
+    evidence_file.write_text(json.dumps(payload), encoding="utf-8")
+
+    resolver = _EvidenceCardResolver([source_root])
+
+    with pytest.raises(ValueError, match="financial_disclosure.*fd-001"):
+        resolver.copy_planned(["ec-0001"], existing_paths=set())
+
+
+def test_write_history_aggregate_writes_member_history_coverage_artifact(
+    tmp_path: Path,
+) -> None:
+    first_root = tmp_path / "2026-01-06"
+    second_root = tmp_path / "2026-01-13"
+    target_root = tmp_path / "aggregate"
+    make_snapshot(
+        first_root,
+        snapshot_id="2026-01-06",
+        member_histories=[
+            _history(dt.date(2026, 1, 6), score_total=40.0, evidence_card_id="ec-old")
+        ],
+    )
+    make_snapshot(
+        second_root,
+        snapshot_id="2026-01-13",
+        member_histories=[
+            _history(dt.date(2026, 1, 13), score_total=55.0, evidence_card_id="ec-latest")
+        ],
+    )
+
+    write_history_aggregate([first_root, second_root], target_root)
+
+    assert (target_root / member_history_coverage_path("nancy-pelosi")).is_file()
+    coverage = load_member_history_coverage(target_root, "nancy-pelosi")
+    assert coverage.slug == "nancy-pelosi"
+    assert coverage.snapshot_count == 2
+    assert coverage.total_events == 2
+
+
+def test_write_history_aggregate_writes_member_history_coverage_index_artifact(
+    tmp_path: Path,
+) -> None:
+    first_root = tmp_path / "2026-01-06"
+    second_root = tmp_path / "2026-01-13"
+    target_root = tmp_path / "aggregate"
+    make_snapshot(
+        first_root,
+        snapshot_id="2026-01-06",
+        member_histories=[
+            _history(dt.date(2026, 1, 6), score_total=40.0, evidence_card_id="ec-old")
+        ],
+    )
+    make_snapshot(
+        second_root,
+        snapshot_id="2026-01-13",
+        member_histories=[
+            _history(dt.date(2026, 1, 13), score_total=55.0, evidence_card_id="ec-latest")
+        ],
+    )
+
+    write_history_aggregate([first_root, second_root], target_root)
+
+    assert (target_root / member_history_coverage_index_path()).is_file()
+    coverage_index = load_member_history_coverage_index(target_root)
+    assert coverage_index.total_members == 1
+    assert coverage_index.members[0].slug == "nancy-pelosi"
+
+
+def test_write_history_aggregate_writes_member_timeline_artifacts(
+    tmp_path: Path,
+) -> None:
+    first_root = tmp_path / "2026-01-06"
+    second_root = tmp_path / "2026-01-13"
+    target_root = tmp_path / "aggregate"
+    make_snapshot(
+        first_root,
+        snapshot_id="2026-01-06",
+        evidence_cards=[
+            make_evidence_card(
+                evidence_card_id="ec-old",
+                snapshot_date=dt.date(2026, 1, 6),
+                created_at=dt.datetime(2026, 1, 6, tzinfo=dt.UTC),
+            )
+        ],
+        member_histories=[
+            _history(dt.date(2026, 1, 6), score_total=40.0, evidence_card_id="ec-old")
+        ],
+    )
+    make_snapshot(
+        second_root,
+        snapshot_id="2026-01-13",
+        evidence_cards=[
+            make_evidence_card(
+                evidence_card_id="ec-latest",
+                snapshot_date=dt.date(2026, 1, 13),
+                created_at=dt.datetime(2026, 1, 13, tzinfo=dt.UTC),
+            )
+        ],
+        member_histories=[
+            _history(dt.date(2026, 1, 13), score_total=55.0, evidence_card_id="ec-latest")
+        ],
+    )
+
+    write_history_aggregate([first_root, second_root], target_root)
+
+    assert (target_root / member_timeline_index_path("nancy-pelosi")).is_file()
+    assert (target_root / member_timeline_page_path("nancy-pelosi", 1)).is_file()
+    assert (
+        target_root / member_timeline_dimension_path("nancy-pelosi", "conflict_of_interest_risk")
+    ).is_file()
+    assert (target_root / member_timeline_year_path("nancy-pelosi", 2026)).is_file()
+
+    timeline_index = load_member_timeline_index(target_root, "nancy-pelosi")
+    assert timeline_index.total_events == 2
+    assert timeline_index.total_pages == 1
+    assert timeline_index.latest_event_id is not None
+
+    timeline_page = load_member_timeline_page(target_root, "nancy-pelosi", 1)
+    assert [event.evidence_card_id for event in timeline_page.events] == [
+        "ec-latest",
+        "ec-old",
+    ]
+    assert (target_root / history_event_path(timeline_page.events[0].event_id)).is_file()
+
+    event_payload = load_history_event(target_root, timeline_page.events[0].event_id)
+    assert event_payload.event_id == timeline_page.events[0].event_id
+    assert event_payload.slug == "nancy-pelosi"
+
+
+def test_write_history_aggregate_writes_member_timeline_dimension_artifacts_per_member(
+    tmp_path: Path,
+) -> None:
+    first_root = tmp_path / "2026-01-06"
+    second_root = tmp_path / "2026-01-13"
+    target_root = tmp_path / "aggregate"
+
+    def _grassley_history(
+        snapshot_date: dt.date,
+        *,
+        score_total: float,
+        evidence_card_id: str,
+    ) -> MemberHistoryPayload:
+        payload = make_member_history(
+            bioguide_id="G000386",
+            slug="chuck-grassley",
+            name="Chuck Grassley",
+            state="IA",
+            snapshot_date=snapshot_date,
+            published_at=dt.datetime.combine(snapshot_date, dt.time.min, tzinfo=dt.UTC),
+            fired_at=dt.datetime.combine(snapshot_date, dt.time.min, tzinfo=dt.UTC),
+        )
+        snapshot = payload.snapshots[0].model_copy(
+            update={
+                "score_total": score_total,
+                "score_total_delta": score_total - 5.0,
+                "dimension_scores": {"transparency_and_disclosure_risk": score_total},
+            }
+        )
+        return payload.model_copy(
+            update={
+                "party": "Republican",
+                "snapshots": [snapshot],
+                "events": [
+                    payload.events[0].model_copy(
+                        update={
+                            "dimension": "transparency_and_disclosure_risk",
+                            "evidence_card_id": evidence_card_id,
+                        }
+                    )
+                ],
+            }
+        )
+
+    make_snapshot(
+        first_root,
+        snapshot_id="2026-01-06",
+        evidence_cards=[
+            make_evidence_card(
+                evidence_card_id="ec-nancy-old",
+                snapshot_date=dt.date(2026, 1, 6),
+                created_at=dt.datetime(2026, 1, 6, tzinfo=dt.UTC),
+            ),
+            make_evidence_card(
+                evidence_card_id="ec-chuck-old",
+                member_slug="chuck-grassley",
+                member_bioguide_id="G000386",
+                member_name="Chuck Grassley",
+                snapshot_date=dt.date(2026, 1, 6),
+                created_at=dt.datetime(2026, 1, 6, tzinfo=dt.UTC),
+            ),
+        ],
+        member_histories=[
+            _history(dt.date(2026, 1, 6), score_total=40.0, evidence_card_id="ec-nancy-old"),
+            _grassley_history(
+                dt.date(2026, 1, 6),
+                score_total=18.0,
+                evidence_card_id="ec-chuck-old",
+            ),
+        ],
+    )
+    make_snapshot(
+        second_root,
+        snapshot_id="2026-01-13",
+        evidence_cards=[
+            make_evidence_card(
+                evidence_card_id="ec-nancy-latest",
+                snapshot_date=dt.date(2026, 1, 13),
+                created_at=dt.datetime(2026, 1, 13, tzinfo=dt.UTC),
+            ),
+            make_evidence_card(
+                evidence_card_id="ec-chuck-latest",
+                member_slug="chuck-grassley",
+                member_bioguide_id="G000386",
+                member_name="Chuck Grassley",
+                snapshot_date=dt.date(2026, 1, 13),
+                created_at=dt.datetime(2026, 1, 13, tzinfo=dt.UTC),
+            ),
+        ],
+        member_histories=[
+            _history(dt.date(2026, 1, 13), score_total=55.0, evidence_card_id="ec-nancy-latest"),
+            _grassley_history(
+                dt.date(2026, 1, 13),
+                score_total=24.0,
+                evidence_card_id="ec-chuck-latest",
+            ),
+        ],
+    )
+
+    write_history_aggregate([first_root, second_root], target_root)
+
+    nancy_dimension = load_member_timeline_dimension(
+        target_root,
+        "nancy-pelosi",
+        "conflict_of_interest_risk",
+    )
+    assert nancy_dimension.dimension == "conflict_of_interest_risk"
+    assert {event.dimension for event in nancy_dimension.timeline_page.events} == {
+        "conflict_of_interest_risk"
+    }
+
+    chuck_dimension = load_member_timeline_dimension(
+        target_root,
+        "chuck-grassley",
+        "transparency_and_disclosure_risk",
+    )
+    assert chuck_dimension.dimension == "transparency_and_disclosure_risk"
+    assert {event.dimension for event in chuck_dimension.timeline_page.events} == {
+        "transparency_and_disclosure_risk"
+    }
+    assert not (
+        target_root / member_timeline_dimension_path("chuck-grassley", "conflict_of_interest_risk")
+    ).exists()
+
+
+def test_write_history_aggregate_writes_history_event_page_artifacts(
+    tmp_path: Path,
+) -> None:
+    first_root = tmp_path / "2026-01-06"
+    second_root = tmp_path / "2026-01-13"
+    target_root = tmp_path / "aggregate"
+    make_snapshot(
+        first_root,
+        snapshot_id="2026-01-06",
+        evidence_cards=[
+            make_evidence_card(
+                evidence_card_id="ec-old",
+                snapshot_date=dt.date(2026, 1, 6),
+                created_at=dt.datetime(2026, 1, 6, tzinfo=dt.UTC),
+            )
+        ],
+        member_histories=[
+            _history(dt.date(2026, 1, 6), score_total=40.0, evidence_card_id="ec-old")
+        ],
+    )
+    make_snapshot(
+        second_root,
+        snapshot_id="2026-01-13",
+        evidence_cards=[
+            make_evidence_card(
+                evidence_card_id="ec-latest",
+                snapshot_date=dt.date(2026, 1, 13),
+                created_at=dt.datetime(2026, 1, 13, tzinfo=dt.UTC),
+            )
+        ],
+        member_histories=[
+            _history(dt.date(2026, 1, 13), score_total=55.0, evidence_card_id="ec-latest")
+        ],
+    )
+
+    write_history_aggregate([first_root, second_root], target_root)
+
+    timeline_page = load_member_timeline_page(target_root, "nancy-pelosi", 1)
+    event_id = timeline_page.events[0].event_id
+    assert (target_root / history_event_page_path(event_id)).is_file()
+
+    event_page = load_history_event_page(target_root, event_id)
+    assert event_page.event.event_id == event_id
+    assert event_page.member_page is not None
+    assert event_page.member_page.profile.slug == "nancy-pelosi"
+    assert event_page.evidence_card is not None
+    assert event_page.evidence_card.evidence_card_id == "ec-latest"
+
+
+def test_write_history_aggregate_writes_history_coverage_artifact(
+    tmp_path: Path,
+) -> None:
+    first_root = tmp_path / "2026-01-06"
+    second_root = tmp_path / "2026-01-13"
+    target_root = tmp_path / "aggregate"
+    make_snapshot(
+        first_root,
+        snapshot_id="2026-01-06",
+        evidence_cards=[
+            make_evidence_card(
+                evidence_card_id="ec-old",
+                snapshot_date=dt.date(2026, 1, 6),
+                created_at=dt.datetime(2026, 1, 6, tzinfo=dt.UTC),
+            )
+        ],
+        member_histories=[
+            _history(dt.date(2026, 1, 6), score_total=40.0, evidence_card_id="ec-old")
+        ],
+    )
+    make_snapshot(
+        second_root,
+        snapshot_id="2026-01-13",
+        evidence_cards=[
+            make_evidence_card(
+                evidence_card_id="ec-latest",
+                snapshot_date=dt.date(2026, 1, 13),
+                created_at=dt.datetime(2026, 1, 13, tzinfo=dt.UTC),
+            )
+        ],
+        member_histories=[
+            _history(dt.date(2026, 1, 13), score_total=55.0, evidence_card_id="ec-latest")
+        ],
+    )
+
+    write_history_aggregate([first_root, second_root], target_root)
+
+    assert (target_root / history_coverage_path()).is_file()
+    coverage = load_history_coverage(target_root)
+    assert coverage.earliest_snapshot_id == "2026-01-06"
+    assert coverage.latest_snapshot_id == "2026-01-13"
+    assert coverage.snapshot_count == 2
+    assert coverage.member_history_count == 1
+    assert coverage.total_events == 2
+    assert coverage.available_years == [2026]
 
 
 def test_write_history_aggregate_copies_latest_member_page_artifact(
@@ -446,13 +985,17 @@ def test_write_history_aggregate_copies_latest_member_page_artifact(
     make_snapshot(
         first_root,
         snapshot_id="2026-01-06",
-        member_profiles=[make_member_profile(name="Early Nancy", snapshot_date=dt.date(2026, 1, 6))],
+        member_profiles=[
+            make_member_profile(name="Early Nancy", snapshot_date=dt.date(2026, 1, 6))
+        ],
         member_histories=[_history(dt.date(2026, 1, 6), score_total=40.0, name="Early Nancy")],
     )
     make_snapshot(
         second_root,
         snapshot_id="2026-01-13",
-        member_profiles=[make_member_profile(name="Latest Nancy", snapshot_date=dt.date(2026, 1, 13))],
+        member_profiles=[
+            make_member_profile(name="Latest Nancy", snapshot_date=dt.date(2026, 1, 13))
+        ],
         member_histories=[_history(dt.date(2026, 1, 13), score_total=55.0, name="Latest Nancy")],
     )
 

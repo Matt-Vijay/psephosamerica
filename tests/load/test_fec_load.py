@@ -129,10 +129,17 @@ class TestPlanFecCommittees:
             plan_fec_committees([_committee(fec_committee_id="")])
 
     def test_none_optional_fields_allowed(self):
-        op = plan_fec_committees([_committee(
-            treasurer_name=None, city=None, state=None,
-            committee_type=None, designation_code=None,
-        )])
+        op = plan_fec_committees(
+            [
+                _committee(
+                    treasurer_name=None,
+                    city=None,
+                    state=None,
+                    committee_type=None,
+                    designation_code=None,
+                )
+            ]
+        )
         row = op["rows"][0]
         assert row["treasurer_name"] is None
         assert row["city"] is None
@@ -181,6 +188,8 @@ class TestPlanContributions:
             "source_record_id",
             "donor_name",
             "donor_type",
+            "donor_employer",
+            "donor_occupation",
             "contribution_type",
             "contribution_date",
             "amount",
@@ -237,17 +246,19 @@ class TestPlanLinkageHints:
         op = plan_linkage_hints([])
         assert set(op.keys()) == {"table", "rows", "conflict_columns", "mode"}
 
-    def test_table_sentinel(self):
-        assert plan_linkage_hints([])["table"] == "_fec_linkage_hint"
+    def test_table_is_canonical_linkage_table(self):
+        assert plan_linkage_hints([])["table"] == "fec_candidate_committee_linkage"
 
     def test_conflict_columns(self):
         assert plan_linkage_hints([])["conflict_columns"] == [
             "fec_candidate_id",
             "fec_committee_id",
+            "election_year",
+            "linkage_type",
         ]
 
-    def test_mode_hints(self):
-        assert plan_linkage_hints([])["mode"] == "hints"
+    def test_mode_upsert(self):
+        assert plan_linkage_hints([])["mode"] == "upsert"
 
     def test_empty_records_empty_rows(self):
         assert plan_linkage_hints([])["rows"] == []
@@ -313,8 +324,8 @@ class TestPlanFecLoad:
     def test_order_contribution_second(self):
         assert plan_fec_load([], [], [])[1]["table"] == "contribution"
 
-    def test_order_linkage_hints_last(self):
-        assert plan_fec_load([], [], [])[2]["table"] == "_fec_linkage_hint"
+    def test_order_linkage_last(self):
+        assert plan_fec_load([], [], [])[2]["table"] == "fec_candidate_committee_linkage"
 
     def test_each_op_has_required_keys(self):
         for op in plan_fec_load([], [], []):
@@ -349,5 +360,5 @@ class TestPlanFecLoad:
     def test_contribution_mode_upsert(self):
         assert plan_fec_load([], [], [])[1]["mode"] == "upsert"
 
-    def test_linkage_mode_hints(self):
-        assert plan_fec_load([], [], [])[2]["mode"] == "hints"
+    def test_linkage_mode_upsert(self):
+        assert plan_fec_load([], [], [])[2]["mode"] == "upsert"

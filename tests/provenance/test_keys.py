@@ -15,6 +15,7 @@ from src.provenance.keys import (
 # raw_artifact_key
 # ---------------------------------------------------------------------------
 
+
 class TestRawArtifactKey:
     VALID_SHA = "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2"
 
@@ -66,6 +67,7 @@ class TestRawArtifactKey:
 # parsed_output_key
 # ---------------------------------------------------------------------------
 
+
 class TestParsedOutputKey:
     VALID_SHA = "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef"
 
@@ -73,7 +75,10 @@ class TestParsedOutputKey:
         key = parsed_output_key(
             "efdsearch-senate", "disclosure-pdf", "0.3.1", self.VALID_SHA, "holdings.json"
         )
-        assert key == f"parsed/efdsearch-senate/disclosure-pdf/0.3.1/{self.VALID_SHA[:8]}/holdings.json"
+        assert (
+            key
+            == f"parsed/efdsearch-senate/disclosure-pdf/0.3.1/{self.VALID_SHA[:8]}/holdings.json"
+        )
 
     def test_prefix_is_parsed(self):
         key = parsed_output_key("src", "parser", "1.0.0", self.VALID_SHA, "out.json")
@@ -99,6 +104,7 @@ class TestParsedOutputKey:
 # ---------------------------------------------------------------------------
 # snapshot_output_key
 # ---------------------------------------------------------------------------
+
 
 class TestSnapshotOutputKey:
     def test_basic_structure(self):
@@ -134,6 +140,7 @@ class TestSnapshotOutputKey:
 # ---------------------------------------------------------------------------
 # archive_manifest_key
 # ---------------------------------------------------------------------------
+
 
 class TestArchiveManifestKey:
     def test_basic_structure(self):

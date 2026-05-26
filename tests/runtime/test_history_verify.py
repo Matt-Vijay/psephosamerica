@@ -14,6 +14,7 @@ from src.export.writer import (
     movement_window_path,
     serialize_payload,
     snapshot_preset_compare_path,
+    snapshot_index_path,
     zip_entry_path,
 )
 from src.export.local_store import HOMEPAGE_FEED_PATH
@@ -228,6 +229,7 @@ def test_verify_history_aggregate_reports_all_stages_ok_for_valid_root(tmp_path:
         "current_aggregates",
         "snapshot_presets",
         "members",
+        "member_timelines",
         "member_pages",
     ]
     assert result.total_errors == 0
@@ -263,6 +265,26 @@ def test_verify_history_aggregate_flags_missing_preset_movement_window(tmp_path:
     assert any(issue.path == movement_window_path("4w") for issue in stage.issues)
 
 
+def test_verify_history_aggregate_flags_missing_dimension_movement_window(tmp_path: Path) -> None:
+    from src.runtime.history_verify import verify_history_aggregate_local
+
+    aggregate_root = _history_root(tmp_path)
+    missing_path = aggregate_root / movement_window_path(
+        "4w", dimension="conflict_of_interest_risk"
+    )
+    missing_path.unlink()
+
+    result = verify_history_aggregate_local(aggregate_root)
+
+    stage = result.stage_result("snapshot_presets")
+    assert stage is not None
+    assert stage.ok is False
+    assert any(
+        issue.path == movement_window_path("4w", dimension="conflict_of_interest_risk")
+        for issue in stage.issues
+    )
+
+
 def test_verify_history_aggregate_flags_missing_history_preset_range(tmp_path: Path) -> None:
     from src.runtime.history_verify import verify_history_aggregate_local
 
@@ -276,6 +298,38 @@ def test_verify_history_aggregate_flags_missing_history_preset_range(tmp_path: P
     assert stage is not None
     assert stage.ok is False
     assert any(issue.path == history_preset_range_path("4w") for issue in stage.issues)
+
+
+def test_verify_history_aggregate_flags_missing_history_coverage_artifact(tmp_path: Path) -> None:
+    from src.runtime.history_verify import verify_history_aggregate_local
+
+    aggregate_root = _history_root(tmp_path)
+    missing_path = aggregate_root / "history" / "coverage.json"
+    missing_path.unlink()
+
+    result = verify_history_aggregate_local(aggregate_root)
+
+    stage = result.stage_result("bootstrap")
+    assert stage is not None
+    assert stage.ok is False
+    assert any(issue.path == "history/coverage.json" for issue in stage.issues)
+
+
+def test_verify_history_aggregate_flags_missing_member_history_coverage_index_artifact(
+    tmp_path: Path,
+) -> None:
+    from src.runtime.history_verify import verify_history_aggregate_local
+
+    aggregate_root = _history_root(tmp_path)
+    missing_path = aggregate_root / "history" / "member-coverage" / "index.json"
+    missing_path.unlink()
+
+    result = verify_history_aggregate_local(aggregate_root)
+
+    stage = result.stage_result("members")
+    assert stage is not None
+    assert stage.ok is False
+    assert any(issue.path == "history/member-coverage/index.json" for issue in stage.issues)
 
 
 def test_verify_history_aggregate_flags_mismatched_member_change_summary(tmp_path: Path) -> None:
@@ -309,7 +363,9 @@ def test_verify_history_aggregate_flags_missing_zip_entry_artifact(tmp_path: Pat
     assert any(issue.path == zip_entry_path("94102") for issue in stage.issues)
 
 
-def test_verify_history_aggregate_flags_missing_current_member_lookup_artifact(tmp_path: Path) -> None:
+def test_verify_history_aggregate_flags_missing_current_member_lookup_artifact(
+    tmp_path: Path,
+) -> None:
     from src.runtime.history_verify import verify_history_aggregate_local
 
     aggregate_root = _history_root_with_current_aggregates(tmp_path)
@@ -341,7 +397,29 @@ def test_verify_history_aggregate_flags_stale_homepage_bootstrap_artifact(tmp_pa
     assert any(issue.path == homepage_bootstrap_path() for issue in stage.issues)
 
 
-def test_verify_history_aggregate_flags_stale_current_member_lookup_artifact(tmp_path: Path) -> None:
+def test_verify_history_aggregate_rejects_invalid_snapshot_index_root_hash(
+    tmp_path: Path,
+) -> None:
+    from src.runtime.history_verify import verify_history_aggregate_local
+
+    aggregate_root = _history_root(tmp_path)
+    artifact_path = aggregate_root / snapshot_index_path()
+    payload = json.loads(artifact_path.read_text(encoding="utf-8"))
+    payload["snapshots"][0]["root_sha256"] = "z" * 64
+    artifact_path.write_text(json.dumps(payload, sort_keys=True), encoding="utf-8")
+
+    result = verify_history_aggregate_local(aggregate_root)
+
+    stage = result.stage_result("snapshot_index")
+    assert stage is not None
+    assert stage.ok is False
+    assert any("root_sha256" in issue.message and "hex" in issue.message for issue in stage.issues)
+    assert not any("root_sha256 mismatch" in issue.message for issue in stage.issues)
+
+
+def test_verify_history_aggregate_flags_stale_current_member_lookup_artifact(
+    tmp_path: Path,
+) -> None:
     from src.runtime.history_verify import verify_history_aggregate_local
 
     aggregate_root = _history_root_with_current_aggregates(tmp_path)
@@ -375,7 +453,9 @@ def test_verify_history_aggregate_flags_stale_current_member_page_artifact(tmp_p
     assert any(issue.path == "member-pages/nancy-pelosi.json" for issue in stage.issues)
 
 
-def test_verify_history_aggregate_flags_missing_current_member_page_artifact(tmp_path: Path) -> None:
+def test_verify_history_aggregate_flags_missing_current_member_page_artifact(
+    tmp_path: Path,
+) -> None:
     from src.runtime.history_verify import verify_history_aggregate_local
 
     aggregate_root = _history_root_with_current_aggregates(tmp_path)
@@ -387,3 +467,175 @@ def test_verify_history_aggregate_flags_missing_current_member_page_artifact(tmp
     assert stage is not None
     assert stage.ok is False
     assert any(issue.path == "member-pages/nancy-pelosi.json" for issue in stage.issues)
+
+
+def test_verify_history_aggregate_flags_missing_member_timeline_index_artifact(
+    tmp_path: Path,
+) -> None:
+    from src.runtime.history_verify import verify_history_aggregate_local
+
+    aggregate_root = _history_root(tmp_path)
+    missing_path = aggregate_root / "history" / "member-timelines" / "nancy-pelosi" / "index.json"
+    missing_path.unlink()
+
+    result = verify_history_aggregate_local(aggregate_root)
+
+    stage = result.stage_result("member_timelines")
+    assert stage is not None
+    assert stage.ok is False
+    assert any(
+        issue.path == "history/member-timelines/nancy-pelosi/index.json" for issue in stage.issues
+    )
+
+
+def test_verify_history_aggregate_flags_missing_member_history_coverage_artifact(
+    tmp_path: Path,
+) -> None:
+    from src.runtime.history_verify import verify_history_aggregate_local
+
+    aggregate_root = _history_root(tmp_path)
+    missing_path = aggregate_root / "history" / "member-coverage" / "nancy-pelosi.json"
+    missing_path.unlink()
+
+    result = verify_history_aggregate_local(aggregate_root)
+
+    stage = result.stage_result("member_pages")
+    assert stage is not None
+    assert stage.ok is False
+    assert any(issue.path == "history/member-coverage/nancy-pelosi.json" for issue in stage.issues)
+
+
+def test_verify_history_aggregate_flags_missing_member_timeline_year_artifact(
+    tmp_path: Path,
+) -> None:
+    from src.runtime.history_verify import verify_history_aggregate_local
+
+    aggregate_root = _history_root(tmp_path)
+    missing_path = (
+        aggregate_root / "history" / "member-timelines" / "nancy-pelosi" / "years" / "2026.json"
+    )
+    missing_path.unlink()
+
+    result = verify_history_aggregate_local(aggregate_root)
+
+    stage = result.stage_result("member_timelines")
+    assert stage is not None
+    assert stage.ok is False
+    assert any(
+        issue.path == "history/member-timelines/nancy-pelosi/years/2026.json"
+        for issue in stage.issues
+    )
+
+
+def test_verify_history_aggregate_flags_missing_member_timeline_dimension_artifact(
+    tmp_path: Path,
+) -> None:
+    from src.runtime.history_verify import verify_history_aggregate_local
+
+    aggregate_root = _history_root(tmp_path)
+    missing_path = (
+        aggregate_root
+        / "history"
+        / "member-timelines"
+        / "nancy-pelosi"
+        / "dimensions"
+        / "conflict_of_interest_risk.json"
+    )
+    missing_path.unlink()
+
+    result = verify_history_aggregate_local(aggregate_root)
+
+    stage = result.stage_result("member_timelines")
+    assert stage is not None
+    assert stage.ok is False
+    assert any(
+        issue.path
+        == "history/member-timelines/nancy-pelosi/dimensions/conflict_of_interest_risk.json"
+        for issue in stage.issues
+    )
+
+
+def test_verify_history_aggregate_flags_unexpected_member_timeline_dimension_artifact(
+    tmp_path: Path,
+) -> None:
+    from src.runtime.history_verify import verify_history_aggregate_local
+
+    aggregate_root = _history_root(tmp_path)
+    extra_path = (
+        aggregate_root
+        / "history"
+        / "member-timelines"
+        / "nancy-pelosi"
+        / "dimensions"
+        / "stale_dimension.json"
+    )
+    extra_path.write_text("{}")
+
+    result = verify_history_aggregate_local(aggregate_root)
+
+    stage = result.stage_result("member_timelines")
+    assert stage is not None
+    assert stage.ok is False
+    assert any(
+        issue.path == "history/member-timelines/nancy-pelosi/dimensions/stale_dimension.json"
+        for issue in stage.issues
+    )
+
+
+def test_verify_history_aggregate_flags_stale_member_timeline_page_artifact(tmp_path: Path) -> None:
+    from src.runtime.history_verify import verify_history_aggregate_local
+
+    aggregate_root = _history_root(tmp_path)
+    artifact_path = (
+        aggregate_root / "history" / "member-timelines" / "nancy-pelosi" / "pages" / "1.json"
+    )
+    payload = json.loads(artifact_path.read_text())
+    payload["events"][0]["short_explanation"] = "stale timeline event"
+    artifact_path.write_text(json.dumps(payload, sort_keys=True))
+
+    result = verify_history_aggregate_local(aggregate_root)
+
+    stage = result.stage_result("member_timelines")
+    assert stage is not None
+    assert stage.ok is False
+    assert any(
+        issue.path == "history/member-timelines/nancy-pelosi/pages/1.json" for issue in stage.issues
+    )
+
+
+def test_verify_history_aggregate_flags_missing_history_event_artifact(tmp_path: Path) -> None:
+    from src.runtime.history_verify import verify_history_aggregate_local
+
+    aggregate_root = _history_root(tmp_path)
+    timeline_page_path = (
+        aggregate_root / "history" / "member-timelines" / "nancy-pelosi" / "pages" / "1.json"
+    )
+    timeline_page = json.loads(timeline_page_path.read_text())
+    event_id = timeline_page["events"][0]["event_id"]
+    (aggregate_root / "history" / "events" / f"{event_id}.json").unlink()
+
+    result = verify_history_aggregate_local(aggregate_root)
+
+    stage = result.stage_result("member_timelines")
+    assert stage is not None
+    assert stage.ok is False
+    assert any(issue.path == f"history/events/{event_id}.json" for issue in stage.issues)
+
+
+def test_verify_history_aggregate_flags_missing_history_event_page_artifact(tmp_path: Path) -> None:
+    from src.runtime.history_verify import verify_history_aggregate_local
+
+    aggregate_root = _history_root(tmp_path)
+    timeline_page_path = (
+        aggregate_root / "history" / "member-timelines" / "nancy-pelosi" / "pages" / "1.json"
+    )
+    timeline_page = json.loads(timeline_page_path.read_text())
+    event_id = timeline_page["events"][0]["event_id"]
+    (aggregate_root / "history" / "event-pages" / f"{event_id}.json").unlink()
+
+    result = verify_history_aggregate_local(aggregate_root)
+
+    stage = result.stage_result("member_timelines")
+    assert stage is not None
+    assert stage.ok is False
+    assert any(issue.path == f"history/event-pages/{event_id}.json" for issue in stage.issues)

@@ -15,12 +15,19 @@ Phase order:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, cast
+from typing import Any
 
 from src.db.load_executor import Resolvers, execute_load_plan
 from src.db.lookups import LookupBundle
 from src.db.load_report import LoadSummary, WarnErrorSummary, build_load_summary
-from src.db.repositories import ConnectionLike, Row, fetch_all
+from src.db.repositories import (
+    ConnectionLike,
+    Row,
+    commit_or_rollback,
+    ensure_transactional_for_commit,
+    fetch_all,
+    rollback_if_available,
+)
 from src.db.runtime_lookups import load_lookup_bundle
 from src.ingest.congress.models import (
     BillRecord,
@@ -70,9 +77,7 @@ class CongressIngestInputs:
 # ---------------------------------------------------------------------------
 
 _BILL_SQL = "SELECT id, congress, bill_type, bill_number FROM bill"
-_VOTE_EVENT_SQL = (
-    "SELECT id, chamber, congress, session_number, roll_call_number FROM vote_event"
-)
+_VOTE_EVENT_SQL = "SELECT id, chamber, congress, session_number, roll_call_number FROM vote_event"
 
 
 def _fetch_bill_map(conn: Any) -> dict[tuple[int, str, int], int]:
@@ -126,7 +131,7 @@ def _build_resolvers(
         congress = row.get("congress")
         if congress is None:
             congress = row.get("_congress")
-        if isinstance(committee_code, str) and isinstance(congress, int):
+        if isinstance(committee_code, str) and type(congress) is int:
             return comm_map.get((committee_code, congress))
         return None
 
@@ -141,11 +146,17 @@ def _build_resolvers(
         ),
     }
     if bill_map is not None:
+
         def _resolve_bill_id(row: Row) -> int | None:
             bill_key = row.get("_bill_key")
             if isinstance(bill_key, tuple) and len(bill_key) == 3:
-                key = cast(tuple[int, str, int], bill_key)
-                return bill_map.get(key)
+                congress, bill_type, bill_number = bill_key
+                if (
+                    type(congress) is int
+                    and isinstance(bill_type, str)
+                    and type(bill_number) is int
+                ):
+                    return bill_map.get((congress, bill_type, bill_number))
             return None
 
         resolvers["_bill_key"] = (
@@ -153,11 +164,18 @@ def _build_resolvers(
             _resolve_bill_id,
         )
     if vote_event_map is not None:
+
         def _resolve_vote_event_id(row: Row) -> int | None:
             vote_event_key = row.get("_vote_event_key")
             if isinstance(vote_event_key, tuple) and len(vote_event_key) == 4:
-                key = cast(tuple[str, int, int, int], vote_event_key)
-                return vote_event_map.get(key)
+                chamber, congress, session, roll_call = vote_event_key
+                if (
+                    isinstance(chamber, str)
+                    and type(congress) is int
+                    and type(session) is int
+                    and type(roll_call) is int
+                ):
+                    return vote_event_map.get((chamber, congress, session, roll_call))
             return None
 
         resolvers["_vote_event_key"] = (
@@ -192,6 +210,7 @@ def run_congress_load(
     conn: ConnectionLike,
     *,
     run_id: int | None = None,
+    commit: bool = True,
 ) -> LoadSummary:
     """Execute a full Congress ingest in FK-safe phases with lookup refreshes.
 
@@ -202,57 +221,80 @@ def run_congress_load(
     Phase 4  bill_sponsor, vote_cast    — FK → bill/vote_event/member
     """
     phase_summaries: list[LoadSummary] = []
+    ensure_transactional_for_commit(conn, commit=commit)
 
-    # ------------------------------------------------------------------
-    # Phase 1: root entities — member, committee
-    # committee self-reference is resolved by the write layer.
-    # ------------------------------------------------------------------
-    phase1_ops = [
-        plan_members(inputs.members),
-        plan_committees(inputs.committees),
-    ]
-    phase_summaries.append(execute_load_plan(conn, phase1_ops, run_id=run_id))
+    try:
+        # ------------------------------------------------------------------
+        # Phase 1: root entities — member, committee
+        # committee self-reference is resolved by the write layer.
+        # ------------------------------------------------------------------
+        phase1_ops = [
+            plan_members(inputs.members),
+            plan_committees(inputs.committees),
+        ]
+        phase_summaries.append(execute_load_plan(conn, phase1_ops, run_id=run_id, commit=False))
 
-    # Lookup refresh: member and committee PKs are now stable.
-    bundle = load_lookup_bundle(conn)
-    resolvers_phase2 = _build_resolvers(bundle)
+        # Lookup refresh: member and committee PKs are now stable.
+        bundle = load_lookup_bundle(conn)
+        resolvers_phase2 = _build_resolvers(bundle)
 
-    # ------------------------------------------------------------------
-    # Phase 2: member-scoped rows — member_term, committee_membership
-    # ------------------------------------------------------------------
-    phase2_ops = [
-        plan_member_terms(inputs.member_terms),
-        plan_committee_memberships(inputs.memberships),
-    ]
-    phase_summaries.append(
-        execute_load_plan(conn, phase2_ops, resolvers=resolvers_phase2, run_id=run_id)
-    )
+        # ------------------------------------------------------------------
+        # Phase 2: member-scoped rows — member_term, committee_membership
+        # ------------------------------------------------------------------
+        phase2_ops = [
+            plan_member_terms(inputs.member_terms),
+            plan_committee_memberships(inputs.memberships),
+        ]
+        phase_summaries.append(
+            execute_load_plan(
+                conn,
+                phase2_ops,
+                resolvers=resolvers_phase2,
+                run_id=run_id,
+                commit=False,
+            )
+        )
 
-    # ------------------------------------------------------------------
-    # Phase 3: independent legislative entities — bill, vote_event
-    # ------------------------------------------------------------------
-    phase3_ops = [
-        plan_bills(inputs.bills),
-        plan_vote_events(inputs.vote_events),
-    ]
-    phase_summaries.append(execute_load_plan(conn, phase3_ops, run_id=run_id))
+        # ------------------------------------------------------------------
+        # Phase 3: independent legislative entities — bill, vote_event
+        # ------------------------------------------------------------------
+        phase3_ops = [
+            plan_bills(inputs.bills),
+            plan_vote_events(inputs.vote_events),
+        ]
+        phase_summaries.append(execute_load_plan(conn, phase3_ops, run_id=run_id, commit=False))
 
-    # Lookup refresh: bill and vote_event PKs are now stable.
-    bundle = load_lookup_bundle(conn)
-    bill_map = _fetch_bill_map(conn)
-    vote_event_map = _fetch_vote_event_map(conn)
-    resolvers_phase4 = _build_resolvers(bundle, bill_map=bill_map, vote_event_map=vote_event_map)
+        # Lookup refresh: bill and vote_event PKs are now stable.
+        bundle = load_lookup_bundle(conn)
+        bill_map = _fetch_bill_map(conn)
+        vote_event_map = _fetch_vote_event_map(conn)
+        resolvers_phase4 = _build_resolvers(
+            bundle, bill_map=bill_map, vote_event_map=vote_event_map
+        )
 
-    # ------------------------------------------------------------------
-    # Phase 4: cross-reference rows — bill_sponsor, vote_cast
-    # ------------------------------------------------------------------
-    phase4_ops = [
-        plan_bill_sponsors(inputs.primary_sponsors, inputs.cosponsors),
-        plan_vote_casts(inputs.vote_casts),
-    ]
-    phase_summaries.append(
-        execute_load_plan(conn, phase4_ops, resolvers=resolvers_phase4, run_id=run_id)
-    )
+        # ------------------------------------------------------------------
+        # Phase 4: cross-reference rows — bill_sponsor, vote_cast
+        # ------------------------------------------------------------------
+        phase4_ops = [
+            plan_bill_sponsors(inputs.primary_sponsors, inputs.cosponsors),
+            plan_vote_casts(inputs.vote_casts),
+        ]
+        phase_summaries.append(
+            execute_load_plan(
+                conn,
+                phase4_ops,
+                resolvers=resolvers_phase4,
+                run_id=run_id,
+                commit=False,
+            )
+        )
+    except Exception:
+        if commit:
+            rollback_if_available(conn)
+        raise
+
+    if commit:
+        commit_or_rollback(conn)
 
     all_table_results = [tr for s in phase_summaries for tr in s.table_results]
     merged_warn_error = _merge_warn_errors(phase_summaries)

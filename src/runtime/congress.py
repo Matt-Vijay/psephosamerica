@@ -15,6 +15,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from src.db.repositories import rollback_if_available
 from src.pipeline.congress_load_run import CongressIngestInputs, run_congress_load
 from src.db.load_report import LoadSummary
 from src.provenance.store import (
@@ -80,12 +81,17 @@ def run_congress_load_runtime(
     )
 
     try:
-        load_summary = run_congress_load(inputs, conn, run_id=run_id)
+        load_summary = run_congress_load(inputs, conn, run_id=run_id, commit=False)
     except Exception as exc:
+        rollback_if_available(conn)
         fail_ingestion_run(conn, run_id, str(exc))
         raise
 
-    finish_ingestion_run(conn, run_id, record_count=load_summary.total_inserted)
+    try:
+        finish_ingestion_run(conn, run_id, record_count=load_summary.total_inserted)
+    except Exception:
+        rollback_if_available(conn)
+        raise
 
     return CongressLoadResult(
         data_source=data_source,

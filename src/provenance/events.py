@@ -28,6 +28,7 @@ def _payload_hash(payload: Any) -> str:
 # Stage event factories
 # ---------------------------------------------------------------------------
 
+
 def fetch_event(
     artifact_sha256: str,
     source_url: Optional[str] = None,

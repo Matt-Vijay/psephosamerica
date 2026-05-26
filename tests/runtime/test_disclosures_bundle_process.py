@@ -8,12 +8,14 @@ tested so no real files are required.
 
 Flow under test: validate → stage → parse inputs → parse → transform → load
 """
+
 from __future__ import annotations
 
 import contextlib
 from pathlib import Path
 from unittest.mock import MagicMock, call, patch
 
+from src.runtime.disclosures_bundle import disclosures_bundle_from_dict
 from src.runtime.disclosures_bundle_process import (
     DisclosuresBundleProcessResult,
     _BundleIndexProvider,
@@ -40,6 +42,35 @@ _VERIFY = "src.runtime.disclosures_bundle_process.verify_entry_sha256"
 # ---------------------------------------------------------------------------
 
 _LOCAL_ROOT = Path("/tmp/test_bundle_artifacts")
+
+
+def _real_bundle_with_doc_id_mismatch():
+    return disclosures_bundle_from_dict(
+        {
+            "artifacts": [
+                {
+                    "source_record_id": "DOC1",
+                    "chamber": "house",
+                    "filing_year": 2024,
+                    "storage_uri": "house/2024/DOC1.pdf",
+                    "source_url": "https://disclosures.house.gov/public_disc/ptr-pdfs/2024/DOC1.pdf",
+                    "source_slug": "house-disclosures",
+                    "artifact_kind": "pdf",
+                    "sha256": "a" * 64,
+                    "index_row": {
+                        "last_name": "Smith",
+                        "first_name": "Jane",
+                        "suffix": "",
+                        "raw_filing_type": "P",
+                        "state_dst": "CA08",
+                        "filing_date": "2024-01-15",
+                        "doc_id": "OTHER-DOC",
+                        "filing_kind": "ptr",
+                    },
+                }
+            ]
+        }
+    )
 
 
 def _bundle(artifacts=()) -> MagicMock:
@@ -89,8 +120,7 @@ def _transform_batch(n: int = 1, n_skipped: int = 0) -> BatchTransformResult:
     return BatchTransformResult(
         transformed=[MagicMock() for _ in range(n)],
         skipped=[
-            SkippedSession(run_id=None, reason_code="no_parse_result")
-            for _ in range(n_skipped)
+            SkippedSession(run_id=None, reason_code="no_parse_result") for _ in range(n_skipped)
         ],
     )
 
@@ -155,6 +185,7 @@ class TestBundleValidation:
 
     def test_bundle_without_artifacts_raises_type_error(self):
         import pytest
+
         bad = object()
         with pytest.raises(TypeError, match="artifacts"):
             _validate_bundle(bad)
@@ -166,6 +197,7 @@ class TestBundleValidation:
         class _Validator:
             def __enter__(self):
                 import src.runtime.disclosures_bundle_process as mod
+
                 self._orig_fn = mod._validate_bundle
 
                 def _patched(b):
@@ -177,11 +209,10 @@ class TestBundleValidation:
 
             def __exit__(self, *_):
                 import src.runtime.disclosures_bundle_process as mod
+
                 mod._validate_bundle = self._orig_fn
 
-        sr, pr, tb, lr = (
-            _stage_result(), _parse_result(), _transform_batch(), _load_result()
-        )
+        sr, pr, tb, lr = (_stage_result(), _parse_result(), _transform_batch(), _load_result())
         with (
             _Validator(),
             patch(_STAGE, side_effect=lambda *a, **k: call_order.append("stage") or sr),
@@ -197,9 +228,18 @@ class TestBundleValidation:
 
     def test_invalid_bundle_raises_before_staging(self):
         import pytest
+
         with patch(_STAGE) as mock_stage:
             with pytest.raises(TypeError):
                 run_disclosures_bundle_process(MagicMock(), object())
+        mock_stage.assert_not_called()
+
+    def test_semantically_invalid_bundle_raises_before_staging(self):
+        import pytest
+
+        with patch(_STAGE) as mock_stage:
+            with pytest.raises(ValueError, match="doc_id"):
+                run_disclosures_bundle_process(MagicMock(), _real_bundle_with_doc_id_mismatch())
         mock_stage.assert_not_called()
 
 
@@ -280,7 +320,10 @@ class TestStepOrdering:
         )
         with (
             patch(_STAGE, side_effect=lambda *a, **k: call_order.append("stage") or sr),
-            patch(_BUILD_PARSE_INPUTS, side_effect=lambda *a, **k: call_order.append("build_parse_inputs") or []),
+            patch(
+                _BUILD_PARSE_INPUTS,
+                side_effect=lambda *a, **k: call_order.append("build_parse_inputs") or [],
+            ),
             patch(_PARSE, side_effect=lambda *a, **k: call_order.append("parse") or pr),
             patch(_TRANSFORM, side_effect=lambda *a, **k: call_order.append("transform") or tb),
             patch(_LOAD, side_effect=lambda *a, **k: call_order.append("load") or lr),
@@ -453,9 +496,7 @@ class TestParseInputsExplicit:
         root = Path("/storage/root")
         explicit_inputs = [MagicMock()]
         with _patch_all() as mocks:
-            run_disclosures_bundle_process(
-                conn, b, local_root=root, parse_inputs=explicit_inputs
-            )
+            run_disclosures_bundle_process(conn, b, local_root=root, parse_inputs=explicit_inputs)
         mocks["verify"].assert_called_once_with(entry, root)
 
     def test_verify_not_called_when_local_root_is_none_and_explicit_inputs(self):
@@ -464,9 +505,7 @@ class TestParseInputsExplicit:
         b = _bundle(artifacts=entries)
         explicit_inputs = [MagicMock()]
         with _patch_all() as mocks:
-            run_disclosures_bundle_process(
-                conn, b, local_root=None, parse_inputs=explicit_inputs
-            )
+            run_disclosures_bundle_process(conn, b, local_root=None, parse_inputs=explicit_inputs)
         mocks["verify"].assert_not_called()
 
     def test_verify_not_called_when_parse_inputs_none_and_local_root_set(self):
@@ -484,7 +523,10 @@ class TestParseInputsExplicit:
         entry = _bundle_entry()
         b = _bundle(artifacts=(entry,))
         sr, pr, tb, lr = (
-            _stage_result(), _parse_result(), _transform_batch(), _load_result(),
+            _stage_result(),
+            _parse_result(),
+            _transform_batch(),
+            _load_result(),
         )
         explicit_inputs = [MagicMock()]
         with (
@@ -509,9 +551,7 @@ class TestParseInputsExplicit:
         root = _LOCAL_ROOT
         explicit_inputs = [MagicMock()]
         with _patch_all() as mocks:
-            run_disclosures_bundle_process(
-                conn, b, local_root=root, parse_inputs=explicit_inputs
-            )
+            run_disclosures_bundle_process(conn, b, local_root=root, parse_inputs=explicit_inputs)
         assert mocks["verify"].call_args_list == [
             call(e1, root),
             call(e2, root),
@@ -830,6 +870,14 @@ class TestBundleIndexProvider:
         matches = provider.load_matches([row])
         assert matches[0].index_row is None
 
+    def test_no_match_when_filing_year_is_boolean(self):
+        index_row = MagicMock(name="YearOneRow")
+        entry = _bundle_entry(filing_year=1, source_record_id="X", index_row=index_row)
+        provider = self._make_provider(entries=(entry,))
+        row = {"chamber": "house", "filing_year": True, "source_record_id": "X", "id": 10}
+        matches = provider.load_matches([row])
+        assert matches[0].index_row is None
+
     def test_matches_senate_entry(self):
         index_row = MagicMock(name="SenateRow")
         entry = _bundle_entry(
@@ -896,6 +944,7 @@ class TestBuildParseInputs:
 
     def test_one_artifact_produces_one_input(self, tmp_path):
         import hashlib
+
         data = b"test-content-abc"
         sha256 = hashlib.sha256(data).hexdigest()
         dest = tmp_path / "house" / "2024" / "99.pdf"
@@ -923,6 +972,7 @@ class TestBuildParseInputs:
 
     def test_input_artifact_row_matches_staged_row(self, tmp_path):
         import hashlib
+
         data = b"content"
         sha256 = hashlib.sha256(data).hexdigest()
         dest = tmp_path / "house" / "2024" / "42.pdf"
@@ -930,8 +980,11 @@ class TestBuildParseInputs:
         dest.write_bytes(data)
 
         entry = _bundle_entry(
-            source_record_id="42", chamber="house", filing_year=2024,
-            storage_uri="house/2024/42.pdf", sha256=sha256,
+            source_record_id="42",
+            chamber="house",
+            filing_year=2024,
+            storage_uri="house/2024/42.pdf",
+            sha256=sha256,
         )
         bundle = _bundle(artifacts=(entry,))
         artifact_row = {"id": 7, "chamber": "house", "filing_year": 2024, "source_record_id": "42"}
@@ -949,12 +1002,12 @@ class TestBuildParseInputs:
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_bytes(b"wrong content")
 
-        entry = _bundle_entry(
-            source_record_id="X", storage_uri="house/2024/X.pdf", sha256="a" * 64
-        )
+        entry = _bundle_entry(source_record_id="X", storage_uri="house/2024/X.pdf", sha256="a" * 64)
         bundle = _bundle(artifacts=(entry,))
         sr = MagicMock()
-        sr.artifact_rows = ({"id": 1, "chamber": "house", "filing_year": 2024, "source_record_id": "X"},)
+        sr.artifact_rows = (
+            {"id": 1, "chamber": "house", "filing_year": 2024, "source_record_id": "X"},
+        )
 
         with pytest.raises(Sha256Mismatch):
             _build_parse_inputs(bundle, sr, tmp_path)
@@ -963,6 +1016,8 @@ class TestBuildParseInputs:
         """A staged row whose source_record_id is not in the bundle is skipped."""
         bundle = _bundle(artifacts=())  # no entries
         sr = MagicMock()
-        sr.artifact_rows = ({"id": 1, "chamber": "house", "filing_year": 2024, "source_record_id": "ORPHAN"},)
+        sr.artifact_rows = (
+            {"id": 1, "chamber": "house", "filing_year": 2024, "source_record_id": "ORPHAN"},
+        )
         inputs = _build_parse_inputs(bundle, sr, tmp_path)
         assert inputs == []

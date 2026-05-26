@@ -10,6 +10,8 @@ from __future__ import annotations
 from typing import Any
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from src.db.load_report import (
     LoadSummary,
     TableWriteResult,
@@ -130,6 +132,13 @@ class TestBuildResolvers:
         assert target_col == "committee_id"
         assert fn({"_committee_code": "HJUD", "congress": 119}) == 5
 
+    def test_committee_code_resolver_rejects_boolean_congress(self):
+        bundle = _bundle(committee_code_map={("HJUD", True): 5})
+        resolvers = _build_resolvers(bundle)
+        _, fn = resolvers["_committee_code"]
+
+        assert fn({"_committee_code": "HJUD", "congress": True}) is None
+
     def test_no_bill_resolver_by_default(self):
         bundle = _bundle()
         resolvers = _build_resolvers(bundle)
@@ -143,6 +152,15 @@ class TestBuildResolvers:
         assert target_col == "bill_id"
         assert fn({"_bill_key": (119, "hr", 1)}) == 99
 
+    def test_bill_resolver_rejects_boolean_key_parts(self):
+        bundle = _bundle()
+        bill_map = {(1, "hr", 1): 99}
+        resolvers = _build_resolvers(bundle, bill_map=bill_map)
+        _, fn = resolvers["_bill_key"]
+
+        assert fn({"_bill_key": (True, "hr", 1)}) is None
+        assert fn({"_bill_key": (1, "hr", True)}) is None
+
     def test_vote_event_resolver_injected(self):
         bundle = _bundle()
         ve_map = {("house", 119, 1, 42): 77}
@@ -150,6 +168,16 @@ class TestBuildResolvers:
         target_col, fn = resolvers["_vote_event_key"]
         assert target_col == "vote_event_id"
         assert fn({"_vote_event_key": ("house", 119, 1, 42)}) == 77
+
+    def test_vote_event_resolver_rejects_boolean_key_parts(self):
+        bundle = _bundle()
+        ve_map = {("house", 1, 1, 1): 77}
+        resolvers = _build_resolvers(bundle, vote_event_map=ve_map)
+        _, fn = resolvers["_vote_event_key"]
+
+        assert fn({"_vote_event_key": ("house", True, 1, 1)}) is None
+        assert fn({"_vote_event_key": ("house", 1, True, 1)}) is None
+        assert fn({"_vote_event_key": ("house", 1, 1, True)}) is None
 
     def test_no_vote_event_resolver_by_default(self):
         bundle = _bundle()
@@ -218,8 +246,10 @@ class TestRunCongressLoad:
 
         call_iter = iter(call_results)
 
-        def fake_execute(conn, ops, *, resolvers=None, run_id=None):
-            execute_calls.append({"ops": ops, "resolvers": resolvers, "run_id": run_id})
+        def fake_execute(conn, ops, *, resolvers=None, run_id=None, commit=None):
+            execute_calls.append(
+                {"ops": ops, "resolvers": resolvers, "run_id": run_id, "commit": commit}
+            )
             return next(call_iter)
 
         def fake_bundle(conn):
@@ -280,6 +310,130 @@ class TestRunCongressLoad:
         _, calls, _ = self._patched_run(summaries)
         for c in calls:
             assert c["run_id"] == 42
+
+    def test_all_phase_writes_defer_commit_to_outer_transaction(self):
+        summaries = [_summary(t) for t in ("member", "member_term", "bill", "bill_sponsor")]
+        _, calls, _ = self._patched_run(summaries)
+        assert [c["commit"] for c in calls] == [False, False, False, False]
+
+    def test_success_commits_once_after_all_phases(self):
+        conn = MagicMock()
+        inputs = _empty_inputs()
+        summaries = [_summary(t) for t in ("member", "member_term", "bill", "bill_sponsor")]
+
+        with (
+            patch(MOCK_EXECUTE, side_effect=summaries),
+            patch(MOCK_LOAD_BUNDLE, return_value=_bundle()),
+            patch(MOCK_FETCH_ALL, return_value=[]),
+        ):
+            run_congress_load(inputs, conn, run_id=42)
+
+        conn.commit.assert_called_once()
+        conn.rollback.assert_not_called()
+
+    def test_commit_true_rejects_autocommit_connection_before_phase_writes(self):
+        conn = MagicMock()
+        conn.autocommit = True
+        inputs = _empty_inputs()
+
+        with (
+            patch(MOCK_EXECUTE) as mock_execute,
+            patch(MOCK_LOAD_BUNDLE, return_value=_bundle()),
+            patch(MOCK_FETCH_ALL, return_value=[]),
+        ):
+            with pytest.raises(RuntimeError, match="autocommit"):
+                run_congress_load(inputs, conn, run_id=42)
+
+        mock_execute.assert_not_called()
+        conn.commit.assert_not_called()
+        conn.rollback.assert_not_called()
+
+    def test_final_commit_failure_rolls_back_outer_transaction(self):
+        conn = MagicMock()
+        conn.commit.side_effect = RuntimeError("commit failed")
+        inputs = _empty_inputs()
+
+        with (
+            patch(MOCK_EXECUTE, return_value=_summary("member")),
+            patch(MOCK_LOAD_BUNDLE, return_value=_bundle()),
+            patch(MOCK_FETCH_ALL, return_value=[]),
+        ):
+            with pytest.raises(RuntimeError, match="commit failed"):
+                run_congress_load(inputs, conn, run_id=42)
+
+        conn.commit.assert_called_once()
+        conn.rollback.assert_called_once()
+
+    def test_commit_false_defers_final_commit(self):
+        conn = MagicMock()
+        inputs = _empty_inputs()
+        summaries = [_summary(t) for t in ("member", "member_term", "bill", "bill_sponsor")]
+
+        with (
+            patch(MOCK_EXECUTE, side_effect=summaries),
+            patch(MOCK_LOAD_BUNDLE, return_value=_bundle()),
+            patch(MOCK_FETCH_ALL, return_value=[]),
+        ):
+            run_congress_load(inputs, conn, run_id=42, commit=False)
+
+        conn.commit.assert_not_called()
+        conn.rollback.assert_not_called()
+
+    def test_phase_failure_rolls_back_outer_transaction(self):
+        conn = MagicMock()
+        inputs = _empty_inputs()
+
+        with (
+            patch(MOCK_EXECUTE, side_effect=[_summary("member"), RuntimeError("phase failed")]),
+            patch(MOCK_LOAD_BUNDLE, return_value=_bundle()),
+            patch(MOCK_FETCH_ALL, return_value=[]),
+        ):
+            try:
+                run_congress_load(inputs, conn, run_id=42)
+            except RuntimeError as exc:
+                assert str(exc) == "phase failed"
+            else:
+                raise AssertionError("run_congress_load should have raised")
+
+        conn.commit.assert_not_called()
+        conn.rollback.assert_called_once()
+
+    def test_phase_failure_with_commit_false_defers_rollback_to_caller(self):
+        conn = MagicMock()
+        inputs = _empty_inputs()
+
+        with (
+            patch(MOCK_EXECUTE, side_effect=[_summary("member"), RuntimeError("phase failed")]),
+            patch(MOCK_LOAD_BUNDLE, return_value=_bundle()),
+            patch(MOCK_FETCH_ALL, return_value=[]),
+        ):
+            with pytest.raises(RuntimeError, match="phase failed"):
+                run_congress_load(inputs, conn, run_id=42, commit=False)
+
+        conn.commit.assert_not_called()
+        conn.rollback.assert_not_called()
+
+    def test_lookup_refresh_failure_after_phase_three_write_rolls_back(self):
+        conn = MagicMock()
+        inputs = _empty_inputs()
+
+        with (
+            patch(
+                MOCK_EXECUTE,
+                side_effect=[_summary("member"), _summary("member_term"), _summary("bill")],
+            ),
+            patch(MOCK_LOAD_BUNDLE, side_effect=[_bundle(), RuntimeError("lookup failed")]),
+            patch(MOCK_FETCH_ALL, return_value=[]),
+        ):
+            try:
+                run_congress_load(inputs, conn, run_id=42)
+            except RuntimeError as exc:
+                assert str(exc) == "lookup failed"
+            else:
+                raise AssertionError("run_congress_load should have raised")
+
+        conn.commit.assert_not_called()
+        conn.rollback.assert_called_once()
 
     def test_table_results_consolidated(self):
         s1 = build_load_summary([TableWriteResult("member", inserted=3)], WarnErrorSummary())

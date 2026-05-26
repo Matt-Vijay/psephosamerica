@@ -21,6 +21,7 @@ from src.load.fec import (
 )
 from src.load.recompute import (
     plan_evidence_cards,
+    plan_ontology_edges,
     plan_rule_fires,
     plan_score_snapshots,
     recompute_load_plan,
@@ -39,6 +40,7 @@ __all__ = [
     "plan_contributions",
     "plan_disclosure_load",
     "plan_evidence_cards",
+    "plan_ontology_edges",
     "plan_fec_committees",
     "plan_fec_load",
     "plan_linkage_hints",

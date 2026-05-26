@@ -18,6 +18,7 @@ from src.load.congress import MemberTermSpec as LoadMemberTermSpec
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture()
 def rep() -> MemberRecord:
     return MemberRecord(
@@ -46,13 +47,21 @@ def sen() -> MemberRecord:
 # Single term — House
 # ---------------------------------------------------------------------------
 
+
 class TestHouseTerm:
     def test_basic_fields(self, rep: MemberRecord) -> None:
         detail = {
-            "terms": {"item": [
-                {"congress": 119, "chamber": "House of Representatives",
-                 "startYear": "2025", "endYear": None, "district": 14}
-            ]}
+            "terms": {
+                "item": [
+                    {
+                        "congress": 119,
+                        "chamber": "House of Representatives",
+                        "startYear": "2025",
+                        "endYear": None,
+                        "district": 14,
+                    }
+                ]
+            }
         }
         specs = member_term_specs_from_detail(detail, rep)
         assert len(specs) == 1
@@ -69,10 +78,17 @@ class TestHouseTerm:
 
     def test_closed_term_not_current(self, rep: MemberRecord) -> None:
         detail = {
-            "terms": {"item": [
-                {"congress": 118, "chamber": "House of Representatives",
-                 "startYear": "2023", "endYear": "2025", "district": 5}
-            ]}
+            "terms": {
+                "item": [
+                    {
+                        "congress": 118,
+                        "chamber": "House of Representatives",
+                        "startYear": "2023",
+                        "endYear": "2025",
+                        "district": 5,
+                    }
+                ]
+            }
         }
         specs = member_term_specs_from_detail(detail, rep)
         assert specs[0].is_current is False
@@ -80,20 +96,34 @@ class TestHouseTerm:
 
     def test_iso_date_start_year(self, rep: MemberRecord) -> None:
         detail = {
-            "terms": {"item": [
-                {"congress": 119, "chamber": "House of Representatives",
-                 "startYear": "2025-01-03", "endYear": None, "district": 7}
-            ]}
+            "terms": {
+                "item": [
+                    {
+                        "congress": 119,
+                        "chamber": "House of Representatives",
+                        "startYear": "2025-01-03",
+                        "endYear": None,
+                        "district": 7,
+                    }
+                ]
+            }
         }
         specs = member_term_specs_from_detail(detail, rep)
         assert specs[0].start_date == datetime.date(2025, 1, 3)
 
     def test_iso_date_end_year(self, rep: MemberRecord) -> None:
         detail = {
-            "terms": {"item": [
-                {"congress": 118, "chamber": "House of Representatives",
-                 "startYear": "2023-01-03", "endYear": "2025-01-03", "district": 7}
-            ]}
+            "terms": {
+                "item": [
+                    {
+                        "congress": 118,
+                        "chamber": "House of Representatives",
+                        "startYear": "2023-01-03",
+                        "endYear": "2025-01-03",
+                        "district": 7,
+                    }
+                ]
+            }
         }
         specs = member_term_specs_from_detail(detail, rep)
         assert specs[0].end_date == datetime.date(2025, 1, 3)
@@ -104,32 +134,43 @@ class TestHouseTerm:
 # Single term — Senate
 # ---------------------------------------------------------------------------
 
+
 class TestSenateTerm:
     def test_district_is_always_none(self, sen: MemberRecord) -> None:
         detail = {
-            "terms": {"item": [
-                {"congress": 119, "chamber": "Senate",
-                 "startYear": "2023", "endYear": None, "district": 1}
-            ]}
+            "terms": {
+                "item": [
+                    {
+                        "congress": 119,
+                        "chamber": "Senate",
+                        "startYear": "2023",
+                        "endYear": None,
+                        "district": 1,
+                    }
+                ]
+            }
         }
         specs = member_term_specs_from_detail(detail, sen)
         assert specs[0].district is None
 
     def test_district_none_when_absent(self, sen: MemberRecord) -> None:
         detail = {
-            "terms": {"item": [
-                {"congress": 119, "chamber": "Senate",
-                 "startYear": "2023", "endYear": None}
-            ]}
+            "terms": {
+                "item": [
+                    {"congress": 119, "chamber": "Senate", "startYear": "2023", "endYear": None}
+                ]
+            }
         }
         specs = member_term_specs_from_detail(detail, sen)
         assert specs[0].district is None
 
     def test_chamber_field(self, sen: MemberRecord) -> None:
         detail = {
-            "terms": {"item": [
-                {"congress": 119, "chamber": "Senate", "startYear": "2023", "endYear": None}
-            ]}
+            "terms": {
+                "item": [
+                    {"congress": 119, "chamber": "Senate", "startYear": "2023", "endYear": None}
+                ]
+            }
         }
         specs = member_term_specs_from_detail(detail, sen)
         assert specs[0].chamber == "senate"
@@ -139,17 +180,35 @@ class TestSenateTerm:
 # Ordering
 # ---------------------------------------------------------------------------
 
+
 class TestOrdering:
     def test_sorted_ascending_by_start_date(self, rep: MemberRecord) -> None:
         detail = {
-            "terms": {"item": [
-                {"congress": 119, "chamber": "House of Representatives",
-                 "startYear": "2025", "endYear": None, "district": 5},
-                {"congress": 117, "chamber": "House of Representatives",
-                 "startYear": "2021", "endYear": "2023", "district": 5},
-                {"congress": 118, "chamber": "House of Representatives",
-                 "startYear": "2023", "endYear": "2025", "district": 5},
-            ]}
+            "terms": {
+                "item": [
+                    {
+                        "congress": 119,
+                        "chamber": "House of Representatives",
+                        "startYear": "2025",
+                        "endYear": None,
+                        "district": 5,
+                    },
+                    {
+                        "congress": 117,
+                        "chamber": "House of Representatives",
+                        "startYear": "2021",
+                        "endYear": "2023",
+                        "district": 5,
+                    },
+                    {
+                        "congress": 118,
+                        "chamber": "House of Representatives",
+                        "startYear": "2023",
+                        "endYear": "2025",
+                        "district": 5,
+                    },
+                ]
+            }
         }
         specs = member_term_specs_from_detail(detail, rep)
         assert [s.congress for s in specs] == [117, 118, 119]
@@ -159,6 +218,7 @@ class TestOrdering:
 # ---------------------------------------------------------------------------
 # Empty / missing data
 # ---------------------------------------------------------------------------
+
 
 class TestEdgeCases:
     def test_empty_detail_returns_empty_list(self, rep: MemberRecord) -> None:
@@ -170,28 +230,48 @@ class TestEdgeCases:
 
     def test_missing_congress_skips_term(self, rep: MemberRecord) -> None:
         detail = {
-            "terms": {"item": [
-                {"chamber": "House of Representatives", "startYear": "2025",
-                 "endYear": None, "district": 5}
-            ]}
+            "terms": {
+                "item": [
+                    {
+                        "chamber": "House of Representatives",
+                        "startYear": "2025",
+                        "endYear": None,
+                        "district": 5,
+                    }
+                ]
+            }
         }
         assert member_term_specs_from_detail(detail, rep) == []
 
     def test_null_start_year_skips_term(self, rep: MemberRecord) -> None:
         detail = {
-            "terms": {"item": [
-                {"congress": 119, "chamber": "House of Representatives",
-                 "startYear": None, "endYear": None, "district": 5}
-            ]}
+            "terms": {
+                "item": [
+                    {
+                        "congress": 119,
+                        "chamber": "House of Representatives",
+                        "startYear": None,
+                        "endYear": None,
+                        "district": 5,
+                    }
+                ]
+            }
         }
         assert member_term_specs_from_detail(detail, rep) == []
 
     def test_empty_string_start_year_skips_term(self, rep: MemberRecord) -> None:
         detail = {
-            "terms": {"item": [
-                {"congress": 119, "chamber": "House of Representatives",
-                 "startYear": "", "endYear": None, "district": 5}
-            ]}
+            "terms": {
+                "item": [
+                    {
+                        "congress": 119,
+                        "chamber": "House of Representatives",
+                        "startYear": "",
+                        "endYear": None,
+                        "district": 5,
+                    }
+                ]
+            }
         }
         assert member_term_specs_from_detail(detail, rep) == []
 
@@ -200,23 +280,39 @@ class TestEdgeCases:
 # State resolution
 # ---------------------------------------------------------------------------
 
+
 class TestStateResolution:
     def test_state_from_item_stateCode(self, rep: MemberRecord) -> None:
         detail = {
-            "terms": {"item": [
-                {"congress": 119, "chamber": "House of Representatives",
-                 "startYear": "2025", "endYear": None, "district": 5, "stateCode": "NY"}
-            ]}
+            "terms": {
+                "item": [
+                    {
+                        "congress": 119,
+                        "chamber": "House of Representatives",
+                        "startYear": "2025",
+                        "endYear": None,
+                        "district": 5,
+                        "stateCode": "NY",
+                    }
+                ]
+            }
         }
         specs = member_term_specs_from_detail(detail, rep)
         assert specs[0].state == "NY"
 
     def test_state_falls_back_to_member(self, rep: MemberRecord) -> None:
         detail = {
-            "terms": {"item": [
-                {"congress": 119, "chamber": "House of Representatives",
-                 "startYear": "2025", "endYear": None, "district": 5}
-            ]}
+            "terms": {
+                "item": [
+                    {
+                        "congress": 119,
+                        "chamber": "House of Representatives",
+                        "startYear": "2025",
+                        "endYear": None,
+                        "district": 5,
+                    }
+                ]
+            }
         }
         specs = member_term_specs_from_detail(detail, rep)
         assert specs[0].state == "CA"
@@ -226,13 +322,21 @@ class TestStateResolution:
 # Chamber fallback
 # ---------------------------------------------------------------------------
 
+
 class TestChamberFallback:
     def test_empty_chamber_string_falls_back_to_member(self, rep: MemberRecord) -> None:
         detail = {
-            "terms": {"item": [
-                {"congress": 119, "chamber": "",
-                 "startYear": "2025", "endYear": None, "district": 5}
-            ]}
+            "terms": {
+                "item": [
+                    {
+                        "congress": 119,
+                        "chamber": "",
+                        "startYear": "2025",
+                        "endYear": None,
+                        "district": 5,
+                    }
+                ]
+            }
         }
         specs = member_term_specs_from_detail(detail, rep)
         assert specs[0].chamber == "house"
@@ -242,13 +346,23 @@ class TestChamberFallback:
 # Type-safety: non-dict terms structure
 # ---------------------------------------------------------------------------
 
+
 class TestTermsTypeRobustness:
     """Congress.gov structure is stable but callers may pass partial payloads."""
 
     def test_terms_as_list_returns_empty(self, rep: MemberRecord) -> None:
         # If the API ever returns terms as a bare list instead of {"item": [...]}
-        detail = {"terms": [{"congress": 119, "chamber": "House of Representatives",
-                              "startYear": "2025", "endYear": None, "district": 5}]}
+        detail = {
+            "terms": [
+                {
+                    "congress": 119,
+                    "chamber": "House of Representatives",
+                    "startYear": "2025",
+                    "endYear": None,
+                    "district": 5,
+                }
+            ]
+        }
         assert member_term_specs_from_detail(detail, rep) == []
 
     def test_terms_as_none_returns_empty(self, rep: MemberRecord) -> None:
@@ -259,10 +373,17 @@ class TestTermsTypeRobustness:
 
     def test_startYear_as_integer_accepted(self, rep: MemberRecord) -> None:
         detail = {
-            "terms": {"item": [
-                {"congress": 119, "chamber": "House of Representatives",
-                 "startYear": 2025, "endYear": None, "district": 3}
-            ]}
+            "terms": {
+                "item": [
+                    {
+                        "congress": 119,
+                        "chamber": "House of Representatives",
+                        "startYear": 2025,
+                        "endYear": None,
+                        "district": 3,
+                    }
+                ]
+            }
         }
         specs = member_term_specs_from_detail(detail, rep)
         assert len(specs) == 1
@@ -270,23 +391,77 @@ class TestTermsTypeRobustness:
 
     def test_congress_as_string_int_accepted(self, rep: MemberRecord) -> None:
         detail = {
-            "terms": {"item": [
-                {"congress": "119", "chamber": "House of Representatives",
-                 "startYear": "2025", "endYear": None, "district": 5}
-            ]}
+            "terms": {
+                "item": [
+                    {
+                        "congress": "119",
+                        "chamber": "House of Representatives",
+                        "startYear": "2025",
+                        "endYear": None,
+                        "district": 5,
+                    }
+                ]
+            }
         }
         specs = member_term_specs_from_detail(detail, rep)
         assert len(specs) == 1
         assert specs[0].congress == 119
 
+    def test_boolean_congress_rejected(self, rep: MemberRecord) -> None:
+        detail = {
+            "terms": {
+                "item": [
+                    {
+                        "congress": True,
+                        "chamber": "House of Representatives",
+                        "startYear": "2025",
+                        "endYear": None,
+                        "district": 5,
+                    }
+                ]
+            }
+        }
+
+        with pytest.raises(ValueError, match="congress must be an integer"):
+            member_term_specs_from_detail(detail, rep)
+
+    def test_boolean_house_district_rejected(self, rep: MemberRecord) -> None:
+        detail = {
+            "terms": {
+                "item": [
+                    {
+                        "congress": 119,
+                        "chamber": "House of Representatives",
+                        "startYear": "2025",
+                        "endYear": None,
+                        "district": False,
+                    }
+                ]
+            }
+        }
+
+        with pytest.raises(ValueError, match="district must be an integer"):
+            member_term_specs_from_detail(detail, rep)
+
     def test_mixed_valid_and_missing_congress_keeps_valid(self, rep: MemberRecord) -> None:
         detail = {
-            "terms": {"item": [
-                {"congress": 119, "chamber": "House of Representatives",
-                 "startYear": "2025", "endYear": None, "district": 5},
-                {"chamber": "House of Representatives",
-                 "startYear": "2023", "endYear": "2025", "district": 5},
-            ]}
+            "terms": {
+                "item": [
+                    {
+                        "congress": 119,
+                        "chamber": "House of Representatives",
+                        "startYear": "2025",
+                        "endYear": None,
+                        "district": 5,
+                    },
+                    {
+                        "chamber": "House of Representatives",
+                        "startYear": "2023",
+                        "endYear": "2025",
+                        "district": 5,
+                    },
+                ]
+            }
         }
         specs = member_term_specs_from_detail(detail, rep)
         assert len(specs) == 1
@@ -453,10 +628,17 @@ class TestAtLargeDistrict:
 
     def test_district_zero_preserved(self, rep: MemberRecord) -> None:
         detail = {
-            "terms": {"item": [
-                {"congress": 119, "chamber": "House of Representatives",
-                 "startYear": "2025", "endYear": None, "district": 0}
-            ]}
+            "terms": {
+                "item": [
+                    {
+                        "congress": 119,
+                        "chamber": "House of Representatives",
+                        "startYear": "2025",
+                        "endYear": None,
+                        "district": 0,
+                    }
+                ]
+            }
         }
         specs = member_term_specs_from_detail(detail, rep)
         assert specs[0].district == 0

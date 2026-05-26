@@ -272,11 +272,15 @@ class TestFetchCongressVoteRecords:
 
     def test_combines_house_and_senate_results(self) -> None:
         house_result = VoteFetchResult(vote_events=[_house_event(1)], vote_casts=[_house_cast(1)])
-        senate_result = VoteFetchResult(vote_events=[_senate_event(2)], vote_casts=[_senate_cast(2)])
+        senate_result = VoteFetchResult(
+            vote_events=[_senate_event(2)], vote_casts=[_senate_cast(2)]
+        )
 
         with (
             patch("src.runtime.congress_votes.fetch_house_vote_records", return_value=house_result),
-            patch("src.runtime.congress_votes.fetch_senate_vote_records", return_value=senate_result),
+            patch(
+                "src.runtime.congress_votes.fetch_senate_vote_records", return_value=senate_result
+            ),
         ):
             result = fetch_congress_vote_records(119, house_vote_year=2025, senate_session=1)
 
@@ -296,11 +300,15 @@ class TestFetchCongressVoteRecords:
         assert result.vote_events == [_house_event(1)]
 
     def test_senate_only_does_not_call_house(self) -> None:
-        senate_result = VoteFetchResult(vote_events=[_senate_event(10)], vote_casts=[_senate_cast(10)])
+        senate_result = VoteFetchResult(
+            vote_events=[_senate_event(10)], vote_casts=[_senate_cast(10)]
+        )
 
         with (
             patch("src.runtime.congress_votes.fetch_house_vote_records") as mock_house,
-            patch("src.runtime.congress_votes.fetch_senate_vote_records", return_value=senate_result),
+            patch(
+                "src.runtime.congress_votes.fetch_senate_vote_records", return_value=senate_result
+            ),
         ):
             result = fetch_congress_vote_records(119, senate_session=1)
 

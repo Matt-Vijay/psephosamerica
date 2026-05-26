@@ -45,7 +45,9 @@ def _profile(
     )
 
 
-def _manifest_from_files(files: list[PlannedFile], *, snapshot_id: str = "2026-04-14") -> SnapshotManifest:
+def _manifest_from_files(
+    files: list[PlannedFile], *, snapshot_id: str = "2026-04-14"
+) -> SnapshotManifest:
     entries = [ManifestEntry(path=f.path, sha256=f.sha256, size_bytes=f.size_bytes) for f in files]
     return SnapshotManifest(
         snapshot_id=snapshot_id,
@@ -95,7 +97,9 @@ def test_single_valid_profile_passes(tmp_path: Path) -> None:
 def test_multiple_valid_profiles_pass(tmp_path: Path) -> None:
     profiles = [
         _profile(bioguide_id="P000197", name="Nancy Pelosi", slug="nancy-pelosi"),
-        _profile(bioguide_id="S000033", name="Bernie Sanders", slug="bernie-sanders", chamber="senate"),
+        _profile(
+            bioguide_id="S000033", name="Bernie Sanders", slug="bernie-sanders", chamber="senate"
+        ),
     ]
     files = [_write_profile(tmp_path, p) for p in profiles]
     manifest = _manifest_from_files(files)
@@ -129,7 +133,7 @@ def test_non_member_entries_are_skipped(tmp_path: Path) -> None:
 
 def test_missing_profile_file_is_error(tmp_path: Path) -> None:
     # Put the path in the manifest but don't write the file.
-    fake = PlannedFile.from_bytes(member_path("ghost-member"), b'{}')
+    fake = PlannedFile.from_bytes(member_path("ghost-member"), b"{}")
     manifest = _manifest_from_files([fake])
     result = verify_local_member_profiles(tmp_path, manifest)
     assert result.ok is False
@@ -265,7 +269,7 @@ def test_multiple_failures_are_all_reported(tmp_path: Path) -> None:
     # bad_slug: file written under wrong-slug, payload says real-slug
     wrong = PlannedFile.from_bytes(member_path("wrong-slug"), serialize_payload(bad_slug_profile))
     write_planned_files([wrong], tmp_path)
-    missing_pf = PlannedFile.from_bytes(missing_path, b'{}')  # not written to disk
+    missing_pf = PlannedFile.from_bytes(missing_path, b"{}")  # not written to disk
 
     manifest = _manifest_from_files([good_pf, wrong, missing_pf])
     result = verify_local_member_profiles(tmp_path, manifest)

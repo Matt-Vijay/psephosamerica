@@ -24,6 +24,8 @@ jobs:
         run: ruff check src/ tests/
       - name: ruff format check
         run: ruff format --check src/ tests/
+      - name: bandit security scan
+        run: python -m bandit -q -c bandit.yml -r src/
 
   compile:
     name: Compile check

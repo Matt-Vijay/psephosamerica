@@ -29,8 +29,10 @@ Roundtrip boundaries (sub-module level, same as test_publish_roundtrip_e2e):
   src.runtime.publish_roundtrip_profiles.fetch_member_rule_fire_rows
   src.runtime.publish_roundtrip_profiles.fetch_member_committee_rows
   src.runtime.publish_roundtrip_evidence.fetch_all_evidence_card_rows
+  src.runtime.publish_roundtrip_ontology.fetch_all_ontology_edge_rows
 
-Focused ZIP/homepage stage stubs:
+Focused prediction/ZIP/homepage stage stubs:
+  src.runtime.publish_roundtrip.verify_published_prediction_roundtrip → _prediction_stub
   src.runtime.publish_roundtrip.verify_published_zip_roundtrip    → _zip_stub
   src.runtime.publish_roundtrip.verify_published_homepage_roundtrip → _homepage_stub
 """
@@ -94,13 +96,24 @@ _FETCH_RULE_FIRES = "src.runtime.publish_roundtrip_profiles.fetch_member_rule_fi
 _FETCH_COMMITTEES = "src.runtime.publish_roundtrip_profiles.fetch_member_committee_rows"
 _FETCH_PROFILE_CARDS = "src.runtime.publish_roundtrip_profiles.fetch_all_evidence_card_rows"
 _FETCH_ALL_CARDS = "src.runtime.publish_roundtrip_evidence.fetch_all_evidence_card_rows"
+_FETCH_ONTOLOGY_ROWS = "src.runtime.publish_roundtrip_ontology.fetch_all_ontology_edge_rows"
 
+_VERIFY_PREDICTION = "src.runtime.publish_roundtrip.verify_published_prediction_roundtrip"
 _VERIFY_ZIP = "src.runtime.publish_roundtrip.verify_published_zip_roundtrip"
 _VERIFY_HOMEPAGE = "src.runtime.publish_roundtrip.verify_published_homepage_roundtrip"
 
 # ---------------------------------------------------------------------------
 # Focused stubs (mirrored from test_publish_roundtrip_e2e)
 # ---------------------------------------------------------------------------
+
+
+def _prediction_stub(
+    conn: Any,
+    root: Path,
+    manifest: Any,
+) -> PublishRoundtripStageResult:
+    """Stand-in for verify_published_prediction_roundtrip with the real three-arg contract."""
+    return PublishRoundtripStageResult(stage="prediction", checked=0, issues=())
 
 
 def _zip_stub(
@@ -252,7 +265,7 @@ def _make_disclosures_bundle(*, include_house: bool = True) -> DisclosuresBundle
         "chamber": "house",
         "filing_year": 2024,
         "storage_uri": "house/2024/99001.pdf",
-        "source_url": "https://disclosures.house.gov/public_disc/ptr-pdfs/2024/99001.pdf",
+        "source_url": "https://disclosures.house.gov/public_disc/financial-pdfs/2024/99001.pdf",
         "source_slug": "house_disclosures",
         "artifact_kind": "pdf",
         "sha256": _SHA256,
@@ -363,7 +376,8 @@ def _run_oracle_with_roundtrip(
 
     def _publish_se(*_a, **_kw) -> PublishRuntimeResult:
         feed_payload = assemble_from_homepage_feed_row_set(
-            rt.homepage_feed_row_set, snapshot_date=rt.snapshot_date,
+            rt.homepage_feed_row_set,
+            snapshot_date=rt.snapshot_date,
         )
         feed_file = publish_dir / "homepage" / "feed.json"
         feed_file.parent.mkdir(parents=True, exist_ok=True)
@@ -396,6 +410,8 @@ def _run_oracle_with_roundtrip(
         patch(_FETCH_COMMITTEES, side_effect=_committees),
         patch(_FETCH_PROFILE_CARDS, side_effect=_all_cards),
         patch(_FETCH_ALL_CARDS, side_effect=_all_cards),
+        patch(_FETCH_ONTOLOGY_ROWS, return_value=[]),
+        patch(_VERIFY_PREDICTION, side_effect=_prediction_stub),
         patch(_VERIFY_ZIP, side_effect=_zip_stub),
         patch(_VERIFY_HOMEPAGE, side_effect=_homepage_stub),
     ):
@@ -409,6 +425,8 @@ def _run_oracle_with_roundtrip(
         patch(_FETCH_COMMITTEES, side_effect=_committees),
         patch(_FETCH_PROFILE_CARDS, side_effect=_all_cards),
         patch(_FETCH_ALL_CARDS, side_effect=_all_cards),
+        patch(_FETCH_ONTOLOGY_ROWS, return_value=[]),
+        patch(_VERIFY_PREDICTION, side_effect=_prediction_stub),
         patch(_VERIFY_ZIP, side_effect=_zip_stub),
         patch(_VERIFY_HOMEPAGE, side_effect=_homepage_stub),
     ):
@@ -471,18 +489,19 @@ class TestOracleLocalRoundtripResultShape:
 
     def test_oracle_verify_field_is_typed(self, tmp_path: Path) -> None:
         from src.runtime.publish_verify_types import PublishVerifyResult
+
         archive = _make_congress_archive(tmp_path)
         bundle = _make_disclosures_bundle()
         opts = _options(tmp_path / "publish")
         oracle_result, _ = _run_oracle_with_roundtrip(tmp_path, archive, bundle, opts)
         assert isinstance(oracle_result.verify, PublishVerifyResult)
 
-    def test_roundtrip_has_six_stages(self, tmp_path: Path) -> None:
+    def test_roundtrip_has_eight_stages(self, tmp_path: Path) -> None:
         archive = _make_congress_archive(tmp_path)
         bundle = _make_disclosures_bundle()
         opts = _options(tmp_path / "publish")
         _, rt_result = _run_oracle_with_roundtrip(tmp_path, archive, bundle, opts)
-        assert len(rt_result.stages) == 6
+        assert len(rt_result.stages) == 8
 
     def test_roundtrip_stage_names(self, tmp_path: Path) -> None:
         archive = _make_congress_archive(tmp_path)
@@ -490,7 +509,16 @@ class TestOracleLocalRoundtripResultShape:
         opts = _options(tmp_path / "publish")
         _, rt_result = _run_oracle_with_roundtrip(tmp_path, archive, bundle, opts)
         names = {s.stage for s in rt_result.stages}
-        assert {"snapshot", "profiles", "evidence", "zip", "homepage", "lookup"} == names
+        assert {
+            "snapshot",
+            "profiles",
+            "evidence",
+            "ontology",
+            "prediction",
+            "zip",
+            "homepage",
+            "lookup",
+        } == names
 
 
 # ---------------------------------------------------------------------------
@@ -566,16 +594,15 @@ class TestOracleRoundtripBrokenTree:
         publish_dir.mkdir(parents=True, exist_ok=True)
         rt = make_roundtrip(publish_dir)
         feed_payload = assemble_from_homepage_feed_row_set(
-            rt.homepage_feed_row_set, snapshot_date=rt.snapshot_date,
+            rt.homepage_feed_row_set,
+            snapshot_date=rt.snapshot_date,
         )
         feed_file = publish_dir / "homepage" / "feed.json"
         feed_file.parent.mkdir(parents=True, exist_ok=True)
         feed_file.write_bytes(serialize_payload(feed_payload))
         return publish_dir, rt
 
-    def _verify_broken(
-        self, publish_dir: Path, rt: PublishedRoundtrip
-    ) -> PublishRoundtripResult:
+    def _verify_broken(self, publish_dir: Path, rt: PublishedRoundtrip) -> PublishRoundtripResult:
         conn = MagicMock()
         _by_slug, _score_rows, _rule_fires, _committees, _all_cards = _make_profile_side_effects(rt)
         with (
@@ -585,6 +612,8 @@ class TestOracleRoundtripBrokenTree:
             patch(_FETCH_COMMITTEES, side_effect=_committees),
             patch(_FETCH_PROFILE_CARDS, side_effect=_all_cards),
             patch(_FETCH_ALL_CARDS, side_effect=_all_cards),
+            patch(_FETCH_ONTOLOGY_ROWS, return_value=[]),
+            patch(_VERIFY_PREDICTION, side_effect=_prediction_stub),
             patch(_VERIFY_ZIP, side_effect=_zip_stub),
             patch(_VERIFY_HOMEPAGE, side_effect=_homepage_stub),
         ):
@@ -651,7 +680,8 @@ class TestStageOrderingOracleThenRoundtrip:
         def _publish(*_a, **_kw):
             call_log.append("publish")
             feed_payload = assemble_from_homepage_feed_row_set(
-                rt.homepage_feed_row_set, snapshot_date=rt.snapshot_date,
+                rt.homepage_feed_row_set,
+                snapshot_date=rt.snapshot_date,
             )
             feed_file = publish_dir / "homepage" / "feed.json"
             feed_file.parent.mkdir(parents=True, exist_ok=True)
@@ -685,6 +715,8 @@ class TestStageOrderingOracleThenRoundtrip:
             patch(_FETCH_COMMITTEES, side_effect=_committees),
             patch(_FETCH_PROFILE_CARDS, side_effect=_all_cards),
             patch(_FETCH_ALL_CARDS, side_effect=_all_cards),
+            patch(_FETCH_ONTOLOGY_ROWS, return_value=[]),
+            patch(_VERIFY_PREDICTION, side_effect=_prediction_stub),
             patch(_VERIFY_ZIP, side_effect=_zip_stub),
             patch(_VERIFY_HOMEPAGE, side_effect=_homepage_stub),
         ):
@@ -701,6 +733,8 @@ class TestStageOrderingOracleThenRoundtrip:
             patch(_FETCH_COMMITTEES, side_effect=_committees),
             patch(_FETCH_PROFILE_CARDS, side_effect=_all_cards),
             patch(_FETCH_ALL_CARDS, side_effect=_all_cards),
+            patch(_FETCH_ONTOLOGY_ROWS, return_value=[]),
+            patch(_VERIFY_PREDICTION, side_effect=_prediction_stub),
             patch(_VERIFY_ZIP, side_effect=_zip_stub),
             patch(_VERIFY_HOMEPAGE, side_effect=_homepage_stub),
         ):
@@ -717,9 +751,7 @@ class TestStageOrderingOracleThenRoundtrip:
         archive = _make_congress_archive(tmp_path)
         bundle = _make_disclosures_bundle()
         opts = _options(tmp_path / "publish")
-        oracle_result, rt_result = _run_oracle_with_roundtrip(
-            tmp_path, archive, bundle, opts
-        )
+        oracle_result, rt_result = _run_oracle_with_roundtrip(tmp_path, archive, bundle, opts)
         assert oracle_result.publish["succeeded"] is True
         assert isinstance(rt_result, PublishRoundtripResult)
 

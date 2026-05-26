@@ -2,6 +2,7 @@
 
 No live DB — provenance artifact helpers are mocked.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass

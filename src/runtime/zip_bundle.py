@@ -25,6 +25,7 @@ Expected JSON shape
 
 All four top-level keys must be present.  Extra keys are ignored.
 """
+
 from __future__ import annotations
 
 import json
@@ -45,6 +46,7 @@ _TOP_LEVEL_KEYS = ("zip5_codes", "zip_district_rows", "district_member_rows", "s
 # ---------------------------------------------------------------------------
 # Row constructors with field-level validation
 # ---------------------------------------------------------------------------
+
 
 def _zip_district_row(raw: Any, idx: int) -> ZipDistrictRow:
     _require_dict(raw, "zip_district_rows", idx)
@@ -84,6 +86,7 @@ def _senator_row(raw: Any, idx: int) -> SenatorRow:
 # Public helpers
 # ---------------------------------------------------------------------------
 
+
 def zip_bundle_from_dict(data: dict[str, Any]) -> ZipBundleInputs:
     """Build ZipBundleInputs from a parsed JSON dict.
 
@@ -102,8 +105,12 @@ def zip_bundle_from_dict(data: dict[str, Any]) -> ZipBundleInputs:
 
     return ZipBundleInputs(
         zip5_codes=list(zip5_codes),
-        zip_district_rows=[_zip_district_row(r, i) for i, r in enumerate(data["zip_district_rows"])],
-        district_member_rows=[_district_member_row(r, i) for i, r in enumerate(data["district_member_rows"])],
+        zip_district_rows=[
+            _zip_district_row(r, i) for i, r in enumerate(data["zip_district_rows"])
+        ],
+        district_member_rows=[
+            _district_member_row(r, i) for i, r in enumerate(data["district_member_rows"])
+        ],
         senator_rows=[_senator_row(r, i) for i, r in enumerate(data["senator_rows"])],
     )
 
@@ -125,6 +132,7 @@ def load_zip_bundle(path: Path) -> ZipBundleInputs:
 # ---------------------------------------------------------------------------
 # Typed field extractors (internal)
 # ---------------------------------------------------------------------------
+
 
 def _require_dict(raw: Any, section: str, idx: int) -> None:
     if not isinstance(raw, dict):

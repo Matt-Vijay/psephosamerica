@@ -28,6 +28,7 @@ from __future__ import annotations
 import hashlib
 from pathlib import Path
 
+from src.core.path_safety import safe_join_confined
 from src.parse.disclosures.acquire import ArtifactKind, ArtifactMeta
 from src.parse.disclosures.models import Chamber
 from src.runtime.disclosures_bundle import DisclosureArtifactEntry
@@ -64,7 +65,7 @@ def entry_artifact_meta(
 
 def entry_local_path(entry: DisclosureArtifactEntry, local_root: Path) -> Path:
     """Return the local filesystem path for a bundle entry."""
-    return local_root / entry.storage_uri
+    return safe_join_confined(local_root, entry.storage_uri, label="storage_uri")
 
 
 def read_entry_bytes(entry: DisclosureArtifactEntry, local_root: Path) -> bytes:
@@ -88,8 +89,7 @@ def verify_entry_sha256(entry: DisclosureArtifactEntry, local_root: Path) -> Non
     actual = hashlib.sha256(data).hexdigest()
     if actual != entry.sha256:
         raise Sha256Mismatch(
-            f"SHA-256 mismatch for {entry.storage_uri!r}: "
-            f"expected {entry.sha256!r}, got {actual!r}"
+            f"SHA-256 mismatch for {entry.storage_uri!r}: expected {entry.sha256!r}, got {actual!r}"
         )
 
 
@@ -107,7 +107,6 @@ def read_and_verify_entry(
     actual = hashlib.sha256(data).hexdigest()
     if actual != entry.sha256:
         raise Sha256Mismatch(
-            f"SHA-256 mismatch for {entry.storage_uri!r}: "
-            f"expected {entry.sha256!r}, got {actual!r}"
+            f"SHA-256 mismatch for {entry.storage_uri!r}: expected {entry.sha256!r}, got {actual!r}"
         )
     return data

@@ -171,8 +171,11 @@ class TestGetRuntimeStatus:
             result = get_runtime_status(conn)
 
         assert set(result.keys()) == {
-            "ingestion_runs", "parse_runs", "data_sources",
-            "source_artifacts", "summary",
+            "ingestion_runs",
+            "parse_runs",
+            "data_sources",
+            "source_artifacts",
+            "summary",
         }
 
     def test_exact_summary_keys(self):
@@ -183,8 +186,10 @@ class TestGetRuntimeStatus:
             result = get_runtime_status(conn)
 
         assert set(result["summary"].keys()) == {
-            "ingestion_run_count", "parse_run_count",
-            "data_source_count", "source_artifact_count",
+            "ingestion_run_count",
+            "parse_run_count",
+            "data_source_count",
+            "source_artifact_count",
         }
 
 
@@ -362,7 +367,10 @@ class TestGetRuntimeStatusSummary:
             result = get_runtime_status_summary(conn)
 
         assert set(result["latest_ingestion_run"].keys()) == {
-            "id", "run_type", "status", "data_source",
+            "id",
+            "run_type",
+            "status",
+            "data_source",
         }
 
     def test_latest_artifact_exact_keys(self):
@@ -373,5 +381,7 @@ class TestGetRuntimeStatusSummary:
             result = get_runtime_status_summary(conn)
 
         assert set(result["latest_artifact"].keys()) == {
-            "id", "artifact_kind", "data_source",
+            "id",
+            "artifact_kind",
+            "data_source",
         }

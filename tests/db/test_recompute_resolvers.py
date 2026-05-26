@@ -50,6 +50,7 @@ def _side_effect(
     rule_fire_rows: list[dict[str, Any]],
 ):
     """Dispatch mock fetch_all by SQL keyword."""
+
     def _se(conn, sql, params=None):
         sql_l = sql.lower()
         if "rule_fire" in sql_l:
@@ -59,6 +60,7 @@ def _side_effect(
         if "member" in sql_l:
             return member_rows
         return []
+
     return _se
 
 
@@ -137,9 +139,7 @@ class TestMemberResolver:
         assert fn({"_member_bioguide_id": "A000001"}) is None
 
     def test_multiple_members_resolved_independently(self) -> None:
-        resolvers = build_recompute_resolvers(
-            _maps(members={"A000001": 1, "B000002": 2})
-        )
+        resolvers = build_recompute_resolvers(_maps(members={"A000001": 1, "B000002": 2}))
         _, fn = resolvers["_member_bioguide_id"]
         assert fn({"_member_bioguide_id": "A000001"}) == 1
         assert fn({"_member_bioguide_id": "B000002"}) == 2
@@ -152,16 +152,12 @@ class TestMemberResolver:
 
 class TestDisclosureResolver:
     def test_hit_returns_integer_id(self) -> None:
-        resolvers = build_recompute_resolvers(
-            _maps(disclosures={"src-fd-001": 99})
-        )
+        resolvers = build_recompute_resolvers(_maps(disclosures={"src-fd-001": 99}))
         _, fn = resolvers["_financial_disclosure_source_record_id"]
         assert fn({"_financial_disclosure_source_record_id": "src-fd-001"}) == 99
 
     def test_miss_returns_none(self) -> None:
-        resolvers = build_recompute_resolvers(
-            _maps(disclosures={"src-fd-001": 99})
-        )
+        resolvers = build_recompute_resolvers(_maps(disclosures={"src-fd-001": 99}))
         _, fn = resolvers["_financial_disclosure_source_record_id"]
         assert fn({"_financial_disclosure_source_record_id": "not-there"}) is None
 
@@ -178,16 +174,12 @@ class TestDisclosureResolver:
 
 class TestRuleFireResolver:
     def test_hit_returns_integer_id(self) -> None:
-        resolvers = build_recompute_resolvers(
-            _maps(rule_fires={"src-rf-001": 77})
-        )
+        resolvers = build_recompute_resolvers(_maps(rule_fires={"src-rf-001": 77}))
         _, fn = resolvers["_rule_fire_source_record_id"]
         assert fn({"_rule_fire_source_record_id": "src-rf-001"}) == 77
 
     def test_miss_returns_none(self) -> None:
-        resolvers = build_recompute_resolvers(
-            _maps(rule_fires={"src-rf-001": 77})
-        )
+        resolvers = build_recompute_resolvers(_maps(rule_fires={"src-rf-001": 77}))
         _, fn = resolvers["_rule_fire_source_record_id"]
         assert fn({"_rule_fire_source_record_id": "nope"}) is None
 

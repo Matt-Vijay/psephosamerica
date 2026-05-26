@@ -1,4 +1,5 @@
 """Runtime that drives disclosure parse runs over stored artifacts."""
+
 from __future__ import annotations
 
 import dataclasses
@@ -166,6 +167,8 @@ def _index_filing_year(index_row: Any) -> int | None:
     for field in ("year", "filing_year"):
         value = _index_field(index_row, field)
         if value is None:
+            continue
+        if isinstance(value, bool):
             continue
         try:
             return int(value)
@@ -347,7 +350,9 @@ def run_disclosure_parse_runtime(
 
             return {
                 "page_count": metrics.total_pages,
-                "ocr_page_count": metrics.total_pages - metrics.text_pages if classify_result.needs_ocr else 0,
+                "ocr_page_count": metrics.total_pages - metrics.text_pages
+                if classify_result.needs_ocr
+                else 0,
                 "confidence_summary": {
                     "text_pages": metrics.text_pages,
                     "avg_chars_per_text_page": metrics.avg_chars_per_text_page,

@@ -21,7 +21,9 @@ _MODULE = "src.runtime.smoke"
 # ---------------------------------------------------------------------------
 
 
-def _recompute_result(*, run_id: int = 1, rule_fires: int = 2, evidence_cards: int = 1) -> MagicMock:
+def _recompute_result(
+    *, run_id: int = 1, rule_fires: int = 2, evidence_cards: int = 1
+) -> MagicMock:
     r = MagicMock()
     r.run_id = run_id
     r.data_source = {"id": 99, "slug": "conflict-recompute"}
@@ -59,7 +61,10 @@ class TestSmokeRecompute:
         assert set(summary) == {"run_id", "source_slug", "rule_fires", "evidence_cards"}
 
     def test_counts_rule_fires_and_evidence_cards(self) -> None:
-        with patch(f"{_MODULE}.run_recompute_runtime", return_value=_recompute_result(rule_fires=3, evidence_cards=2)):
+        with patch(
+            f"{_MODULE}.run_recompute_runtime",
+            return_value=_recompute_result(rule_fires=3, evidence_cards=2),
+        ):
             summary = smoke_recompute(MagicMock(), _SNAP_DATE)
 
         assert summary["rule_fires"] == 3
@@ -76,15 +81,22 @@ class TestSmokeRecompute:
         taxonomy = MagicMock()
         resolver = lambda n, t: None  # noqa: E731
 
-        with patch(f"{_MODULE}.run_recompute_runtime", return_value=_recompute_result()) as mock_run:
-            smoke_recompute(MagicMock(), _SNAP_DATE, taxonomy=taxonomy, issuer_sector_resolver=resolver)
+        with patch(
+            f"{_MODULE}.run_recompute_runtime", return_value=_recompute_result()
+        ) as mock_run:
+            smoke_recompute(
+                MagicMock(), _SNAP_DATE, taxonomy=taxonomy, issuer_sector_resolver=resolver
+            )
 
         _, kwargs = mock_run.call_args
         assert kwargs["taxonomy"] is taxonomy
         assert kwargs["issuer_sector_resolver"] is resolver
 
     def test_zero_fires_is_valid(self) -> None:
-        with patch(f"{_MODULE}.run_recompute_runtime", return_value=_recompute_result(rule_fires=0, evidence_cards=0)):
+        with patch(
+            f"{_MODULE}.run_recompute_runtime",
+            return_value=_recompute_result(rule_fires=0, evidence_cards=0),
+        ):
             summary = smoke_recompute(MagicMock(), _SNAP_DATE)
 
         assert summary["rule_fires"] == 0
@@ -93,7 +105,9 @@ class TestSmokeRecompute:
     def test_conn_forwarded_as_first_positional_arg(self) -> None:
         conn = MagicMock()
 
-        with patch(f"{_MODULE}.run_recompute_runtime", return_value=_recompute_result()) as mock_run:
+        with patch(
+            f"{_MODULE}.run_recompute_runtime", return_value=_recompute_result()
+        ) as mock_run:
             smoke_recompute(conn, _SNAP_DATE)
 
         assert mock_run.call_args[0][0] is conn
@@ -110,7 +124,13 @@ class TestSmokePublish:
         with patch(f"{_MODULE}.run_publish_runtime", return_value=_publish_result()):
             summary = smoke_publish(MagicMock(), _SNAP_DATE, Path("/tmp"), MagicMock())
 
-        assert set(summary) == {"run_id", "snapshot_id", "source_slug", "written_count", "succeeded"}
+        assert set(summary) == {
+            "run_id",
+            "snapshot_id",
+            "source_slug",
+            "written_count",
+            "succeeded",
+        }
 
     def test_summarizes_publish_result(self) -> None:
         pub = _publish_result(run_id=7, snapshot_id="2024-06-01", written_count=12, succeeded=True)
@@ -126,7 +146,9 @@ class TestSmokePublish:
 
     def test_explicit_snapshot_id_forwarded(self) -> None:
         with patch(f"{_MODULE}.run_publish_runtime", return_value=_publish_result()) as mock_run:
-            smoke_publish(MagicMock(), _SNAP_DATE, Path("/tmp"), MagicMock(), snapshot_id="custom-snap")
+            smoke_publish(
+                MagicMock(), _SNAP_DATE, Path("/tmp"), MagicMock(), snapshot_id="custom-snap"
+            )
 
         _, kwargs = mock_run.call_args
         assert kwargs["snapshot_id"] == "custom-snap"

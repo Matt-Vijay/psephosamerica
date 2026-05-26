@@ -2,6 +2,7 @@
 
 No network calls.  No DB.  Pure in-memory bundle construction.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -14,12 +15,15 @@ from src.runtime.disclosures_bundle import (
     disclosures_bundle_from_dict,
 )
 from src.runtime.disclosures_bundle_validate import (
+    DisclosuresBundleValidationError,
     check_doc_id_source_record_id_coherence,
     check_duplicate_entries,
     check_index_row_chamber_shape,
+    check_source_url_chamber_coherence,
     check_source_slug_chamber_coherence,
     validate_disclosures_bundle,
 )
+from src.runtime.sources import HOUSE_DISCLOSURES, SENATE_DISCLOSURES
 
 _SHA256 = "a" * 64
 
@@ -40,7 +44,9 @@ def _house_entry_dict(
         "chamber": "house",
         "filing_year": 2024,
         "storage_uri": storage_uri or f"house/2024/{source_record_id}.pdf",
-        "source_url": "https://disclosures.house.gov/...",
+        "source_url": (
+            f"https://disclosures.house.gov/public_disc/financial-pdfs/2024/{source_record_id}.pdf"
+        ),
         "source_slug": source_slug,
         "artifact_kind": "pdf",
         "sha256": _SHA256,
@@ -67,7 +73,7 @@ def _senate_entry_dict(
         "chamber": "senate",
         "filing_year": 2024,
         "storage_uri": f"senate/2024/{source_record_id}.pdf",
-        "source_url": "https://efdsearch.senate.gov/...",
+        "source_url": f"https://efdsearch.senate.gov/search/view/paper/{source_record_id}/",
         "source_slug": source_slug,
         "artifact_kind": "pdf",
         "sha256": _SHA256,
@@ -104,14 +110,14 @@ class TestCheckSourceSlugChamberCoherence:
         bundle = _bundle(_house_entry_dict(source_slug="senate_disclosures"))
         violations = check_source_slug_chamber_coherence(bundle)
         assert len(violations) == 1
-        assert "house_disclosures" in violations[0]
-        assert "senate_disclosures" in violations[0]
+        assert HOUSE_DISCLOSURES.slug in violations[0]
+        assert SENATE_DISCLOSURES.slug in violations[0]
 
     def test_senate_wrong_slug_reports_expected(self) -> None:
         bundle = _bundle(_senate_entry_dict(source_slug="house_disclosures"))
         violations = check_source_slug_chamber_coherence(bundle)
         assert len(violations) == 1
-        assert "senate_disclosures" in violations[0]
+        assert SENATE_DISCLOSURES.slug in violations[0]
 
     def test_both_wrong_two_violations(self) -> None:
         bundle = _bundle(
@@ -273,7 +279,7 @@ class TestCheckIndexRowChamberShape:
             chamber="house",
             filing_year=2024,
             storage_uri="house/2024/99.pdf",
-            source_url="https://example.com",
+            source_url="https://disclosures.house.gov/public_disc/ptr-pdfs/2024/99.pdf",
             source_slug="house_disclosures",
             artifact_kind="pdf",
             sha256=_SHA256,
@@ -301,7 +307,7 @@ class TestCheckIndexRowChamberShape:
             chamber="senate",
             filing_year=2024,
             storage_uri="senate/2024/77.pdf",
-            source_url="https://example.com",
+            source_url="https://efdsearch.senate.gov/search/view/paper/77/",
             source_slug="senate_disclosures",
             artifact_kind="pdf",
             sha256=_SHA256,
@@ -327,7 +333,7 @@ class TestCheckIndexRowChamberShape:
             chamber="house",
             filing_year=2024,
             storage_uri="house/2024/5.pdf",
-            source_url="https://example.com",
+            source_url="https://disclosures.house.gov/public_disc/ptr-pdfs/2024/5.pdf",
             source_slug="house_disclosures",
             artifact_kind="pdf",
             sha256=_SHA256,
@@ -339,6 +345,131 @@ class TestCheckIndexRowChamberShape:
 
     def test_empty_bundle_no_violations(self) -> None:
         assert check_index_row_chamber_shape(_bundle()) == []
+
+
+# ---------------------------------------------------------------------------
+# check_source_url_chamber_coherence
+# ---------------------------------------------------------------------------
+
+
+class TestCheckSourceUrlChamberCoherence:
+    def test_valid_house_url_no_violations(self) -> None:
+        bundle = _bundle(_house_entry_dict())
+        assert check_source_url_chamber_coherence(bundle) == []
+
+    def test_valid_senate_url_no_violations(self) -> None:
+        bundle = _bundle(_senate_entry_dict())
+        assert check_source_url_chamber_coherence(bundle) == []
+
+    def test_direct_house_entry_rejects_non_official_url(self) -> None:
+        entry = DisclosureArtifactEntry(
+            source_record_id="99",
+            chamber="house",
+            filing_year=2024,
+            storage_uri="house/2024/99.pdf",
+            source_url="https://example.com/public_disc/ptr-pdfs/2024/99.pdf",
+            source_slug="house_disclosures",
+            artifact_kind="pdf",
+            sha256=_SHA256,
+            index_row=HouseBundledIndexRow(
+                last_name="Smith",
+                first_name="John",
+                suffix="",
+                raw_filing_type="O",
+                state_dst="CA08",
+                filing_date="2024-01-15",
+                doc_id="99",
+                filing_kind="annual",
+            ),
+        )
+        violations = check_source_url_chamber_coherence(DisclosuresBundle((entry,)))
+        assert len(violations) == 1
+        assert "artifacts[0]" in violations[0]
+        assert "source_url" in violations[0]
+
+    def test_direct_senate_entry_rejects_house_url(self) -> None:
+        entry = DisclosureArtifactEntry(
+            source_record_id="uuid-xyz",
+            chamber="senate",
+            filing_year=2024,
+            storage_uri="senate/2024/uuid-xyz.pdf",
+            source_url="https://disclosures.house.gov/public_disc/ptr-pdfs/2024/uuid-xyz.pdf",
+            source_slug="senate_disclosures",
+            artifact_kind="pdf",
+            sha256=_SHA256,
+            index_row=SenateBundledIndexRow(
+                first_name="Jane",
+                last_name="Doe",
+                office="Senator, TX",
+                report_type="Annual",
+                date_filed="01/01/2024",
+                doc_id="uuid-xyz",
+            ),
+        )
+        violations = check_source_url_chamber_coherence(DisclosuresBundle((entry,)))
+        assert len(violations) == 1
+        assert "source_url" in violations[0]
+
+    def test_house_source_url_doc_id_must_match_source_record_id(self) -> None:
+        entry = _house_entry_dict(source_record_id="99")
+        entry["source_url"] = (
+            "https://disclosures.house.gov/public_disc/financial-pdfs/2024/100.pdf"
+        )
+        violations = check_source_url_chamber_coherence(_bundle(entry))
+        assert len(violations) == 1
+        assert "source_record_id='99'" in violations[0]
+        assert "source_url document id='100'" in violations[0]
+
+    def test_house_source_url_year_must_match_filing_year(self) -> None:
+        entry = _house_entry_dict(source_record_id="99")
+        entry["source_url"] = "https://disclosures.house.gov/public_disc/financial-pdfs/2023/99.pdf"
+        violations = check_source_url_chamber_coherence(_bundle(entry))
+        assert len(violations) == 1
+        assert "filing_year=2024" in violations[0]
+        assert "source_url year=2023" in violations[0]
+
+    def test_house_source_url_kind_must_match_index_row_filing_kind(self) -> None:
+        entry = _house_entry_dict(source_record_id="99")
+        entry["source_url"] = "https://disclosures.house.gov/public_disc/ptr-pdfs/2024/99.pdf"
+        violations = check_source_url_chamber_coherence(_bundle(entry))
+        assert len(violations) == 1
+        assert "filing_kind='annual'" in violations[0]
+        assert "source_url kind='ptr'" in violations[0]
+
+    def test_senate_source_url_doc_id_must_match_source_record_id(self) -> None:
+        entry = _senate_entry_dict(source_record_id="uuid-xyz")
+        entry["source_url"] = "https://efdsearch.senate.gov/search/view/paper/other-doc/"
+        violations = check_source_url_chamber_coherence(_bundle(entry))
+        assert len(violations) == 1
+        assert "source_record_id='uuid-xyz'" in violations[0]
+        assert "source_url document id='other-doc'" in violations[0]
+
+    def test_validate_disclosures_bundle_includes_source_url_violation(self) -> None:
+        entry = DisclosureArtifactEntry(
+            source_record_id="99",
+            chamber="house",
+            filing_year=2024,
+            storage_uri="house/2024/99.pdf",
+            source_url="https://evil.example/public_disc/ptr-pdfs/2024/99.pdf",
+            source_slug=HOUSE_DISCLOSURES.slug,
+            artifact_kind="pdf",
+            sha256=_SHA256,
+            index_row=HouseBundledIndexRow(
+                last_name="Smith",
+                first_name="John",
+                suffix="",
+                raw_filing_type="O",
+                state_dst="CA08",
+                filing_date="2024-01-15",
+                doc_id="99",
+                filing_kind="annual",
+            ),
+        )
+        with pytest.raises(ValueError, match="source_url"):
+            validate_disclosures_bundle(DisclosuresBundle((entry,)))
+
+    def test_empty_bundle_no_violations(self) -> None:
+        assert check_source_url_chamber_coherence(_bundle()) == []
 
 
 # ---------------------------------------------------------------------------
@@ -377,14 +508,21 @@ class TestValidateDisclosuresBundle:
         bundle = _bundle(
             _house_entry_dict(source_slug="bad_slug", source_record_id="X", doc_id="Y"),
         )
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(DisclosuresBundleValidationError) as exc_info:
             validate_disclosures_bundle(bundle)
         msg = str(exc_info.value)
         assert "source_slug" in msg
         assert "doc_id" in msg
+        assert exc_info.value.violations == (
+            "artifacts[0]: chamber='house' expects source_slug='house-disclosures', got 'bad_slug'",
+            "artifacts[0]: source_record_id='X' but index_row.doc_id='Y'",
+        )
 
     def test_error_message_lists_violations_as_bullets(self) -> None:
         bundle = _bundle(_house_entry_dict(source_slug="wrong"))
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(DisclosuresBundleValidationError) as exc_info:
             validate_disclosures_bundle(bundle)
         assert "  - " in str(exc_info.value)
+        assert exc_info.value.violations == (
+            "artifacts[0]: chamber='house' expects source_slug='house-disclosures', got 'wrong'",
+        )

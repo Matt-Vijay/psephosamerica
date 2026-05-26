@@ -30,6 +30,7 @@ from src.parse.disclosures.parse_result import ParseResult
 # Shared fixtures
 # ---------------------------------------------------------------------------
 
+
 def _filing(**kwargs) -> Filing:
     defaults = dict(
         member_bioguide_id="S000001",
@@ -259,12 +260,7 @@ class TestOutsidePositionsExtraction:
         assert result.outside_positions == ()
 
     def test_schedule_d_bounded_by_schedule_e(self) -> None:
-        page = (
-            "Schedule D\n"
-            "1  Acme Corp  Director\n"
-            "Schedule E\n"
-            "1  Fake Corp  Trustee\n"
-        )
+        page = "Schedule D\n1  Acme Corp  Director\nSchedule E\n1  Fake Corp  Trustee\n"
         result = parse_house_annual([page], _filing())
         assert len(result.outside_positions) == 1
         assert result.outside_positions[0].entity_name == "Acme Corp"
@@ -281,15 +277,15 @@ class TestMultiPage:
         assert len(result.holdings) == 2
 
     def test_holdings_and_positions_across_pages(self) -> None:
-        result = parse_house_annual(
-            [_COVER_PAGE, _SCHEDULE_A_PAGE, _SCHEDULE_D_PAGE], _filing()
-        )
+        result = parse_house_annual([_COVER_PAGE, _SCHEDULE_A_PAGE, _SCHEDULE_D_PAGE], _filing())
         assert len(result.holdings) == 2
         assert len(result.outside_positions) == 2
 
     def test_schedule_a_split_across_pages(self) -> None:
         page_a = "Schedule A\n1  SP  Apple Inc  $15,001 - $50,000  Dividends  $1,001 - $15,000\n"
-        page_b = "2  Joint  Treasury Notes  $50,001 - $100,000  Interest  $1,001 - $15,000\nSchedule B\n"
+        page_b = (
+            "2  Joint  Treasury Notes  $50,001 - $100,000  Interest  $1,001 - $15,000\nSchedule B\n"
+        )
         result = parse_house_annual([page_a, page_b], _filing())
         assert len(result.holdings) == 2
 
@@ -302,7 +298,9 @@ class TestMultiPage:
 class TestAmendmentDocument:
     def test_amendment_header_does_not_break_parsing(self) -> None:
         pages = [_AMENDMENT_COVER, _SCHEDULE_A_PAGE, _SCHEDULE_D_PAGE]
-        result = parse_house_annual(pages, _filing(filing_type=FilingType.AMENDMENT, is_amended=True))
+        result = parse_house_annual(
+            pages, _filing(filing_type=FilingType.AMENDMENT, is_amended=True)
+        )
         assert len(result.holdings) == 2
         assert len(result.outside_positions) == 2
 
@@ -478,30 +476,18 @@ class TestUnrecognizedLabels:
     """Out-of-table labels are preserved as strings; numeric fields are None."""
 
     def test_unrecognized_value_label_preserved(self) -> None:
-        page = (
-            "Schedule A\n"
-            "1  Self  Private Fund LP  See Footnote  None  None\n"
-            "Schedule B\n"
-        )
+        page = "Schedule A\n1  Self  Private Fund LP  See Footnote  None  None\nSchedule B\n"
         result = parse_house_annual([page], _filing())
         assert result.holdings[0].value_label == "See Footnote"
 
     def test_unrecognized_value_label_min_max_none(self) -> None:
-        page = (
-            "Schedule A\n"
-            "1  Self  Private Fund LP  See Footnote  None  None\n"
-            "Schedule B\n"
-        )
+        page = "Schedule A\n1  Self  Private Fund LP  See Footnote  None  None\nSchedule B\n"
         result = parse_house_annual([page], _filing())
         assert result.holdings[0].value_min is None
         assert result.holdings[0].value_max is None
 
     def test_holding_still_extracted_with_unrecognized_label(self) -> None:
-        page = (
-            "Schedule A\n"
-            "1  Self  Private Fund LP  See Footnote  None  None\n"
-            "Schedule B\n"
-        )
+        page = "Schedule A\n1  Self  Private Fund LP  See Footnote  None  None\nSchedule B\n"
         result = parse_house_annual([page], _filing())
         assert len(result.holdings) == 1
         assert result.holdings[0].issuer_name == "Private Fund LP"
@@ -516,10 +502,7 @@ class TestSectionWithNoStopMarker:
     """Section extends to end-of-document when no stop-pattern line follows."""
 
     def test_schedule_a_end_of_document_collects_row(self) -> None:
-        page = (
-            "Schedule A\n"
-            "1  SP  Apple Inc  $15,001 - $50,000  Dividends  $1,001 - $15,000\n"
-        )
+        page = "Schedule A\n1  SP  Apple Inc  $15,001 - $50,000  Dividends  $1,001 - $15,000\n"
         result = parse_house_annual([page], _filing())
         assert len(result.holdings) == 1
 

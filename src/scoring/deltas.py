@@ -74,7 +74,9 @@ def diff_many_members(
     for row in current_rows:
         bid = _bioguide_id(row)
         result.extend(
-            diff_one_member(row, previous_by_bioguide.get(bid), include_first_time=include_first_time)
+            diff_one_member(
+                row, previous_by_bioguide.get(bid), include_first_time=include_first_time
+            )
         )
     return result
 

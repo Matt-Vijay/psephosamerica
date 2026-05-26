@@ -10,10 +10,12 @@ from __future__ import annotations
 
 import datetime
 from dataclasses import dataclass
-from xml.etree.ElementTree import fromstring
+
+from defusedxml.ElementTree import fromstring
 
 import httpx
 
+from .official_fetch import fetch_official_congress_text
 from .senate_votes import SENATE_VOTE_BASE, parse_senate_vote_date, roll_call_url
 
 
@@ -59,15 +61,17 @@ def parse_senate_vote_index(
         result_text = (vote_el.findtext("vote_result") or "").strip()
         result = result_text or None
 
-        rows.append(SenateVoteIndexRow(
-            congress=congress,
-            session=session,
-            vote_number=vote_number,
-            vote_date=vote_date,
-            question=question,
-            result=result,
-            source_url=roll_call_url(congress, session, vote_number),
-        ))
+        rows.append(
+            SenateVoteIndexRow(
+                congress=congress,
+                session=session,
+                vote_number=vote_number,
+                vote_date=vote_date,
+                question=question,
+                result=result,
+                source_url=roll_call_url(congress, session, vote_number),
+            )
+        )
 
     return rows
 
@@ -82,8 +86,6 @@ def fetch_senate_vote_index(
     xml = _get(url, client)
     return parse_senate_vote_index(xml, congress=congress, session=session)
 
+
 def _get(url: str, client: httpx.Client | None) -> str:
-    if client is not None:
-        return client.get(url).raise_for_status().text
-    with httpx.Client() as c:
-        return c.get(url).raise_for_status().text
+    return fetch_official_congress_text(url, client=client)

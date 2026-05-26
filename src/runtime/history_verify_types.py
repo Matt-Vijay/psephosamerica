@@ -14,6 +14,7 @@ HISTORY_VERIFY_STAGES = (
     "current_aggregates",
     "snapshot_presets",
     "members",
+    "member_timelines",
     "member_pages",
 )
 

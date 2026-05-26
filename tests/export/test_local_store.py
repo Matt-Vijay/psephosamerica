@@ -16,7 +16,9 @@ from src.api.contracts import (
 from src.export.contracts import (
     ConfidenceLabel,
     DimensionChangeSummary,
+    EvidenceBlock,
     EvidenceCardPayload,
+    EvidenceSection,
     HistoricalCommitteeMembership,
     MemberChangeSummaryPayload,
     MemberHistoryChartPayload,
@@ -27,6 +29,7 @@ from src.export.contracts import (
     MemberHistorySnapshot,
     MemberProfilePayload,
     SnapshotComparePresetPayload,
+    SourceAnchor,
     MemberTrendSummaryPayload,
     MemberTrendWindowPayload,
     ZipFeedPayload,
@@ -59,6 +62,28 @@ from src.export.local_store import (
     load_latest_manifest,
     load_manifest,
     load_member_profile,
+    load_ontology_agent_tools,
+    load_ontology_edges,
+    load_ontology_frontend_client,
+    load_ontology_frontend_contract,
+    load_ontology_frontend_types,
+    load_ontology_frontend_index,
+    load_ontology_index,
+    load_ontology_member_features,
+    load_ontology_member_edges,
+    load_ontology_static_schema,
+    load_prediction_bootstrap,
+    load_prediction_committee_context,
+    load_prediction_committee_readiness,
+    load_prediction_member_context,
+    load_prediction_member_readiness,
+    load_prediction_readiness,
+    load_prediction_readiness_index,
+    load_prediction_sector_context,
+    load_prediction_sector_readiness,
+    load_prediction_source_context,
+    load_prediction_source_index,
+    load_prediction_topology,
     load_snapshot_index,
     load_zip_entry,
     load_zip_feed,
@@ -84,11 +109,72 @@ from src.export.writer import (
     member_path,
     member_trend_summary_path,
     movement_window_path,
+    ontology_agent_tools_path,
+    ontology_edges_path,
+    ontology_frontend_client_path,
+    ontology_frontend_contract_path,
+    ontology_frontend_types_path,
+    ontology_frontend_index_path,
+    ontology_index_path,
+    ontology_member_features_path,
+    ontology_member_edges_path,
+    ontology_schema_path,
+    prediction_committee_context_path,
+    prediction_committee_readiness_path,
+    prediction_bootstrap_path,
+    prediction_topology_path,
+    prediction_member_context_path,
+    prediction_member_readiness_path,
+    prediction_readiness_index_path,
+    prediction_readiness_path,
+    prediction_sector_context_path,
+    prediction_sector_readiness_path,
+    prediction_source_context_path,
+    prediction_source_index_path,
     serialize_payload,
     snapshot_preset_compare_path,
     snapshot_index_path,
     zip_entry_path,
     zip_path,
+)
+from src.ontology.contracts import (
+    OntologyEdgePayload,
+    OntologyGraphPayload,
+    OntologyIndexPayload,
+    OntologyMemberFeaturesPayload,
+    OntologyMemberGraphPayload,
+    OntologyNodeRef,
+    OntologySectorExposurePayload,
+)
+from src.ontology.static_schema import (
+    OntologyFrontendIndexPayload,
+    build_ontology_frontend_index,
+    build_ontology_static_schema,
+)
+from src.ontology.agent_tools import build_ontology_agent_tool_manifest
+from src.ontology.frontend_contracts import (
+    build_ontology_frontend_contract,
+    build_ontology_typescript_client,
+)
+from src.prediction.contracts import (
+    PredictionBootstrapPayload,
+    PredictionCommitteeContextPayload,
+    PredictionCommitteeReadinessPayload,
+    PredictionCommitteeReadinessRowPayload,
+    PredictionMemberContextPayload,
+    PredictionMemberReadinessPayload,
+    PredictionReadinessCoveragePayload,
+    PredictionReadinessIndexPayload,
+    PredictionReadinessPayload,
+    PredictionSectorContextPayload,
+    PredictionSectorReadinessPayload,
+    PredictionSectorReadinessRowPayload,
+    PredictionSourceContextPayload,
+    PredictionSourceIndexPayload,
+    PredictionSourceIndexRowPayload,
+    PredictionTopologyPayload,
+    prediction_source_context_path as prediction_model_source_context_path,
+    prediction_source_key,
 )
 
 
@@ -97,6 +183,53 @@ from src.export.writer import (
 
 SNAPSHOT_DATE = date(2026, 4, 13)
 SNAPSHOT_ID = "2026-04-13"
+
+
+def _prediction_source_anchor() -> SourceAnchor:
+    return SourceAnchor(
+        source_type="committee_membership",
+        source_id="cm-99",
+        url="https://api.congress.gov/v3/committee/senate/SSFI?format=json",
+        label="Committee membership",
+    )
+
+
+def _prediction_source_key() -> str:
+    anchor = _prediction_source_anchor()
+    return prediction_source_key(
+        source_type=anchor.source_type,
+        source_id=anchor.source_id,
+        url=anchor.url,
+        label=anchor.label,
+    )
+
+
+def _prediction_source_context_path() -> str:
+    return prediction_model_source_context_path(_prediction_source_key())
+
+
+def _prediction_ontology_features() -> OntologyMemberFeaturesPayload:
+    return OntologyMemberFeaturesPayload(
+        snapshot_id=SNAPSHOT_ID,
+        member_bioguide_id="S000148",
+        edge_count=2,
+        source_count=1,
+        edge_type_counts={
+            "committee_sector_jurisdiction": 1,
+            "member_committee_assignment": 1,
+        },
+        source_type_counts={"committee_membership": 1},
+        committees=[OntologyNodeRef(node_type="committee", node_id="SSFI", label="Finance")],
+        sector_exposures=[
+            OntologySectorExposurePayload(
+                sector_id="finance",
+                label="Finance",
+                committee_jurisdiction_edge_count=1,
+                source_count=1,
+            )
+        ],
+        readiness_status="ready",
+    )
 
 
 def _member_payload() -> MemberProfilePayload:
@@ -127,11 +260,50 @@ def _evidence_payload() -> EvidenceCardPayload:
         rule_version=1,
         score_delta=-5.0,
         short_explanation="Trade overlapping committee jurisdiction.",
-        blocks=[],
-        source_anchors=[],
+        blocks=[
+            EvidenceBlock(section=EvidenceSection.FACT, text="Purchased AAPL on 2026-01-15."),
+        ],
+        source_anchors=[
+            SourceAnchor(
+                source_type="financial_disclosure",
+                source_id="fd-99",
+                url="https://efdsearch.senate.gov/search/view/paper/99/",
+                label="2025 Annual Disclosure",
+            )
+        ],
         confidence=ConfidenceLabel.HIGH,
         snapshot_date=SNAPSHOT_DATE,
         created_at=datetime(2026, 4, 13, 12, 0, 0),
+    )
+
+
+def _ontology_graph_payload() -> OntologyGraphPayload:
+    edge = OntologyEdgePayload(
+        edge_id="ont-edge-local-001",
+        edge_type="member_committee_assignment",
+        subject=OntologyNodeRef(
+            node_type="member",
+            node_id="S000148",
+            label="Charles Schumer",
+        ),
+        object=OntologyNodeRef(
+            node_type="committee",
+            node_id="SSFI",
+            label="Finance",
+        ),
+        source_anchors=[
+            SourceAnchor(
+                source_type="committee_membership",
+                source_id="cm-local-1",
+                url="https://api.congress.gov/v3/committee/senate/SSFI?format=json",
+                label="Committee membership",
+            )
+        ],
+    )
+    return OntologyGraphPayload(
+        snapshot_id=SNAPSHOT_ID,
+        edge_count=1,
+        edges=[edge],
     )
 
 
@@ -257,10 +429,7 @@ def _movement_window_payload() -> MovementWindowPayload:
 
 
 def _manifest(files: list[PlannedFile]) -> SnapshotManifest:
-    entries = [
-        ManifestEntry(path=f.path, sha256=f.sha256, size_bytes=f.size_bytes)
-        for f in files
-    ]
+    entries = [ManifestEntry(path=f.path, sha256=f.sha256, size_bytes=f.size_bytes) for f in files]
     return SnapshotManifest(
         snapshot_id=SNAPSHOT_ID,
         created_at=datetime(2026, 4, 13, 0, 0, 0),
@@ -301,8 +470,11 @@ def _serialise(model: object) -> bytes:
     """Serialise a Pydantic model to JSON bytes (mirrors writer.serialize_payload)."""
     import json as _json
     from pydantic import BaseModel as _BM
+
     assert isinstance(model, _BM)
-    return _json.dumps(model.model_dump(mode="json"), sort_keys=True, ensure_ascii=False).encode("utf-8")
+    return _json.dumps(model.model_dump(mode="json"), sort_keys=True, ensure_ascii=False).encode(
+        "utf-8"
+    )
 
 
 # ── load_member_profile ────────────────────────────────────────────
@@ -381,6 +553,28 @@ def test_load_evidence_card_roundtrip(tmp_path: Path) -> None:
     assert result.score_delta == -5.0
 
 
+def test_load_evidence_card_rejects_nonzero_claim_bearing_anchor_without_https(
+    tmp_path: Path,
+) -> None:
+    payload = _evidence_payload().model_copy(
+        update={
+            "source_anchors": [
+                SourceAnchor(
+                    source_type="financial_disclosure",
+                    source_id="fd-99",
+                    url=None,
+                    label="2025 Annual Disclosure",
+                )
+            ]
+        }
+    )
+    pf = PlannedFile.from_bytes(evidence_path(payload.evidence_card_id), _serialise(payload))
+    write_planned_files([pf], tmp_path)
+
+    with pytest.raises(ValueError, match="financial_disclosure.*fd-99"):
+        load_evidence_card(tmp_path, "ec-001")
+
+
 def test_load_evidence_card_missing(tmp_path: Path) -> None:
     with pytest.raises(FileNotFoundError):
         load_evidence_card(tmp_path, "ec-999")
@@ -392,6 +586,841 @@ def test_load_evidence_card_invalid_json(tmp_path: Path) -> None:
     dest.write_bytes(b"[[[")
     with pytest.raises(ValueError, match="Invalid JSON"):
         load_evidence_card(tmp_path, "ec-bad")
+
+
+# ── load_ontology_edges ────────────────────────────────────────────
+
+
+def test_load_ontology_agent_tools_roundtrip(tmp_path: Path) -> None:
+    payload = build_ontology_agent_tool_manifest()
+    pf = PlannedFile.from_bytes(ontology_agent_tools_path(), _serialise(payload))
+    write_planned_files([pf], tmp_path)
+
+    result = load_ontology_agent_tools(tmp_path)
+
+    assert result.schema_version == "openpact-ontology-agent-tools-v1"
+    assert result.tools[0].tool_name == "audit_ontology_claim_sources"
+
+
+def test_load_ontology_agent_tools_missing(tmp_path: Path) -> None:
+    with pytest.raises(FileNotFoundError):
+        load_ontology_agent_tools(tmp_path)
+
+
+def test_load_ontology_edges_roundtrip(tmp_path: Path) -> None:
+    payload = _ontology_graph_payload()
+    pf = PlannedFile.from_bytes(ontology_edges_path(), _serialise(payload))
+    write_planned_files([pf], tmp_path)
+
+    result = load_ontology_edges(tmp_path)
+
+    assert result.snapshot_id == SNAPSHOT_ID
+    assert result.edge_count == 1
+    assert result.edges[0].edge_id == "ont-edge-local-001"
+
+
+def test_load_ontology_edges_missing(tmp_path: Path) -> None:
+    with pytest.raises(FileNotFoundError):
+        load_ontology_edges(tmp_path)
+
+
+def test_load_ontology_static_schema_roundtrip(tmp_path: Path) -> None:
+    payload = build_ontology_static_schema()
+    pf = PlannedFile.from_bytes(ontology_schema_path(), _serialise(payload))
+    write_planned_files([pf], tmp_path)
+
+    result = load_ontology_static_schema(tmp_path)
+
+    assert result.schema_version == "openpact-ontology-v1"
+    assert "member" in {item.object_type for item in result.object_types}
+
+
+def test_load_ontology_static_schema_missing(tmp_path: Path) -> None:
+    with pytest.raises(FileNotFoundError):
+        load_ontology_static_schema(tmp_path)
+
+
+def test_load_ontology_frontend_contract_roundtrip(tmp_path: Path) -> None:
+    payload = build_ontology_frontend_contract()
+    pf = PlannedFile.from_bytes(ontology_frontend_contract_path(), _serialise(payload))
+    write_planned_files([pf], tmp_path)
+
+    result = load_ontology_frontend_contract(tmp_path)
+
+    assert result.schema_version == "openpact-ontology-contract-v1"
+    assert "OntologyFrontendIndexPayload" in result.model_names
+
+
+def test_load_ontology_frontend_contract_missing(tmp_path: Path) -> None:
+    with pytest.raises(FileNotFoundError):
+        load_ontology_frontend_contract(tmp_path)
+
+
+def test_load_ontology_frontend_types_roundtrip(tmp_path: Path) -> None:
+    content = "export interface OntologyFrontendContractSchemas {}\n"
+    pf = PlannedFile.from_bytes(ontology_frontend_types_path(), content.encode("utf-8"))
+    write_planned_files([pf], tmp_path)
+
+    result = load_ontology_frontend_types(tmp_path)
+
+    assert result == content
+
+
+def test_load_ontology_frontend_types_missing(tmp_path: Path) -> None:
+    with pytest.raises(FileNotFoundError):
+        load_ontology_frontend_types(tmp_path)
+
+
+def test_load_ontology_frontend_client_roundtrip(tmp_path: Path) -> None:
+    content = build_ontology_typescript_client()
+    pf = PlannedFile.from_bytes(ontology_frontend_client_path(), content.encode("utf-8"))
+    write_planned_files([pf], tmp_path)
+
+    result = load_ontology_frontend_client(tmp_path)
+
+    assert result == content
+    assert "OpenPactOntologyClient" in result
+
+
+def test_load_ontology_frontend_client_missing(tmp_path: Path) -> None:
+    with pytest.raises(FileNotFoundError):
+        load_ontology_frontend_client(tmp_path)
+
+
+def test_load_ontology_frontend_index_roundtrip(tmp_path: Path) -> None:
+    graph = _ontology_graph_payload()
+    payload = build_ontology_frontend_index(
+        snapshot_id=SNAPSHOT_ID,
+        edges=graph.edges,
+    )
+    pf = PlannedFile.from_bytes(ontology_frontend_index_path(), _serialise(payload))
+    write_planned_files([pf], tmp_path)
+
+    result = load_ontology_frontend_index(tmp_path)
+
+    assert isinstance(result, OntologyFrontendIndexPayload)
+    assert result.snapshot_id == SNAPSHOT_ID
+    assert result.schema_version == "openpact-ontology-frontend-index-v1"
+    assert result.member_ids == ["S000148"]
+    assert result.by_member["S000148"].edge_ids == ["ont-edge-local-001"]
+
+
+def test_load_ontology_frontend_index_missing(tmp_path: Path) -> None:
+    with pytest.raises(FileNotFoundError):
+        load_ontology_frontend_index(tmp_path)
+
+
+def test_load_ontology_index_roundtrip(tmp_path: Path) -> None:
+    payload = OntologyIndexPayload(
+        snapshot_id=SNAPSHOT_ID,
+        edge_count=1,
+        node_count=2,
+        member_count=1,
+        edge_type_counts={"member_committee_assignment": 1},
+        node_type_counts={"member": 1, "committee": 1},
+        source_type_counts={"committee_membership": 1},
+        member_edge_counts={"S000148": 1},
+        available_member_graphs=["S000148"],
+    )
+    pf = PlannedFile.from_bytes(ontology_index_path(), _serialise(payload))
+    write_planned_files([pf], tmp_path)
+
+    result = load_ontology_index(tmp_path)
+
+    assert result.snapshot_id == SNAPSHOT_ID
+    assert result.edge_count == 1
+    assert result.available_member_graphs == ["S000148"]
+
+
+def test_load_ontology_index_missing(tmp_path: Path) -> None:
+    with pytest.raises(FileNotFoundError):
+        load_ontology_index(tmp_path)
+
+
+def test_load_ontology_member_edges_roundtrip(tmp_path: Path) -> None:
+    graph = _ontology_graph_payload()
+    payload = OntologyMemberGraphPayload(
+        snapshot_id=SNAPSHOT_ID,
+        member_bioguide_id="S000148",
+        edge_count=1,
+        edges=graph.edges,
+    )
+    pf = PlannedFile.from_bytes(ontology_member_edges_path("S000148"), _serialise(payload))
+    write_planned_files([pf], tmp_path)
+
+    result = load_ontology_member_edges(tmp_path, "S000148")
+
+    assert result.snapshot_id == SNAPSHOT_ID
+    assert result.member_bioguide_id == "S000148"
+    assert result.edge_count == 1
+    assert result.edges[0].edge_id == "ont-edge-local-001"
+
+
+def test_load_ontology_member_edges_missing(tmp_path: Path) -> None:
+    with pytest.raises(FileNotFoundError):
+        load_ontology_member_edges(tmp_path, "S000148")
+
+
+def test_load_ontology_member_features_roundtrip(tmp_path: Path) -> None:
+    payload = OntologyMemberFeaturesPayload(
+        snapshot_id=SNAPSHOT_ID,
+        member_bioguide_id="S000148",
+        edge_count=1,
+        source_count=1,
+        edge_type_counts={"member_committee_assignment": 1},
+        source_type_counts={"committee_membership": 1},
+        committees=[],
+        sector_exposures=[],
+        readiness_status="partial",
+        readiness_reasons=["missing_committee_sector_context", "missing_member_financial_exposure"],
+    )
+    pf = PlannedFile.from_bytes(ontology_member_features_path("S000148"), _serialise(payload))
+    write_planned_files([pf], tmp_path)
+
+    result = load_ontology_member_features(tmp_path, "S000148")
+
+    assert result.snapshot_id == SNAPSHOT_ID
+    assert result.member_bioguide_id == "S000148"
+    assert result.readiness_status == "partial"
+
+
+def test_load_ontology_member_features_missing(tmp_path: Path) -> None:
+    with pytest.raises(FileNotFoundError):
+        load_ontology_member_features(tmp_path, "S000148")
+
+
+def test_load_prediction_readiness_roundtrip(tmp_path: Path) -> None:
+    payload = PredictionReadinessPayload(
+        snapshot_id=SNAPSHOT_ID,
+        snapshot_date=SNAPSHOT_DATE,
+        member_count=0,
+        ready_member_count=0,
+        partial_member_count=0,
+        blocked_member_count=0,
+        vote_event_count=0,
+        vote_cast_count=0,
+        coverage=PredictionReadinessCoveragePayload(
+            readiness_rate=0,
+            vote_coverage_rate=0,
+            ontology_coverage_rate=0,
+            average_votes_per_member=0,
+            average_ontology_edges_per_member=0,
+        ),
+        members=[],
+    )
+    pf = PlannedFile.from_bytes(prediction_readiness_path(), _serialise(payload))
+    write_planned_files([pf], tmp_path)
+
+    result = load_prediction_readiness(tmp_path)
+
+    assert result.snapshot_id == SNAPSHOT_ID
+    assert result.member_count == 0
+
+
+def test_load_prediction_bootstrap_roundtrip(tmp_path: Path) -> None:
+    payload = PredictionBootstrapPayload(
+        snapshot_id=SNAPSHOT_ID,
+        snapshot_date=SNAPSHOT_DATE,
+        member_count=0,
+        ready_member_count=0,
+        partial_member_count=0,
+        blocked_member_count=0,
+        vote_event_count=0,
+        vote_cast_count=0,
+        coverage=PredictionReadinessCoveragePayload(
+            readiness_rate=0,
+            vote_coverage_rate=0,
+            ontology_coverage_rate=0,
+            average_votes_per_member=0,
+            average_ontology_edges_per_member=0,
+        ),
+        readiness_path="prediction/readiness.json",
+        index_path="prediction/index.json",
+        source_index_path="prediction/sources.json",
+        source_context_path_template="prediction/source-context/{source_key}.json",
+        sector_readiness_path="prediction/sectors.json",
+        sector_context_path_template="prediction/sector-context/{sector}.json",
+        committee_readiness_path="prediction/committees.json",
+        committee_context_path_template="prediction/committee-context/{committee}.json",
+        member_readiness_path_template="prediction/members/{bioguide}.json",
+        member_context_path_template="prediction/member-context/{bioguide}.json",
+    )
+    pf = PlannedFile.from_bytes(prediction_bootstrap_path(), _serialise(payload))
+    write_planned_files([pf], tmp_path)
+
+    result = load_prediction_bootstrap(tmp_path)
+
+    assert result.snapshot_id == SNAPSHOT_ID
+    assert result.index_path == "prediction/index.json"
+
+
+def test_load_prediction_topology_roundtrip(tmp_path: Path) -> None:
+    payload = PredictionTopologyPayload(
+        snapshot_id=SNAPSHOT_ID,
+        snapshot_date=SNAPSHOT_DATE,
+        member_count=1,
+        sector_count=2,
+        committee_count=3,
+        source_count=4,
+        readiness_path="prediction/readiness.json",
+        index_path="prediction/index.json",
+        source_index_path="prediction/sources.json",
+        sector_readiness_path="prediction/sectors.json",
+        committee_readiness_path="prediction/committees.json",
+        member_readiness_path_template="prediction/members/{bioguide}.json",
+        member_context_path_template="prediction/member-context/{bioguide}.json",
+        source_context_path_template="prediction/source-context/{source_key}.json",
+        sector_context_path_template="prediction/sector-context/{sector}.json",
+        committee_context_path_template="prediction/committee-context/{committee}.json",
+    )
+    pf = PlannedFile.from_bytes(prediction_topology_path(), _serialise(payload))
+    write_planned_files([pf], tmp_path)
+
+    result = load_prediction_topology(tmp_path)
+
+    assert result.snapshot_id == SNAPSHOT_ID
+    assert result.member_count == 1
+    assert result.source_count == 4
+    assert result.source_context_path_template == "prediction/source-context/{source_key}.json"
+
+
+def test_load_prediction_sector_readiness_roundtrip(tmp_path: Path) -> None:
+    payload = PredictionSectorReadinessPayload(
+        snapshot_id=SNAPSHOT_ID,
+        snapshot_date=SNAPSHOT_DATE,
+        sector_count=1,
+        sectors=[
+            PredictionSectorReadinessRowPayload(
+                sector_id="finance",
+                label="Finance",
+                member_count=1,
+                ready_member_count=1,
+                partial_member_count=0,
+                blocked_member_count=0,
+                readiness_rate=1,
+                vote_coverage_rate=1,
+                committee_jurisdiction_edge_count=1,
+                holding_edge_count=1,
+                transaction_edge_count=0,
+                member_bioguide_ids=["S000148"],
+            )
+        ],
+    )
+    pf = PlannedFile.from_bytes(prediction_sector_readiness_path(), _serialise(payload))
+    write_planned_files([pf], tmp_path)
+
+    result = load_prediction_sector_readiness(tmp_path)
+
+    assert result.sector_count == 1
+    assert result.sectors[0].sector_id == "finance"
+
+
+def test_load_prediction_source_index_roundtrip(tmp_path: Path) -> None:
+    payload = PredictionSourceIndexPayload(
+        snapshot_id=SNAPSHOT_ID,
+        snapshot_date=SNAPSHOT_DATE,
+        source_count=1,
+        sources=[
+            PredictionSourceIndexRowPayload(
+                source_key=_prediction_source_key(),
+                source_type="committee_membership",
+                source_id="cm-99",
+                url="https://api.congress.gov/v3/committee/senate/SSFI?format=json",
+                label="Committee membership",
+                source_context_path=_prediction_source_context_path(),
+                member_count=1,
+                member_bioguide_ids=["S000148"],
+                sector_ids=["finance"],
+                committee_ids=["SSFI"],
+            )
+        ],
+    )
+    pf = PlannedFile.from_bytes(prediction_source_index_path(), _serialise(payload))
+    write_planned_files([pf], tmp_path)
+
+    result = load_prediction_source_index(tmp_path)
+
+    assert result.source_count == 1
+    assert result.sources[0].source_id == "cm-99"
+
+
+def test_load_prediction_source_context_roundtrip(tmp_path: Path) -> None:
+    readiness = PredictionMemberReadinessPayload(
+        bioguide_id="S000148",
+        slug="charles-schumer",
+        name="Charles Schumer",
+        chamber="senate",
+        vote_count=1,
+        yea_count=1,
+        yea_rate=1,
+        participation_rate=1,
+        ontology_readiness_status="ready",
+        readiness_status="ready",
+    )
+    payload = PredictionSourceContextPayload(
+        snapshot_id=SNAPSHOT_ID,
+        snapshot_date=SNAPSHOT_DATE,
+        source=PredictionSourceIndexRowPayload(
+            source_key=_prediction_source_key(),
+            source_type="committee_membership",
+            source_id="cm-99",
+            url="https://api.congress.gov/v3/committee/senate/SSFI?format=json",
+            label="Committee membership",
+            source_context_path=_prediction_source_context_path(),
+            member_count=1,
+            member_bioguide_ids=["S000148"],
+            sector_ids=["finance"],
+            committee_ids=["SSFI"],
+        ),
+        members=[
+            PredictionMemberContextPayload(
+                snapshot_id=SNAPSHOT_ID,
+                snapshot_date=SNAPSHOT_DATE,
+                member_bioguide_id="S000148",
+                member_readiness=readiness,
+                ontology_features=_prediction_ontology_features(),
+                context_status="ready",
+                source_anchors=[_prediction_source_anchor()],
+                source_keys=[_prediction_source_key()],
+                source_context_paths=[_prediction_source_context_path()],
+            )
+        ],
+    )
+    pf = PlannedFile.from_bytes(
+        prediction_source_context_path(_prediction_source_key()), _serialise(payload)
+    )
+    write_planned_files([pf], tmp_path)
+
+    result = load_prediction_source_context(tmp_path, _prediction_source_key())
+
+    assert result.source.source_key == _prediction_source_key()
+    assert result.members[0].member_bioguide_id == "S000148"
+
+
+def test_load_prediction_source_context_rejects_misnamed_source_key(tmp_path: Path) -> None:
+    readiness = PredictionMemberReadinessPayload(
+        bioguide_id="S000148",
+        slug="charles-schumer",
+        name="Charles Schumer",
+        chamber="senate",
+        vote_count=1,
+        yea_count=1,
+        yea_rate=1,
+        participation_rate=1,
+        ontology_readiness_status="ready",
+        readiness_status="ready",
+    )
+    payload = PredictionSourceContextPayload(
+        snapshot_id=SNAPSHOT_ID,
+        snapshot_date=SNAPSHOT_DATE,
+        source=PredictionSourceIndexRowPayload(
+            source_key=_prediction_source_key(),
+            source_type="committee_membership",
+            source_id="cm-99",
+            url="https://api.congress.gov/v3/committee/senate/SSFI?format=json",
+            label="Committee membership",
+            source_context_path=_prediction_source_context_path(),
+            member_count=1,
+            member_bioguide_ids=["S000148"],
+            sector_ids=["finance"],
+            committee_ids=["SSFI"],
+        ),
+        members=[
+            PredictionMemberContextPayload(
+                snapshot_id=SNAPSHOT_ID,
+                snapshot_date=SNAPSHOT_DATE,
+                member_bioguide_id="S000148",
+                member_readiness=readiness,
+                ontology_features=_prediction_ontology_features(),
+                context_status="ready",
+                source_anchors=[_prediction_source_anchor()],
+                source_keys=[_prediction_source_key()],
+                source_context_paths=[_prediction_source_context_path()],
+            )
+        ],
+    )
+    wrong_key = "abcdefabcdefabcdefabcdef"
+    pf = PlannedFile.from_bytes(prediction_source_context_path(wrong_key), _serialise(payload))
+    write_planned_files([pf], tmp_path)
+
+    with pytest.raises(ValueError, match="source_key does not match requested key"):
+        load_prediction_source_context(tmp_path, wrong_key)
+
+
+def test_load_prediction_sector_context_roundtrip(tmp_path: Path) -> None:
+    readiness = PredictionMemberReadinessPayload(
+        bioguide_id="S000148",
+        slug="charles-schumer",
+        name="Charles Schumer",
+        chamber="senate",
+        vote_count=1,
+        yea_count=1,
+        yea_rate=1,
+        participation_rate=1,
+        ontology_readiness_status="ready",
+        readiness_status="ready",
+    )
+    payload = PredictionSectorContextPayload(
+        snapshot_id=SNAPSHOT_ID,
+        snapshot_date=SNAPSHOT_DATE,
+        sector=PredictionSectorReadinessRowPayload(
+            sector_id="finance",
+            label="Finance",
+            member_count=1,
+            ready_member_count=1,
+            partial_member_count=0,
+            blocked_member_count=0,
+            readiness_rate=1,
+            vote_coverage_rate=1,
+            committee_jurisdiction_edge_count=1,
+            holding_edge_count=0,
+            transaction_edge_count=0,
+            member_bioguide_ids=["S000148"],
+        ),
+        members=[
+            PredictionMemberContextPayload(
+                snapshot_id=SNAPSHOT_ID,
+                snapshot_date=SNAPSHOT_DATE,
+                member_bioguide_id="S000148",
+                member_readiness=readiness,
+                ontology_features=_prediction_ontology_features(),
+                context_status="ready",
+                source_anchors=[_prediction_source_anchor()],
+                source_keys=[_prediction_source_key()],
+                source_context_paths=[_prediction_source_context_path()],
+            )
+        ],
+    )
+    pf = PlannedFile.from_bytes(prediction_sector_context_path("finance"), _serialise(payload))
+    write_planned_files([pf], tmp_path)
+
+    result = load_prediction_sector_context(tmp_path, "finance")
+
+    assert result.sector.sector_id == "finance"
+    assert result.members[0].member_bioguide_id == "S000148"
+
+
+def test_load_prediction_sector_context_rejects_misnamed_sector_id(tmp_path: Path) -> None:
+    readiness = PredictionMemberReadinessPayload(
+        bioguide_id="S000148",
+        slug="charles-schumer",
+        name="Charles Schumer",
+        chamber="senate",
+        vote_count=1,
+        yea_count=1,
+        yea_rate=1,
+        participation_rate=1,
+        ontology_readiness_status="ready",
+        readiness_status="ready",
+    )
+    payload = PredictionSectorContextPayload(
+        snapshot_id=SNAPSHOT_ID,
+        snapshot_date=SNAPSHOT_DATE,
+        sector=PredictionSectorReadinessRowPayload(
+            sector_id="finance",
+            label="Finance",
+            member_count=1,
+            ready_member_count=1,
+            partial_member_count=0,
+            blocked_member_count=0,
+            readiness_rate=1,
+            vote_coverage_rate=1,
+            committee_jurisdiction_edge_count=1,
+            holding_edge_count=0,
+            transaction_edge_count=0,
+            member_bioguide_ids=["S000148"],
+        ),
+        members=[
+            PredictionMemberContextPayload(
+                snapshot_id=SNAPSHOT_ID,
+                snapshot_date=SNAPSHOT_DATE,
+                member_bioguide_id="S000148",
+                member_readiness=readiness,
+                ontology_features=_prediction_ontology_features(),
+                context_status="ready",
+                source_anchors=[_prediction_source_anchor()],
+                source_keys=[_prediction_source_key()],
+                source_context_paths=[_prediction_source_context_path()],
+            )
+        ],
+    )
+    pf = PlannedFile.from_bytes(prediction_sector_context_path("energy"), _serialise(payload))
+    write_planned_files([pf], tmp_path)
+
+    with pytest.raises(ValueError, match="sector_id does not match requested id"):
+        load_prediction_sector_context(tmp_path, "energy")
+
+
+def test_load_prediction_committee_readiness_roundtrip(tmp_path: Path) -> None:
+    payload = PredictionCommitteeReadinessPayload(
+        snapshot_id=SNAPSHOT_ID,
+        snapshot_date=SNAPSHOT_DATE,
+        committee_count=1,
+        committees=[
+            PredictionCommitteeReadinessRowPayload(
+                committee_id="SSFI",
+                label="Finance",
+                member_count=1,
+                ready_member_count=1,
+                partial_member_count=0,
+                blocked_member_count=0,
+                readiness_rate=1,
+                vote_coverage_rate=1,
+                sector_ids=["finance"],
+                member_bioguide_ids=["S000148"],
+            )
+        ],
+    )
+    pf = PlannedFile.from_bytes(prediction_committee_readiness_path(), _serialise(payload))
+    write_planned_files([pf], tmp_path)
+
+    result = load_prediction_committee_readiness(tmp_path)
+
+    assert result.committee_count == 1
+    assert result.committees[0].committee_id == "SSFI"
+
+
+def test_load_prediction_committee_context_roundtrip(tmp_path: Path) -> None:
+    readiness = PredictionMemberReadinessPayload(
+        bioguide_id="S000148",
+        slug="charles-schumer",
+        name="Charles Schumer",
+        chamber="senate",
+        vote_count=1,
+        yea_count=1,
+        yea_rate=1,
+        participation_rate=1,
+        ontology_readiness_status="ready",
+        readiness_status="ready",
+    )
+    payload = PredictionCommitteeContextPayload(
+        snapshot_id=SNAPSHOT_ID,
+        snapshot_date=SNAPSHOT_DATE,
+        committee=PredictionCommitteeReadinessRowPayload(
+            committee_id="SSFI",
+            label="Finance",
+            member_count=1,
+            ready_member_count=1,
+            partial_member_count=0,
+            blocked_member_count=0,
+            readiness_rate=1,
+            vote_coverage_rate=1,
+            sector_ids=["finance"],
+            member_bioguide_ids=["S000148"],
+        ),
+        members=[
+            PredictionMemberContextPayload(
+                snapshot_id=SNAPSHOT_ID,
+                snapshot_date=SNAPSHOT_DATE,
+                member_bioguide_id="S000148",
+                member_readiness=readiness,
+                ontology_features=_prediction_ontology_features(),
+                context_status="ready",
+                source_anchors=[_prediction_source_anchor()],
+                source_keys=[_prediction_source_key()],
+                source_context_paths=[_prediction_source_context_path()],
+            )
+        ],
+    )
+    pf = PlannedFile.from_bytes(prediction_committee_context_path("SSFI"), _serialise(payload))
+    write_planned_files([pf], tmp_path)
+
+    result = load_prediction_committee_context(tmp_path, "SSFI")
+
+    assert result.committee.committee_id == "SSFI"
+    assert result.members[0].member_bioguide_id == "S000148"
+
+
+def test_load_prediction_committee_context_rejects_misnamed_committee_id(
+    tmp_path: Path,
+) -> None:
+    readiness = PredictionMemberReadinessPayload(
+        bioguide_id="S000148",
+        slug="charles-schumer",
+        name="Charles Schumer",
+        chamber="senate",
+        vote_count=1,
+        yea_count=1,
+        yea_rate=1,
+        participation_rate=1,
+        ontology_readiness_status="ready",
+        readiness_status="ready",
+    )
+    payload = PredictionCommitteeContextPayload(
+        snapshot_id=SNAPSHOT_ID,
+        snapshot_date=SNAPSHOT_DATE,
+        committee=PredictionCommitteeReadinessRowPayload(
+            committee_id="SSFI",
+            label="Finance",
+            member_count=1,
+            ready_member_count=1,
+            partial_member_count=0,
+            blocked_member_count=0,
+            readiness_rate=1,
+            vote_coverage_rate=1,
+            sector_ids=["finance"],
+            member_bioguide_ids=["S000148"],
+        ),
+        members=[
+            PredictionMemberContextPayload(
+                snapshot_id=SNAPSHOT_ID,
+                snapshot_date=SNAPSHOT_DATE,
+                member_bioguide_id="S000148",
+                member_readiness=readiness,
+                ontology_features=_prediction_ontology_features(),
+                context_status="ready",
+                source_anchors=[_prediction_source_anchor()],
+                source_keys=[_prediction_source_key()],
+                source_context_paths=[_prediction_source_context_path()],
+            )
+        ],
+    )
+    pf = PlannedFile.from_bytes(prediction_committee_context_path("SSBK"), _serialise(payload))
+    write_planned_files([pf], tmp_path)
+
+    with pytest.raises(ValueError, match="committee_id does not match requested id"):
+        load_prediction_committee_context(tmp_path, "SSBK")
+
+
+def test_load_prediction_readiness_missing(tmp_path: Path) -> None:
+    with pytest.raises(FileNotFoundError):
+        load_prediction_readiness(tmp_path)
+
+
+def test_load_prediction_readiness_index_roundtrip(tmp_path: Path) -> None:
+    payload = PredictionReadinessIndexPayload(
+        snapshot_id=SNAPSHOT_ID,
+        snapshot_date=SNAPSHOT_DATE,
+        member_count=1,
+        slug_to_bioguide={"charles-schumer": "S000148"},
+        members_by_bioguide={
+            "S000148": PredictionMemberReadinessPayload(
+                bioguide_id="S000148",
+                slug="charles-schumer",
+                name="Charles Schumer",
+                chamber="senate",
+                vote_count=1,
+                yea_count=1,
+                yea_rate=1,
+                participation_rate=1,
+                ontology_readiness_status="ready",
+                readiness_status="ready",
+            )
+        },
+    )
+    pf = PlannedFile.from_bytes(prediction_readiness_index_path(), _serialise(payload))
+    write_planned_files([pf], tmp_path)
+
+    result = load_prediction_readiness_index(tmp_path)
+
+    assert result.slug_to_bioguide == {"charles-schumer": "S000148"}
+    assert result.members_by_bioguide["S000148"].readiness_status == "ready"
+
+
+def test_load_prediction_member_readiness_roundtrip(tmp_path: Path) -> None:
+    payload = PredictionMemberReadinessPayload(
+        bioguide_id="S000148",
+        slug="charles-schumer",
+        name="Charles Schumer",
+        chamber="senate",
+        vote_count=1,
+        yea_count=1,
+        yea_rate=1,
+        participation_rate=1,
+        ontology_readiness_status="ready",
+        readiness_status="ready",
+    )
+    pf = PlannedFile.from_bytes(prediction_member_readiness_path("S000148"), _serialise(payload))
+    write_planned_files([pf], tmp_path)
+
+    result = load_prediction_member_readiness(tmp_path, "S000148")
+
+    assert result.bioguide_id == "S000148"
+    assert result.participation_rate == 1
+
+
+def test_load_prediction_member_readiness_rejects_misnamed_bioguide_id(
+    tmp_path: Path,
+) -> None:
+    payload = PredictionMemberReadinessPayload(
+        bioguide_id="S000148",
+        slug="charles-schumer",
+        name="Charles Schumer",
+        chamber="senate",
+        vote_count=1,
+        yea_count=1,
+        yea_rate=1,
+        participation_rate=1,
+        ontology_readiness_status="ready",
+        readiness_status="ready",
+    )
+    pf = PlannedFile.from_bytes(prediction_member_readiness_path("A000001"), _serialise(payload))
+    write_planned_files([pf], tmp_path)
+
+    with pytest.raises(ValueError, match="bioguide_id does not match requested id"):
+        load_prediction_member_readiness(tmp_path, "A000001")
+
+
+def test_load_prediction_member_context_roundtrip(tmp_path: Path) -> None:
+    readiness = PredictionMemberReadinessPayload(
+        bioguide_id="S000148",
+        slug="charles-schumer",
+        name="Charles Schumer",
+        chamber="senate",
+        vote_count=1,
+        yea_count=1,
+        yea_rate=1,
+        participation_rate=1,
+        ontology_readiness_status="ready",
+        readiness_status="ready",
+    )
+    payload = PredictionMemberContextPayload(
+        snapshot_id=SNAPSHOT_ID,
+        snapshot_date=SNAPSHOT_DATE,
+        member_bioguide_id="S000148",
+        member_readiness=readiness,
+        context_status="ready",
+        source_anchors=[_prediction_source_anchor()],
+        source_keys=[_prediction_source_key()],
+        source_context_paths=[_prediction_source_context_path()],
+    )
+    pf = PlannedFile.from_bytes(prediction_member_context_path("S000148"), _serialise(payload))
+    write_planned_files([pf], tmp_path)
+
+    result = load_prediction_member_context(tmp_path, "S000148")
+
+    assert result.member_bioguide_id == "S000148"
+    assert result.member_readiness.participation_rate == 1
+
+
+def test_load_prediction_member_context_rejects_misnamed_bioguide_id(tmp_path: Path) -> None:
+    readiness = PredictionMemberReadinessPayload(
+        bioguide_id="S000148",
+        slug="charles-schumer",
+        name="Charles Schumer",
+        chamber="senate",
+        vote_count=1,
+        yea_count=1,
+        yea_rate=1,
+        participation_rate=1,
+        ontology_readiness_status="ready",
+        readiness_status="ready",
+    )
+    payload = PredictionMemberContextPayload(
+        snapshot_id=SNAPSHOT_ID,
+        snapshot_date=SNAPSHOT_DATE,
+        member_bioguide_id="S000148",
+        member_readiness=readiness,
+        context_status="ready",
+        source_anchors=[_prediction_source_anchor()],
+        source_keys=[_prediction_source_key()],
+        source_context_paths=[_prediction_source_context_path()],
+    )
+    pf = PlannedFile.from_bytes(prediction_member_context_path("A000001"), _serialise(payload))
+    write_planned_files([pf], tmp_path)
+
+    with pytest.raises(ValueError, match="bioguide_id does not match requested id"):
+        load_prediction_member_context(tmp_path, "A000001")
 
 
 # ── load_member_history ────────────────────────────────────────────
@@ -706,6 +1735,19 @@ def test_load_named_movement_window_roundtrip(tmp_path: Path) -> None:
     assert result.latest_snapshot_id == SNAPSHOT_ID
 
 
+def test_load_dimension_movement_window_roundtrip(tmp_path: Path) -> None:
+    payload = _movement_window_payload().model_copy(update={"dimension": "transparency_risk"})
+    pf = PlannedFile.from_bytes(
+        movement_window_path(dimension="transparency_risk"),
+        _serialise(payload),
+    )
+    write_planned_files([pf], tmp_path)
+
+    result = load_movement_window(tmp_path, dimension="transparency_risk")
+    assert result.dimension == "transparency_risk"
+    assert result.latest_snapshot_id == SNAPSHOT_ID
+
+
 def test_load_history_preset_range_roundtrip(tmp_path: Path) -> None:
     payload = HistoryPresetRangePayload(
         preset=SnapshotComparePresetPayload(
@@ -891,7 +1933,9 @@ def test_load_zip_entry_alias_serialized_roundtrip(tmp_path: Path) -> None:
             },
         },
     )
-    pf = PlannedFile.from_bytes(zip_entry_path(payload.zip_feed.zip_code), serialize_payload(payload))
+    pf = PlannedFile.from_bytes(
+        zip_entry_path(payload.zip_feed.zip_code), serialize_payload(payload)
+    )
     write_planned_files([pf], tmp_path)
 
     result = load_zip_entry(tmp_path, "10001")
@@ -1267,7 +2311,9 @@ def test_load_latest_manifest_no_snapshots(tmp_path: Path) -> None:
 
 def test_load_latest_manifest_counts_verify(tmp_path: Path) -> None:
     data_file = PlannedFile.from_bytes("members/test.json", b'{"key":"value"}')
-    entries = [ManifestEntry(path=data_file.path, sha256=data_file.sha256, size_bytes=data_file.size_bytes)]
+    entries = [
+        ManifestEntry(path=data_file.path, sha256=data_file.sha256, size_bytes=data_file.size_bytes)
+    ]
     manifest = SnapshotManifest(
         snapshot_id=SNAPSHOT_ID,
         created_at=datetime(2026, 4, 13, 0, 0, 0),
@@ -1358,6 +2404,10 @@ class TestSafeSubpath:
     def test_dotdot_inside_segment_rejected(self, tmp_path: Path) -> None:
         with pytest.raises(ValueError, match="Path escapes snapshot root"):
             _safe_subpath(tmp_path, "members/../../secret.json")
+
+    def test_intra_root_dotdot_rejected(self, tmp_path: Path) -> None:
+        with pytest.raises(ValueError, match="confined"):
+            _safe_subpath(tmp_path, "members/../identity/current-member-lookup.json")
 
     def test_null_byte_rejected(self, tmp_path: Path) -> None:
         with pytest.raises(ValueError, match="null byte"):

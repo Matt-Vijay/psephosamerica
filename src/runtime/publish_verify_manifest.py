@@ -13,8 +13,8 @@ Checks performed per manifest:
   5. entries is a list; each entry has path, sha256, and size_bytes.
   6. Pydantic schema validation passes.
   7. total_files and total_bytes match the entries list.
-  8. Every locally managed snapshot artifact under members/, evidence/, and zip/
-     is listed exactly once.
+  8. Every locally managed snapshot artifact under members/, member-pages/,
+     evidence/, ontology/, and zip/ is listed exactly once.
   9. Every manifest-listed file matches its recorded size/hash.
  10. root_sha256 matches the observed digest of the manifest-listed artifact set.
  11. Other files under the publish root are reported as outside local
@@ -58,15 +58,18 @@ def _issue(
 
 def _is_manifest_path(path: str) -> bool:
     pure = PurePosixPath(path)
-    return len(pure.parts) == 3 and pure.parts[0] == "snapshots" and pure.parts[2] == "manifest.json"
+    return (
+        len(pure.parts) == 3 and pure.parts[0] == "snapshots" and pure.parts[2] == "manifest.json"
+    )
 
 
 def _is_locally_managed_artifact_path(path: str) -> bool:
     pure = PurePosixPath(path)
     return (
-        (bool(pure.parts) and pure.parts[0] in {"members", "evidence", "zip"})
-        or pure == PurePosixPath("identity/current-member-lookup.json")
-    )
+        bool(pure.parts)
+        and pure.parts[0]
+        in {"members", "member-pages", "evidence", "ontology", "prediction", "zip"}
+    ) or pure == PurePosixPath("identity/current-member-lookup.json")
 
 
 def _actual_manifest_records(
@@ -172,7 +175,11 @@ def _check_manifest_file(
             for key in sorted(_REQUIRED_ENTRY_KEYS):
                 if key not in entry:
                     issues.append(_issue(f"entry[{i}] missing key: {key!r}"))
-            if "path" in entry and isinstance(entry["path"], str) and not path_is_confined(entry["path"]):
+            if (
+                "path" in entry
+                and isinstance(entry["path"], str)
+                and not path_is_confined(entry["path"])
+            ):
                 issues.append(_issue(f"entry[{i}] path escapes publish root: {entry['path']!r}"))
 
     if issues:

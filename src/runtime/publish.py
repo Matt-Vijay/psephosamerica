@@ -2,6 +2,7 @@
 
 Entry point: run_publish_runtime.
 """
+
 from __future__ import annotations
 
 import shutil
@@ -99,9 +100,7 @@ def run_publish_runtime(
     4. Delegate to publish_snapshot_run for the DB-backed publish.
     5. Close the run as succeeded or failed; re-raise on failure.
     """
-    data_source = ensure_data_source(
-        conn, _SOURCE_SLUG, _SOURCE_NAME, _SOURCE_KIND
-    )
+    data_source = ensure_data_source(conn, _SOURCE_SLUG, _SOURCE_NAME, _SOURCE_KIND)
     run_id = start_ingestion_run(
         conn,
         data_source["id"],
@@ -109,7 +108,9 @@ def run_publish_runtime(
         parameters={"snapshot_date": snapshot_date.isoformat()},
     )
 
-    resolved_snapshot_id = snapshot_id if snapshot_id is not None else default_snapshot_id(snapshot_date)
+    resolved_snapshot_id = (
+        snapshot_id if snapshot_id is not None else default_snapshot_id(snapshot_date)
+    )
     staging_dir = _make_staging_dir(target_dir, resolved_snapshot_id)
 
     try:
@@ -121,7 +122,9 @@ def run_publish_runtime(
             zip_bundle_inputs=zip_bundle_inputs,
         )
         if not publish_result.succeeded:
-            failure_summary = "; ".join(publish_result.verification_failures) or "publish pipeline failed"
+            failure_summary = (
+                "; ".join(publish_result.verification_failures) or "publish pipeline failed"
+            )
             raise RuntimeError(failure_summary)
         _promote_staging_dir(staging_dir, target_dir, resolved_snapshot_id)
     except Exception as exc:

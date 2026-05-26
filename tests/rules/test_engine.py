@@ -81,6 +81,7 @@ _THRESHOLD_RULE = _make_rule(
 # load_canonical_rules
 # ---------------------------------------------------------------------------
 
+
 class TestLoadCanonicalRules:
     def test_returns_nonempty_list(self):
         rules = load_canonical_rules()
@@ -110,6 +111,7 @@ class TestLoadCanonicalRules:
 # ---------------------------------------------------------------------------
 # filter_rules
 # ---------------------------------------------------------------------------
+
 
 class TestFilterRules:
     def _sample_rules(self) -> list[RuleDefinition]:
@@ -177,6 +179,7 @@ class TestFilterRules:
 # ---------------------------------------------------------------------------
 # run_member_batch
 # ---------------------------------------------------------------------------
+
 
 class TestRunMemberBatch:
     def test_empty_contexts_returns_empty(self):
@@ -258,6 +261,7 @@ class TestRunMemberBatch:
 # run_batch (multi-member)
 # ---------------------------------------------------------------------------
 
+
 class TestRunBatch:
     def test_empty_member_contexts_returns_empty(self):
         fires = run_batch([_VACUOUS_RULE], {}, RUN)
@@ -279,7 +283,7 @@ class TestRunBatch:
 
     def test_member_with_no_firing_contexts_contributes_nothing(self):
         member_contexts = {
-            MEMBER_A: [{"fact_a": 1}],   # below threshold, no fire
+            MEMBER_A: [{"fact_a": 1}],  # below threshold, no fire
             MEMBER_B: [{"fact_a": 20}],  # fires
         }
         fires = run_batch([_THRESHOLD_RULE], member_contexts, RUN)

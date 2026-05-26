@@ -127,3 +127,26 @@ def build_feed_event_id(
         normalize_date(event_date),
     ]
     return _digest(parts, "fe")
+
+
+def build_history_event_id(
+    bioguide_id: str,
+    snapshot_date: dt.date | str,
+    rule_id: str,
+    dimension: str,
+    *,
+    evidence_card_id: str | None = None,
+    fired_at: dt.datetime | None = None,
+    ordinal: int = 1,
+) -> str:
+    """Stable public ID for a member-history timeline event."""
+    parts = [
+        normalize_bioguide_id(bioguide_id),
+        normalize_date(snapshot_date),
+        normalize_rule_id(rule_id),
+        normalize_dimension(dimension),
+        (evidence_card_id or "").strip().lower(),
+        fired_at.astimezone(dt.UTC).isoformat() if fired_at is not None else "",
+        str(ordinal),
+    ]
+    return _digest(parts, "he")

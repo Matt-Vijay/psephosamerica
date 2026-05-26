@@ -37,25 +37,25 @@ _SENATE_SECTION_HEADERS: frozenset[str] = SECTION_HEADERS | frozenset(
     {
         "transactions",
         "assets and income",
-        "assets and unearned income",                # Senate EFD Schedule A variant label
+        "assets and unearned income",  # Senate EFD Schedule A variant label
         "outside positions",
-        "positions held outside u.s. government",    # EFD Part I long-form alias
-        "positions held outside us government",      # EFD Part I alias without periods
+        "positions held outside u.s. government",  # EFD Part I long-form alias
+        "positions held outside us government",  # EFD Part I alias without periods
     }
 )
 
 # Named Senate section headers consumed by slice_section.
 _SCHEDULE_A = "schedule a"
 _ASSETS_ALT = "assets and unearned income"  # EFD Schedule A alias
-_ASSETS_ALT2 = "assets and income"          # Some older EFD forms omit "unearned"
+_ASSETS_ALT2 = "assets and income"  # Some older EFD forms omit "unearned"
 
 _SCHEDULE_B = "schedule b"
-_TRANSACTIONS_ALT = "transactions"      # PTR filings sometimes omit "Schedule B"
-_TRANSACTIONS_ALT2 = "part ii"          # Some PTR filings label transactions "Part II"
+_TRANSACTIONS_ALT = "transactions"  # PTR filings sometimes omit "Schedule B"
+_TRANSACTIONS_ALT2 = "part ii"  # Some PTR filings label transactions "Part II"
 
 _PART_I = "part i"
 _PART_I_ALT = "positions held outside u.s. government"  # EFD Part I long-form alias
-_PART_I_ALT2 = "positions held outside us government"   # EFD Part I alias without periods
+_PART_I_ALT2 = "positions held outside us government"  # EFD Part I alias without periods
 
 # Column separator: two or more spaces, or a hard tab, used in Senate EFD text.
 _COL_SEP: re.Pattern[str] = re.compile(r"  +|\t")

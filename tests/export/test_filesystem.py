@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from uuid import UUID
 
 import pytest
 
@@ -67,6 +68,34 @@ def test_write_overwrites_existing_file(tmp_path: Path) -> None:
     assert dest.read_bytes() == b"new"
 
 
+def test_write_uses_unique_temp_file_before_replace(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    dest = tmp_path / "members" / "alice.json"
+    seen_temp_names: list[str] = []
+    original_open = Path.open
+
+    def guarded_open(path: Path, *args: object, **kwargs: object):
+        mode = str(args[0]) if args else str(kwargs.get("mode", "r"))
+        if path == dest and any(flag in mode for flag in ("w", "a", "x", "+")):
+            raise AssertionError("direct final-path write")
+        if path.name == ".alice.json.tmp":
+            raise AssertionError("fixed temp filename used")
+        if path.name.startswith(".alice.json.") and path.name.endswith(".tmp"):
+            token = path.name.removeprefix(".alice.json.").removesuffix(".tmp")
+            UUID(token)
+            seen_temp_names.append(path.name)
+        return original_open(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "open", guarded_open)
+
+    write_planned_files([_pf("members/alice.json", b'{"name":"alice"}')], tmp_path)
+
+    assert len(seen_temp_names) == 1
+    assert dest.read_bytes() == b'{"name":"alice"}'
+
+
 def test_write_empty_content(tmp_path: Path) -> None:
     write_planned_files([_pf("empty.json", b"")], tmp_path)
     assert (tmp_path / "empty.json").read_bytes() == b""
@@ -84,6 +113,17 @@ def test_write_duplicate_paths_raise(tmp_path: Path) -> None:
 def test_write_path_escape_raises(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="confined"):
         write_planned_files([_pf("../escape.json", b"nope")], tmp_path)
+
+
+def test_write_rejects_symlinked_parent_escape(tmp_path: Path) -> None:
+    outside = tmp_path.parent / f"{tmp_path.name}-outside"
+    outside.mkdir()
+    (tmp_path / "members").symlink_to(outside, target_is_directory=True)
+
+    with pytest.raises(ValueError, match="confined"):
+        write_planned_files([_pf("members/alice.json", b"escape")], tmp_path)
+
+    assert not (outside / "alice.json").exists()
 
 
 # ── read_manifest ──────────────────────────────────────────────────────────────
@@ -207,6 +247,16 @@ def test_verify_path_escape_reported(tmp_path: Path) -> None:
     assert failures == ["../escape.json"]
 
 
+def test_verify_rejects_symlinked_parent_escape(tmp_path: Path) -> None:
+    planned = _pf("members/alice.json", b"escape")
+    outside = tmp_path.parent / f"{tmp_path.name}-outside"
+    outside.mkdir()
+    (outside / "alice.json").write_bytes(planned.content)
+    (tmp_path / "members").symlink_to(outside, target_is_directory=True)
+
+    assert verify_written_files([planned], tmp_path) == ["members/alice.json"]
+
+
 def test_verify_roundtrip_with_plan_snapshot(tmp_path: Path) -> None:
     """write + verify round-trip using plan_snapshot output."""
     from datetime import date
@@ -221,7 +271,11 @@ def test_verify_roundtrip_with_plan_snapshot(tmp_path: Path) -> None:
         state="NY",
         chamber="senate",
         party="Democrat",
-        scores=[ScoreSummary(dimension="conflict_of_interest_risk", current_score=50.0, rule_fire_count=1)],
+        scores=[
+            ScoreSummary(
+                dimension="conflict_of_interest_risk", current_score=50.0, rule_fire_count=1
+            )
+        ],
         recent_rule_fires=[],
         committees=[],
         total_evidence_cards=1,

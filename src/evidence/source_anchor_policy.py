@@ -1,0 +1,51 @@
+"""Compatibility exports for shared source-anchor integrity checks."""
+
+from __future__ import annotations
+
+from src.export.evidence_policy import (
+    SOURCE_TYPES_REQUIRING_URL,
+    all_required_source_anchor_urls_present,
+    anchor_source_id,
+    anchor_source_type,
+    anchor_url,
+    describe_missing_source_anchor_urls,
+    duplicate_source_anchor_keys,
+    has_any_source_url,
+    has_fact_block,
+    has_https_source_url,
+    has_official_claim_source_anchor,
+    is_official_source_url,
+    is_https_source_url,
+    official_source_url_count,
+    primary_source_anchor,
+    source_anchor_has_https_url,
+    source_anchor_has_official_claim_url,
+    source_anchor_has_url,
+    source_anchor_key,
+    source_anchors_missing_required_urls,
+    validate_evidence_card_policy,
+)
+
+__all__ = [
+    "SOURCE_TYPES_REQUIRING_URL",
+    "all_required_source_anchor_urls_present",
+    "anchor_source_id",
+    "anchor_source_type",
+    "anchor_url",
+    "describe_missing_source_anchor_urls",
+    "duplicate_source_anchor_keys",
+    "has_any_source_url",
+    "has_fact_block",
+    "has_https_source_url",
+    "has_official_claim_source_anchor",
+    "is_official_source_url",
+    "is_https_source_url",
+    "official_source_url_count",
+    "primary_source_anchor",
+    "source_anchor_has_https_url",
+    "source_anchor_has_official_claim_url",
+    "source_anchor_has_url",
+    "source_anchor_key",
+    "source_anchors_missing_required_urls",
+    "validate_evidence_card_policy",
+]

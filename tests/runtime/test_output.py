@@ -33,6 +33,11 @@ from src.runtime.history_backfill import (
     LocalHistoryAggregateSummary,
     LocalHistoryBackfillResult,
 )
+from src.runtime.history_backfill_types import (
+    HistoryBackfillCongressArchiveInputsPayload,
+    HistoryBackfillDisclosuresBundleInputsPayload,
+    HistoryBackfillInputReadinessPayload,
+)
 from src.runtime.oracle_contracts import CongressStageSummary, LocalOracleRunResult
 from src.runtime.output import (
     as_json,
@@ -266,8 +271,77 @@ class TestSummarizeLoadResultCongress:
     def test_exact_top_level_keys(self):
         result = summarize_load_result(_congress_result())
         assert set(result.keys()) == {
-            "run_id", "data_source", "ok", "counts", "warnings", "errors", "tables",
+            "run_id",
+            "data_source",
+            "ok",
+            "counts",
+            "warnings",
+            "errors",
+            "tables",
+            "source_state",
         }
+
+    def test_congress_source_state_marks_prediction_vote_inputs_available(self):
+        tables = [
+            TableWriteResult(table="member", inserted=10),
+            TableWriteResult(table="member_term", inserted=10),
+            TableWriteResult(table="committee", inserted=3),
+            TableWriteResult(table="bill", inserted=7),
+            TableWriteResult(table="bill_sponsor", inserted=7),
+            TableWriteResult(table="vote_event", inserted=5),
+            TableWriteResult(table="vote_cast", inserted=500),
+        ]
+        cr = _congress_result(load_summary=_load_summary(tables=tables))
+
+        source_state = summarize_load_result(cr)["source_state"]
+
+        assert source_state == {
+            "source_family_ids": [
+                "committee_membership",
+                "congress_bill",
+                "congress_vote",
+            ],
+            "source_family_count": 3,
+            "member_row_count": 10,
+            "member_term_row_count": 10,
+            "committee_row_count": 3,
+            "bill_row_count": 7,
+            "bill_sponsor_row_count": 7,
+            "vote_event_row_count": 5,
+            "vote_cast_row_count": 500,
+            "prediction_member_inputs_available": True,
+            "prediction_bill_inputs_available": True,
+            "prediction_vote_inputs_available": True,
+        }
+
+    def test_congress_source_state_does_not_claim_vote_family_without_vote_rows(self):
+        tables = [
+            TableWriteResult(table="member", inserted=10),
+            TableWriteResult(table="bill", inserted=7),
+        ]
+        cr = _congress_result(load_summary=_load_summary(tables=tables))
+
+        source_state = summarize_load_result(cr)["source_state"]
+
+        assert source_state["source_family_ids"] == ["congress_bill"]
+        assert source_state["prediction_member_inputs_available"] is True
+        assert source_state["prediction_bill_inputs_available"] is True
+        assert source_state["prediction_vote_inputs_available"] is False
+
+    def test_congress_source_state_sums_repeated_table_results(self):
+        tables = [
+            TableWriteResult(table="vote_event", inserted=2),
+            TableWriteResult(table="vote_event", updated=3),
+            TableWriteResult(table="vote_cast", inserted=20),
+            TableWriteResult(table="vote_cast", updated=30),
+        ]
+        cr = _congress_result(load_summary=_load_summary(tables=tables))
+
+        source_state = summarize_load_result(cr)["source_state"]
+
+        assert source_state["vote_event_row_count"] == 5
+        assert source_state["vote_cast_row_count"] == 50
+        assert source_state["prediction_vote_inputs_available"] is True
 
     def test_counts_sub_keys(self):
         result = summarize_load_result(_congress_result())
@@ -275,7 +349,9 @@ class TestSummarizeLoadResultCongress:
 
     def test_json_serializable(self):
         tables = [TableWriteResult(table="member", inserted=5, updated=2, skipped=1, rejected=0)]
-        cr = _congress_result(load_summary=_load_summary(tables=tables, warn_error=_warn_error(warnings=1)))
+        cr = _congress_result(
+            load_summary=_load_summary(tables=tables, warn_error=_warn_error(warnings=1))
+        )
         raw = as_json(summarize_load_result(cr))
         obj = json.loads(raw)
         assert obj["run_id"] == _RUN_ID
@@ -338,10 +414,18 @@ class TestSummarizeRecomputeResult:
     def test_exact_keys_with_load(self):
         ls = _load_summary(tables=[TableWriteResult(table="rule_fire", inserted=1)])
         result = summarize_recompute_result(_recompute_result(load_summary=ls))
-        assert set(result.keys()) == {"run_id", "data_source", "rule_fires", "evidence_cards", "load"}
+        assert set(result.keys()) == {
+            "run_id",
+            "data_source",
+            "rule_fires",
+            "evidence_cards",
+            "load",
+        }
 
     def test_json_serializable(self):
-        result = summarize_recompute_result(_recompute_result(rule_fires=["a"], evidence_cards=["b"]))
+        result = summarize_recompute_result(
+            _recompute_result(rule_fires=["a"], evidence_cards=["b"])
+        )
         obj = json.loads(as_json(result))
         assert obj["rule_fires"] == 1
         assert obj["evidence_cards"] == 1
@@ -400,8 +484,13 @@ class TestSummarizePublishResult:
     def test_exact_keys(self):
         result = summarize_publish_result(_publish_result())
         assert set(result.keys()) == {
-            "run_id", "snapshot_id", "data_source", "planned", "written",
-            "succeeded", "verification_failures",
+            "run_id",
+            "snapshot_id",
+            "data_source",
+            "planned",
+            "written",
+            "succeeded",
+            "verification_failures",
         }
 
     def test_json_serializable(self):
@@ -585,7 +674,9 @@ class TestSummarizeDisclosureArtifactIngestResult:
         assert result["stored"] == 9
 
     def test_local_root_absent_when_none(self):
-        result = summarize_disclosure_artifact_ingest_result(_artifact_ingest_result(local_root=None))
+        result = summarize_disclosure_artifact_ingest_result(
+            _artifact_ingest_result(local_root=None)
+        )
         assert "local_root" not in result
 
     def test_local_root_present_when_given(self):
@@ -736,11 +827,15 @@ class TestSummarizeProcessDisclosuresResult:
         assert set(result.keys()) == {"parse", "transformed", "load"}
 
     def test_parse_processed_forwarded(self):
-        result = summarize_process_disclosures_result(_process_disclosures_result(parse_processed=15))
+        result = summarize_process_disclosures_result(
+            _process_disclosures_result(parse_processed=15)
+        )
         assert result["parse"]["processed"] == 15
 
     def test_parse_succeeded_forwarded(self):
-        result = summarize_process_disclosures_result(_process_disclosures_result(parse_succeeded=7))
+        result = summarize_process_disclosures_result(
+            _process_disclosures_result(parse_succeeded=7)
+        )
         assert result["parse"]["succeeded"] == 7
 
     def test_parse_failed_forwarded(self):
@@ -795,6 +890,7 @@ def _bundle_process_result(
     load_tables: list | None = None,
 ) -> DisclosuresBundleProcessResult:
     from unittest.mock import MagicMock
+
     parse = DisclosureParseRuntimeResult(
         processed_count=parse_processed,
         succeeded_count=parse_succeeded,
@@ -850,7 +946,9 @@ class TestSummarizeDisclosuresBundleProcessResult:
         assert result["parse"]["failed"] == 2
 
     def test_transform_count_forwarded(self):
-        result = summarize_disclosures_bundle_process_result(_bundle_process_result(transform_count=4))
+        result = summarize_disclosures_bundle_process_result(
+            _bundle_process_result(transform_count=4)
+        )
         assert result["transformed"] == 4
 
     def test_load_run_id_forwarded(self):
@@ -859,13 +957,17 @@ class TestSummarizeDisclosuresBundleProcessResult:
 
     def test_load_counts_forwarded(self):
         tables = [TableWriteResult(table="financial_disclosure", inserted=5, updated=2)]
-        result = summarize_disclosures_bundle_process_result(_bundle_process_result(load_tables=tables))
+        result = summarize_disclosures_bundle_process_result(
+            _bundle_process_result(load_tables=tables)
+        )
         assert result["load"]["counts"]["inserted"] == 5
         assert result["load"]["counts"]["updated"] == 2
 
     def test_zero_counts(self):
         result = summarize_disclosures_bundle_process_result(
-            _bundle_process_result(parse_processed=0, parse_succeeded=0, parse_failed=0, transform_count=0)
+            _bundle_process_result(
+                parse_processed=0, parse_succeeded=0, parse_failed=0, transform_count=0
+            )
         )
         assert result["parse"]["processed"] == 0
         assert result["transformed"] == 0
@@ -909,7 +1011,8 @@ def _local_oracle_run_result(
     return LocalOracleRunResult(
         snapshot_id=snapshot_id,
         congress=congress or _congress_stage_summary(),
-        disclosures=disclosures or {"run_id": 1, "source_slug": "financial-disclosures", "load_ok": True},
+        disclosures=disclosures
+        or {"run_id": 1, "source_slug": "financial-disclosures", "load_ok": True},
         recompute=recompute or {"run_id": 2, "rule_fires": 3, "evidence_cards": 1},
         publish=publish or {"run_id": 3, "snapshot_id": snapshot_id, "succeeded": True},
         verify=verify or _verify_result(),
@@ -919,7 +1022,9 @@ def _local_oracle_run_result(
 
 class TestSummarizeLocalOracleRunResult:
     def test_snapshot_id_forwarded(self):
-        result = summarize_local_oracle_run_result(_local_oracle_run_result(snapshot_id="2026-01-01"))
+        result = summarize_local_oracle_run_result(
+            _local_oracle_run_result(snapshot_id="2026-01-01")
+        )
         assert result["snapshot_id"] == "2026-01-01"
 
     def test_disclosures_key_present(self):
@@ -962,7 +1067,9 @@ class TestSummarizeLocalOracleRunResult:
 
     def test_disclosures_content_preserved(self):
         disclosures = {"run_id": 5, "source_slug": "financial-disclosures", "load_ok": True}
-        result = summarize_local_oracle_run_result(_local_oracle_run_result(disclosures=disclosures))
+        result = summarize_local_oracle_run_result(
+            _local_oracle_run_result(disclosures=disclosures)
+        )
         assert result["disclosures"]["run_id"] == 5
         assert result["disclosures"]["load_ok"] is True
 
@@ -979,7 +1086,7 @@ class TestSummarizeLocalOracleRunResult:
     def test_verify_summary_preserved(self):
         result = summarize_local_oracle_run_result(_local_oracle_run_result())
         assert result["verify"]["ok"] is True
-        assert result["verify"]["total_checked"] == 21
+        assert result["verify"]["total_checked"] == 24
 
     def test_roundtrip_summary_preserved(self):
         result = summarize_local_oracle_run_result(_local_oracle_run_result())
@@ -1057,16 +1164,46 @@ def _history_backfill_result() -> LocalHistoryBackfillResult:
         target_root=Path("/tmp/history"),
         overwrite=False,
         continue_on_error=True,
+        report_path=Path("/tmp/history/_reports/history-backfill.json"),
         aggregate=LocalHistoryAggregateSummary(
             latest_snapshot_id="2025-01-13",
             snapshot_count=2,
             member_history_count=5,
             target_root=Path("/tmp/history-aggregate"),
+            coverage_path=Path("/tmp/history-aggregate/history/coverage.json"),
             verify=HistoryVerifyResult(
-                stages=(
-                    HistoryVerifyStageResult(stage="snapshot_index", checked=2, issues=()),
-                )
+                stages=(HistoryVerifyStageResult(stage="snapshot_index", checked=2, issues=()),)
             ),
+        ),
+        input_readiness=HistoryBackfillInputReadinessPayload(
+            congress_archive=HistoryBackfillCongressArchiveInputsPayload(
+                path="/tmp/congress-119",
+                kind="manifest",
+                exists=True,
+                validated_with_manifest=True,
+                checked_paths=3,
+                missing_files=[],
+            ),
+            disclosures_bundle=HistoryBackfillDisclosuresBundleInputsPayload(
+                path="/tmp/disclosures.json",
+                exists=True,
+                artifact_count=1,
+                relative_artifact_count=1,
+                absolute_artifact_count=0,
+                resolved_artifact_root="/tmp/artifacts",
+                checked_artifact_count=1,
+                missing_artifacts=[],
+                sha256_mismatches=[],
+                validation_violations=[
+                    "artifacts[0]: filing_kind='annual' but source_url kind='ptr'",
+                ],
+            ),
+            requested_chamber="senate",
+            requested_limit=25,
+            ready_to_replay=True,
+            readiness_status="ready",
+            blockers=[],
+            warnings=[],
         ),
     )
 
@@ -1077,6 +1214,7 @@ class TestSummarizeLocalHistoryBackfillResult:
         assert result["congress"] == 119
         assert result["cadence"] == "weekly:monday"
         assert result["target_root"] == "/tmp/history"
+        assert result["report_path"] == "/tmp/history/_reports/history-backfill.json"
         assert result["overwrite"] is False
         assert result["continue_on_error"] is True
 
@@ -1095,6 +1233,21 @@ class TestSummarizeLocalHistoryBackfillResult:
         assert result["aggregate_source_count"] == 2
         assert result["aggregate"]["member_history_count"] == 5
         assert result["aggregate"]["verify"]["ok"] is True
+        assert (
+            result["aggregate"]["coverage_path"] == "/tmp/history-aggregate/history/coverage.json"
+        )
+
+    def test_input_readiness_is_forwarded(self) -> None:
+        result = summarize_local_history_backfill_result(_history_backfill_result())
+        assert result["input_readiness"]["requested_chamber"] == "senate"
+        assert result["input_readiness"]["requested_limit"] == 25
+        assert result["input_readiness"]["readiness_status"] == "ready"
+
+    def test_input_readiness_forwards_bundle_validation_violations(self) -> None:
+        result = summarize_local_history_backfill_result(_history_backfill_result())
+        assert result["input_readiness"]["disclosures_bundle"]["validation_violations"] == [
+            "artifacts[0]: filing_kind='annual' but source_url kind='ptr'",
+        ]
 
 
 # ---------------------------------------------------------------------------
@@ -1118,6 +1271,8 @@ def _verify_result(
             _verify_stage("manifest", checked=3),
             _verify_stage("profiles", checked=10),
             _verify_stage("evidence", checked=7),
+            _verify_stage("ontology", checked=1),
+            _verify_stage("prediction", checked=2),
             _verify_stage("zip", checked=1),
         )
     return PublishVerifyResult(stages=stages)
@@ -1136,8 +1291,8 @@ class TestSummarizePublishVerifyResult:
 
     def test_total_checked_sums_stages(self):
         result = summarize_publish_verify_result(_verify_result())
-        # 3 + 10 + 7 + 1 = 21
-        assert result["total_checked"] == 21
+        # 3 + 10 + 7 + 1 + 2 + 1 = 24
+        assert result["total_checked"] == 24
 
     def test_total_errors_zero_when_clean(self):
         result = summarize_publish_verify_result(_verify_result())
@@ -1155,6 +1310,35 @@ class TestSummarizePublishVerifyResult:
         result = summarize_publish_verify_result(PublishVerifyResult(stages=stages))
         assert result["total_errors"] == 2
 
+    def test_issues_include_actionable_details(self):
+        issue = PublishVerifyIssue(
+            stage="profiles",
+            message="sha256 mismatch",
+            severity="error",
+            path="members/alice.json",
+        )
+        stage = _verify_stage("profiles", checked=1, issues=(issue,))
+        result = summarize_publish_verify_result(PublishVerifyResult(stages=(stage,)))
+        assert result["issues"] == [
+            {
+                "stage": "profiles",
+                "severity": "error",
+                "path": "members/alice.json",
+                "message": "sha256 mismatch",
+            }
+        ]
+
+    def test_issues_are_bounded(self):
+        issues = tuple(
+            PublishVerifyIssue(stage="manifest", message=f"issue {i}", severity="error")
+            for i in range(25)
+        )
+        result = summarize_publish_verify_result(
+            PublishVerifyResult(stages=(_verify_stage("manifest", checked=25, issues=issues),))
+        )
+        assert len(result["issues"]) == 20
+        assert result["issues_truncated"] is True
+
     def test_total_warnings_counted(self):
         warn = PublishVerifyIssue(stage="manifest", message="extra file", severity="warning")
         stage = _verify_stage("manifest", checked=2, issues=(warn,))
@@ -1163,7 +1347,7 @@ class TestSummarizePublishVerifyResult:
 
     def test_stages_list_length(self):
         result = summarize_publish_verify_result(_verify_result())
-        assert len(result["stages"]) == 4
+        assert len(result["stages"]) == 6
 
     def test_stage_entry_keys(self):
         result = summarize_publish_verify_result(_verify_result())
@@ -1173,7 +1357,7 @@ class TestSummarizePublishVerifyResult:
     def test_stage_names_forwarded(self):
         result = summarize_publish_verify_result(_verify_result())
         names = [s["stage"] for s in result["stages"]]
-        assert names == ["manifest", "profiles", "evidence", "zip"]
+        assert names == ["manifest", "profiles", "evidence", "ontology", "prediction", "zip"]
 
     def test_stage_checked_forwarded(self):
         result = summarize_publish_verify_result(_verify_result())
@@ -1209,14 +1393,22 @@ class TestSummarizePublishVerifyResult:
 
     def test_exact_top_level_keys(self):
         result = summarize_publish_verify_result(_verify_result())
-        assert set(result.keys()) == {"ok", "total_checked", "total_errors", "total_warnings", "stages"}
+        assert set(result.keys()) == {
+            "ok",
+            "total_checked",
+            "total_errors",
+            "total_warnings",
+            "issues",
+            "issues_truncated",
+            "stages",
+        }
 
     def test_json_serializable(self):
         result = summarize_publish_verify_result(_verify_result())
         obj = json.loads(as_json(result))
         assert obj["ok"] is True
-        assert obj["total_checked"] == 21
-        assert len(obj["stages"]) == 4
+        assert obj["total_checked"] == 24
+        assert len(obj["stages"]) == 6
 
     def test_pure_same_inputs_same_output(self):
         v = _verify_result()
@@ -1242,6 +1434,8 @@ def _roundtrip_result() -> PublishRoundtripResult:
             _roundtrip_stage("snapshot", checked=1),
             _roundtrip_stage("profiles", checked=10),
             _roundtrip_stage("evidence", checked=7),
+            _roundtrip_stage("ontology", checked=3),
+            _roundtrip_stage("prediction", checked=2),
             _roundtrip_stage("zip", checked=4),
             _roundtrip_stage("homepage", checked=1),
             _roundtrip_stage("lookup", checked=1),
@@ -1262,7 +1456,7 @@ class TestSummarizePublishRoundtripResult:
 
     def test_total_checked_sums_stages(self):
         result = summarize_publish_roundtrip_result(_roundtrip_result())
-        assert result["total_checked"] == 24
+        assert result["total_checked"] == 29
 
     def test_total_errors_zero_when_clean(self):
         result = summarize_publish_roundtrip_result(_roundtrip_result())
@@ -1280,6 +1474,37 @@ class TestSummarizePublishRoundtripResult:
         result = summarize_publish_roundtrip_result(PublishRoundtripResult(stages=stages))
         assert result["total_errors"] == 2
 
+    def test_issues_include_actionable_details(self):
+        issue = PublishRoundtripIssue(
+            stage="evidence",
+            message="missing evidence card",
+            severity="error",
+            path="evidence/ec-1.json",
+        )
+        stage = _roundtrip_stage("evidence", checked=1, issues=(issue,))
+        result = summarize_publish_roundtrip_result(PublishRoundtripResult(stages=(stage,)))
+        assert result["issues"] == [
+            {
+                "stage": "evidence",
+                "severity": "error",
+                "path": "evidence/ec-1.json",
+                "message": "missing evidence card",
+            }
+        ]
+
+    def test_issues_are_bounded(self):
+        issues = tuple(
+            PublishRoundtripIssue(stage="snapshot", message=f"issue {i}", severity="error")
+            for i in range(25)
+        )
+        result = summarize_publish_roundtrip_result(
+            PublishRoundtripResult(
+                stages=(_roundtrip_stage("snapshot", checked=25, issues=issues),)
+            )
+        )
+        assert len(result["issues"]) == 20
+        assert result["issues_truncated"] is True
+
     def test_total_warnings_counted(self):
         warn = PublishRoundtripIssue(stage="homepage", message="empty feed", severity="warning")
         stage = _roundtrip_stage("homepage", checked=1, issues=(warn,))
@@ -1288,7 +1513,7 @@ class TestSummarizePublishRoundtripResult:
 
     def test_stages_list_length(self):
         result = summarize_publish_roundtrip_result(_roundtrip_result())
-        assert len(result["stages"]) == 6
+        assert len(result["stages"]) == 8
 
     def test_stage_entry_keys(self):
         result = summarize_publish_roundtrip_result(_roundtrip_result())
@@ -1298,7 +1523,16 @@ class TestSummarizePublishRoundtripResult:
     def test_stage_names_forwarded(self):
         result = summarize_publish_roundtrip_result(_roundtrip_result())
         names = [s["stage"] for s in result["stages"]]
-        assert names == ["snapshot", "profiles", "evidence", "zip", "homepage", "lookup"]
+        assert names == [
+            "snapshot",
+            "profiles",
+            "evidence",
+            "ontology",
+            "prediction",
+            "zip",
+            "homepage",
+            "lookup",
+        ]
 
     def test_stage_checked_forwarded(self):
         result = summarize_publish_roundtrip_result(_roundtrip_result())
@@ -1334,14 +1568,22 @@ class TestSummarizePublishRoundtripResult:
 
     def test_exact_top_level_keys(self):
         result = summarize_publish_roundtrip_result(_roundtrip_result())
-        assert set(result.keys()) == {"ok", "total_checked", "total_errors", "total_warnings", "stages"}
+        assert set(result.keys()) == {
+            "ok",
+            "total_checked",
+            "total_errors",
+            "total_warnings",
+            "issues",
+            "issues_truncated",
+            "stages",
+        }
 
     def test_json_serializable(self):
         result = summarize_publish_roundtrip_result(_roundtrip_result())
         obj = json.loads(as_json(result))
         assert obj["ok"] is True
-        assert obj["total_checked"] == 24
-        assert len(obj["stages"]) == 6
+        assert obj["total_checked"] == 29
+        assert len(obj["stages"]) == 8
 
     def test_pure_same_inputs_same_output(self):
         r = _roundtrip_result()

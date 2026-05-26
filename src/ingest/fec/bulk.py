@@ -72,6 +72,7 @@ def _parse_amount(raw: str | None) -> Decimal:
 # 13 CONNECTED_ORG_NM
 # 14 CAND_ID
 
+
 def iter_committee_master(path: Union[str, Path]) -> Generator[CommitteeRecord, None, None]:
     with _open_bulk(path) as fh:
         reader = csv.reader(fh, delimiter=_PIPE, quoting=csv.QUOTE_NONE)
@@ -101,6 +102,7 @@ def iter_committee_master(path: Union[str, Path]) -> Generator[CommitteeRecord, 
 # 4  CMTE_TP
 # 5  CMTE_DSGN
 # 6  LINKAGE_ID
+
 
 def iter_candidate_committee_linkage(
     path: Union[str, Path],
@@ -149,6 +151,7 @@ def iter_candidate_committee_linkage(
 # 18 MEMO_CD
 # 19 MEMO_TEXT
 # 20 SUB_ID
+
 
 def iter_individual_contributions(
     path: Union[str, Path],

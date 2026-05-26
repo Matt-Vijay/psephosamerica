@@ -297,23 +297,31 @@ class TestSmokeOracleLocalStructure:
 
     def test_verify_keys(self) -> None:
         summary, *_ = _run()
-        assert set(summary["verify"]) == {
+        assert {
             "ok",
             "total_checked",
             "total_errors",
             "total_warnings",
             "stages",
-        }
+            "issues",
+            "issues_truncated",
+        }.issubset(summary["verify"])
+        assert isinstance(summary["verify"]["issues"], list)
+        assert summary["verify"]["issues_truncated"] is False
 
     def test_roundtrip_keys(self) -> None:
         summary, *_ = _run()
-        assert set(summary["roundtrip"]) == {
+        assert {
             "ok",
             "total_checked",
             "total_errors",
             "total_warnings",
             "stages",
-        }
+            "issues",
+            "issues_truncated",
+        }.issubset(summary["roundtrip"])
+        assert isinstance(summary["roundtrip"]["issues"], list)
+        assert summary["roundtrip"]["issues_truncated"] is False
 
 
 # ---------------------------------------------------------------------------

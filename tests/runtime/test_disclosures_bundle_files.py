@@ -61,7 +61,7 @@ def _make_house_entry(
         chamber="house",
         filing_year=2024,
         storage_uri=storage_uri,
-        source_url="https://disclosures.house.gov/public_disc/ptr-pdfs/2024/12345.pdf",
+        source_url="https://disclosures.house.gov/public_disc/financial-pdfs/2024/12345.pdf",
         source_slug="house_disclosures",
         artifact_kind=artifact_kind,
         sha256=sha256,
@@ -314,6 +314,20 @@ class TestReadAndVerifyEntry:
         result = read_and_verify_entry(entry, tmp_path)
         assert len(result) == 10_000
 
+    def test_rejects_symlink_escape_before_reading(self, tmp_path: Path) -> None:
+        root = tmp_path / "root"
+        outside = tmp_path / "outside"
+        outside_file = outside / "2024" / "12345.pdf"
+        outside_file.parent.mkdir(parents=True)
+        data = b"outside-but-valid-digest"
+        outside_file.write_bytes(data)
+        root.mkdir()
+        (root / "house").symlink_to(outside, target_is_directory=True)
+        entry = _make_house_entry(sha256=hashlib.sha256(data).hexdigest())
+
+        with pytest.raises(ValueError, match="storage_uri"):
+            read_and_verify_entry(entry, root)
+
 
 # ---------------------------------------------------------------------------
 # Bundle-from-JSON end-to-end — canonical contract consumed directly
@@ -329,7 +343,7 @@ def _house_bundle_dict(sha256: str) -> dict:
                 "chamber": "house",
                 "filing_year": 2024,
                 "storage_uri": "house/2024/20001.pdf",
-                "source_url": "https://disclosures.house.gov/public_disc/ptr-pdfs/2024/20001.pdf",
+                "source_url": "https://disclosures.house.gov/public_disc/financial-pdfs/2024/20001.pdf",
                 "source_slug": "house-disclosures",
                 "artifact_kind": "pdf",
                 "sha256": sha256,

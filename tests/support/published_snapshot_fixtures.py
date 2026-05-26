@@ -44,6 +44,8 @@ from src.export.contracts import (
 )
 from src.export.filesystem import write_planned_files
 from src.export.writer import plan_snapshot
+from src.ontology.contracts import OntologyEdgePayload
+from src.prediction.contracts import PredictionReadinessPayload
 
 
 # ---------------------------------------------------------------------------
@@ -64,11 +66,22 @@ _DEFAULT_EVIDENCE_CARD = EvidenceCardPayload(
     score_delta=5.0,
     short_explanation="Traded energy stocks while serving on energy committee.",
     blocks=[
-        EvidenceBlock(section=EvidenceSection.FACT, text="PTR discloses sale of XYZ Energy stock on 2025-03-01."),
-        EvidenceBlock(section=EvidenceSection.INFERENCE, text="Member served on Energy and Commerce at time of trade."),
+        EvidenceBlock(
+            section=EvidenceSection.FACT,
+            text="PTR discloses sale of XYZ Energy stock on 2025-03-01.",
+        ),
+        EvidenceBlock(
+            section=EvidenceSection.INFERENCE,
+            text="Member served on Energy and Commerce at time of trade.",
+        ),
     ],
     source_anchors=[
-        SourceAnchor(source_type="financial_disclosure", source_id="fd-001", label="2025 PTR filing"),
+        SourceAnchor(
+            source_type="financial_disclosure",
+            source_id="fd-001",
+            url="https://disclosures.house.gov/public_disc/ptr-pdfs/2024/fd-001.pdf",
+            label="2025 PTR filing",
+        ),
     ],
     confidence=ConfidenceLabel.HIGH,
     snapshot_date=_SNAPSHOT_DATE,
@@ -100,9 +113,7 @@ _DEFAULT_MEMBER_PROFILE = MemberProfilePayload(
         )
     ],
     top_evidence_card_ids=["ec-0001"],
-    committees=[
-        CommitteeMembership(committee_name="Energy and Commerce", role="Member")
-    ],
+    committees=[CommitteeMembership(committee_name="Energy and Commerce", role="Member")],
     total_evidence_cards=1,
     snapshot_date=_SNAPSHOT_DATE,
 )
@@ -208,6 +219,8 @@ class PublishedSnapshotBuilder:
         self._evidence_cards: list[EvidenceCardPayload] = [
             _default_evidence_card_for_snapshot(snapshot_date)
         ]
+        self._ontology_edges: list[OntologyEdgePayload] | None = None
+        self._prediction_readiness: PredictionReadinessPayload | None = None
         self._zip_feeds: list[ZipFeedPayload] = []
 
     # ------------------------------------------------------------------
@@ -220,9 +233,7 @@ class PublishedSnapshotBuilder:
         self._member_profiles = profiles
         return self
 
-    def with_evidence_cards(
-        self, cards: list[EvidenceCardPayload]
-    ) -> "PublishedSnapshotBuilder":
+    def with_evidence_cards(self, cards: list[EvidenceCardPayload]) -> "PublishedSnapshotBuilder":
         self._evidence_cards = cards
         return self
 
@@ -232,9 +243,17 @@ class PublishedSnapshotBuilder:
         self._member_histories = histories
         return self
 
-    def with_zip_feeds(
-        self, feeds: list[ZipFeedPayload]
+    def with_ontology_edges(self, edges: list[OntologyEdgePayload]) -> "PublishedSnapshotBuilder":
+        self._ontology_edges = edges
+        return self
+
+    def with_prediction_readiness(
+        self, payload: PredictionReadinessPayload
     ) -> "PublishedSnapshotBuilder":
+        self._prediction_readiness = payload
+        return self
+
+    def with_zip_feeds(self, feeds: list[ZipFeedPayload]) -> "PublishedSnapshotBuilder":
         self._zip_feeds = feeds
         return self
 
@@ -255,10 +274,10 @@ class PublishedSnapshotBuilder:
             zip_feeds=self._zip_feeds,
             evidence_cards=self._evidence_cards,
             member_histories=self._member_histories,
+            ontology_edges=self._ontology_edges,
+            prediction_readiness=self._prediction_readiness,
             snapshot_date=(
-                self._member_profiles[0].snapshot_date
-                if self._member_profiles
-                else _SNAPSHOT_DATE
+                self._member_profiles[0].snapshot_date if self._member_profiles else _SNAPSHOT_DATE
             ),
         )
         write_planned_files(planned, self._root)
@@ -280,6 +299,8 @@ def make_snapshot(
     snapshot_id: str = "2026-01-01",
     member_profiles: list[MemberProfilePayload] | None = None,
     member_histories: list[MemberHistoryPayload] | None = None,
+    ontology_edges: list[OntologyEdgePayload] | None = None,
+    prediction_readiness: PredictionReadinessPayload | None = None,
     evidence_cards: list[EvidenceCardPayload] | None = None,
     zip_feeds: list[ZipFeedPayload] | None = None,
 ) -> PublishedSnapshot:
@@ -301,6 +322,12 @@ def make_snapshot(
         builder.with_member_profiles(member_profiles)
     if member_histories is not None:
         builder.with_member_histories(member_histories)
+        if evidence_cards is None:
+            evidence_cards = _evidence_cards_for_histories(member_histories)
+    if ontology_edges is not None:
+        builder.with_ontology_edges(ontology_edges)
+    if prediction_readiness is not None:
+        builder.with_prediction_readiness(prediction_readiness)
     if evidence_cards is not None:
         builder.with_evidence_cards(evidence_cards)
     if zip_feeds is not None:
@@ -308,6 +335,34 @@ def make_snapshot(
 
     builder.build()
     return builder.snapshot()
+
+
+def _evidence_cards_for_histories(
+    histories: list[MemberHistoryPayload],
+) -> list[EvidenceCardPayload]:
+    seen_ids: set[str] = set()
+    cards: list[EvidenceCardPayload] = []
+    for history in histories:
+        for event in history.events:
+            card_id = event.evidence_card_id
+            if not card_id or card_id in seen_ids:
+                continue
+            seen_ids.add(card_id)
+            cards.append(
+                make_evidence_card(
+                    evidence_card_id=card_id,
+                    member_slug=history.slug,
+                    member_bioguide_id=history.bioguide_id,
+                    member_name=history.name,
+                    score_delta=event.score_delta,
+                    snapshot_date=event.snapshot_date
+                    or (
+                        history.snapshots[-1].snapshot_date if history.snapshots else _SNAPSHOT_DATE
+                    ),
+                    created_at=event.fired_at,
+                )
+            )
+    return cards
 
 
 # ---------------------------------------------------------------------------
@@ -338,7 +393,12 @@ def make_evidence_card(
         short_explanation="Test explanation.",
         blocks=[EvidenceBlock(section=EvidenceSection.FACT, text="Test fact.")],
         source_anchors=[
-            SourceAnchor(source_type="financial_disclosure", source_id="fd-001", label="Test filing")
+            SourceAnchor(
+                source_type="financial_disclosure",
+                source_id="fd-001",
+                url="https://disclosures.house.gov/public_disc/ptr-pdfs/2024/fd-001.pdf",
+                label="Test filing",
+            )
         ],
         confidence=ConfidenceLabel.HIGH,
         snapshot_date=snapshot_date,

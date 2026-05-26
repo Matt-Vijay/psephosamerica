@@ -348,9 +348,7 @@ class TestHoldingRowsFromTable:
         assert result[2].is_liquid is None
 
     def test_asset_description_and_category_mapped(self) -> None:
-        col_map = HoldingColumnMap(
-            owner=0, issuer_name=1, asset_description=2, asset_category=3
-        )
+        col_map = HoldingColumnMap(owner=0, issuer_name=1, asset_description=2, asset_category=3)
         rows = [["self", "Corp X", "Common Stock", "equity"]]
         result = holding_rows_from_table(rows, col_map)
         h = result[0]

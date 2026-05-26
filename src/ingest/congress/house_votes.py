@@ -8,7 +8,8 @@ from __future__ import annotations
 
 import datetime
 from typing import Literal
-from xml.etree.ElementTree import fromstring
+
+from defusedxml.ElementTree import fromstring
 
 from .models import VoteCastRecord, VoteEventRecord
 
@@ -83,16 +84,20 @@ def parse_house_vote_xml(xml_text: str) -> tuple[VoteEventRecord, list[VoteCastR
             if not bioguide:
                 continue
             vote_el = voter.find("vote")
-            option = _vote_option(vote_el.text if vote_el is not None and vote_el.text else "not voting")
-            casts.append(VoteCastRecord(
-                chamber="house",
-                congress=congress,
-                session_number=session,
-                roll_call_number=roll_call,
-                vote_option=option,
-                bioguide_id=bioguide,
-                lis_member_id=None,
-            ))
+            option = _vote_option(
+                vote_el.text if vote_el is not None and vote_el.text else "not voting"
+            )
+            casts.append(
+                VoteCastRecord(
+                    chamber="house",
+                    congress=congress,
+                    session_number=session,
+                    roll_call_number=roll_call,
+                    vote_option=option,
+                    bioguide_id=bioguide,
+                    lis_member_id=None,
+                )
+            )
 
     return event, casts
 

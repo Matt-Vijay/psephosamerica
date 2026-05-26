@@ -11,7 +11,13 @@ from typing import Any
 
 import pytest
 
-from src.export.contracts import ConfidenceLabel, EvidenceCardPayload
+from src.export.contracts import (
+    ConfidenceLabel,
+    EvidenceBlock,
+    EvidenceCardPayload,
+    EvidenceSection,
+    SourceAnchor,
+)
 from src.pipeline.conflict_recompute import (
     _default_id_generator,
     group_by_member,
@@ -33,6 +39,7 @@ from src.rules.models import (
 
 _SNAPSHOT_DATE = dt.date(2024, 6, 1)
 _RUN_ID = "run-test-001"
+_COMMITTEE_MEMBERSHIP_URL = "https://api.congress.gov/v3/committee/house/HSEN?format=json"
 
 
 def _make_rule(
@@ -92,7 +99,9 @@ def _cst_row(
     service_overlap_days: int = 30,
     holding_overlap_days: int = 30,
     financial_disclosure_id: str = "fd-001",
+    source_url: str = "https://disclosures.house.gov/public_disc/ptr-pdfs/2024/fd-001.pdf",
     committee_membership_id: str = "cm-001",
+    committee_membership_source_url: str = _COMMITTEE_MEMBERSHIP_URL,
     committee_start_date: dt.date | None = None,
     committee_end_date: dt.date | None = None,
     disclosure_period_start: dt.date | None = None,
@@ -114,7 +123,9 @@ def _cst_row(
         "disclosure_period_start": disclosure_period_start or dt.date(2023, 1, 1),
         "disclosure_period_end": disclosure_period_end or dt.date(2023, 12, 31),
         "financial_disclosure_id": financial_disclosure_id,
+        "source_url": source_url,
         "committee_membership_id": committee_membership_id,
+        "committee_membership_source_url": committee_membership_source_url,
     }
 
 
@@ -324,6 +335,23 @@ class TestRuleFireAttributes:
         assert "fd-999" in anchor_ids
         assert "cm-999" in anchor_ids
 
+    def test_required_source_type_anchors_have_public_urls(self) -> None:
+        row = _cst_row()
+        result = recompute_conflicts(
+            rows_by_family={"committee_sector_trade": [row]},
+            members_by_bioguide={"A000001": _member()},
+            recompute_run_id=_RUN_ID,
+            snapshot_date=_SNAPSHOT_DATE,
+            rules=[_make_rule()],
+            id_generator=_seq_id_gen(),
+        )
+
+        urls_by_type = {
+            anchor.source_type: anchor.url for anchor in result.evidence_cards[0].source_anchors
+        }
+        assert urls_by_type["financial_disclosure"] == row["source_url"]
+        assert urls_by_type["committee_membership"] == row["committee_membership_source_url"]
+
     def test_open_ended_rows_produce_stable_score_outputs_across_wall_clock_dates(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -463,9 +491,7 @@ class TestPerMemberGrouping:
         )
         flat_fire_ids = {f.fire_id for f in result.rule_fires}
         member_fire_ids = {
-            f.fire_id
-            for bucket in result.by_member.values()
-            for f in bucket.rule_fires
+            f.fire_id for bucket in result.by_member.values() for f in bucket.rule_fires
         }
         assert flat_fire_ids == member_fire_ids
 
@@ -537,7 +563,9 @@ class TestMultipleFamilies:
             "disclosure_period_start": dt.date(2023, 1, 1),
             "disclosure_period_end": dt.date(2023, 12, 31),
             "financial_disclosure_id": "fd-sho-001",
+            "source_url": "https://disclosures.house.gov/public_disc/ptr-pdfs/2024/fd-sho-001.pdf",
             "committee_membership_id": "cm-sho-001",
+            "committee_membership_source_url": _COMMITTEE_MEMBERSHIP_URL,
         }
 
     def test_fires_from_both_families_aggregated(self) -> None:
@@ -678,8 +706,17 @@ class TestGroupByMember:
             rule_version=1,
             score_delta=1.0,
             short_explanation="test",
-            blocks=[],
-            source_anchors=[],
+            blocks=[
+                EvidenceBlock(section=EvidenceSection.FACT, text="A sourced fact."),
+            ],
+            source_anchors=[
+                SourceAnchor(
+                    source_type="financial_disclosure",
+                    source_id=f"fd-{card_id}",
+                    url=f"https://disclosures.house.gov/public_disc/ptr-pdfs/2024/fd-{card_id}.pdf",
+                    label="Financial disclosure",
+                )
+            ],
             confidence=ConfidenceLabel.HIGH,
             snapshot_date=_SNAPSHOT_DATE,
             created_at=dt.datetime(2024, 6, 1, tzinfo=dt.timezone.utc),

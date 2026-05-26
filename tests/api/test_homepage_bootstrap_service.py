@@ -1,22 +1,24 @@
 from __future__ import annotations
 
 import json
+from datetime import date
 from pathlib import Path
 
 import src.api as api
 from src.api.contracts import NotFoundBody
 from src.api.read_service import get_homepage_bootstrap
 from src.export.local_store import HOMEPAGE_FEED_PATH
-from src.export.writer import homepage_bootstrap_path
+from src.export.writer import current_member_lookup_path, homepage_bootstrap_path
 from src.api.contracts import HomepageBootstrapPayload
 from src.homepage.contracts import HomepageFeedPayload, MemberMovementSummary, RecentEventSummary
 from src.pipeline.history_aggregate_run import write_history_aggregate
 from tests.support.published_snapshot_fixtures import make_snapshot, make_zip_feed
 
 
-def _write_homepage_feed(root: Path) -> None:
+def _write_homepage_feed(root: Path, *, snapshot_date: date | None = None) -> None:
+    feed_date = snapshot_date or make_zip_feed().snapshot_date
     payload = HomepageFeedPayload(
-        snapshot_date=make_zip_feed().snapshot_date,
+        snapshot_date=feed_date,
         top_changes=[
             MemberMovementSummary(
                 bioguide_id="P000197",
@@ -55,7 +57,7 @@ def _write_homepage_feed(root: Path) -> None:
                 score_delta=-3.0,
                 short_explanation="Second event.",
                 evidence_card_id="ec-0002",
-                occurred_at=make_zip_feed().snapshot_date,
+                occurred_at=feed_date,
             ),
             RecentEventSummary(
                 feed_event_id="event-0001",
@@ -66,7 +68,7 @@ def _write_homepage_feed(root: Path) -> None:
                 score_delta=5.0,
                 short_explanation="First event.",
                 evidence_card_id="ec-0001",
-                occurred_at=make_zip_feed().snapshot_date,
+                occurred_at=feed_date,
             ),
         ],
         recent_evidence_card_ids=["ec-0002", "ec-0001"],
@@ -187,10 +189,38 @@ def test_get_homepage_bootstrap_repairs_featured_lookup_from_current_lookup(
     ]
 
 
+def test_get_homepage_bootstrap_treats_malformed_lookup_as_unavailable(
+    tmp_path: Path,
+) -> None:
+    make_snapshot(tmp_path)
+    _write_homepage_feed(tmp_path)
+    (tmp_path / current_member_lookup_path()).write_text("{not valid json", encoding="utf-8")
+
+    result = get_homepage_bootstrap(snapshot_root=tmp_path)
+
+    assert result.ok is True
+    assert result.data.featured_lookup_entries == []
+
+
 def test_get_homepage_bootstrap_returns_not_found_without_homepage_feed(
     tmp_path: Path,
 ) -> None:
     make_snapshot(tmp_path)
+
+    result = get_homepage_bootstrap(snapshot_root=tmp_path)
+
+    assert isinstance(result, NotFoundBody)
+    assert result.resource_type == "homepage_bootstrap"
+    assert result.identifier == "current"
+
+
+def test_get_homepage_bootstrap_returns_not_found_for_malformed_homepage_feed(
+    tmp_path: Path,
+) -> None:
+    make_snapshot(tmp_path)
+    feed_path = tmp_path / HOMEPAGE_FEED_PATH
+    feed_path.parent.mkdir(parents=True, exist_ok=True)
+    feed_path.write_text("{not valid json", encoding="utf-8")
 
     result = get_homepage_bootstrap(snapshot_root=tmp_path)
 
@@ -207,7 +237,7 @@ def test_get_homepage_bootstrap_history_aggregate_root_copies_latest_artifact(
     aggregate_root = tmp_path / "aggregate"
     make_snapshot(first_root, snapshot_id="2026-01-06")
     make_snapshot(second_root, snapshot_id="2026-01-13")
-    _write_homepage_feed(second_root)
+    _write_homepage_feed(second_root, snapshot_date=date(2026, 1, 13))
 
     bootstrap = get_homepage_bootstrap(snapshot_root=second_root)
     assert bootstrap.ok is True

@@ -12,7 +12,7 @@ Flow
 1. Short-circuit with a zero-count result if the bundle has no artifacts.
 2. Derive source_slug from bundle.artifacts; all entries must share one slug.
 3. Ensure the data_source row for that source_slug.
-4. Open an ingestion_run (run_type='bundle_stage').
+4. Open an ingestion_run (run_type='ingest', parameters.stage='bundle_stage').
 5. Create one source_artifact row per entry using the pre-computed sha256
    and typed metadata from each DisclosureArtifactEntry.
 6. Finish or fail the ingestion_run.
@@ -29,6 +29,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from src.db.repositories import rollback_if_available
 from src.provenance.artifacts import create_source_artifact
 from src.provenance.store import (
     ensure_data_source,
@@ -58,7 +59,7 @@ class DisclosureStagingResult:
     data_source: dict[str, Any]
     run_id: int
     artifact_rows: tuple[dict[str, Any], ...]
-    staged_count: int   # rows written to source_artifact
+    staged_count: int  # rows written to source_artifact
     mirrored_count: int  # always 0; bytes are pre-placed, not written here
 
 
@@ -119,8 +120,9 @@ def stage_disclosures_bundle(
     run_id = start_ingestion_run(
         conn,
         data_source["id"],
-        "bundle_stage",
+        "ingest",
         parameters={
+            "stage": "bundle_stage",
             "source_slug": source_slug,
             "entry_count": len(bundle.artifacts),
         },
@@ -141,9 +143,11 @@ def stage_disclosures_bundle(
                 fetched_at=None,
                 source_record_id=entry.source_record_id,
                 ingestion_run_id=run_id,
+                commit=False,
             )
             artifact_rows.append(row)
     except Exception as exc:
+        rollback_if_available(conn)
         fail_ingestion_run(conn, run_id, str(exc))
         raise
 

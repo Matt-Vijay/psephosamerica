@@ -5,8 +5,9 @@ No network calls; httpx is injected via the client= parameter.
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
+import httpx
 import pytest
 
 from src.parse.disclosures.senate_index import (
@@ -233,21 +234,31 @@ def _make_client(pages: list[dict]) -> MagicMock:
 
 class TestFetchSenateIndex:
     def test_single_page_returns_rows(self):
-        client = _make_client([
-            {"recordsTotal": 1, "data": [
-                ["Eve", "Stone", "Senator, WA", _LINK_A, "01/01/2024"],
-            ]},
-        ])
+        client = _make_client(
+            [
+                {
+                    "recordsTotal": 1,
+                    "data": [
+                        ["Eve", "Stone", "Senator, WA", _LINK_A, "01/01/2024"],
+                    ],
+                },
+            ]
+        )
         rows = fetch_senate_index(2023, client=client)
         assert len(rows) == 1
         assert rows[0].first_name == "Eve"
 
     def test_filing_year_on_fetched_rows(self):
-        client = _make_client([
-            {"recordsTotal": 1, "data": [
-                ["Eve", "Stone", "Senator, WA", _LINK_A, "01/01/2024"],
-            ]},
-        ])
+        client = _make_client(
+            [
+                {
+                    "recordsTotal": 1,
+                    "data": [
+                        ["Eve", "Stone", "Senator, WA", _LINK_A, "01/01/2024"],
+                    ],
+                },
+            ]
+        )
         rows = fetch_senate_index(2023, client=client)
         assert rows[0].filing_year == 2023
 
@@ -258,7 +269,10 @@ class TestFetchSenateIndex:
     def test_get_called_before_post(self):
         client = _make_client([{"recordsTotal": 0, "data": []}])
         fetch_senate_index(2023, client=client)
-        client.get.assert_called_once()
+        client.get.assert_called_once_with(
+            "https://efdsearch.senate.gov/search/",
+            follow_redirects=False,
+        )
         get_url = client.get.call_args[0][0]
         assert "efdsearch.senate.gov" in get_url
 
@@ -277,13 +291,54 @@ class TestFetchSenateIndex:
 
     def test_pagination_stops_after_all_records(self):
         """With recordsTotal=1, only one data POST should be made."""
-        client = _make_client([
-            {"recordsTotal": 1, "data": [
-                ["A", "B", "Senator, TX", _LINK_A, "01/01/2024"],
-            ]},
-        ])
+        client = _make_client(
+            [
+                {
+                    "recordsTotal": 1,
+                    "data": [
+                        ["A", "B", "Senator, TX", _LINK_A, "01/01/2024"],
+                    ],
+                },
+            ]
+        )
         fetch_senate_index(2023, client=client)
         # agree + one data page = 2 total POSTs
+        assert client.post.call_count == 2
+
+    def test_boolean_records_total_is_rejected(self):
+        client = _make_client(
+            [
+                {
+                    "recordsTotal": True,
+                    "data": [
+                        ["A", "B", "Senator, TX", _LINK_A, "01/01/2024"],
+                    ],
+                },
+            ]
+        )
+
+        with pytest.raises(ValueError, match="recordsTotal must be an integer"):
+            fetch_senate_index(2023, client=client)
+
+    def test_pagination_page_cap_is_enforced_before_next_data_post(self):
+        client = _make_client(
+            [
+                {
+                    "recordsTotal": 1_000_000,
+                    "data": [
+                        ["A", "B", "Senator, TX", _LINK_A, "01/01/2024"],
+                    ],
+                },
+            ]
+        )
+
+        with (
+            patch("src.parse.disclosures.senate_index._MAX_PAGES", 1),
+            pytest.raises(ValueError, match="pagination exceeded maximum page count"),
+        ):
+            fetch_senate_index(2023, client=client)
+
+        # agree + first data page only; the capped second page is never posted.
         assert client.post.call_count == 2
 
     def test_agree_post_sent_to_search_home(self):
@@ -291,9 +346,103 @@ class TestFetchSenateIndex:
         fetch_senate_index(2023, client=client)
         agree_url = client.post.call_args_list[0][0][0]
         assert "efdsearch.senate.gov/search/" in agree_url
+        assert client.post.call_args_list[0].kwargs["follow_redirects"] is False
 
     def test_data_post_sent_to_data_endpoint(self):
         client = _make_client([{"recordsTotal": 0, "data": []}])
         fetch_senate_index(2023, client=client)
         data_url = client.post.call_args_list[1][0][0]
         assert "report/data" in data_url
+        assert client.post.call_args_list[1].kwargs["follow_redirects"] is False
+
+    def test_rejects_session_redirect_response(self):
+        client = _make_client([{"recordsTotal": 0, "data": []}])
+        client.get.return_value = httpx.Response(
+            302,
+            headers={"location": "https://evil.example/search/"},
+            request=httpx.Request("GET", "https://efdsearch.senate.gov/search/"),
+        )
+
+        with pytest.raises(ValueError, match="redirect response rejected"):
+            fetch_senate_index(2023, client=client)
+
+    def test_rejects_session_off_origin_response_url(self):
+        client = _make_client([{"recordsTotal": 0, "data": []}])
+        client.get.return_value = httpx.Response(
+            200,
+            content=b"",
+            request=httpx.Request("GET", "https://evil.example/search/"),
+        )
+
+        with pytest.raises(ValueError, match="off-origin response rejected"):
+            fetch_senate_index(2023, client=client)
+
+    def test_rejects_session_oversized_content_length(self):
+        client = _make_client([{"recordsTotal": 0, "data": []}])
+        client.get.return_value = httpx.Response(
+            200,
+            content=b"",
+            headers={"content-length": str(10 * 1024 * 1024 + 1)},
+            request=httpx.Request("GET", "https://efdsearch.senate.gov/search/"),
+        )
+
+        with pytest.raises(ValueError, match="exceeds maximum size"):
+            fetch_senate_index(2023, client=client)
+
+    def test_rejects_data_redirect_response(self):
+        client = _make_client([{"recordsTotal": 0, "data": []}])
+        agree_resp = MagicMock()
+        agree_resp.raise_for_status = MagicMock()
+        client.post.side_effect = [
+            agree_resp,
+            httpx.Response(
+                302,
+                headers={"location": "https://evil.example/report/data/"},
+                request=httpx.Request(
+                    "POST",
+                    "https://efdsearch.senate.gov/search/report/data/",
+                ),
+            ),
+        ]
+
+        with pytest.raises(ValueError, match="redirect response rejected"):
+            fetch_senate_index(2023, client=client)
+
+    def test_rejects_data_oversized_content_length(self):
+        client = _make_client([{"recordsTotal": 0, "data": []}])
+        agree_resp = MagicMock()
+        agree_resp.raise_for_status = MagicMock()
+        client.post.side_effect = [
+            agree_resp,
+            httpx.Response(
+                200,
+                content=b"{}",
+                headers={"content-length": str(10 * 1024 * 1024 + 1)},
+                request=httpx.Request(
+                    "POST",
+                    "https://efdsearch.senate.gov/search/report/data/",
+                ),
+            ),
+        ]
+
+        with pytest.raises(ValueError, match="exceeds maximum size"):
+            fetch_senate_index(2023, client=client)
+
+    def test_rejects_chunked_data_response_before_reading_past_max_bytes(self):
+        class RaisingStream(httpx.SyncByteStream):
+            def __iter__(self):
+                yield b"12345"
+                yield b"678901"
+                raise AssertionError("read past limit")
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.method == "POST" and request.url.path.endswith("/report/data/"):
+                return httpx.Response(200, stream=RaisingStream(), request=request)
+            return httpx.Response(200, content=b"", request=request)
+
+        with (
+            httpx.Client(transport=httpx.MockTransport(handler)) as client,
+            patch("src.parse.disclosures.senate_index._MAX_RESPONSE_BYTES", 10),
+        ):
+            with pytest.raises(ValueError, match="exceeds maximum size"):
+                fetch_senate_index(2023, client=client)

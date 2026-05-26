@@ -2,6 +2,7 @@
 
 No network calls; no live I/O beyond tmp_path filesystem writes.
 """
+
 from __future__ import annotations
 
 import json
@@ -18,6 +19,7 @@ from src.zip.resolve import DistrictMemberRow, SenatorRow, ZipDistrictRow
 # Canonical valid payload
 # ---------------------------------------------------------------------------
 
+
 def _valid_dict() -> dict:
     return {
         "zip5_codes": ["90210", "10001"],
@@ -28,26 +30,46 @@ def _valid_dict() -> dict:
         ],
         "district_member_rows": [
             {
-                "state": "CA", "district": 30, "bioguide_id": "B001",
-                "full_name": "Alice Smith", "party": "D", "slug": "alice-smith",
+                "state": "CA",
+                "district": 30,
+                "bioguide_id": "B001",
+                "full_name": "Alice Smith",
+                "party": "D",
+                "slug": "alice-smith",
             },
             {
-                "state": "NY", "district": 12, "bioguide_id": "B002",
-                "full_name": "Bob Jones", "party": "R", "slug": "bob-jones",
+                "state": "NY",
+                "district": 12,
+                "bioguide_id": "B002",
+                "full_name": "Bob Jones",
+                "party": "R",
+                "slug": "bob-jones",
             },
         ],
         "senator_rows": [
             {
-                "state": "CA", "bioguide_id": "S001", "full_name": "Sen One",
-                "party": "D", "slug": "sen-one", "seat": 1,
+                "state": "CA",
+                "bioguide_id": "S001",
+                "full_name": "Sen One",
+                "party": "D",
+                "slug": "sen-one",
+                "seat": 1,
             },
             {
-                "state": "CA", "bioguide_id": "S002", "full_name": "Sen Two",
-                "party": "D", "slug": "sen-two", "seat": 2,
+                "state": "CA",
+                "bioguide_id": "S002",
+                "full_name": "Sen Two",
+                "party": "D",
+                "slug": "sen-two",
+                "seat": 2,
             },
             {
-                "state": "NY", "bioguide_id": "S003", "full_name": "Sen Three",
-                "party": "R", "slug": "sen-three", "seat": 1,
+                "state": "NY",
+                "bioguide_id": "S003",
+                "full_name": "Sen Three",
+                "party": "R",
+                "slug": "sen-three",
+                "seat": 1,
             },
         ],
     }
@@ -56,6 +78,7 @@ def _valid_dict() -> dict:
 # ---------------------------------------------------------------------------
 # zip_bundle_from_dict — happy path
 # ---------------------------------------------------------------------------
+
 
 class TestZipBundleFromDictHappyPath:
     def test_returns_zip_bundle_inputs(self) -> None:
@@ -132,7 +155,12 @@ class TestZipBundleFromDictHappyPath:
 
     def test_empty_lists_are_valid(self) -> None:
         result = zip_bundle_from_dict(
-            {"zip5_codes": [], "zip_district_rows": [], "district_member_rows": [], "senator_rows": []}
+            {
+                "zip5_codes": [],
+                "zip_district_rows": [],
+                "district_member_rows": [],
+                "senator_rows": [],
+            }
         )
         assert result.zip5_codes == []
         assert result.zip_district_rows == []
@@ -149,13 +177,17 @@ class TestZipBundleFromDictHappyPath:
 # zip_bundle_from_dict — missing top-level keys
 # ---------------------------------------------------------------------------
 
+
 class TestZipBundleFromDictMissingKeys:
-    @pytest.mark.parametrize("missing_key", [
-        "zip5_codes",
-        "zip_district_rows",
-        "district_member_rows",
-        "senator_rows",
-    ])
+    @pytest.mark.parametrize(
+        "missing_key",
+        [
+            "zip5_codes",
+            "zip_district_rows",
+            "district_member_rows",
+            "senator_rows",
+        ],
+    )
     def test_missing_top_level_key_raises(self, missing_key: str) -> None:
         data = _valid_dict()
         del data[missing_key]
@@ -182,6 +214,7 @@ class TestZipBundleFromDictMissingKeys:
 # ---------------------------------------------------------------------------
 # zip_bundle_from_dict — malformed row fields
 # ---------------------------------------------------------------------------
+
 
 class TestZipBundleFromDictBadRows:
     def test_zip_district_row_missing_zip5_raises(self) -> None:
@@ -262,6 +295,7 @@ class TestZipBundleFromDictBadRows:
 # load_zip_bundle — filesystem round-trip
 # ---------------------------------------------------------------------------
 
+
 class TestLoadZipBundle:
     def test_round_trip(self, tmp_path: Path) -> None:
         p = tmp_path / "bundle.json"
@@ -295,7 +329,12 @@ class TestLoadZipBundle:
             load_zip_bundle(p)
 
     def test_empty_bundle_file(self, tmp_path: Path) -> None:
-        data = {"zip5_codes": [], "zip_district_rows": [], "district_member_rows": [], "senator_rows": []}
+        data = {
+            "zip5_codes": [],
+            "zip_district_rows": [],
+            "district_member_rows": [],
+            "senator_rows": [],
+        }
         p = tmp_path / "empty.json"
         p.write_text(json.dumps(data), encoding="utf-8")
         result = load_zip_bundle(p)

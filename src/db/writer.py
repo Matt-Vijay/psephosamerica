@@ -26,14 +26,22 @@ from __future__ import annotations
 
 from typing import Any, Sequence, cast
 
+from psycopg.types.json import Jsonb
+
 from src.db.load_report import (
     LoadSummary,
     TableWriteResult,
     WarnErrorSummary,
     build_load_summary,
 )
-from src.db.repositories import ConnectionLike, Row, execute_many
-from src.db.sql import build_insert, build_upsert
+from src.db.repositories import (
+    ConnectionLike,
+    Row,
+    commit_or_rollback,
+    ensure_transactional_for_commit,
+    execute_many,
+)
+from src.db.sql import build_insert, build_upsert, quote_identifier
 
 # ---------------------------------------------------------------------------
 # Internal helpers
@@ -49,7 +57,7 @@ def _build_ignore_sql(table: str, row: Row, conflict_columns: list[str]) -> tupl
     """
     sql_base, params = build_insert(table, row)
     if conflict_columns:
-        target = ", ".join(conflict_columns)
+        target = ", ".join(quote_identifier(column) for column in conflict_columns)
         sql = f"{sql_base} ON CONFLICT ({target}) DO NOTHING"
     else:
         sql = f"{sql_base} ON CONFLICT DO NOTHING"
@@ -94,9 +102,15 @@ def _params_for_rows(
         else:
             # insert
             row_params = [row[c] for c in cols]
-        all_params.append(row_params)
+        all_params.append([_adapt_param(param) for param in row_params])
 
     return sql, all_params
+
+
+def _adapt_param(value: Any) -> Any:
+    if isinstance(value, dict | list):
+        return Jsonb(value)
+    return value
 
 
 # ---------------------------------------------------------------------------
@@ -111,6 +125,7 @@ def write_table_batch(
     rows: list[Row],
     conflict_columns: list[str] | None = None,
     mode: str = "insert",
+    commit: bool = True,
 ) -> TableWriteResult:
     """Write one batch of rows to *table* and return a TableWriteResult.
 
@@ -124,9 +139,10 @@ def write_table_batch(
 
     if not rows:
         return TableWriteResult(table=table)
+    ensure_transactional_for_commit(conn, commit=commit)
 
     sql, all_params = _params_for_rows(table, rows, conflict_columns, mode)
-    execute_many(conn, sql, all_params)
+    execute_many(conn, sql, all_params, commit=commit)
 
     n = len(rows)
     if mode == "ignore":
@@ -141,6 +157,7 @@ def write_table_batches(
     *,
     run_id: int | None = None,
     warn_error: WarnErrorSummary | None = None,
+    commit: bool = True,
 ) -> LoadSummary:
     """Write many table batches in order and return an aggregated LoadSummary.
 
@@ -149,17 +166,35 @@ def write_table_batches(
         rows             (list[dict]) — required
         conflict_columns (list[str])  — optional, default []
         mode             (str)        — optional, default 'insert'
+
+    When *commit* is true, the helper owns the transaction boundary: all
+    non-empty batches are written with deferred commits, then committed once
+    after every table succeeds.  On failure it rolls back once and re-raises.
+    Pass ``commit=False`` when the caller already owns a broader transaction.
     """
     results: list[TableWriteResult] = []
+    wrote_any = False
+    ensure_transactional_for_commit(conn, commit=commit)
 
-    for batch in batches:
-        result = write_table_batch(
-            conn,
-            table=batch["table"],
-            rows=cast(list[Row], batch.get("rows", [])),
-            conflict_columns=cast(list[str], batch.get("conflict_columns") or []),
-            mode=cast(str, batch.get("mode", "insert")),
-        )
-        results.append(result)
+    try:
+        for batch in batches:
+            rows = cast(list[Row], batch.get("rows", []))
+            result = write_table_batch(
+                conn,
+                table=batch["table"],
+                rows=rows,
+                conflict_columns=cast(list[str], batch.get("conflict_columns") or []),
+                mode=cast(str, batch.get("mode", "insert")),
+                commit=False,
+            )
+            wrote_any = wrote_any or bool(rows)
+            results.append(result)
+    except Exception:
+        if commit:
+            conn.rollback()
+        raise
+
+    if commit and wrote_any:
+        commit_or_rollback(conn)
 
     return build_load_summary(results, warn_error=warn_error, run_id=run_id)

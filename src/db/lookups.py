@@ -27,6 +27,10 @@ Maps produced here are consumed directly by :mod:`src.db.foreign_keys`:
         ``dict[tuple[int, int, str, int], int]`` — (member_id, filing_year,
         filing_type, amendment_number) → financial_disclosure.id
 
+    ``disclosure_source_record_id_map``
+        ``dict[str, int]`` — financial_disclosure.source_record_id →
+        financial_disclosure.id. Used to resolve amendment supersession links.
+
 Collect all maps into a :class:`LookupBundle` and pass ``bundle.to_maps()``
 to :func:`src.db.foreign_keys.resolve_foreign_keys`.
 """
@@ -83,9 +87,8 @@ class LookupBundle:
     #   "fec_committee_id" → fec_committee.id
     fec_candidate_map: dict[str, int] = field(default_factory=dict)
     fec_committee_map: dict[str, int] = field(default_factory=dict)
-    disclosure_natural_key_map: dict[tuple[int, int, str, int], int] = field(
-        default_factory=dict
-    )
+    disclosure_natural_key_map: dict[tuple[int, int, str, int], int] = field(default_factory=dict)
+    disclosure_source_record_id_map: dict[str, int] = field(default_factory=dict)
 
     def to_maps(self) -> dict[str, Any]:
         """Return a maps dict compatible with :func:`resolve_foreign_keys`."""
@@ -98,6 +101,7 @@ class LookupBundle:
                 "fec_committee_id": self.fec_committee_map,
             },
             "disclosure_natural_key_map": self.disclosure_natural_key_map,
+            "disclosure_source_record_id_map": self.disclosure_source_record_id_map,
         }
 
 
@@ -123,10 +127,11 @@ def _detect_duplicates(
         for f in required_fields:
             if f not in row or row[f] is None:
                 missing.append(f"row {i}: missing required field {f!r} for {map_name}")
+        if "id" in row and isinstance(row["id"], bool):
+            missing.append(f"row {i}: field 'id' for {map_name} must be an integer, got bool")
     if missing:
         raise LookupBuildError(
-            f"{map_name}: {len(missing)} row(s) missing required fields:\n"
-            + "\n".join(missing)
+            f"{map_name}: {len(missing)} row(s) missing required fields:\n" + "\n".join(missing)
         )
 
     seen: dict[Any, list[dict[str, Any]]] = {}
@@ -140,9 +145,20 @@ def _detect_duplicates(
 
     duplicates = [(k, v) for k, v in seen.items() if len(v) > 1]
     result_map: dict[Any, int] = {
-        k: v[0]["id"] for k, v in seen.items() if len(v) == 1
+        k: _coerce_key_int(v[0]["id"], "id", map_name) for k, v in seen.items() if len(v) == 1
     }
     return result_map, duplicates
+
+
+def _coerce_key_int(value: Any, field_name: str, map_name: str) -> int:
+    if isinstance(value, bool):
+        raise LookupBuildError(f"{map_name}: {field_name} must be an integer, got bool")
+    try:
+        return int(value)
+    except (TypeError, ValueError) as exc:
+        raise LookupBuildError(
+            f"{map_name}: {field_name} must be an integer, got {type(value).__name__}"
+        ) from exc
 
 
 # ---------------------------------------------------------------------------
@@ -232,7 +248,10 @@ def build_committee_code_map(
     """
 
     def _key(r: dict[str, Any]) -> tuple[str, int]:
-        return (str(r["committee_code"]), int(r["congress"]))
+        return (
+            str(r["committee_code"]),
+            _coerce_key_int(r["congress"], "congress", "committee_code_map"),
+        )
 
     result, duplicates = _detect_duplicates(
         rows,
@@ -282,10 +301,12 @@ def build_disclosure_natural_key_map(
 
     def _key(r: dict[str, Any]) -> tuple[int, int, str, int]:
         return (
-            int(r["member_id"]),
-            int(r["filing_year"]),
+            _coerce_key_int(r["member_id"], "member_id", "disclosure_natural_key_map"),
+            _coerce_key_int(r["filing_year"], "filing_year", "disclosure_natural_key_map"),
             str(r["filing_type"]),
-            int(r["amendment_number"]),
+            _coerce_key_int(
+                r["amendment_number"], "amendment_number", "disclosure_natural_key_map"
+            ),
         )
 
     result, duplicates = _detect_duplicates(
@@ -297,6 +318,31 @@ def build_disclosure_natural_key_map(
     if duplicates:
         raise LookupBuildError(
             f"disclosure_natural_key_map: {len(duplicates)} duplicate natural key(s): "
+            + ", ".join(str(k) for k, _ in duplicates),
+            duplicates=duplicates,
+        )
+    return result
+
+
+def build_disclosure_source_record_id_map(
+    rows: list[dict[str, Any]],
+) -> dict[str, int]:
+    """Build ``financial_disclosure.source_record_id → financial_disclosure.id``.
+
+    Rows where ``source_record_id`` is ``None`` are skipped. Duplicates are
+    rejected so amendment supersession never silently points at an arbitrary
+    filing.
+    """
+    eligible = [r for r in rows if r.get("source_record_id") is not None]
+    result, duplicates = _detect_duplicates(
+        eligible,
+        key_fn=lambda r: str(r["source_record_id"]),
+        required_fields=["id", "source_record_id"],
+        map_name="disclosure_source_record_id_map",
+    )
+    if duplicates:
+        raise LookupBuildError(
+            f"disclosure_source_record_id_map: {len(duplicates)} duplicate source_record_id(s): "
             + ", ".join(str(k) for k, _ in duplicates),
             duplicates=duplicates,
         )
@@ -324,7 +370,8 @@ def build_lookup_bundle(
     committee_rows:            ``committee`` — required: ``id``, ``committee_code``, ``congress``.
     fec_committee_rows:        ``fec_committee`` — required: ``id``, ``fec_committee_id``.
     financial_disclosure_rows: ``financial_disclosure`` — required: ``id``, ``member_id``,
-                               ``filing_year``, ``filing_type``, ``amendment_number``.
+                               ``filing_year``, ``filing_type``, ``amendment_number``;
+                               optional: ``source_record_id``.
     """
     return LookupBundle(
         bioguide_map=build_bioguide_map(member_rows),
@@ -332,7 +379,8 @@ def build_lookup_bundle(
         fec_candidate_map=build_fec_candidate_map(member_rows),
         committee_code_map=build_committee_code_map(committee_rows),
         fec_committee_map=build_fec_committee_map(fec_committee_rows),
-        disclosure_natural_key_map=build_disclosure_natural_key_map(
+        disclosure_natural_key_map=build_disclosure_natural_key_map(financial_disclosure_rows),
+        disclosure_source_record_id_map=build_disclosure_source_record_id_map(
             financial_disclosure_rows
         ),
     )

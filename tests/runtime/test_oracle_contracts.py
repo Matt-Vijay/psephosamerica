@@ -80,6 +80,8 @@ _ROUNDTRIP_OK = PublishRoundtripResult(
         PublishRoundtripStageResult(stage="snapshot", checked=1, issues=()),
         PublishRoundtripStageResult(stage="profiles", checked=10, issues=()),
         PublishRoundtripStageResult(stage="evidence", checked=5, issues=()),
+        PublishRoundtripStageResult(stage="ontology", checked=2, issues=()),
+        PublishRoundtripStageResult(stage="prediction", checked=4, issues=()),
         PublishRoundtripStageResult(stage="zip", checked=3, issues=()),
         PublishRoundtripStageResult(stage="homepage", checked=1, issues=()),
         PublishRoundtripStageResult(stage="lookup", checked=1, issues=()),
@@ -233,7 +235,7 @@ class TestLocalOracleInputsStored:
             chamber="house",
             filing_year=2024,
             storage_uri="house/2024/99999.pdf",
-            source_url="https://disclosures.house.gov/99999",
+            source_url="https://disclosures.house.gov/public_disc/financial-pdfs/2024/99999.pdf",
             source_slug="house_disclosures",
             artifact_kind="pdf",
             sha256="a" * 64,
@@ -705,12 +707,13 @@ class TestLocalOracleRunResultStored:
 
     def test_roundtrip_stage_count(self) -> None:
         result = self._make()
-        assert len(result.roundtrip.stages) == 6
+        assert len(result.roundtrip.stages) == 8
 
     def test_roundtrip_total_checked(self) -> None:
         result = self._make()
-        # snapshot(1) + profiles(10) + evidence(5) + zip(3) + homepage(1) + lookup(1)
-        assert result.roundtrip.total_checked == 21
+        # snapshot(1) + profiles(10) + evidence(5) + ontology(2)
+        # + prediction(4) + zip(3) + homepage(1) + lookup(1)
+        assert result.roundtrip.total_checked == 27
 
     def test_roundtrip_stage_result_lookup(self) -> None:
         result = self._make()

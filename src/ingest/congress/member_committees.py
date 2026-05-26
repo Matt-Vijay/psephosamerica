@@ -57,6 +57,15 @@ def _parse_is_current(raw: Any) -> bool:
     return bool(raw)
 
 
+def _parse_congress(raw: Any) -> int | None:
+    if isinstance(raw, bool):
+        return None
+    try:
+        return int(raw)
+    except (TypeError, ValueError):
+        return None
+
+
 def committee_membership_specs_from_detail(
     detail: dict[str, Any],
     member: MemberRecord,
@@ -88,9 +97,8 @@ def committee_membership_specs_from_detail(
         congress_raw = item.get("congress")
         if congress_raw is None:
             continue
-        try:
-            congress = int(congress_raw)
-        except (TypeError, ValueError):
+        congress = _parse_congress(congress_raw)
+        if congress is None:
             continue
 
         start_date = _parse_date(item.get("startDate"))

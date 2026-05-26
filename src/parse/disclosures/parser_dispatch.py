@@ -41,6 +41,5 @@ def parse_disclosure_pages(
         return senate_text.parse_senate_text(page_texts, filing)
 
     raise ValueError(
-        "No parser registered for "
-        f"chamber={filing.chamber!r} filing_type={filing.filing_type!r}"
+        f"No parser registered for chamber={filing.chamber!r} filing_type={filing.filing_type!r}"
     )

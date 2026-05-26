@@ -15,13 +15,15 @@ fetch_house_vote_index(year, ...)   -> list[HouseVoteIndexRow]
 from __future__ import annotations
 
 import datetime
-import xml.etree.ElementTree as ET
 from dataclasses import dataclass
-from xml.etree.ElementTree import fromstring
+from typing import Any
+
+from defusedxml.ElementTree import fromstring
 
 import httpx
 
 from .house_votes import roll_call_url
+from .official_fetch import fetch_official_congress_text
 
 HOUSE_VOTE_INDEX_BASE = "https://clerk.house.gov/evs"
 
@@ -40,7 +42,7 @@ class HouseVoteIndexRow:
     vote_date: datetime.date
     question: str
     result: str | None
-    source_url: str   # points to the individual roll-call XML
+    source_url: str  # points to the individual roll-call XML
 
 
 def house_vote_index_url(year: int) -> str:
@@ -81,15 +83,17 @@ def parse_house_vote_index(xml_text: str) -> list[HouseVoteIndexRow]:
         # and the vote date year agree for all normal congressional sessions.
         url = roll_call_url(vote_date.year, roll_call_number)
 
-        rows.append(HouseVoteIndexRow(
-            congress=congress,
-            session=session,
-            roll_call_number=roll_call_number,
-            vote_date=vote_date,
-            question=question,
-            result=result,
-            source_url=url,
-        ))
+        rows.append(
+            HouseVoteIndexRow(
+                congress=congress,
+                session=session,
+                roll_call_number=roll_call_number,
+                vote_date=vote_date,
+                question=question,
+                result=result,
+                source_url=url,
+            )
+        )
 
     return rows
 
@@ -107,13 +111,7 @@ def fetch_house_vote_index(
     Raises httpx.HTTPStatusError on non-2xx responses.
     """
     url = house_vote_index_url(year)
-    if client is not None:
-        response = client.get(url)
-        response.raise_for_status()
-    else:
-        response = httpx.get(url, timeout=30.0)
-        response.raise_for_status()
-    return parse_house_vote_index(response.text)
+    return parse_house_vote_index(fetch_official_congress_text(url, client=client))
 
 
 # ---------------------------------------------------------------------------
@@ -121,21 +119,24 @@ def fetch_house_vote_index(
 # ---------------------------------------------------------------------------
 
 
-def _required_text(entry: ET.Element, tag: str) -> str:
+def _required_text(entry: Any, tag: str) -> str:
     el = entry.find(tag)
     if el is None or el.text is None:
         raise ValueError(f"Missing required field <{tag}> in <{entry.tag}>")
-    value = el.text.strip()
+    raw_text = el.text
+    if not isinstance(raw_text, str):
+        raise ValueError(f"Field <{tag}> in <{entry.tag}> must be text")
+    value = raw_text.strip()
     if not value:
         raise ValueError(f"Empty required field <{tag}> in <{entry.tag}>")
     return value
 
 
-def _required_int(entry: ET.Element, tag: str) -> int:
+def _required_int(entry: Any, tag: str) -> int:
     return int(_required_text(entry, tag))
 
 
-def _optional_text(entry: ET.Element, tag: str) -> str | None:
+def _optional_text(entry: Any, tag: str) -> str | None:
     el = entry.find(tag)
     if el is None or el.text is None:
         return None

@@ -35,6 +35,7 @@ def primary_sponsor_spec_from_bill_detail(
         source_url=source_url,
     )
 
+
 def _usable_bioguide_id(sponsor_entry: dict[str, Any]) -> str | None:
     raw = sponsor_entry.get("bioguideId")
     if not raw or not str(raw).strip():

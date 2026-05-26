@@ -17,7 +17,14 @@ from src.export.contracts import (
     EvidenceCardPayload,
     MemberChangeSummaryPayload,
     MemberHistoryChartPayload,
+    MemberHistoryCoveragePayload,
+    MemberHistoryCoverageIndexPayload,
     MemberHistoryPayload,
+    MemberTimelineDimensionPayload,
+    MemberTimelineEventPayload,
+    MemberTimelineIndexPayload,
+    MemberTimelinePagePayload,
+    MemberTimelineYearPayload,
     MemberProfilePayload,
     MemberTrendSummaryPayload,
     ZipFeedPayload,
@@ -28,15 +35,44 @@ from src.homepage.contracts import (
     SnapshotComparePayload,
 )
 from src.identity.current_member_lookup import CurrentMemberLookupPayload
+from src.ontology.contracts import (
+    OntologyGraphPayload,
+    OntologyIndexPayload,
+    OntologyMemberFeaturesPayload,
+    OntologyMemberGraphPayload,
+)
+from src.prediction.contracts import (
+    PredictionBootstrapPayload,
+    PredictionCommitteeContextPayload,
+    PredictionCommitteeReadinessPayload,
+    PredictionMemberContextPayload,
+    PredictionMemberReadinessPayload,
+    PredictionReadinessIndexPayload,
+    PredictionReadinessPayload,
+    PredictionSectorContextPayload,
+    PredictionSectorReadinessPayload,
+    PredictionSourceContextPayload,
+    PredictionSourceIndexPayload,
+    PredictionTopologyPayload,
+)
+from src.runtime.history_backfill_types import HistoryBackfillReportPayload
 
 from .contracts import (
     ApiEnvelope,
     BatchMeta,
     CurrentMemberLookupResponse,
     EvidenceResponse,
+    OntologyGraphResponse,
+    OntologyIndexResponse,
+    OntologyMemberFeaturesResponse,
+    OntologyMemberGraphResponse,
+    HistoryBackfillBootstrapPayload,
+    HistoryBackfillBootstrapResponse,
     HistoryBootstrapPayload,
     HistoryPresetRangePayload,
     HistoryBootstrapResponse,
+    HistoryEventPagePayload,
+    HistoryEventPageResponse,
     HistoryPresetRangeResponse,
     HomepageBootstrapPayload,
     HomepageBootstrapResponse,
@@ -44,12 +80,19 @@ from .contracts import (
     LastUpdatedPayload,
     LastUpdatedResponse,
     MemberChangeSummaryResponse,
+    MemberHistoryCoverageResponse,
+    MemberHistoryCoverageIndexResponse,
     MemberHistoryResponse,
+    MemberTimelineDimensionResponse,
     MemberHistoryChartResponse,
     MemberComparePayload,
     MemberCompareResponse,
     MemberHistoryPagePayload,
     MemberHistoryPageResponse,
+    MemberTimelineIndexResponse,
+    MemberTimelinePageResponse,
+    MemberTimelineYearResponse,
+    HistoryEventResponse,
     MemberWindowComparePayload,
     MemberWindowCompareResponse,
     MemberPagePayload,
@@ -60,6 +103,18 @@ from .contracts import (
     MemberTrendSummaryResponse,
     MemberResponse,
     NotFoundBody,
+    PredictionBootstrapResponse,
+    PredictionCommitteeContextResponse,
+    PredictionCommitteeReadinessResponse,
+    PredictionMemberContextResponse,
+    PredictionMemberReadinessResponse,
+    PredictionReadinessIndexResponse,
+    PredictionReadinessResponse,
+    PredictionSectorContextResponse,
+    PredictionSectorReadinessResponse,
+    PredictionSourceContextResponse,
+    PredictionSourceIndexResponse,
+    PredictionTopologyResponse,
     SnapshotSummaryPayload,
     SnapshotSummaryResponse,
     SearchSessionPayload,
@@ -106,6 +161,48 @@ def wrap_member_history(
     return ApiEnvelope[MemberHistoryPayload](meta=meta, data=payload)
 
 
+def wrap_member_timeline_dimension(
+    payload: MemberTimelineDimensionPayload,
+    meta: BatchMeta,
+) -> MemberTimelineDimensionResponse:
+    return ApiEnvelope[MemberTimelineDimensionPayload](meta=meta, data=payload)
+
+
+def wrap_member_timeline_index(
+    payload: MemberTimelineIndexPayload,
+    meta: BatchMeta,
+) -> MemberTimelineIndexResponse:
+    return ApiEnvelope[MemberTimelineIndexPayload](meta=meta, data=payload)
+
+
+def wrap_member_timeline_page(
+    payload: MemberTimelinePagePayload,
+    meta: BatchMeta,
+) -> MemberTimelinePageResponse:
+    return ApiEnvelope[MemberTimelinePagePayload](meta=meta, data=payload)
+
+
+def wrap_member_timeline_year(
+    payload: MemberTimelineYearPayload,
+    meta: BatchMeta,
+) -> MemberTimelineYearResponse:
+    return ApiEnvelope[MemberTimelineYearPayload](meta=meta, data=payload)
+
+
+def wrap_history_event(
+    payload: MemberTimelineEventPayload,
+    meta: BatchMeta,
+) -> HistoryEventResponse:
+    return ApiEnvelope[MemberTimelineEventPayload](meta=meta, data=payload)
+
+
+def wrap_history_event_page(
+    payload: HistoryEventPagePayload,
+    meta: BatchMeta,
+) -> HistoryEventPageResponse:
+    return ApiEnvelope[HistoryEventPagePayload](meta=meta, data=payload)
+
+
 def wrap_member_history_chart(
     payload: MemberHistoryChartPayload,
     meta: BatchMeta,
@@ -134,6 +231,20 @@ def wrap_member_change_summary(
     return ApiEnvelope[MemberChangeSummaryPayload](meta=meta, data=payload)
 
 
+def wrap_member_history_coverage(
+    payload: MemberHistoryCoveragePayload,
+    meta: BatchMeta,
+) -> MemberHistoryCoverageResponse:
+    return ApiEnvelope[MemberHistoryCoveragePayload](meta=meta, data=payload)
+
+
+def wrap_member_history_coverage_index(
+    payload: MemberHistoryCoverageIndexPayload,
+    meta: BatchMeta,
+) -> MemberHistoryCoverageIndexResponse:
+    return ApiEnvelope[MemberHistoryCoverageIndexPayload](meta=meta, data=payload)
+
+
 def wrap_member_trend_summary(
     payload: MemberTrendSummaryPayload,
     meta: BatchMeta,
@@ -160,6 +271,118 @@ def wrap_evidence(payload: EvidenceCardPayload, meta: BatchMeta) -> EvidenceResp
     return ApiEnvelope[EvidenceCardPayload](meta=meta, data=payload)
 
 
+def wrap_ontology_graph(
+    payload: OntologyGraphPayload,
+    meta: BatchMeta,
+) -> OntologyGraphResponse:
+    return ApiEnvelope[OntologyGraphPayload](meta=meta, data=payload)
+
+
+def wrap_ontology_index(
+    payload: OntologyIndexPayload,
+    meta: BatchMeta,
+) -> OntologyIndexResponse:
+    return ApiEnvelope[OntologyIndexPayload](meta=meta, data=payload)
+
+
+def wrap_ontology_member_features(
+    payload: OntologyMemberFeaturesPayload,
+    meta: BatchMeta,
+) -> OntologyMemberFeaturesResponse:
+    return ApiEnvelope[OntologyMemberFeaturesPayload](meta=meta, data=payload)
+
+
+def wrap_ontology_member_graph(
+    payload: OntologyMemberGraphPayload,
+    meta: BatchMeta,
+) -> OntologyMemberGraphResponse:
+    return ApiEnvelope[OntologyMemberGraphPayload](meta=meta, data=payload)
+
+
+def wrap_prediction_readiness(
+    payload: PredictionReadinessPayload,
+    meta: BatchMeta,
+) -> PredictionReadinessResponse:
+    return ApiEnvelope[PredictionReadinessPayload](meta=meta, data=payload)
+
+
+def wrap_prediction_bootstrap(
+    payload: PredictionBootstrapPayload,
+    meta: BatchMeta,
+) -> PredictionBootstrapResponse:
+    return ApiEnvelope[PredictionBootstrapPayload](meta=meta, data=payload)
+
+
+def wrap_prediction_topology(
+    payload: PredictionTopologyPayload,
+    meta: BatchMeta,
+) -> PredictionTopologyResponse:
+    return ApiEnvelope[PredictionTopologyPayload](meta=meta, data=payload)
+
+
+def wrap_prediction_readiness_index(
+    payload: PredictionReadinessIndexPayload,
+    meta: BatchMeta,
+) -> PredictionReadinessIndexResponse:
+    return ApiEnvelope[PredictionReadinessIndexPayload](meta=meta, data=payload)
+
+
+def wrap_prediction_source_index(
+    payload: PredictionSourceIndexPayload,
+    meta: BatchMeta,
+) -> PredictionSourceIndexResponse:
+    return ApiEnvelope[PredictionSourceIndexPayload](meta=meta, data=payload)
+
+
+def wrap_prediction_source_context(
+    payload: PredictionSourceContextPayload,
+    meta: BatchMeta,
+) -> PredictionSourceContextResponse:
+    return ApiEnvelope[PredictionSourceContextPayload](meta=meta, data=payload)
+
+
+def wrap_prediction_committee_readiness(
+    payload: PredictionCommitteeReadinessPayload,
+    meta: BatchMeta,
+) -> PredictionCommitteeReadinessResponse:
+    return ApiEnvelope[PredictionCommitteeReadinessPayload](meta=meta, data=payload)
+
+
+def wrap_prediction_committee_context(
+    payload: PredictionCommitteeContextPayload,
+    meta: BatchMeta,
+) -> PredictionCommitteeContextResponse:
+    return ApiEnvelope[PredictionCommitteeContextPayload](meta=meta, data=payload)
+
+
+def wrap_prediction_sector_readiness(
+    payload: PredictionSectorReadinessPayload,
+    meta: BatchMeta,
+) -> PredictionSectorReadinessResponse:
+    return ApiEnvelope[PredictionSectorReadinessPayload](meta=meta, data=payload)
+
+
+def wrap_prediction_sector_context(
+    payload: PredictionSectorContextPayload,
+    meta: BatchMeta,
+) -> PredictionSectorContextResponse:
+    return ApiEnvelope[PredictionSectorContextPayload](meta=meta, data=payload)
+
+
+def wrap_prediction_member_readiness(
+    payload: PredictionMemberReadinessPayload,
+    meta: BatchMeta,
+) -> PredictionMemberReadinessResponse:
+    return ApiEnvelope[PredictionMemberReadinessPayload](meta=meta, data=payload)
+
+
+def wrap_prediction_member_context(
+    payload: PredictionMemberContextPayload,
+    meta: BatchMeta,
+) -> PredictionMemberContextResponse:
+    return ApiEnvelope[PredictionMemberContextPayload](meta=meta, data=payload)
+
+
 def wrap_homepage(payload: HomepageFeedPayload, meta: BatchMeta) -> HomepageResponse:
     return ApiEnvelope[HomepageFeedPayload](meta=meta, data=payload)
 
@@ -178,11 +401,25 @@ def wrap_history_bootstrap(
     return ApiEnvelope[HistoryBootstrapPayload](meta=meta, data=payload)
 
 
+def wrap_history_backfill_bootstrap(
+    payload: HistoryBackfillBootstrapPayload,
+    meta: BatchMeta,
+) -> HistoryBackfillBootstrapResponse:
+    return ApiEnvelope[HistoryBackfillBootstrapPayload](meta=meta, data=payload)
+
+
 def wrap_history_preset_range(
     payload: HistoryPresetRangePayload,
     meta: BatchMeta,
 ) -> HistoryPresetRangeResponse:
     return ApiEnvelope[HistoryPresetRangePayload](meta=meta, data=payload)
+
+
+def wrap_history_backfill_report(
+    payload: HistoryBackfillReportPayload,
+    meta: BatchMeta,
+) -> ApiEnvelope[HistoryBackfillReportPayload]:
+    return ApiEnvelope[HistoryBackfillReportPayload](meta=meta, data=payload)
 
 
 def wrap_snapshot_compare(

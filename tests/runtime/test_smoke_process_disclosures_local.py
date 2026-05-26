@@ -71,9 +71,7 @@ def _run(
     conn = conn or MagicMock()
     bundle = bundle or MagicMock()
     result = run_result if run_result is not None else _pipeline_result()
-    with patch(
-        f"{_MODULE}.run_disclosures_bundle_process", return_value=result
-    ) as mock_run:
+    with patch(f"{_MODULE}.run_disclosures_bundle_process", return_value=result) as mock_run:
         summary = smoke_process_disclosures_local(conn, bundle, local_root=local_root)
     return summary, mock_run, conn, bundle
 
@@ -153,8 +151,13 @@ class TestValueMapping:
 
     def test_zero_counts_are_valid(self) -> None:
         result = _pipeline_result(
-            staged=0, mirrored=0, processed=0, succeeded=0, failed=0,
-            transform_count=0, total_written=0,
+            staged=0,
+            mirrored=0,
+            processed=0,
+            succeeded=0,
+            failed=0,
+            transform_count=0,
+            total_written=0,
         )
         summary, *_ = _run(run_result=result)
         assert summary["staged"] == 0

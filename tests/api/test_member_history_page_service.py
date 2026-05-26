@@ -8,6 +8,9 @@ import src.api as api
 from src.api.contracts import NotFoundBody
 from src.api.read_service import get_member_history_chart
 from src.api.read_service import get_member_history_page
+from src.api.read_service import get_member_timeline_dimension
+from src.api.read_service import get_member_timeline_page
+from src.api.read_service import get_member_timeline_year
 from src.export.writer import member_history_chart_path, member_history_page_path
 from src.export.contracts import MemberHistoryPayload
 from src.pipeline.history_aggregate_run import write_history_aggregate
@@ -105,7 +108,79 @@ def test_get_member_history_page_returns_member_current_and_history(tmp_path: Pa
     assert result.data.recent_change.slug == "nancy-pelosi"
     assert result.data.recent_change.top_evidence_card_ids == ["ec-0001"]
     assert result.data.history_evidence_cards[0].evidence_card_id == "ec-0001"
+    history_card = result.data.model_dump(mode="json")["history_evidence_cards"][0]
+    assert history_card["source_count"] == 1
+    assert history_card["official_source_count"] == 1
+    assert history_card["primary_source_url"].startswith("https://disclosures.house.gov/")
     assert result.data.snapshot_index.latest_snapshot_id == "2026-01-01"
+    assert result.data.timeline_index is not None
+    assert result.data.timeline_page is not None
+    assert result.data.timeline_index.total_events == 1
+    assert result.data.timeline_page.events[0].event_id.startswith("he-")
+
+
+def test_get_member_timeline_page_returns_resolved_evidence_cards(tmp_path: Path) -> None:
+    make_snapshot(tmp_path, member_histories=[make_member_history()])
+
+    result = get_member_timeline_page("nancy-pelosi", 1, snapshot_root=tmp_path)
+
+    assert result.ok is True
+    assert [event.evidence_card_id for event in result.data.events] == ["ec-0001"]
+    assert [card.evidence_card_id for card in result.data.evidence_cards] == ["ec-0001"]
+    assert result.data.missing_evidence_card_ids == []
+    timeline_card = result.data.model_dump(mode="json")["evidence_cards"][0]
+    assert timeline_card["source_count"] == 1
+    assert timeline_card["official_source_count"] == 1
+    assert timeline_card["primary_source_url"].startswith("https://disclosures.house.gov/")
+
+
+def test_get_member_timeline_page_surfaces_missing_evidence_cards(tmp_path: Path) -> None:
+    make_snapshot(
+        tmp_path,
+        member_histories=[make_member_history()],
+        evidence_cards=[],
+    )
+
+    result = get_member_timeline_page("nancy-pelosi", 1, snapshot_root=tmp_path)
+
+    assert result.ok is True
+    assert [event.evidence_card_id for event in result.data.events] == ["ec-0001"]
+    assert result.data.evidence_cards == []
+    assert result.data.missing_evidence_card_ids == ["ec-0001"]
+
+
+def test_get_member_timeline_page_returns_not_found_for_out_of_range_page(
+    tmp_path: Path,
+) -> None:
+    make_snapshot(tmp_path, member_histories=[make_member_history()])
+
+    result = get_member_timeline_page("nancy-pelosi", 2, snapshot_root=tmp_path)
+
+    assert isinstance(result, NotFoundBody)
+    assert result.resource_type == "member_timeline_page"
+    assert result.identifier == "nancy-pelosi:2"
+
+
+def test_get_member_timeline_wrappers_hydrate_nested_page_cards(tmp_path: Path) -> None:
+    make_snapshot(tmp_path, member_histories=[make_member_history()])
+
+    year_result = get_member_timeline_year("nancy-pelosi", 2026, snapshot_root=tmp_path)
+    dimension_result = get_member_timeline_dimension(
+        "nancy-pelosi",
+        "conflict_of_interest_risk",
+        snapshot_root=tmp_path,
+    )
+
+    assert year_result.ok is True
+    assert [card.evidence_card_id for card in year_result.data.timeline_page.evidence_cards] == [
+        "ec-0001"
+    ]
+    assert year_result.data.timeline_page.missing_evidence_card_ids == []
+    assert dimension_result.ok is True
+    assert [
+        card.evidence_card_id for card in dimension_result.data.timeline_page.evidence_cards
+    ] == ["ec-0001"]
+    assert dimension_result.data.timeline_page.missing_evidence_card_ids == []
 
 
 def test_get_member_history_page_returns_not_found_for_missing_member(tmp_path: Path) -> None:
@@ -129,6 +204,8 @@ def test_get_member_history_page_includes_member_trend_summary_windows(
     assert result.data.member_page.profile.slug == "nancy-pelosi"
     assert result.data.history.slug == "nancy-pelosi"
     assert result.data.trend_summary.slug == "nancy-pelosi"
+    assert result.data.coverage is not None
+    assert result.data.coverage.snapshot_count == 5
     assert [window.window_key for window in result.data.trend_summary.windows] == [
         "4w",
         "12w",
@@ -155,9 +232,16 @@ def test_get_member_history_page_includes_member_trend_summary_windows(
     assert result.data.default_window_compare.start_snapshot_id == "2026-03-18"
     assert result.data.default_window_compare.end_snapshot_id == "2026-04-15"
     assert result.data.default_window_compare.summary.score_total_delta == 15.0
-    assert [card.evidence_card_id for card in result.data.default_window_compare.evidence_cards] == [
-        "ec-2026-04-15"
-    ]
+    assert [
+        card.evidence_card_id for card in result.data.default_window_compare.evidence_cards
+    ] == ["ec-2026-04-15"]
+    assert result.data.timeline_index is not None
+    assert result.data.timeline_page is not None
+    assert result.data.timeline_index.total_events == 5
+    assert result.data.timeline_index.year_buckets[0].year == 2026
+    assert result.data.timeline_index.year_buckets[0].start_page == 1
+    assert result.data.timeline_page.page == 1
+    assert result.data.timeline_page.events[0].evidence_card_id == "ec-2026-04-15"
 
 
 def test_get_member_history_chart_returns_precomputed_chart_payload(tmp_path: Path) -> None:
@@ -193,9 +277,7 @@ def test_get_member_history_page_returns_not_found_when_default_preset_is_missin
     chart_data = json.loads(chart_path.read_text())
     chart_data["default_preset_key"] = "latest"
     chart_data["compare_presets"] = [
-        preset
-        for preset in chart_data["compare_presets"]
-        if preset["preset_key"] != "latest"
+        preset for preset in chart_data["compare_presets"] if preset["preset_key"] != "latest"
     ]
     chart_path.write_text(json.dumps(chart_data, sort_keys=True))
 
@@ -218,6 +300,40 @@ def test_get_member_history_page_prefers_precomputed_artifact_and_falls_back_cle
     assert precomputed.ok is True
     assert fallback.ok is True
     assert precomputed.data.model_dump(mode="json") == fallback.data.model_dump(mode="json")
+
+
+def test_get_member_history_page_ignores_stale_precomputed_artifact(
+    tmp_path: Path,
+) -> None:
+    aggregate_root = _history_root(tmp_path)
+    artifact_path = aggregate_root / member_history_page_path("nancy-pelosi")
+    payload = json.loads(artifact_path.read_text(encoding="utf-8"))
+    payload["snapshot_index"]["latest_snapshot_id"] = "stale-snapshot"
+    artifact_path.write_text(json.dumps(payload, sort_keys=True), encoding="utf-8")
+
+    result = get_member_history_page("nancy-pelosi", snapshot_root=aggregate_root)
+
+    assert result.ok is True
+    assert result.data.snapshot_index.latest_snapshot_id == "2026-04-15"
+
+
+def test_get_member_history_page_backfills_timeline_fields_for_older_artifact(
+    tmp_path: Path,
+) -> None:
+    aggregate_root = _history_root(tmp_path)
+    artifact_path = aggregate_root / member_history_page_path("nancy-pelosi")
+    payload = json.loads(artifact_path.read_text())
+    payload.pop("timeline_index", None)
+    payload.pop("timeline_page", None)
+    artifact_path.write_text(json.dumps(payload, sort_keys=True), encoding="utf-8")
+
+    result = get_member_history_page("nancy-pelosi", snapshot_root=aggregate_root)
+
+    assert result.ok is True
+    assert result.data.timeline_index is not None
+    assert result.data.timeline_page is not None
+    assert result.data.timeline_index.total_events == 5
+    assert result.data.timeline_page.events[0].evidence_card_id == "ec-2026-04-15"
 
 
 def test_src_api_exports_member_history_page_helper() -> None:

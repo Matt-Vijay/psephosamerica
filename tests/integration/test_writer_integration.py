@@ -34,11 +34,13 @@ def _make_data_source(db, slug="test-source") -> int:
     result = write_table_batch(
         db,
         table="data_source",
-        rows=[{
-            "slug": slug,
-            "name": "Test Source",
-            "source_kind": "internal",
-        }],
+        rows=[
+            {
+                "slug": slug,
+                "name": "Test Source",
+                "source_kind": "internal",
+            }
+        ],
     )
     assert result.inserted == 1
     rows = fetch_all(db, "SELECT id FROM data_source WHERE slug = %s", [slug])
@@ -50,12 +52,14 @@ def _make_source_artifact(db, data_source_id: int, sha: str = "a" * 64) -> int:
     write_table_batch(
         db,
         table="source_artifact",
-        rows=[{
-            "data_source_id": data_source_id,
-            "artifact_kind": "json",
-            "storage_uri": f"s3://test/{sha}",
-            "sha256": sha,
-        }],
+        rows=[
+            {
+                "data_source_id": data_source_id,
+                "artifact_kind": "json",
+                "storage_uri": f"s3://test/{sha}",
+                "sha256": sha,
+            }
+        ],
     )
     rows = fetch_all(db, "SELECT id FROM source_artifact WHERE sha256 = %s", [sha])
     return rows[0]["id"]
@@ -149,13 +153,15 @@ class TestWriteTableBatch:
         write_table_batch(
             db,
             table="member",
-            rows=[{
-                "bioguide_id": "V000001",
-                "slug": "visible-member",
-                "last_name": "Hidden",
-                "full_name": "Should Stay Hidden",
-                "chamber": "house",
-            }],
+            rows=[
+                {
+                    "bioguide_id": "V000001",
+                    "slug": "visible-member",
+                    "last_name": "Hidden",
+                    "full_name": "Should Stay Hidden",
+                    "chamber": "house",
+                }
+            ],
         )
 
         observer = _open_external_connection(db.schema_name)
@@ -169,26 +175,30 @@ class TestWriteTableBatch:
         write_table_batch(
             db,
             table="member",
-            rows=[{
-                "bioguide_id": "S000001",
-                "slug": "stable-member",
-                "last_name": "Stable",
-                "full_name": "Stable Member",
-                "chamber": "house",
-            }],
+            rows=[
+                {
+                    "bioguide_id": "S000001",
+                    "slug": "stable-member",
+                    "last_name": "Stable",
+                    "full_name": "Stable Member",
+                    "chamber": "house",
+                }
+            ],
         )
 
         with pytest.raises(Exception):
             write_table_batch(
                 db,
                 table="member",
-                rows=[{
-                    "bioguide_id": "X000001",
-                    "slug": "bad-chamber",
-                    "last_name": "Bad",
-                    "full_name": "Bad Chamber",
-                    "chamber": "invalid_value",
-                }],
+                rows=[
+                    {
+                        "bioguide_id": "X000001",
+                        "slug": "bad-chamber",
+                        "last_name": "Bad",
+                        "full_name": "Bad Chamber",
+                        "chamber": "invalid_value",
+                    }
+                ],
             )
 
         rows = fetch_all(
@@ -200,13 +210,15 @@ class TestWriteTableBatch:
         result = write_table_batch(
             db,
             table="member",
-            rows=[{
-                "bioguide_id": "R000001",
-                "slug": "recovered-member",
-                "last_name": "Recovered",
-                "full_name": "Recovered Member",
-                "chamber": "senate",
-            }],
+            rows=[
+                {
+                    "bioguide_id": "R000001",
+                    "slug": "recovered-member",
+                    "last_name": "Recovered",
+                    "full_name": "Recovered Member",
+                    "chamber": "senate",
+                }
+            ],
         )
         assert result.inserted == 1
 
@@ -237,26 +249,30 @@ class TestWriteTableBatches:
         batches = [
             {
                 "table": "member",
-                "rows": [{
-                    "bioguide_id": "M000001",
-                    "slug": "multi-member",
-                    "last_name": "Multi",
-                    "full_name": "Multi Member",
-                    "chamber": "house",
-                    "source_artifact_id": sa_id,
-                }],
+                "rows": [
+                    {
+                        "bioguide_id": "M000001",
+                        "slug": "multi-member",
+                        "last_name": "Multi",
+                        "full_name": "Multi Member",
+                        "chamber": "house",
+                        "source_artifact_id": sa_id,
+                    }
+                ],
             },
             {
                 "table": "committee",
-                "rows": [{
-                    "committee_code": "TSAG",
-                    "congress": 119,
-                    "chamber": "senate",
-                    "committee_type": "standing",
-                    "name": "Test Agriculture",
-                    "review_tier": "deterministic",
-                    "source_artifact_id": sa_id,
-                }],
+                "rows": [
+                    {
+                        "committee_code": "TSAG",
+                        "congress": 119,
+                        "chamber": "senate",
+                        "committee_type": "standing",
+                        "name": "Test Agriculture",
+                        "review_tier": "deterministic",
+                        "source_artifact_id": sa_id,
+                    }
+                ],
             },
         ]
 
@@ -273,13 +289,15 @@ class TestWriteTableBatches:
         write_table_batch(
             db,
             table="member",
-            rows=[{
-                "bioguide_id": "F000001",
-                "slug": "fk-chain",
-                "last_name": "Chain",
-                "full_name": "FK Chain",
-                "chamber": "senate",
-            }],
+            rows=[
+                {
+                    "bioguide_id": "F000001",
+                    "slug": "fk-chain",
+                    "last_name": "Chain",
+                    "full_name": "FK Chain",
+                    "chamber": "senate",
+                }
+            ],
         )
         member_rows = fetch_all(db, "SELECT id FROM member WHERE bioguide_id = 'F000001'")
         member_id = member_rows[0]["id"]
@@ -287,13 +305,15 @@ class TestWriteTableBatches:
         write_table_batch(
             db,
             table="financial_disclosure",
-            rows=[{
-                "member_id": member_id,
-                "chamber": "senate",
-                "filing_year": 2025,
-                "filing_type": "annual",
-                "source_artifact_id": sa_id,
-            }],
+            rows=[
+                {
+                    "member_id": member_id,
+                    "chamber": "senate",
+                    "filing_year": 2025,
+                    "filing_type": "annual",
+                    "source_artifact_id": sa_id,
+                }
+            ],
         )
         fd_rows = fetch_all(
             db,
@@ -305,16 +325,18 @@ class TestWriteTableBatches:
         result = write_table_batch(
             db,
             table="holding",
-            rows=[{
-                "financial_disclosure_id": fd_id,
-                "line_number": 1,
-                "owner_type": "self",
-                "issuer_name": "ACME Corp",
-                "issuer_ticker": "ACME",
-                "value_min": Decimal("1000.00"),
-                "value_max": Decimal("15000.00"),
-                "source_artifact_id": sa_id,
-            }],
+            rows=[
+                {
+                    "financial_disclosure_id": fd_id,
+                    "line_number": 1,
+                    "owner_type": "self",
+                    "issuer_name": "ACME Corp",
+                    "issuer_ticker": "ACME",
+                    "value_min": Decimal("1000.00"),
+                    "value_max": Decimal("15000.00"),
+                    "source_artifact_id": sa_id,
+                }
+            ],
         )
         assert result.inserted == 1
 
@@ -333,11 +355,13 @@ class TestWriteTableBatches:
             write_table_batch(
                 db,
                 table="member",
-                rows=[{
-                    "bioguide_id": "X000001",
-                    "slug": "bad-chamber",
-                    "last_name": "Bad",
-                    "full_name": "Bad Chamber",
-                    "chamber": "invalid_value",
-                }],
+                rows=[
+                    {
+                        "bioguide_id": "X000001",
+                        "slug": "bad-chamber",
+                        "last_name": "Bad",
+                        "full_name": "Bad Chamber",
+                        "chamber": "invalid_value",
+                    }
+                ],
             )

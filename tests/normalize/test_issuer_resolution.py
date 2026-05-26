@@ -24,10 +24,21 @@ from src.normalize.issuer_resolution import (
 # ---------------------------------------------------------------------------
 
 APPLE = IssuerRecord(ticker="AAPL", name="Apple Inc.", cik="0000320193", aliases=("apple inc",))
-MSFT = IssuerRecord(ticker="MSFT", name="Microsoft Corporation", cik="0000789019", aliases=("microsoft corp",))
-GOOGL = IssuerRecord(ticker="GOOGL", name="Alphabet Inc.", cik="0001652044", aliases=("alphabet", "google"))
-BRKA = IssuerRecord(ticker="BRK.A", name="Berkshire Hathaway Inc.", cik="0001067983", aliases=("berkshire hathaway",))
-EXXON = IssuerRecord(ticker="XOM", name="Exxon Mobil Corporation", cik="0000034088", aliases=("exxon mobil", "exxon"))
+MSFT = IssuerRecord(
+    ticker="MSFT", name="Microsoft Corporation", cik="0000789019", aliases=("microsoft corp",)
+)
+GOOGL = IssuerRecord(
+    ticker="GOOGL", name="Alphabet Inc.", cik="0001652044", aliases=("alphabet", "google")
+)
+BRKA = IssuerRecord(
+    ticker="BRK.A",
+    name="Berkshire Hathaway Inc.",
+    cik="0001067983",
+    aliases=("berkshire hathaway",),
+)
+EXXON = IssuerRecord(
+    ticker="XOM", name="Exxon Mobil Corporation", cik="0000034088", aliases=("exxon mobil", "exxon")
+)
 
 
 @pytest.fixture()
@@ -38,6 +49,7 @@ def index():
 # ---------------------------------------------------------------------------
 # Unit: normalization helpers
 # ---------------------------------------------------------------------------
+
 
 class TestNormalizeName:
     def test_lowercases(self):
@@ -95,6 +107,7 @@ class TestTokenOverlapScore:
 # Unit: ticker extraction
 # ---------------------------------------------------------------------------
 
+
 class TestExtractTickers:
     def test_parenthetical(self):
         assert "AAPL" in _extract_tickers_from_text("Apple Inc (AAPL)")
@@ -120,6 +133,7 @@ class TestExtractTickers:
 # ---------------------------------------------------------------------------
 # Integration: resolve_issuer waterfall
 # ---------------------------------------------------------------------------
+
 
 class TestTickerHintResolution:
     """Step 1 – ticker hint from the disclosure row."""
@@ -247,6 +261,7 @@ class TestUnresolved:
 # Output structure
 # ---------------------------------------------------------------------------
 
+
 class TestCandidateStructure:
     def test_returns_list(self, index):
         result = resolve_issuer("Apple Inc.", "AAPL", index)
@@ -260,7 +275,14 @@ class TestCandidateStructure:
 
     def test_as_dict_keys(self, index):
         d = resolve_best("Apple Inc.", None, index).as_dict()
-        assert set(d.keys()) == {"ticker", "cik", "confidence_label", "match_method", "score", "matched_name"}
+        assert set(d.keys()) == {
+            "ticker",
+            "cik",
+            "confidence_label",
+            "match_method",
+            "score",
+            "matched_name",
+        }
 
     def test_confidence_labels_are_valid(self, index):
         valid = {"HIGH", "MEDIUM", "LOW"}
@@ -284,6 +306,7 @@ class TestCandidateStructure:
 # Edge cases
 # ---------------------------------------------------------------------------
 
+
 class TestEdgeCases:
     def test_empty_name_returns_unresolved(self, index):
         top = resolve_best("", None, index)
@@ -301,8 +324,12 @@ class TestEdgeCases:
             build_index([rec1, rec2])
 
     def test_duplicate_aliases_raise_value_error(self):
-        rec1 = IssuerRecord(ticker="DUPE1", name="First Company", cik="0000000001", aliases=("shared alias",))
-        rec2 = IssuerRecord(ticker="DUPE2", name="Second Company", cik="0000000002", aliases=("shared alias",))
+        rec1 = IssuerRecord(
+            ticker="DUPE1", name="First Company", cik="0000000001", aliases=("shared alias",)
+        )
+        rec2 = IssuerRecord(
+            ticker="DUPE2", name="Second Company", cik="0000000002", aliases=("shared alias",)
+        )
         with pytest.raises(ValueError, match="duplicate alias"):
             build_index([rec1, rec2])
 

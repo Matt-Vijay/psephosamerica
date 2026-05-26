@@ -78,7 +78,9 @@ def validate_sectors_yaml(path: Path) -> tuple[set[str], list[ValidationError]]:
             continue
         missing = REQUIRED_SECTOR_FIELDS - sector.keys()
         if missing:
-            errors.append(ValidationError(name, f"Sector at index {i} missing fields: {sorted(missing)}"))
+            errors.append(
+                ValidationError(name, f"Sector at index {i} missing fields: {sorted(missing)}")
+            )
         sid = sector.get("sector_id")
         if sid is None:
             continue
@@ -90,9 +92,7 @@ def validate_sectors_yaml(path: Path) -> tuple[set[str], list[ValidationError]]:
     return sector_ids, errors
 
 
-def validate_committee_sector_map(
-    path: Path, valid_sector_ids: set[str]
-) -> list[ValidationError]:
+def validate_committee_sector_map(path: Path, valid_sector_ids: set[str]) -> list[ValidationError]:
     errors: list[ValidationError] = []
     name = "committee_sector_map.csv"
 
@@ -118,9 +118,7 @@ def validate_committee_sector_map(
     return errors
 
 
-def validate_crp_crosswalk(
-    path: Path, valid_sector_ids: set[str]
-) -> list[ValidationError]:
+def validate_crp_crosswalk(path: Path, valid_sector_ids: set[str]) -> list[ValidationError]:
     errors: list[ValidationError] = []
     name = "crp_to_sector.csv"
 

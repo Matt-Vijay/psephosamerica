@@ -11,7 +11,9 @@ from src.runtime.sources import (
     CONFLICT_RECOMPUTE,
     CONGRESS_CORE,
     DISCLOSURE_LOAD,
+    FEC_BULK,
     HOUSE_DISCLOSURES,
+    MEMBER_FEC_CROSSWALK,
     SENATE_DISCLOSURES,
     SNAPSHOT_PUBLISH,
     all_sources,
@@ -22,6 +24,7 @@ from src.runtime.sources import (
 # ---------------------------------------------------------------------------
 # SourceSpec shape
 # ---------------------------------------------------------------------------
+
 
 def test_source_spec_is_frozen():
     spec = CONGRESS_CORE
@@ -40,6 +43,7 @@ def test_all_specs_have_required_fields():
 # ---------------------------------------------------------------------------
 # Canonical slug values (interface contract for provenance store callers)
 # ---------------------------------------------------------------------------
+
 
 def test_congress_core_slug():
     assert CONGRESS_CORE.slug == "congress-gov-api"
@@ -65,9 +69,18 @@ def test_snapshot_publish_slug():
     assert SNAPSHOT_PUBLISH.slug == "snapshot-publish"
 
 
+def test_fec_bulk_slug():
+    assert FEC_BULK.slug == "fec-bulk"
+
+
+def test_member_fec_crosswalk_slug():
+    assert MEMBER_FEC_CROSSWALK.slug == "member-fec-crosswalk"
+
+
 # ---------------------------------------------------------------------------
 # source_kind constraints match db/schema.sql CHECK
 # ---------------------------------------------------------------------------
+
 
 def test_congress_core_is_official():
     assert CONGRESS_CORE.source_kind == "official"
@@ -79,6 +92,14 @@ def test_house_disclosures_is_official():
 
 def test_senate_disclosures_is_official():
     assert SENATE_DISCLOSURES.source_kind == "official"
+
+
+def test_fec_bulk_is_official():
+    assert FEC_BULK.source_kind == "official"
+
+
+def test_member_fec_crosswalk_is_supporting():
+    assert MEMBER_FEC_CROSSWALK.source_kind == "supporting"
 
 
 def test_disclosure_load_is_internal():
@@ -97,10 +118,13 @@ def test_snapshot_publish_is_artifact():
 # base_url presence rules
 # ---------------------------------------------------------------------------
 
+
 def test_external_sources_have_base_url():
     assert CONGRESS_CORE.base_url is not None
     assert HOUSE_DISCLOSURES.base_url is not None
     assert SENATE_DISCLOSURES.base_url is not None
+    assert FEC_BULK.base_url is not None
+    assert MEMBER_FEC_CROSSWALK.base_url is not None
 
 
 def test_internal_sources_have_no_base_url():
@@ -113,8 +137,9 @@ def test_internal_sources_have_no_base_url():
 # all_sources
 # ---------------------------------------------------------------------------
 
-def test_all_sources_returns_six_specs():
-    assert len(all_sources()) == 6
+
+def test_all_sources_returns_eight_specs():
+    assert len(all_sources()) == 8
 
 
 def test_all_sources_slugs_are_unique():
@@ -127,6 +152,8 @@ def test_all_sources_contains_each_canonical():
     assert "congress-gov-api" in slugs
     assert "house-disclosures" in slugs
     assert "senate-disclosures" in slugs
+    assert "fec-bulk" in slugs
+    assert "member-fec-crosswalk" in slugs
     assert "financial-disclosures" in slugs
     assert "conflict-recompute" in slugs
     assert "snapshot-publish" in slugs
@@ -136,10 +163,13 @@ def test_all_sources_contains_each_canonical():
 # source_by_slug
 # ---------------------------------------------------------------------------
 
+
 def test_source_by_slug_returns_correct_spec():
     assert source_by_slug("congress-gov-api") is CONGRESS_CORE
     assert source_by_slug("house-disclosures") is HOUSE_DISCLOSURES
     assert source_by_slug("senate-disclosures") is SENATE_DISCLOSURES
+    assert source_by_slug("fec-bulk") is FEC_BULK
+    assert source_by_slug("member-fec-crosswalk") is MEMBER_FEC_CROSSWALK
     assert source_by_slug("financial-disclosures") is DISCLOSURE_LOAD
     assert source_by_slug("conflict-recompute") is CONFLICT_RECOMPUTE
     assert source_by_slug("snapshot-publish") is SNAPSHOT_PUBLISH

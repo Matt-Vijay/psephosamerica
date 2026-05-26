@@ -243,11 +243,13 @@ class TestPublishRoundtripResult:
 
 
 class TestRoundtripStages:
-    def test_contains_all_six(self) -> None:
+    def test_contains_all_eight(self) -> None:
         assert set(ROUNDTRIP_STAGES) == {
             "snapshot",
             "profiles",
             "evidence",
+            "ontology",
+            "prediction",
             "zip",
             "homepage",
             "lookup",
@@ -261,10 +263,12 @@ class TestRoundtripStages:
             "snapshot",
             "profiles",
             "evidence",
+            "ontology",
+            "prediction",
             "zip",
             "homepage",
             "lookup",
         )
 
     def test_length(self) -> None:
-        assert len(ROUNDTRIP_STAGES) == 6
+        assert len(ROUNDTRIP_STAGES) == 8

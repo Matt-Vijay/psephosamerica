@@ -41,6 +41,7 @@ def txn(date: dt.date, sector: str) -> dict:
 # days_gap
 # ---------------------------------------------------------------------------
 
+
 class TestDaysGap:
     def test_same_date(self):
         assert days_gap(D(2024, 1, 1), D(2024, 1, 1)) == 0
@@ -61,6 +62,7 @@ class TestDaysGap:
 # ---------------------------------------------------------------------------
 # overlap_days
 # ---------------------------------------------------------------------------
+
 
 class TestOverlapDays:
     def test_full_overlap(self):
@@ -85,7 +87,9 @@ class TestOverlapDays:
     def test_open_ended_range_uses_reference_date(self):
         ref = D(2024, 6, 30)
         # service: Jan 1 – Jun 30 (open), disclosure: Mar 1 – Apr 30
-        result = overlap_days(D(2024, 1, 1), None, D(2024, 3, 1), D(2024, 4, 30), reference_date=ref)
+        result = overlap_days(
+            D(2024, 1, 1), None, D(2024, 3, 1), D(2024, 4, 30), reference_date=ref
+        )
         # overlap: Mar 1 – Apr 30 = 61 days
         assert result == 61
 
@@ -103,6 +107,7 @@ class TestOverlapDays:
 # ---------------------------------------------------------------------------
 # overdue_days
 # ---------------------------------------------------------------------------
+
 
 class TestOverdueDays:
     def test_on_time(self):
@@ -124,6 +129,7 @@ class TestOverdueDays:
 # ---------------------------------------------------------------------------
 # count_matching_transactions / count_distinct_trade_days
 # ---------------------------------------------------------------------------
+
 
 class TestCountMatchingTransactions:
     def _service(self):
@@ -152,7 +158,10 @@ class TestCountMatchingTransactions:
     def test_open_ended_service(self):
         ref = D(2023, 12, 31)
         txns = [txn(D(2023, 6, 1), "finance")]
-        assert count_matching_transactions(txns, "finance", D(2023, 1, 1), None, reference_date=ref) == 1
+        assert (
+            count_matching_transactions(txns, "finance", D(2023, 1, 1), None, reference_date=ref)
+            == 1
+        )
 
     def test_empty_transactions(self):
         assert count_matching_transactions([], "finance", *self._service()) == 0
@@ -200,6 +209,7 @@ class TestCountDistinctTradeDays:
 # sectors_overlap
 # ---------------------------------------------------------------------------
 
+
 class TestSectorsOverlap:
     def test_overlap_present(self):
         assert sectors_overlap({"finance", "energy"}, {"energy", "tech"}) is True
@@ -221,6 +231,7 @@ class TestSectorsOverlap:
 # midpoint_value
 # ---------------------------------------------------------------------------
 
+
 class TestMidpointValue:
     def test_both_present(self):
         assert midpoint_value(1000.0, 5000.0) == 3000.0
@@ -241,6 +252,7 @@ class TestMidpointValue:
 # ---------------------------------------------------------------------------
 # build_committee_sector_trade_context
 # ---------------------------------------------------------------------------
+
 
 class TestBuildCommitteeSectorTradeContext:
     def _base_row(self) -> dict:
@@ -325,6 +337,7 @@ class TestBuildCommitteeSectorTradeContext:
 # build_repeated_committee_linked_trading_context
 # ---------------------------------------------------------------------------
 
+
 class TestBuildRepeatedCommitteeLinkedTradingContext:
     def _base_row(self) -> dict:
         return {
@@ -336,8 +349,8 @@ class TestBuildRepeatedCommitteeLinkedTradingContext:
                 txn(D(2023, 3, 15), "energy"),
                 txn(D(2023, 5, 20), "energy"),
                 txn(D(2023, 5, 20), "energy"),  # same day, different trade
-                txn(D(2022, 11, 1), "energy"),   # before service window
-                txn(D(2023, 7, 1), "tech"),      # wrong sector
+                txn(D(2022, 11, 1), "energy"),  # before service window
+                txn(D(2023, 7, 1), "tech"),  # wrong sector
             ],
         }
 
@@ -412,6 +425,7 @@ class TestBuildRepeatedCommitteeLinkedTradingContext:
 # ---------------------------------------------------------------------------
 # build_late_or_amended_disclosure_context
 # ---------------------------------------------------------------------------
+
 
 class TestBuildLateOrAmendedDisclosureContext:
     def _original_late_row(self) -> dict:
@@ -495,6 +509,7 @@ class TestBuildLateOrAmendedDisclosureContext:
 # ---------------------------------------------------------------------------
 # build_sector_holdings_overlap_context
 # ---------------------------------------------------------------------------
+
 
 class TestBuildSectorHoldingsOverlapContext:
     def _base_row(self) -> dict:

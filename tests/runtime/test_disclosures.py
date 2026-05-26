@@ -2,6 +2,7 @@
 
 No live DB — provenance store and pipeline boundary are both mocked.
 """
+
 from __future__ import annotations
 
 from datetime import date
@@ -246,6 +247,37 @@ class TestFailureHandling:
 
         mock_fail.assert_called_once_with(conn, _RUN_ID, "bad data")
 
+    def test_pipeline_error_rolls_back_uncommitted_load_before_marking_failed(self):
+        conn = MagicMock()
+        order: list[str] = []
+        conn.rollback.side_effect = lambda: order.append("rollback")
+
+        with (
+            patch(_ENSURE, return_value=_DS_ROW),
+            patch(_START, return_value=_RUN_ID),
+            patch(_FINISH),
+            patch(_FAIL, side_effect=lambda *a, **k: order.append("fail")),
+            patch(_LOAD, side_effect=ValueError("bad data")),
+        ):
+            with pytest.raises(ValueError):
+                run_disclosures_load_runtime(conn, [])
+
+        assert order == ["rollback", "fail"]
+
+    def test_finish_error_rolls_back_uncommitted_load(self):
+        conn = MagicMock()
+        with (
+            patch(_ENSURE, return_value=_DS_ROW),
+            patch(_START, return_value=_RUN_ID),
+            patch(_FINISH, side_effect=RuntimeError("finish failed")),
+            patch(_FAIL),
+            patch(_LOAD, return_value=(_summary(), ())),
+        ):
+            with pytest.raises(RuntimeError, match="finish failed"):
+                run_disclosures_load_runtime(conn, [])
+
+        conn.rollback.assert_called_once()
+
     def test_pipeline_error_is_reraised(self):
         conn = MagicMock()
         with (
@@ -322,6 +354,7 @@ class TestWiring:
         assert args[0] is results
         assert args[1] is conn
         assert kwargs.get("run_id") == _RUN_ID
+        assert kwargs.get("commit") is False
 
     def test_finish_receives_total_written(self):
         conn = MagicMock()

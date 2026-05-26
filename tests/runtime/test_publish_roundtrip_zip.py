@@ -4,6 +4,7 @@ Uses real temp publish trees — no mocks for filesystem operations.
 DB boundaries (fetch_zip_member_summary_rows, fetch_recent_evidence_ids_by_bioguide)
 are patched because they require a live DB connection.
 """
+
 from __future__ import annotations
 
 from datetime import date, datetime
@@ -14,8 +15,18 @@ from src.api.contracts import ArtifactCounts, SnapshotSummaryPayload, ZipEntryPa
 from src.export.contracts import ScoreSummary, ZipFeedPayload, ZipMemberSummary
 from src.export.filesystem import write_planned_files
 from src.export.manifest import ManifestEntry, SnapshotManifest, manifest_root_sha256
-from src.export.writer import PlannedFile, current_member_lookup_path, serialize_payload, zip_entry_path, zip_path
-from src.identity.current_member_lookup import CurrentMemberLookupEntry, CurrentMemberLookupPayload, normalize_lookup_name
+from src.export.writer import (
+    PlannedFile,
+    current_member_lookup_path,
+    serialize_payload,
+    zip_entry_path,
+    zip_path,
+)
+from src.identity.current_member_lookup import (
+    CurrentMemberLookupEntry,
+    CurrentMemberLookupPayload,
+    normalize_lookup_name,
+)
 from src.runtime.publish_roundtrip_types import PublishRoundtripStageResult
 from src.runtime.publish_roundtrip_zip import verify_published_zip_roundtrip
 
@@ -218,7 +229,9 @@ def _write_feeds(root: Path, feeds: list[ZipFeedPayload]) -> SnapshotManifest:
         root_sha256=manifest_root_sha256(manifests),
     )
     zip_entry_files = [
-        PlannedFile.from_bytes(zip_entry_path(feed.zip_code), serialize_payload(_zip_entry_payload(feed, manifest)))
+        PlannedFile.from_bytes(
+            zip_entry_path(feed.zip_code), serialize_payload(_zip_entry_payload(feed, manifest))
+        )
         for feed in feeds
     ]
     manifest_file = PlannedFile.from_bytes(
@@ -237,24 +250,32 @@ def _write_feeds(root: Path, feeds: list[ZipFeedPayload]) -> SnapshotManifest:
 class TestNoZipEntries:
     def test_empty_manifest_ok(self, tmp_path: Path) -> None:
         with patch(_PATCH_SCORE_ROWS) as mock_s, patch(_PATCH_EVIDENCE_IDS) as mock_e:
-            result = verify_published_zip_roundtrip(None, tmp_path, _empty_manifest(), _SNAPSHOT_DATE)
+            result = verify_published_zip_roundtrip(
+                None, tmp_path, _empty_manifest(), _SNAPSHOT_DATE
+            )
         assert result.ok is True
         mock_s.assert_not_called()
         mock_e.assert_not_called()
 
     def test_empty_manifest_checked_zero(self, tmp_path: Path) -> None:
         with patch(_PATCH_SCORE_ROWS), patch(_PATCH_EVIDENCE_IDS):
-            result = verify_published_zip_roundtrip(None, tmp_path, _empty_manifest(), _SNAPSHOT_DATE)
+            result = verify_published_zip_roundtrip(
+                None, tmp_path, _empty_manifest(), _SNAPSHOT_DATE
+            )
         assert result.checked == 0
 
     def test_empty_manifest_no_issues(self, tmp_path: Path) -> None:
         with patch(_PATCH_SCORE_ROWS), patch(_PATCH_EVIDENCE_IDS):
-            result = verify_published_zip_roundtrip(None, tmp_path, _empty_manifest(), _SNAPSHOT_DATE)
+            result = verify_published_zip_roundtrip(
+                None, tmp_path, _empty_manifest(), _SNAPSHOT_DATE
+            )
         assert result.issues == ()
 
     def test_stage_name_is_zip(self, tmp_path: Path) -> None:
         with patch(_PATCH_SCORE_ROWS), patch(_PATCH_EVIDENCE_IDS):
-            result = verify_published_zip_roundtrip(None, tmp_path, _empty_manifest(), _SNAPSHOT_DATE)
+            result = verify_published_zip_roundtrip(
+                None, tmp_path, _empty_manifest(), _SNAPSHOT_DATE
+            )
         assert result.stage == "zip"
 
     def test_non_zip_entries_ignored(self, tmp_path: Path) -> None:
@@ -267,7 +288,9 @@ class TestNoZipEntries:
 
     def test_returns_stage_result_type(self, tmp_path: Path) -> None:
         with patch(_PATCH_SCORE_ROWS), patch(_PATCH_EVIDENCE_IDS):
-            result = verify_published_zip_roundtrip(None, tmp_path, _empty_manifest(), _SNAPSHOT_DATE)
+            result = verify_published_zip_roundtrip(
+                None, tmp_path, _empty_manifest(), _SNAPSHOT_DATE
+            )
         assert isinstance(result, PublishRoundtripStageResult)
 
 
@@ -286,13 +309,20 @@ class TestMatchingPayload:
         assert result.ok is True
 
     def test_feed_with_scores_ok(self, tmp_path: Path) -> None:
-        scores = [ScoreSummary(dimension="conflict_of_interest_risk", current_score=3.5, rule_fire_count=2)]
+        scores = [
+            ScoreSummary(
+                dimension="conflict_of_interest_risk", current_score=3.5, rule_fire_count=2
+            )
+        ]
         mem = _member(scores=scores)
         feed = _feed(members=[mem])
         _, manifest = _write_feed(tmp_path, feed)
 
         rows = _score_rows(mem.bioguide_id, scores)
-        with patch(_PATCH_SCORE_ROWS, return_value=rows), patch(_PATCH_EVIDENCE_IDS, return_value={}):
+        with (
+            patch(_PATCH_SCORE_ROWS, return_value=rows),
+            patch(_PATCH_EVIDENCE_IDS, return_value={}),
+        ):
             result = verify_published_zip_roundtrip(None, tmp_path, manifest, _SNAPSHOT_DATE)
         assert result.ok is True
 
@@ -302,8 +332,10 @@ class TestMatchingPayload:
         _, manifest = _write_feed(tmp_path, feed)
 
         evidence_ids = {mem.bioguide_id: ["ec-001", "ec-002"]}
-        with patch(_PATCH_SCORE_ROWS, return_value=[]), \
-             patch(_PATCH_EVIDENCE_IDS, return_value=evidence_ids):
+        with (
+            patch(_PATCH_SCORE_ROWS, return_value=[]),
+            patch(_PATCH_EVIDENCE_IDS, return_value=evidence_ids),
+        ):
             result = verify_published_zip_roundtrip(None, tmp_path, manifest, _SNAPSHOT_DATE)
         assert result.ok is True
 
@@ -315,14 +347,21 @@ class TestMatchingPayload:
 
         # DB returns 5 cards; only first 3 should appear in reassembled payload
         evidence_ids = {mem.bioguide_id: ["ec-001", "ec-002", "ec-003", "ec-004", "ec-005"]}
-        with patch(_PATCH_SCORE_ROWS, return_value=[]), \
-             patch(_PATCH_EVIDENCE_IDS, return_value=evidence_ids):
+        with (
+            patch(_PATCH_SCORE_ROWS, return_value=[]),
+            patch(_PATCH_EVIDENCE_IDS, return_value=evidence_ids),
+        ):
             result = verify_published_zip_roundtrip(None, tmp_path, manifest, _SNAPSHOT_DATE)
         assert result.ok is True
 
     def test_feed_with_house_member_ok(self, tmp_path: Path) -> None:
-        house = _member(bioguide_id="A000370", name="Alma Adams", slug="alma-adams",
-                        chamber="house", party="Democrat")
+        house = _member(
+            bioguide_id="A000370",
+            name="Alma Adams",
+            slug="alma-adams",
+            chamber="house",
+            party="Democrat",
+        )
         feed = _feed(members=[house])
         _, manifest = _write_feed(tmp_path, feed)
 
@@ -352,42 +391,63 @@ class TestMatchingPayload:
 
 class TestScoreMismatch:
     def _setup(self, tmp_path: Path) -> tuple[ZipMemberSummary, SnapshotManifest]:
-        scores = [ScoreSummary(dimension="conflict_of_interest_risk", current_score=5.0, rule_fire_count=2)]
+        scores = [
+            ScoreSummary(
+                dimension="conflict_of_interest_risk", current_score=5.0, rule_fire_count=2
+            )
+        ]
         mem = _member(bioguide_id="B000575", scores=scores)
         feed = _feed(members=[mem])
         _, manifest = _write_feed(tmp_path, feed)
         return mem, manifest
 
     def _db_rows_with_different_score(self, bioguide_id: str) -> list[dict[str, object]]:
-        return _score_rows(bioguide_id, [
-            ScoreSummary(dimension="conflict_of_interest_risk", current_score=9.0, rule_fire_count=7),
-        ])
+        return _score_rows(
+            bioguide_id,
+            [
+                ScoreSummary(
+                    dimension="conflict_of_interest_risk", current_score=9.0, rule_fire_count=7
+                ),
+            ],
+        )
 
     def test_not_ok(self, tmp_path: Path) -> None:
         mem, manifest = self._setup(tmp_path)
         rows = self._db_rows_with_different_score(mem.bioguide_id)
-        with patch(_PATCH_SCORE_ROWS, return_value=rows), patch(_PATCH_EVIDENCE_IDS, return_value={}):
+        with (
+            patch(_PATCH_SCORE_ROWS, return_value=rows),
+            patch(_PATCH_EVIDENCE_IDS, return_value={}),
+        ):
             result = verify_published_zip_roundtrip(None, tmp_path, manifest, _SNAPSHOT_DATE)
         assert result.ok is False
 
     def test_error_count(self, tmp_path: Path) -> None:
         mem, manifest = self._setup(tmp_path)
         rows = self._db_rows_with_different_score(mem.bioguide_id)
-        with patch(_PATCH_SCORE_ROWS, return_value=rows), patch(_PATCH_EVIDENCE_IDS, return_value={}):
+        with (
+            patch(_PATCH_SCORE_ROWS, return_value=rows),
+            patch(_PATCH_EVIDENCE_IDS, return_value={}),
+        ):
             result = verify_published_zip_roundtrip(None, tmp_path, manifest, _SNAPSHOT_DATE)
         assert result.error_count >= 1
 
     def test_error_mentions_member(self, tmp_path: Path) -> None:
         mem, manifest = self._setup(tmp_path)
         rows = self._db_rows_with_different_score(mem.bioguide_id)
-        with patch(_PATCH_SCORE_ROWS, return_value=rows), patch(_PATCH_EVIDENCE_IDS, return_value={}):
+        with (
+            patch(_PATCH_SCORE_ROWS, return_value=rows),
+            patch(_PATCH_EVIDENCE_IDS, return_value={}),
+        ):
             result = verify_published_zip_roundtrip(None, tmp_path, manifest, _SNAPSHOT_DATE)
         assert any("B000575" in i.message for i in result.issues if i.severity == "error")
 
     def test_checked_still_counts_entry(self, tmp_path: Path) -> None:
         mem, manifest = self._setup(tmp_path)
         rows = self._db_rows_with_different_score(mem.bioguide_id)
-        with patch(_PATCH_SCORE_ROWS, return_value=rows), patch(_PATCH_EVIDENCE_IDS, return_value={}):
+        with (
+            patch(_PATCH_SCORE_ROWS, return_value=rows),
+            patch(_PATCH_EVIDENCE_IDS, return_value={}),
+        ):
             result = verify_published_zip_roundtrip(None, tmp_path, manifest, _SNAPSHOT_DATE)
         assert result.checked == 1
 
@@ -403,8 +463,10 @@ class TestEvidenceMismatch:
         feed = _feed(members=[mem])
         _, manifest = _write_feed(tmp_path, feed)
 
-        with patch(_PATCH_SCORE_ROWS, return_value=[]), \
-             patch(_PATCH_EVIDENCE_IDS, return_value={mem.bioguide_id: ["ec-999"]}):
+        with (
+            patch(_PATCH_SCORE_ROWS, return_value=[]),
+            patch(_PATCH_EVIDENCE_IDS, return_value={mem.bioguide_id: ["ec-999"]}),
+        ):
             result = verify_published_zip_roundtrip(None, tmp_path, manifest, _SNAPSHOT_DATE)
         assert result.ok is False
 
@@ -413,8 +475,10 @@ class TestEvidenceMismatch:
         feed = _feed(members=[mem])
         _, manifest = _write_feed(tmp_path, feed)
 
-        with patch(_PATCH_SCORE_ROWS, return_value=[]), \
-             patch(_PATCH_EVIDENCE_IDS, return_value={mem.bioguide_id: ["ec-999"]}):
+        with (
+            patch(_PATCH_SCORE_ROWS, return_value=[]),
+            patch(_PATCH_EVIDENCE_IDS, return_value={mem.bioguide_id: ["ec-999"]}),
+        ):
             result = verify_published_zip_roundtrip(None, tmp_path, manifest, _SNAPSHOT_DATE)
         assert any("P000197" in i.message for i in result.issues)
 
@@ -424,8 +488,7 @@ class TestEvidenceMismatch:
         feed = _feed(members=[mem])
         _, manifest = _write_feed(tmp_path, feed)
 
-        with patch(_PATCH_SCORE_ROWS, return_value=[]), \
-             patch(_PATCH_EVIDENCE_IDS, return_value={}):
+        with patch(_PATCH_SCORE_ROWS, return_value=[]), patch(_PATCH_EVIDENCE_IDS, return_value={}):
             result = verify_published_zip_roundtrip(None, tmp_path, manifest, _SNAPSHOT_DATE)
         assert result.ok is True
 
@@ -485,24 +548,32 @@ class TestMissingFile:
 
     def test_not_ok(self, tmp_path: Path) -> None:
         with patch(_PATCH_SCORE_ROWS), patch(_PATCH_EVIDENCE_IDS):
-            result = verify_published_zip_roundtrip(None, tmp_path, self._manifest_missing(), _SNAPSHOT_DATE)
+            result = verify_published_zip_roundtrip(
+                None, tmp_path, self._manifest_missing(), _SNAPSHOT_DATE
+            )
         assert result.ok is False
 
     def test_error_severity(self, tmp_path: Path) -> None:
         with patch(_PATCH_SCORE_ROWS), patch(_PATCH_EVIDENCE_IDS):
-            result = verify_published_zip_roundtrip(None, tmp_path, self._manifest_missing(), _SNAPSHOT_DATE)
+            result = verify_published_zip_roundtrip(
+                None, tmp_path, self._manifest_missing(), _SNAPSHOT_DATE
+            )
         assert result.error_count == 1
         assert result.issues[0].severity == "error"
 
     def test_error_references_zip_code(self, tmp_path: Path) -> None:
         with patch(_PATCH_SCORE_ROWS), patch(_PATCH_EVIDENCE_IDS):
-            result = verify_published_zip_roundtrip(None, tmp_path, self._manifest_missing(), _SNAPSHOT_DATE)
+            result = verify_published_zip_roundtrip(
+                None, tmp_path, self._manifest_missing(), _SNAPSHOT_DATE
+            )
         issue = result.issues[0]
         assert "99999" in issue.message or "99999" in (issue.path or "")
 
     def test_checked_counts_attempted(self, tmp_path: Path) -> None:
         with patch(_PATCH_SCORE_ROWS), patch(_PATCH_EVIDENCE_IDS):
-            result = verify_published_zip_roundtrip(None, tmp_path, self._manifest_missing(), _SNAPSHOT_DATE)
+            result = verify_published_zip_roundtrip(
+                None, tmp_path, self._manifest_missing(), _SNAPSHOT_DATE
+            )
         assert result.checked == 1
 
     def test_missing_zip_entry_is_error(self, tmp_path: Path) -> None:
@@ -545,10 +616,12 @@ class TestMultipleFeeds:
         manifest_good = _write_feeds(tmp_path, [good_feed])
 
         missing_entry = ManifestEntry(path="zip/99998.json", sha256="b" * 64, size_bytes=50)
-        manifest = _manifest_from_entries([
-            *manifest_good.entries,
-            missing_entry,
-        ])
+        manifest = _manifest_from_entries(
+            [
+                *manifest_good.entries,
+                missing_entry,
+            ]
+        )
 
         with patch(_PATCH_SCORE_ROWS, return_value=[]), patch(_PATCH_EVIDENCE_IDS, return_value={}):
             result = verify_published_zip_roundtrip(None, tmp_path, manifest, _SNAPSHOT_DATE)
@@ -561,10 +634,12 @@ class TestMultipleFeeds:
         manifest_good = _write_feeds(tmp_path, [good_feed])
 
         missing_entry = ManifestEntry(path="zip/99998.json", sha256="b" * 64, size_bytes=50)
-        manifest = _manifest_from_entries([
-            *manifest_good.entries,
-            missing_entry,
-        ])
+        manifest = _manifest_from_entries(
+            [
+                *manifest_good.entries,
+                missing_entry,
+            ]
+        )
 
         with patch(_PATCH_SCORE_ROWS, return_value=[]), patch(_PATCH_EVIDENCE_IDS, return_value={}):
             result = verify_published_zip_roundtrip(None, tmp_path, manifest, _SNAPSHOT_DATE)
@@ -608,7 +683,9 @@ class TestUnparseableDistrict:
 
         with patch(_PATCH_SCORE_ROWS), patch(_PATCH_EVIDENCE_IDS):
             result = verify_published_zip_roundtrip(None, tmp_path, manifest, _SNAPSHOT_DATE)
-        assert any("63101" in (i.path or "") or "bundle" in i.message.lower() for i in result.issues)
+        assert any(
+            "63101" in (i.path or "") or "bundle" in i.message.lower() for i in result.issues
+        )
 
 
 # ---------------------------------------------------------------------------

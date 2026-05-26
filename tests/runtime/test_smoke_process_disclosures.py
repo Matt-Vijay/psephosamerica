@@ -61,13 +61,17 @@ def _pipeline_result(
 
 class TestReturnShape:
     def test_returns_dict_with_expected_keys(self) -> None:
-        with patch(f"{_MODULE}.run_disclosures_parse_load_runtime", return_value=_pipeline_result()):
+        with patch(
+            f"{_MODULE}.run_disclosures_parse_load_runtime", return_value=_pipeline_result()
+        ):
             summary = smoke_process_disclosures(MagicMock(), _LOCAL_ROOT)
 
         assert set(summary) == _EXPECTED_KEYS
 
     def test_returns_plain_dict_not_subclass(self) -> None:
-        with patch(f"{_MODULE}.run_disclosures_parse_load_runtime", return_value=_pipeline_result()):
+        with patch(
+            f"{_MODULE}.run_disclosures_parse_load_runtime", return_value=_pipeline_result()
+        ):
             summary = smoke_process_disclosures(MagicMock(), _LOCAL_ROOT)
 
         assert type(summary) is dict
@@ -80,13 +84,19 @@ class TestReturnShape:
 
 class TestValueMapping:
     def test_run_id_from_load_result(self) -> None:
-        with patch(f"{_MODULE}.run_disclosures_parse_load_runtime", return_value=_pipeline_result(run_id=99)):
+        with patch(
+            f"{_MODULE}.run_disclosures_parse_load_runtime",
+            return_value=_pipeline_result(run_id=99),
+        ):
             summary = smoke_process_disclosures(MagicMock(), _LOCAL_ROOT)
 
         assert summary["run_id"] == 99
 
     def test_source_slug_from_data_source(self) -> None:
-        with patch(f"{_MODULE}.run_disclosures_parse_load_runtime", return_value=_pipeline_result(source_slug="house-load")):
+        with patch(
+            f"{_MODULE}.run_disclosures_parse_load_runtime",
+            return_value=_pipeline_result(source_slug="house-load"),
+        ):
             summary = smoke_process_disclosures(MagicMock(), _LOCAL_ROOT)
 
         assert summary["source_slug"] == "house-load"
@@ -101,31 +111,45 @@ class TestValueMapping:
         assert summary["parse_failed"] == 3
 
     def test_transformed_count(self) -> None:
-        with patch(f"{_MODULE}.run_disclosures_parse_load_runtime", return_value=_pipeline_result(transform_count=4)):
+        with patch(
+            f"{_MODULE}.run_disclosures_parse_load_runtime",
+            return_value=_pipeline_result(transform_count=4),
+        ):
             summary = smoke_process_disclosures(MagicMock(), _LOCAL_ROOT)
 
         assert summary["transformed"] == 4
 
     def test_total_written_from_load_summary(self) -> None:
-        with patch(f"{_MODULE}.run_disclosures_parse_load_runtime", return_value=_pipeline_result(total_written=12)):
+        with patch(
+            f"{_MODULE}.run_disclosures_parse_load_runtime",
+            return_value=_pipeline_result(total_written=12),
+        ):
             summary = smoke_process_disclosures(MagicMock(), _LOCAL_ROOT)
 
         assert summary["total_written"] == 12
 
     def test_load_ok_true(self) -> None:
-        with patch(f"{_MODULE}.run_disclosures_parse_load_runtime", return_value=_pipeline_result(load_ok=True)):
+        with patch(
+            f"{_MODULE}.run_disclosures_parse_load_runtime",
+            return_value=_pipeline_result(load_ok=True),
+        ):
             summary = smoke_process_disclosures(MagicMock(), _LOCAL_ROOT)
 
         assert summary["load_ok"] is True
 
     def test_load_ok_false_on_errors(self) -> None:
-        with patch(f"{_MODULE}.run_disclosures_parse_load_runtime", return_value=_pipeline_result(load_ok=False)):
+        with patch(
+            f"{_MODULE}.run_disclosures_parse_load_runtime",
+            return_value=_pipeline_result(load_ok=False),
+        ):
             summary = smoke_process_disclosures(MagicMock(), _LOCAL_ROOT)
 
         assert summary["load_ok"] is False
 
     def test_zero_counts_are_valid(self) -> None:
-        result = _pipeline_result(processed=0, succeeded=0, failed=0, transform_count=0, total_written=0)
+        result = _pipeline_result(
+            processed=0, succeeded=0, failed=0, transform_count=0, total_written=0
+        )
         with patch(f"{_MODULE}.run_disclosures_parse_load_runtime", return_value=result):
             summary = smoke_process_disclosures(MagicMock(), _LOCAL_ROOT)
 
@@ -144,77 +168,99 @@ class TestValueMapping:
 class TestArgForwarding:
     def test_conn_forwarded_as_first_positional_arg(self) -> None:
         conn = MagicMock()
-        with patch(f"{_MODULE}.run_disclosures_parse_load_runtime", return_value=_pipeline_result()) as mock_run:
+        with patch(
+            f"{_MODULE}.run_disclosures_parse_load_runtime", return_value=_pipeline_result()
+        ) as mock_run:
             smoke_process_disclosures(conn, _LOCAL_ROOT)
 
         assert mock_run.call_args[0][0] is conn
 
     def test_local_root_forwarded(self) -> None:
         root = Path("/data/disclosures")
-        with patch(f"{_MODULE}.run_disclosures_parse_load_runtime", return_value=_pipeline_result()) as mock_run:
+        with patch(
+            f"{_MODULE}.run_disclosures_parse_load_runtime", return_value=_pipeline_result()
+        ) as mock_run:
             smoke_process_disclosures(MagicMock(), root)
 
         _, kwargs = mock_run.call_args
         assert kwargs["local_root"] == root
 
     def test_chamber_forwarded(self) -> None:
-        with patch(f"{_MODULE}.run_disclosures_parse_load_runtime", return_value=_pipeline_result()) as mock_run:
+        with patch(
+            f"{_MODULE}.run_disclosures_parse_load_runtime", return_value=_pipeline_result()
+        ) as mock_run:
             smoke_process_disclosures(MagicMock(), _LOCAL_ROOT, chamber="senate")
 
         _, kwargs = mock_run.call_args
         assert kwargs["chamber"] == "senate"
 
     def test_chamber_defaults_to_none(self) -> None:
-        with patch(f"{_MODULE}.run_disclosures_parse_load_runtime", return_value=_pipeline_result()) as mock_run:
+        with patch(
+            f"{_MODULE}.run_disclosures_parse_load_runtime", return_value=_pipeline_result()
+        ) as mock_run:
             smoke_process_disclosures(MagicMock(), _LOCAL_ROOT)
 
         _, kwargs = mock_run.call_args
         assert kwargs.get("chamber") is None
 
     def test_limit_forwarded(self) -> None:
-        with patch(f"{_MODULE}.run_disclosures_parse_load_runtime", return_value=_pipeline_result()) as mock_run:
+        with patch(
+            f"{_MODULE}.run_disclosures_parse_load_runtime", return_value=_pipeline_result()
+        ) as mock_run:
             smoke_process_disclosures(MagicMock(), _LOCAL_ROOT, limit=10)
 
         _, kwargs = mock_run.call_args
         assert kwargs["limit"] == 10
 
     def test_limit_defaults_to_none(self) -> None:
-        with patch(f"{_MODULE}.run_disclosures_parse_load_runtime", return_value=_pipeline_result()) as mock_run:
+        with patch(
+            f"{_MODULE}.run_disclosures_parse_load_runtime", return_value=_pipeline_result()
+        ) as mock_run:
             smoke_process_disclosures(MagicMock(), _LOCAL_ROOT)
 
         _, kwargs = mock_run.call_args
         assert kwargs.get("limit") is None
 
     def test_parser_name_forwarded(self) -> None:
-        with patch(f"{_MODULE}.run_disclosures_parse_load_runtime", return_value=_pipeline_result()) as mock_run:
+        with patch(
+            f"{_MODULE}.run_disclosures_parse_load_runtime", return_value=_pipeline_result()
+        ) as mock_run:
             smoke_process_disclosures(MagicMock(), _LOCAL_ROOT, parser_name="house_ocr_v2")
 
         _, kwargs = mock_run.call_args
         assert kwargs["parser_name"] == "house_ocr_v2"
 
     def test_parser_name_default(self) -> None:
-        with patch(f"{_MODULE}.run_disclosures_parse_load_runtime", return_value=_pipeline_result()) as mock_run:
+        with patch(
+            f"{_MODULE}.run_disclosures_parse_load_runtime", return_value=_pipeline_result()
+        ) as mock_run:
             smoke_process_disclosures(MagicMock(), _LOCAL_ROOT)
 
         _, kwargs = mock_run.call_args
         assert kwargs["parser_name"] == "text_extract_v1"
 
     def test_parser_version_forwarded(self) -> None:
-        with patch(f"{_MODULE}.run_disclosures_parse_load_runtime", return_value=_pipeline_result()) as mock_run:
+        with patch(
+            f"{_MODULE}.run_disclosures_parse_load_runtime", return_value=_pipeline_result()
+        ) as mock_run:
             smoke_process_disclosures(MagicMock(), _LOCAL_ROOT, parser_version="2")
 
         _, kwargs = mock_run.call_args
         assert kwargs["parser_version"] == "2"
 
     def test_parser_version_default(self) -> None:
-        with patch(f"{_MODULE}.run_disclosures_parse_load_runtime", return_value=_pipeline_result()) as mock_run:
+        with patch(
+            f"{_MODULE}.run_disclosures_parse_load_runtime", return_value=_pipeline_result()
+        ) as mock_run:
             smoke_process_disclosures(MagicMock(), _LOCAL_ROOT)
 
         _, kwargs = mock_run.call_args
         assert kwargs["parser_version"] == "1"
 
     def test_pipeline_called_exactly_once(self) -> None:
-        with patch(f"{_MODULE}.run_disclosures_parse_load_runtime", return_value=_pipeline_result()) as mock_run:
+        with patch(
+            f"{_MODULE}.run_disclosures_parse_load_runtime", return_value=_pipeline_result()
+        ) as mock_run:
             smoke_process_disclosures(MagicMock(), _LOCAL_ROOT)
 
         mock_run.assert_called_once()

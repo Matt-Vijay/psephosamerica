@@ -39,7 +39,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+import re
 from typing import Any
+
+from src.core.path_safety import require_confined_relative_path, safe_join_confined
 
 
 # ---------------------------------------------------------------------------
@@ -306,22 +309,83 @@ def manifest_from_archive(
         members=archive.members_source(),
         committees=archive.committees_source(),
         bills=archive.bills_source(),
-        cosponsors=tuple(
-            archive.cosponsors_source(c, bt, bn) for c, bt, bn in bill_keys
-        ),
-        member_details=tuple(
-            archive.member_detail_source(bid) for bid in bioguide_ids
-        ),
-        bill_details=tuple(
-            archive.bill_detail_source(c, bt, bn) for c, bt, bn in bill_keys
-        ),
-        house_votes=tuple(
-            archive.house_vote_source(yr, rc) for yr, rc in house_vote_keys
-        ),
-        senate_votes=tuple(
-            archive.senate_vote_source(c, sn, rc) for c, sn, rc in senate_vote_keys
-        ),
+        cosponsors=tuple(archive.cosponsors_source(c, bt, bn) for c, bt, bn in bill_keys),
+        member_details=tuple(archive.member_detail_source(bid) for bid in bioguide_ids),
+        bill_details=tuple(archive.bill_detail_source(c, bt, bn) for c, bt, bn in bill_keys),
+        house_votes=tuple(archive.house_vote_source(yr, rc) for yr, rc in house_vote_keys),
+        senate_votes=tuple(archive.senate_vote_source(c, sn, rc) for c, sn, rc in senate_vote_keys),
     )
+
+
+def manifest_from_existing_archive(archive: CongressArchive) -> CongressArchiveManifest:
+    """Build a manifest by scanning the archive tree already present on disk."""
+    return CongressArchiveManifest(
+        congress=archive.congress,
+        members=archive.members_source(),
+        committees=archive.committees_source(),
+        bills=archive.bills_source(),
+        cosponsors=_scan_cosponsors_sources(archive),
+        member_details=_scan_member_detail_sources(archive),
+        bill_details=_scan_bill_detail_sources(archive),
+        house_votes=_scan_house_vote_sources(archive),
+        senate_votes=_scan_senate_vote_sources(archive),
+    )
+
+
+def congress_archive_manifest_to_dict(
+    manifest: CongressArchiveManifest,
+    *,
+    root: Path | None = None,
+) -> dict[str, Any]:
+    """Serialize a manifest into the JSON shape consumed by ``load_manifest``."""
+    return {
+        "congress": manifest.congress,
+        "members": _manifest_path_text(manifest.members.path, root=root),
+        "committees": _manifest_path_text(manifest.committees.path, root=root),
+        "bills": _manifest_path_text(manifest.bills.path, root=root),
+        "cosponsors": [
+            {
+                "congress": source.congress,
+                "bill_type": source.bill_type,
+                "bill_number": source.bill_number,
+                "path": _manifest_path_text(source.path, root=root),
+            }
+            for source in manifest.cosponsors
+        ],
+        "member_details": [
+            {
+                "bioguide_id": source.bioguide_id,
+                "path": _manifest_path_text(source.path, root=root),
+            }
+            for source in manifest.member_details
+        ],
+        "bill_details": [
+            {
+                "congress": source.congress,
+                "bill_type": source.bill_type,
+                "bill_number": source.bill_number,
+                "path": _manifest_path_text(source.path, root=root),
+            }
+            for source in manifest.bill_details
+        ],
+        "house_votes": [
+            {
+                "year": source.year,
+                "roll_call_number": source.roll_call_number,
+                "path": _manifest_path_text(source.path, root=root),
+            }
+            for source in manifest.house_votes
+        ],
+        "senate_votes": [
+            {
+                "congress": source.congress,
+                "session_number": source.session_number,
+                "roll_call_number": source.roll_call_number,
+                "path": _manifest_path_text(source.path, root=root),
+            }
+            for source in manifest.senate_votes
+        ],
+    }
 
 
 def manifest_from_dict(
@@ -364,15 +428,15 @@ def manifest_from_dict(
     congress = _int_field(data, "congress", "manifest")
 
     members = MembersSource(
-        path=root / _str_field(data, "members", "manifest"),
+        path=_path_from_field(root, data, "members", "manifest"),
         congress=congress,
     )
     committees = CommitteesSource(
-        path=root / _str_field(data, "committees", "manifest"),
+        path=_path_from_field(root, data, "committees", "manifest"),
         congress=congress,
     )
     bills = BillsSource(
-        path=root / _str_field(data, "bills", "manifest"),
+        path=_path_from_field(root, data, "bills", "manifest"),
         congress=congress,
     )
 
@@ -418,7 +482,7 @@ def manifest_from_dict(
 def _cosponsor_source_from_dict(raw: Any, idx: int, root: Path) -> CosponsorsSource:
     _require_dict(raw, "cosponsors", idx)
     return CosponsorsSource(
-        path=root / _str_field(raw, "path", f"cosponsors[{idx}]"),
+        path=_path_from_field(root, raw, "path", f"cosponsors[{idx}]"),
         congress=_int_field(raw, "congress", f"cosponsors[{idx}]"),
         bill_type=_str_field(raw, "bill_type", f"cosponsors[{idx}]"),
         bill_number=_int_field(raw, "bill_number", f"cosponsors[{idx}]"),
@@ -428,7 +492,7 @@ def _cosponsor_source_from_dict(raw: Any, idx: int, root: Path) -> CosponsorsSou
 def _member_detail_source_from_dict(raw: Any, idx: int, root: Path) -> MemberDetailSource:
     _require_dict(raw, "member_details", idx)
     return MemberDetailSource(
-        path=root / _str_field(raw, "path", f"member_details[{idx}]"),
+        path=_path_from_field(root, raw, "path", f"member_details[{idx}]"),
         bioguide_id=_str_field(raw, "bioguide_id", f"member_details[{idx}]"),
     )
 
@@ -436,7 +500,7 @@ def _member_detail_source_from_dict(raw: Any, idx: int, root: Path) -> MemberDet
 def _bill_detail_source_from_dict(raw: Any, idx: int, root: Path) -> BillDetailSource:
     _require_dict(raw, "bill_details", idx)
     return BillDetailSource(
-        path=root / _str_field(raw, "path", f"bill_details[{idx}]"),
+        path=_path_from_field(root, raw, "path", f"bill_details[{idx}]"),
         congress=_int_field(raw, "congress", f"bill_details[{idx}]"),
         bill_type=_str_field(raw, "bill_type", f"bill_details[{idx}]"),
         bill_number=_int_field(raw, "bill_number", f"bill_details[{idx}]"),
@@ -446,7 +510,7 @@ def _bill_detail_source_from_dict(raw: Any, idx: int, root: Path) -> BillDetailS
 def _house_vote_source_from_dict(raw: Any, idx: int, root: Path) -> HouseVoteSource:
     _require_dict(raw, "house_votes", idx)
     return HouseVoteSource(
-        path=root / _str_field(raw, "path", f"house_votes[{idx}]"),
+        path=_path_from_field(root, raw, "path", f"house_votes[{idx}]"),
         year=_int_field(raw, "year", f"house_votes[{idx}]"),
         roll_call_number=_int_field(raw, "roll_call_number", f"house_votes[{idx}]"),
     )
@@ -455,11 +519,151 @@ def _house_vote_source_from_dict(raw: Any, idx: int, root: Path) -> HouseVoteSou
 def _senate_vote_source_from_dict(raw: Any, idx: int, root: Path) -> SenateVoteSource:
     _require_dict(raw, "senate_votes", idx)
     return SenateVoteSource(
-        path=root / _str_field(raw, "path", f"senate_votes[{idx}]"),
+        path=_path_from_field(root, raw, "path", f"senate_votes[{idx}]"),
         congress=_int_field(raw, "congress", f"senate_votes[{idx}]"),
         session_number=_int_field(raw, "session_number", f"senate_votes[{idx}]"),
         roll_call_number=_int_field(raw, "roll_call_number", f"senate_votes[{idx}]"),
     )
+
+
+_HOUSE_LEGACY_RE = re.compile(r"^(?P<year>\d{4})_(?P<roll>\d+)\.xml$")
+_HOUSE_ARCHIVE_RE = re.compile(r"^roll(?P<roll>\d+)\.xml$")
+_SENATE_LEGACY_RE = re.compile(r"^(?P<congress>\d+)_(?P<session>\d+)_(?P<roll>\d+)\.xml$")
+_SENATE_ARCHIVE_RE = re.compile(r"^vote_(?P<congress>\d+)_(?P<session>\d+)_(?P<roll>\d+)\.xml$")
+
+
+def _scan_member_detail_sources(archive: CongressArchive) -> tuple[MemberDetailSource, ...]:
+    detail_dir = archive.member_details_dir()
+    if not detail_dir.is_dir():
+        return ()
+    return tuple(
+        archive.member_detail_source(path.stem) for path in sorted(detail_dir.glob("*.json"))
+    )
+
+
+def _scan_bill_detail_sources(archive: CongressArchive) -> tuple[BillDetailSource, ...]:
+    detail_dir = archive.bill_details_dir()
+    if not detail_dir.is_dir():
+        return ()
+    sources: list[BillDetailSource] = []
+    for path in sorted(detail_dir.glob("*.json")):
+        try:
+            congress, bill_type, bill_number = parse_bill_stem(path.stem)
+        except ValueError:
+            continue
+        sources.append(
+            BillDetailSource(
+                path=path,
+                congress=congress,
+                bill_type=bill_type,
+                bill_number=bill_number,
+            )
+        )
+    return tuple(sources)
+
+
+def _scan_cosponsors_sources(archive: CongressArchive) -> tuple[CosponsorsSource, ...]:
+    cosponsor_dir = archive.cosponsors_dir()
+    if not cosponsor_dir.is_dir():
+        return ()
+    sources: list[CosponsorsSource] = []
+    for path in sorted(cosponsor_dir.glob("*.json")):
+        try:
+            congress, bill_type, bill_number = parse_bill_stem(path.stem)
+        except ValueError:
+            continue
+        sources.append(
+            CosponsorsSource(
+                path=path,
+                congress=congress,
+                bill_type=bill_type,
+                bill_number=bill_number,
+            )
+        )
+    return tuple(sources)
+
+
+def _scan_house_vote_sources(archive: CongressArchive) -> tuple[HouseVoteSource, ...]:
+    sources: dict[tuple[int, int], HouseVoteSource] = {}
+
+    legacy_dir = archive.house_votes_dir()
+    if legacy_dir.is_dir():
+        for path in sorted(legacy_dir.glob("*.xml")):
+            match = _HOUSE_LEGACY_RE.fullmatch(path.name)
+            if match is None:
+                continue
+            year = int(match.group("year"))
+            roll = int(match.group("roll"))
+            sources[(year, roll)] = HouseVoteSource(path=path, year=year, roll_call_number=roll)
+
+    archive_dir = archive.root / "house"
+    if archive_dir.is_dir():
+        for year_dir in sorted(archive_dir.iterdir()):
+            if not year_dir.is_dir():
+                continue
+            try:
+                year = int(year_dir.name)
+            except ValueError:
+                continue
+            for path in sorted(year_dir.glob("roll*.xml")):
+                match = _HOUSE_ARCHIVE_RE.fullmatch(path.name)
+                if match is None:
+                    continue
+                roll = int(match.group("roll"))
+                sources[(year, roll)] = HouseVoteSource(
+                    path=path,
+                    year=year,
+                    roll_call_number=roll,
+                )
+
+    return tuple(sources[key] for key in sorted(sources))
+
+
+def _scan_senate_vote_sources(archive: CongressArchive) -> tuple[SenateVoteSource, ...]:
+    sources: dict[tuple[int, int, int], SenateVoteSource] = {}
+
+    legacy_dir = archive.senate_votes_dir()
+    if legacy_dir.is_dir():
+        for path in sorted(legacy_dir.glob("*.xml")):
+            match = _SENATE_LEGACY_RE.fullmatch(path.name)
+            if match is None:
+                continue
+            congress = int(match.group("congress"))
+            session = int(match.group("session"))
+            roll = int(match.group("roll"))
+            sources[(congress, session, roll)] = SenateVoteSource(
+                path=path,
+                congress=congress,
+                session_number=session,
+                roll_call_number=roll,
+            )
+
+    archive_dir = archive.root / "senate"
+    if archive_dir.is_dir():
+        for session_dir in sorted(archive_dir.iterdir()):
+            if not session_dir.is_dir():
+                continue
+            for path in sorted(session_dir.glob("vote_*.xml")):
+                match = _SENATE_ARCHIVE_RE.fullmatch(path.name)
+                if match is None:
+                    continue
+                congress = int(match.group("congress"))
+                session = int(match.group("session"))
+                roll = int(match.group("roll"))
+                sources[(congress, session, roll)] = SenateVoteSource(
+                    path=path,
+                    congress=congress,
+                    session_number=session,
+                    roll_call_number=roll,
+                )
+
+    return tuple(sources[key] for key in sorted(sources))
+
+
+def _manifest_path_text(path: Path, *, root: Path | None) -> str:
+    if root is None:
+        return str(path)
+    return str(path.relative_to(root))
 
 
 # ---------------------------------------------------------------------------
@@ -479,6 +683,15 @@ def _str_field(raw: dict[str, Any], field: str, location: str) -> str:
     if not isinstance(v, str):
         raise ValueError(f"{location}.{field} must be a string, got {type(v).__name__}")
     return v
+
+
+def _path_field(raw: dict[str, Any], field: str, location: str) -> str:
+    value = _str_field(raw, field, location)
+    return require_confined_relative_path(value, label=f"{location}.{field}")
+
+
+def _path_from_field(root: Path, raw: dict[str, Any], field: str, location: str) -> Path:
+    return safe_join_confined(root, _path_field(raw, field, location), label=f"{location}.{field}")
 
 
 def _int_field(raw: dict[str, Any], field: str, location: str) -> int:

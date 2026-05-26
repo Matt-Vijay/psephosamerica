@@ -126,11 +126,14 @@ class TestDisclosurePayload:
         assert d.filing_period_start == date(2023, 1, 1)
         assert d.filing_period_end == date(2023, 12, 31)
         assert d.source_record_id == "FILING-001"
+        assert d.source_artifact_id == 2
         assert d.source_artifact_sha256 == "a" * 64
         assert d.supersedes_filing_source_id is None
 
     def test_ptr_filing(self) -> None:
-        filing = _annual_filing(filing_type=FilingType.PTR, filing_period_start=None, filing_period_end=None)
+        filing = _annual_filing(
+            filing_type=FilingType.PTR, filing_period_start=None, filing_period_end=None
+        )
         result = transform_filing(filing, [], [], [], CTX)
         assert result.disclosure.filing_type == "ptr"
 
@@ -218,6 +221,10 @@ class TestHoldingPayload:
         h = _holding()
         result = transform_filing(_annual_filing(), [h], [], [], CTX)
         assert len(result.holdings) == 1
+
+    def test_source_artifact_id_forwarded(self) -> None:
+        result = transform_filing(_annual_filing(), [_holding()], [], [], CTX)
+        assert result.holdings[0].source_artifact_id == 2
         assert result.review_items == []
 
     def test_holding_fields_mapped(self) -> None:
@@ -303,7 +310,11 @@ class TestHoldingPayload:
         ]
         result = transform_filing(_annual_filing(), holdings, [], [], CTX)
         assert [hp.line_number for hp in result.holdings] == [1, 2, 3]
-        assert [hp.issuer_name for hp in result.holdings] == ["Apple Inc", "Google LLC", "Tesla Inc"]
+        assert [hp.issuer_name for hp in result.holdings] == [
+            "Apple Inc",
+            "Google LLC",
+            "Tesla Inc",
+        ]
 
 
 # ---------------------------------------------------------------------------
@@ -343,6 +354,10 @@ class TestTransactionPayload:
         assert tp.amount_min == Decimal("50001")
         assert tp.amount_max == Decimal("100000")
         assert tp.source_record_id == "TX-005"
+
+    def test_source_artifact_id_forwarded(self) -> None:
+        result = transform_filing(_annual_filing(), [], [_transaction()], [], CTX)
+        assert result.transactions[0].source_artifact_id == 2
 
     def test_transaction_normalizes_amount_label(self) -> None:
         t = _transaction(amount_min=None, amount_max=None, amount_label="$1,001 - $15,000")
@@ -447,7 +462,9 @@ class TestOutsidePositionSidecar:
         ops = [_outside_position(line_number=i, entity_name=f"Org{i}") for i in range(1, 4)]
         result = transform_filing(_annual_filing(), [], [], ops, CTX)
         assert len(result.outside_positions) == 3
-        assert len([r for r in result.review_items if r.reason_code == "no_canonical_table_v1"]) == 3
+        assert (
+            len([r for r in result.review_items if r.reason_code == "no_canonical_table_v1"]) == 3
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -486,14 +503,18 @@ class TestReviewQueueMetadata:
         op = _outside_position()
         result = transform_filing(filing, [h], [t], [op], CTX)
         for item in result.review_items:
-            assert 1 <= item.priority <= 100, f"priority {item.priority} out of [1,100] for {item.reason_code}"
+            assert 1 <= item.priority <= 100, (
+                f"priority {item.priority} out of [1,100] for {item.reason_code}"
+            )
 
     def test_amendment_review_higher_priority_than_normalization(self) -> None:
         filing = _annual_filing(is_amended=True, amendment_number=1)
         h = _holding(value_min=None, value_max=None, value_label="bogus")
         result = transform_filing(filing, [h], [], [], CTX)
         amendment_item = next(r for r in result.review_items if r.reason_code == "amendment_filing")
-        normalization_item = next(r for r in result.review_items if r.reason_code == "unknown_amount_range")
+        normalization_item = next(
+            r for r in result.review_items if r.reason_code == "unknown_amount_range"
+        )
         assert amendment_item.priority < normalization_item.priority
 
 

@@ -148,6 +148,7 @@ class TestFetchPrimarySponsorSpecs:
         client = _make_client()
         client.get_bill_detail_payload.side_effect = RuntimeError("network failure")
         import pytest
+
         with pytest.raises(RuntimeError, match="network failure"):
             fetch_primary_sponsor_specs(client, [_BILL_HR1])
 

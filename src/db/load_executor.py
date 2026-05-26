@@ -25,6 +25,11 @@ from src.db.load_report import (
     WarnErrorSummary,
     build_load_summary,
 )
+from src.db.repositories import (
+    commit_or_rollback,
+    ensure_transactional_for_commit,
+    rollback_if_available,
+)
 from src.db.writer import write_table_batch
 
 # ---------------------------------------------------------------------------
@@ -58,6 +63,11 @@ def _is_hint_table(table: str) -> bool:
     return table.startswith("_")
 
 
+def _is_hint_key(key: str) -> bool:
+    """Return True for load-plan natural-key hints that must not reach SQL."""
+    return key.startswith("_") or key.endswith("_raw")
+
+
 def _resolve_row(row: dict[str, Any], resolvers: Resolvers) -> dict[str, Any]:
     """Return a new row dict with hint keys stripped and FK columns filled in.
 
@@ -72,7 +82,7 @@ def _resolve_row(row: dict[str, Any], resolvers: Resolvers) -> dict[str, Any]:
     resolved_columns: set[str] = set()
 
     for key, value in row.items():
-        if not key.startswith("_"):
+        if not _is_hint_key(key):
             out[key] = value
             continue
         entry = resolvers.get(key)
@@ -93,7 +103,7 @@ def _prepare_rows(rows: list[dict[str, Any]], resolvers: Resolvers) -> list[dict
     resolution calls (fast path).
     """
     if not resolvers:
-        return [{k: v for k, v in row.items() if not k.startswith("_")} for row in rows]
+        return [{k: v for k, v in row.items() if not _is_hint_key(k)} for row in rows]
     return [_resolve_row(row, resolvers) for row in rows]
 
 
@@ -109,6 +119,7 @@ def execute_load_plan(
     resolvers: Resolvers | None = None,
     run_id: int | None = None,
     warn_error: WarnErrorSummary | None = None,
+    commit: bool = True,
 ) -> LoadSummary:
     """Execute an ordered sequence of load-plan operation dicts.
 
@@ -133,26 +144,38 @@ def execute_load_plan(
 
     _resolvers: Resolvers = resolvers or {}
     table_results: list[TableWriteResult] = []
+    wrote_rows = False
+    ensure_transactional_for_commit(conn, commit=commit)
 
-    for op in operations:
-        table: str = op["table"]
+    try:
+        for op in operations:
+            table: str = op["table"]
 
-        if _is_hint_table(table):
-            continue
+            if _is_hint_table(table):
+                continue
 
-        rows: list[dict[str, Any]] = list(op.get("rows", []))
-        conflict_columns: list[str] = op.get("conflict_columns") or []
-        mode: str = op.get("mode", "insert")
+            rows: list[dict[str, Any]] = list(op.get("rows", []))
+            conflict_columns: list[str] = op.get("conflict_columns") or []
+            mode: str = op.get("mode", "insert")
 
-        clean_rows = _prepare_rows(rows, _resolvers)
+            clean_rows = _prepare_rows(rows, _resolvers)
 
-        result = write_table_batch(
-            conn,
-            table=table,
-            rows=clean_rows,
-            conflict_columns=conflict_columns,
-            mode=mode,
-        )
-        table_results.append(result)
+            result = write_table_batch(
+                conn,
+                table=table,
+                rows=clean_rows,
+                conflict_columns=conflict_columns,
+                mode=mode,
+                commit=False,
+            )
+            table_results.append(result)
+            wrote_rows = wrote_rows or bool(clean_rows)
+    except Exception:
+        if commit:
+            rollback_if_available(conn)
+        raise
+
+    if commit and wrote_rows:
+        commit_or_rollback(conn)
 
     return build_load_summary(table_results, warn_error=warn_error, run_id=run_id)

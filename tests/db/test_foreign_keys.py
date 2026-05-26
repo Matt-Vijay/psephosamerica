@@ -248,6 +248,13 @@ class TestCommitteeCode:
         result = resolve_foreign_keys(rows, {"committee_code_map": cc_map})
         assert result.rows[0]["committee_id"] == 10
 
+    def test_boolean_congress_fails_without_matching_one(self):
+        rows = [{"_committee_code": "SSAF", "congress": True}]
+        result = resolve_foreign_keys(rows, {"committee_code_map": {("SSAF", 1): 99}})
+
+        assert first_failure(result).reason.startswith("invalid_context")
+        assert "committee_id" not in result.rows[0]
+
 
 # ===========================================================================
 # *_raw suffix resolution
@@ -324,6 +331,25 @@ class TestDisclosureNaturalKey:
         f = first_failure(result)
         assert f.reason.startswith("invalid_natural_key")
 
+    def test_boolean_natural_key_parts_fail_without_matching_one(self):
+        rows = [
+            {
+                "_financial_disclosure_natural_key": {
+                    "member_id": True,
+                    "filing_year": 2023,
+                    "filing_type": "annual",
+                    "amendment_number": 0,
+                }
+            }
+        ]
+        result = resolve_foreign_keys(
+            rows,
+            {"disclosure_natural_key_map": {(1, 2023, "annual", 0): 50}},
+        )
+
+        assert first_failure(result).reason.startswith("invalid_natural_key")
+        assert "financial_disclosure_id" not in result.rows[0]
+
     def test_natural_key_missing_field_fails(self, disclosure_nk_map):
         nk = {"member_id": 1, "filing_year": 2023}  # missing filing_type, amendment_number
         rows = [{"_financial_disclosure_natural_key": nk}]
@@ -339,7 +365,12 @@ class TestDisclosureNaturalKey:
 
     def test_natural_key_coerces_string_ids(self, disclosure_nk_map):
         """Values coming from CSV may be strings."""
-        nk = {"member_id": "1", "filing_year": "2023", "filing_type": "annual", "amendment_number": "0"}
+        nk = {
+            "member_id": "1",
+            "filing_year": "2023",
+            "filing_type": "annual",
+            "amendment_number": "0",
+        }
         rows = [{"_financial_disclosure_natural_key": nk}]
         result = resolve_foreign_keys(rows, {"disclosure_natural_key_map": disclosure_nk_map})
         assert result.rows[0]["financial_disclosure_id"] == 50

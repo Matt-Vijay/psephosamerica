@@ -300,8 +300,8 @@ class TestResolveArtifactMembers:
     def test_mixed_outcomes_preserved(self):
         arts = [_artifact("house"), _artifact("house")]
         idxs = [
-            _house_index("Pelosi", "Nancy", "CA11"),   # Resolved
-            _house_index("Ghost", "X", "CA11"),          # NoMatch
+            _house_index("Pelosi", "Nancy", "CA11"),  # Resolved
+            _house_index("Ghost", "X", "CA11"),  # NoMatch
         ]
         results = resolve_artifact_members(arts, idxs, _LOOKUP)
         assert isinstance(results[0], Resolved)
@@ -384,6 +384,7 @@ class TestWrongChamberMalformedRows:
     def test_no_match_is_distinct_from_key_error(self):
         """A genuine no-match returns NoMatch, not an exception."""
         from src.runtime.disclosures_member_resolution import NoMatch
+
         art = _artifact("house")
         idx = _house_index("Ghost", "X", "AK01")
         result = resolve_artifact_member(art, idx, _LOOKUP)
@@ -392,6 +393,7 @@ class TestWrongChamberMalformedRows:
     def test_ambiguous_is_distinct_from_no_match(self):
         """Ambiguous and NoMatch are distinct types — no silent collapse."""
         from src.runtime.disclosures_member_resolution import Ambiguous, NoMatch
+
         lookup = {
             "house": [
                 _house_member("A000001", "Smith", "Adam", "NY", 10),

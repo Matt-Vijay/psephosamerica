@@ -23,6 +23,7 @@ from src.db.lookups import (
     build_bioguide_map,
     build_committee_code_map,
     build_disclosure_natural_key_map,
+    build_disclosure_source_record_id_map,
     build_fec_candidate_map,
     build_fec_committee_map,
     build_lis_member_map,
@@ -63,6 +64,7 @@ def _disclosure(
     filing_year: int,
     filing_type: str,
     amendment_number: int = 0,
+    source_record_id: str | None = None,
 ) -> dict:
     return {
         "id": id,
@@ -70,6 +72,7 @@ def _disclosure(
         "filing_year": filing_year,
         "filing_type": filing_type,
         "amendment_number": amendment_number,
+        "source_record_id": source_record_id,
     }
 
 
@@ -112,6 +115,11 @@ class TestBuildBioguidMap:
     def test_missing_id_field_raises(self):
         rows = [{"bioguide_id": "B001234"}]
         with pytest.raises(LookupBuildError):
+            build_bioguide_map(rows)
+
+    def test_boolean_id_raises(self):
+        rows = [{"id": True, "bioguide_id": "B001234"}]
+        with pytest.raises(LookupBuildError, match="id"):
             build_bioguide_map(rows)
 
 
@@ -226,6 +234,11 @@ class TestBuildCommitteeCodeMap:
         with pytest.raises(LookupBuildError):
             build_committee_code_map(rows)
 
+    def test_boolean_congress_raises(self):
+        rows = [{"id": 1, "committee_code": "SSAF", "congress": True}]
+        with pytest.raises(LookupBuildError, match="congress"):
+            build_committee_code_map(rows)
+
 
 # ---------------------------------------------------------------------------
 # build_fec_committee_map
@@ -300,8 +313,48 @@ class TestBuildDisclosureNaturalKeyMap:
         with pytest.raises(LookupBuildError):
             build_disclosure_natural_key_map(rows)
 
+    def test_boolean_natural_key_part_raises(self):
+        rows = [
+            {
+                "id": 1,
+                "member_id": True,
+                "filing_year": 2023,
+                "filing_type": "annual",
+                "amendment_number": 0,
+            }
+        ]
+        with pytest.raises(LookupBuildError, match="member_id"):
+            build_disclosure_natural_key_map(rows)
+
     def test_empty_returns_empty(self):
         assert build_disclosure_natural_key_map([]) == {}
+
+
+# ---------------------------------------------------------------------------
+# build_disclosure_source_record_id_map
+# ---------------------------------------------------------------------------
+
+
+class TestBuildDisclosureSourceRecordIdMap:
+    def test_happy_path_skips_missing_source_record_id(self):
+        rows = [
+            _disclosure(1, 10, 2023, "annual", source_record_id="FILING-001"),
+            _disclosure(2, 10, 2023, "amendment", 1, source_record_id="FILING-002"),
+            _disclosure(3, 10, 2023, "ptr"),
+        ]
+
+        result = build_disclosure_source_record_id_map(rows)
+
+        assert result == {"FILING-001": 1, "FILING-002": 2}
+
+    def test_duplicate_source_record_id_raises(self):
+        rows = [
+            _disclosure(1, 10, 2023, "annual", source_record_id="FILING-001"),
+            _disclosure(2, 11, 2023, "annual", source_record_id="FILING-001"),
+        ]
+
+        with pytest.raises(LookupBuildError, match="duplicate source_record_id"):
+            build_disclosure_source_record_id_map(rows)
 
 
 # ---------------------------------------------------------------------------
@@ -418,6 +471,24 @@ class TestBuildLookupBundle:
         assert bundle.disclosure_natural_key_map[(1, 2023, "ptr", 0)] == 21
         assert bundle.disclosure_natural_key_map[(2, 2023, "annual", 0)] == 22
 
+    def test_disclosure_source_record_id_map_correct(self):
+        rows = [
+            _disclosure(20, 1, 2023, "annual", source_record_id="FILING-001"),
+            _disclosure(21, 1, 2023, "amendment", 1, source_record_id="FILING-002"),
+        ]
+
+        bundle = build_lookup_bundle(
+            member_rows=self._member_rows(),
+            committee_rows=self._committee_rows(),
+            fec_committee_rows=self._fec_committee_rows(),
+            financial_disclosure_rows=rows,
+        )
+
+        assert bundle.disclosure_source_record_id_map == {
+            "FILING-001": 20,
+            "FILING-002": 21,
+        }
+
     def test_empty_inputs_produce_empty_bundle(self):
         bundle = build_lookup_bundle(
             member_rows=[],
@@ -431,6 +502,7 @@ class TestBuildLookupBundle:
         assert bundle.committee_code_map == {}
         assert bundle.fec_committee_map == {}
         assert bundle.disclosure_natural_key_map == {}
+        assert bundle.disclosure_source_record_id_map == {}
 
 
 # ---------------------------------------------------------------------------
@@ -447,6 +519,7 @@ class TestToMaps:
         assert "committee_code_map" in maps
         assert "raw_id_maps" in maps
         assert "disclosure_natural_key_map" in maps
+        assert "disclosure_source_record_id_map" in maps
 
     def test_raw_id_maps_has_fec_subkeys(self):
         bundle = LookupBundle(
@@ -464,12 +537,14 @@ class TestToMaps:
             lis_member_map={"S001": 1},
             committee_code_map={("SSAF", 119): 10},
             disclosure_natural_key_map={(1, 2023, "annual", 0): 20},
+            disclosure_source_record_id_map={"FILING-001": 20},
         )
         maps = bundle.to_maps()
         assert maps["bioguide_map"] == {"B001234": 1}
         assert maps["lis_member_map"] == {"S001": 1}
         assert maps["committee_code_map"] == {("SSAF", 119): 10}
         assert maps["disclosure_natural_key_map"] == {(1, 2023, "annual", 0): 20}
+        assert maps["disclosure_source_record_id_map"] == {"FILING-001": 20}
 
     def test_to_maps_compatible_with_resolve_foreign_keys(self):
         """Smoke-test that to_maps() output is accepted by resolve_foreign_keys."""

@@ -16,12 +16,21 @@ from pathlib import Path
 from typing import Any
 from unittest.mock import patch
 
-from src.api.contracts import ArtifactCounts, HomepageBootstrapPayload, MovementFeedPayload, SnapshotSummaryPayload
+from src.api.contracts import (
+    ArtifactCounts,
+    HomepageBootstrapPayload,
+    MovementFeedPayload,
+    SnapshotSummaryPayload,
+)
 from src.export.filesystem import write_planned_files
 from src.export.manifest import ManifestEntry, SnapshotManifest, manifest_root_sha256
 from src.export.writer import PlannedFile, current_member_lookup_path, serialize_payload
 from src.homepage.builders import build_featured_lookup_entries
-from src.identity.current_member_lookup import CurrentMemberLookupEntry, CurrentMemberLookupPayload, normalize_lookup_name
+from src.identity.current_member_lookup import (
+    CurrentMemberLookupEntry,
+    CurrentMemberLookupPayload,
+    normalize_lookup_name,
+)
 from src.homepage.contracts import HomepageFeedPayload
 from src.query.homepage_feed import assemble_homepage_payload
 from src.runtime.publish_roundtrip_homepage import verify_published_homepage_roundtrip
@@ -73,7 +82,9 @@ def _payload(rows: list[dict[str, Any]], snapshot_date: dt.date = _SNAP) -> Home
     return assemble_homepage_payload(rows, snapshot_date=snapshot_date)
 
 
-def _lookup_payload(rows: list[dict[str, Any]], snapshot_date: dt.date = _SNAP) -> CurrentMemberLookupPayload:
+def _lookup_payload(
+    rows: list[dict[str, Any]], snapshot_date: dt.date = _SNAP
+) -> CurrentMemberLookupPayload:
     seen: dict[str, CurrentMemberLookupEntry] = {}
     for row in rows:
         bioguide_id = str(row["member_bioguide_id"])
@@ -157,7 +168,9 @@ def _write_homepage(root: Path, payload: HomepageFeedPayload) -> None:
         serialize_payload(lookup_payload),
     )
     manifest_entries = [
-        ManifestEntry(path=lookup_file.path, sha256=lookup_file.sha256, size_bytes=lookup_file.size_bytes)
+        ManifestEntry(
+            path=lookup_file.path, sha256=lookup_file.sha256, size_bytes=lookup_file.size_bytes
+        )
     ]
     manifest = SnapshotManifest(
         snapshot_id=payload.snapshot_date.isoformat(),
@@ -244,8 +257,14 @@ class TestMatchingPayloads:
     def test_no_errors_for_matching_payloads(self, tmp_path: Path) -> None:
         rows = [
             _row("card-a", "alice-smith", score_delta=-50.0),
-            _row("card-b", "carol-lee", score_delta=-20.0,
-                 member_full_name="Carol Lee", chamber="senate", state="TX"),
+            _row(
+                "card-b",
+                "carol-lee",
+                score_delta=-20.0,
+                member_full_name="Carol Lee",
+                chamber="senate",
+                state="TX",
+            ),
         ]
         _write_homepage(tmp_path, _payload(rows))
         result = _run(tmp_path, rows)
@@ -333,8 +352,7 @@ class TestPayloadMismatches:
 
     def test_top_changes_slug_mismatch_is_error(self, tmp_path: Path) -> None:
         pub_rows = [_row("card-1", "alice-smith", score_delta=-50.0)]
-        db_rows = [_row("card-1", "bob-jones", score_delta=-50.0,
-                        member_full_name="Bob Jones")]
+        db_rows = [_row("card-1", "bob-jones", score_delta=-50.0, member_full_name="Bob Jones")]
         _write_homepage(tmp_path, _payload(pub_rows))
         result = _run(tmp_path, db_rows)
         assert result.ok is False
@@ -390,8 +408,7 @@ class TestPayloadMismatches:
         pub_payload = _payload(pub_rows, snapshot_date=dt.date(2025, 6, 1))
         _write_homepage(tmp_path, pub_payload)
 
-        db_rows = [_row("card-2", "bob-jones", score_delta=-50.0,
-                        member_full_name="Bob Jones")]
+        db_rows = [_row("card-2", "bob-jones", score_delta=-50.0, member_full_name="Bob Jones")]
         result = _run(tmp_path, db_rows, snapshot_date=_SNAP)
         # Expect at least: snapshot_date + top_changes + recent_events
         assert result.error_count >= 2
@@ -403,9 +420,7 @@ class TestPayloadMismatches:
 
 
 class TestOrderingPreserved:
-    def test_top_changes_order_preserved_through_file_roundtrip(
-        self, tmp_path: Path
-    ) -> None:
+    def test_top_changes_order_preserved_through_file_roundtrip(self, tmp_path: Path) -> None:
         """Serialize then deserialize; the top_changes order must survive."""
         rows = [
             _row("card-a", "alice-smith", score_delta=-50.0),
@@ -416,16 +431,17 @@ class TestOrderingPreserved:
         result = _run(tmp_path, rows)
         assert result.ok is True
 
-    def test_recent_events_order_preserved_through_file_roundtrip(
-        self, tmp_path: Path
-    ) -> None:
+    def test_recent_events_order_preserved_through_file_roundtrip(self, tmp_path: Path) -> None:
         """Serialize then deserialize; the recent_events order must survive."""
         rows = [
-            _row("card-a", "alice-smith",
-                 rendered_at=dt.date(2025, 12, 10), score_delta=-20.0),
-            _row("card-b", "bob-jones",
-                 rendered_at=dt.date(2025, 11, 5), score_delta=-10.0,
-                 member_full_name="Bob Jones"),
+            _row("card-a", "alice-smith", rendered_at=dt.date(2025, 12, 10), score_delta=-20.0),
+            _row(
+                "card-b",
+                "bob-jones",
+                rendered_at=dt.date(2025, 11, 5),
+                score_delta=-10.0,
+                member_full_name="Bob Jones",
+            ),
         ]
         p = _payload(rows)
         _write_homepage(tmp_path, p)

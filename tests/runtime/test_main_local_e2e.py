@@ -218,7 +218,7 @@ _HOUSE_ARTIFACT = {
     "chamber": "house",
     "filing_year": 2024,
     "storage_uri": "house/2024/10001.pdf",
-    "source_url": "https://disclosures.house.gov/10001",
+    "source_url": "https://disclosures.house.gov/public_disc/financial-pdfs/2024/10001.pdf",
     "source_slug": "house_disclosures",
     "artifact_kind": "pdf",
     "sha256": _ZERO_SHA256,
@@ -674,7 +674,9 @@ class TestRunOracleLocalE2E:
         assert out["disclosures"]["artifact_limit"] is None
         assert out["publish"]["zip_feeds_generated"] is False
 
-    def test_explicit_congress_flag_overrides_default_assumption(self, tmp_path: Path, capsys) -> None:
+    def test_explicit_congress_flag_overrides_default_assumption(
+        self, tmp_path: Path, capsys
+    ) -> None:
         archive = build_congress_archive(tmp_path / "archive")
         bundle = build_disclosures_bundle(tmp_path / "bundle.json")
         target = tmp_path / "out"

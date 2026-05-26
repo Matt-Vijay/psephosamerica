@@ -21,6 +21,7 @@ def _stub_connect(settings: Settings) -> object:
 # build_runtime
 # ---------------------------------------------------------------------------
 
+
 def test_build_runtime_returns_openpact_runtime():
     rt = build_runtime(connect_fn=_stub_connect)
     assert isinstance(rt, OpenPactRuntime)
@@ -74,6 +75,7 @@ def test_build_runtime_cwd_independent(monkeypatch: pytest.MonkeyPatch, tmp_path
 # open_runtime_connection
 # ---------------------------------------------------------------------------
 
+
 def test_open_runtime_connection_delegates_to_connect_fn():
     conn_mock = MagicMock(return_value=sentinel.conn)
     settings = Settings()
@@ -90,6 +92,7 @@ def test_open_runtime_connection_delegates_to_connect_fn():
 # ---------------------------------------------------------------------------
 # OpenPactRuntime frozen invariant
 # ---------------------------------------------------------------------------
+
 
 def test_openpact_runtime_is_frozen():
     rt = build_runtime(connect_fn=_stub_connect)

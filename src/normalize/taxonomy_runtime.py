@@ -48,16 +48,23 @@ class TaxonomyRuntime:
     crp_mappings: list[CrpMapping]
 
     # Computed indices — not part of public constructor, not compared or repr'd
-    _sector_index: dict[str, Sector] = field(default_factory=dict, init=False, repr=False, compare=False)
-    _committee_index: dict[tuple[int, str, str], CommitteeMapping] = field(default_factory=dict, init=False, repr=False, compare=False)
-    _committee_index_by_chamber: dict[tuple[int, str, str, str], CommitteeMapping] = field(default_factory=dict, init=False, repr=False, compare=False)
-    _crp_index: dict[str, CrpMapping] = field(default_factory=dict, init=False, repr=False, compare=False)
+    _sector_index: dict[str, Sector] = field(
+        default_factory=dict, init=False, repr=False, compare=False
+    )
+    _committee_index: dict[tuple[int, str, str], CommitteeMapping] = field(
+        default_factory=dict, init=False, repr=False, compare=False
+    )
+    _committee_index_by_chamber: dict[tuple[int, str, str, str], CommitteeMapping] = field(
+        default_factory=dict, init=False, repr=False, compare=False
+    )
+    _crp_index: dict[str, CrpMapping] = field(
+        default_factory=dict, init=False, repr=False, compare=False
+    )
 
     def __post_init__(self) -> None:
         self._sector_index = {s.sector_id: s for s in self.sectors}
         self._committee_index = {
-            (m.congress, m.committee_name, m.subcommittee_name): m
-            for m in self.committee_mappings
+            (m.congress, m.committee_name, m.subcommittee_name): m for m in self.committee_mappings
         }
         self._committee_index_by_chamber = {
             (m.congress, m.chamber.strip().lower(), m.committee_name, m.subcommittee_name): m
@@ -107,7 +114,8 @@ class TaxonomyRuntime:
     ) -> list[CommitteeMapping]:
         """Return all committee mappings for a given sector, optionally filtered by congress."""
         return [
-            m for m in self.committee_mappings
+            m
+            for m in self.committee_mappings
             if m.sector_id == sector_id and (congress is None or m.congress == congress)
         ]
 
@@ -118,6 +126,7 @@ class TaxonomyRuntime:
 # ---------------------------------------------------------------------------
 # File-local loaders (explicit I/O, no global state)
 # ---------------------------------------------------------------------------
+
 
 def _load_sectors(path: Path) -> list[Sector]:
     with open(path) as f:
@@ -179,6 +188,8 @@ def load_taxonomy_runtime(data_root: Path) -> TaxonomyRuntime:
 
     return TaxonomyRuntime(
         sectors=_load_sectors(data_root / "taxonomy" / "sectors.yaml"),
-        committee_mappings=_load_committee_mappings(data_root / "taxonomy" / "committee_sector_map.csv"),
+        committee_mappings=_load_committee_mappings(
+            data_root / "taxonomy" / "committee_sector_map.csv"
+        ),
         crp_mappings=_load_crp_crosswalk(data_root / "crosswalks" / "crp_to_sector.csv"),
     )

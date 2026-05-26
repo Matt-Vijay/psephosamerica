@@ -112,6 +112,7 @@ def fetch_previous_score_snapshot_rows(
 # index_latest_previous_snapshots
 # ---------------------------------------------------------------------------
 
+
 def index_latest_previous_snapshots(
     snapshot_rows: list[dict[str, Any]],
 ) -> dict[int, dict[str, Any]]:

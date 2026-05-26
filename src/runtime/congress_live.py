@@ -58,8 +58,8 @@ def run_live_congress_load(
         bills=bills,
         primary_sponsors=[],
         cosponsors=cosponsors,
-        vote_events=[],   # deferred: fetched via house/senate vote ingest paths
-        vote_casts=[],    # deferred: fetched via house/senate vote ingest paths
+        vote_events=[],  # deferred: fetched via house/senate vote ingest paths
+        vote_casts=[],  # deferred: fetched via house/senate vote ingest paths
     )
 
     return run_congress_load_runtime(conn, inputs)

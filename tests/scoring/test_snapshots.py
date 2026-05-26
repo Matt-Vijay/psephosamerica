@@ -44,6 +44,7 @@ def _evidence_card(dimension: str = DIM, score_delta: float = -10.0) -> dict:
 # clamp
 # ---------------------------------------------------------------------------
 
+
 class TestClamp:
     def test_mid_range_unchanged(self):
         assert clamp(50.0) == 50.0
@@ -79,6 +80,7 @@ class TestClamp:
 # ---------------------------------------------------------------------------
 # group_deltas_by_dimension
 # ---------------------------------------------------------------------------
+
 
 class TestGroupDeltasByDimension:
     def test_empty_list(self):
@@ -138,6 +140,7 @@ class TestGroupDeltasByDimension:
 # compute_dimension_scores
 # ---------------------------------------------------------------------------
 
+
 class TestComputeDimensionScores:
     def test_no_deltas_returns_baseline(self):
         result = compute_dimension_scores({"dim_a": []})
@@ -189,6 +192,7 @@ class TestComputeDimensionScores:
 # compute_score_total
 # ---------------------------------------------------------------------------
 
+
 class TestComputeScoreTotal:
     def test_single_dimension_equals_that_score(self):
         assert compute_score_total({"dim_a": 90.0}) == 90.0
@@ -226,6 +230,7 @@ class TestComputeScoreTotal:
 # ---------------------------------------------------------------------------
 # build_snapshot_row
 # ---------------------------------------------------------------------------
+
 
 class TestBuildSnapshotRow:
     def test_no_deltas_returns_baseline_snapshot(self):
@@ -292,6 +297,7 @@ class TestBuildSnapshotRow:
 # ---------------------------------------------------------------------------
 # build_snapshot_rows
 # ---------------------------------------------------------------------------
+
 
 class TestBuildSnapshotRows:
     def test_empty_members_returns_empty_list(self):

@@ -72,15 +72,18 @@ def test_paths_resolve_from_module_not_cwd(monkeypatch: object, tmp_path: Path) 
     # Changing cwd must not change any returned path.
     import os
 
-    original = {name: fn() for name, fn in [
-        ("repo_root", repo_root),
-        ("db_schema_path", db_schema_path),
-        ("db_migrations_dir", db_migrations_dir),
-        ("taxonomy_dir", taxonomy_dir),
-        ("crosswalks_dir", crosswalks_dir),
-        ("local_publish_root", local_publish_root),
-        ("local_artifact_root", local_artifact_root),
-    ]}
+    original = {
+        name: fn()
+        for name, fn in [
+            ("repo_root", repo_root),
+            ("db_schema_path", db_schema_path),
+            ("db_migrations_dir", db_migrations_dir),
+            ("taxonomy_dir", taxonomy_dir),
+            ("crosswalks_dir", crosswalks_dir),
+            ("local_publish_root", local_publish_root),
+            ("local_artifact_root", local_artifact_root),
+        ]
+    }
 
     old_cwd = os.getcwd()
     try:

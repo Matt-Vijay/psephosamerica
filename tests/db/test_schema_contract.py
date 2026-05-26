@@ -10,6 +10,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 SCHEMA_PATH = ROOT / "db" / "schema.sql"
 MIGRATION_PATH = ROOT / "db" / "migrations" / "0001_init.sql"
+RUNTIME_DISCLOSURE_ARTIFACTS_PATH = ROOT / "src" / "runtime" / "disclosures_artifacts.py"
 
 # ---------------------------------------------------------------------------
 # Canonical tables from ENGINEERING_SPEC_V1.md §5
@@ -25,6 +26,7 @@ CORE_TABLES = [
     "vote_event",
     "vote_cast",
     "fec_committee",
+    "fec_candidate_committee_linkage",
     "contribution",
     "financial_disclosure",
     "holding",
@@ -32,6 +34,7 @@ CORE_TABLES = [
     "rule_fire",
     "evidence_card",
     "score_snapshot",
+    "ontology_edge",
 ]
 
 PROVENANCE_TABLES = [
@@ -80,6 +83,19 @@ EVIDENCE_CARD_REQUIRED_COLUMNS = [
     "normative_judgments",
 ]
 
+ONTOLOGY_EDGE_REQUIRED_COLUMNS = [
+    "edge_id",
+    "edge_type",
+    "recompute_run_id",
+    "subject_node_type",
+    "subject_node_id",
+    "object_node_type",
+    "object_node_id",
+    "source_anchors",
+    "confidence",
+    "attributes",
+]
+
 
 def _read(path: Path) -> str:
     return path.read_text(encoding="utf-8")
@@ -106,9 +122,7 @@ def _assert_create_table(sql: str, table: str) -> None:
 
 def _assert_column_in_table(sql: str, table: str, column: str) -> None:
     lowered = _lower(sql)
-    assert column in lowered, (
-        f"Column '{column}' not found in schema (expected in table '{table}')"
-    )
+    assert column in lowered, f"Column '{column}' not found in schema (expected in table '{table}')"
 
 
 # ---------------------------------------------------------------------------
@@ -136,6 +150,18 @@ class TestSchemaTables:
         for col in RULE_FIRE_REQUIRED_COLUMNS:
             _assert_column_in_table(sql, "rule_fire", col)
 
+    def test_rule_fire_source_record_id_is_unique_for_upsert(self) -> None:
+        sql = _lower(_read(SCHEMA_PATH))
+        assert "unique (source_record_id)" in sql
+
+    def test_contribution_source_record_id_is_unique_for_fec_upsert(self) -> None:
+        sql = _lower(_read(SCHEMA_PATH))
+        contribution_section = sql.split("create table contribution", 1)[1].split(
+            "create index idx_contribution_recipient",
+            1,
+        )[0]
+        assert "unique (source_record_id)" in contribution_section
+
     def test_evidence_card_columns(self) -> None:
         sql = _read(SCHEMA_PATH)
         for col in EVIDENCE_CARD_REQUIRED_COLUMNS:
@@ -145,10 +171,35 @@ class TestSchemaTables:
         sql = _read(SCHEMA_PATH)
         _assert_column_in_table(sql, "score_snapshot", "published_manifest_sha256")
 
+    def test_ontology_edge_columns(self) -> None:
+        sql = _read(SCHEMA_PATH)
+        for col in ONTOLOGY_EDGE_REQUIRED_COLUMNS:
+            _assert_column_in_table(sql, "ontology_edge", col)
+
+    def test_ontology_edge_has_unique_edge_id_for_upsert(self) -> None:
+        sql = _lower(_read(SCHEMA_PATH))
+        assert "create table ontology_edge" in sql
+        ontology_section = sql.split("create table ontology_edge", 1)[1]
+        assert "unique (edge_id)" in ontology_section
+
     def test_confidence_labels(self) -> None:
         sql = _read(SCHEMA_PATH)
         for label in ("HIGH", "MEDIUM", "LOW"):
             assert label in sql, f"Confidence label '{label}' not found in schema"
+
+
+class TestRuntimeRunTypes:
+    def test_schema_allows_only_canonical_ingestion_run_types(self) -> None:
+        sql = _lower(_read(SCHEMA_PATH))
+        assert "run_type in ('ingest', 'recompute', 'export')" in sql
+
+    def test_artifact_ingest_runtime_uses_ingest_stage_not_run_type(self) -> None:
+        text = _read(RUNTIME_DISCLOSURE_ARTIFACTS_PATH)
+        assert '"artifact_ingest"' in text
+        assert (
+            'start_ingestion_run(\n        conn,\n        data_source["id"],\n        "ingest",'
+            in text
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -183,8 +234,7 @@ class TestMigrationMatchesSchema:
 
         for table in ALL_TABLES:
             in_schema = (
-                f'create table "{table}"' in schema_sql
-                or f"create table {table}" in schema_sql
+                f'create table "{table}"' in schema_sql or f"create table {table}" in schema_sql
             )
             in_migration = (
                 f'create table "{table}"' in migration_sql

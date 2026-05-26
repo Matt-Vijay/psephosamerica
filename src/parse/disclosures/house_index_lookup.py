@@ -28,9 +28,7 @@ def index_house_rows_by_doc_id(
     index: dict[str, HouseIndexRow] = {}
     for row in rows:
         if row.doc_id in index:
-            raise ValueError(
-                f"Duplicate doc_id {row.doc_id!r} in House index rows"
-            )
+            raise ValueError(f"Duplicate doc_id {row.doc_id!r} in House index rows")
         index[row.doc_id] = row
     return index
 

@@ -118,7 +118,8 @@ _ANNUAL_PAGES = [_ANNUAL_COVER, _ANNUAL_PART_I, _ANNUAL_SCHEDULE_A, _ANNUAL_SCHE
 # (as produced by some Senate EFD portal exports)
 # ---------------------------------------------------------------------------
 
-_PTR_PART_II_PAGES = ["""\
+_PTR_PART_II_PAGES = [
+    """\
 Periodic Transaction Report
                                                                      (Rev. 01/2022)
 
@@ -135,7 +136,8 @@ Owner  Ticker  Asset                    Type         Amount              Date
 01/10/2024  self  NVDA   NVIDIA Corporation     Purchase   $50,001 - $100,000
 01/12/2024  sp    AMZN   Amazon.com Inc         Sale (Full)  $15,001 - $50,000
 02/01/2024  self  GOOGL  Alphabet Inc Class A   Purchase   $100,001 - $250,000
-"""]
+"""
+]
 
 
 # ---------------------------------------------------------------------------
@@ -143,7 +145,8 @@ Owner  Ticker  Asset                    Type         Amount              Date
 # with leading/trailing noise lines
 # ---------------------------------------------------------------------------
 
-_PTR_TRANSACTIONS_ALIAS_PAGES = ["""\
+_PTR_TRANSACTIONS_ALIAS_PAGES = [
+    """\
 Periodic Transaction Report
 
 Name:       CHEN, ALICE W.
@@ -155,14 +158,16 @@ Transactions
 Owner  Ticker  Asset               Type       Amount
 01/05/2023  self  TSLA   Tesla Inc          Purchase   $15,001 - $50,000
 02/14/2023  sp    MSFT   Microsoft Corp     Sale (Full)  $50,001 - $100,000
-"""]
+"""
+]
 
 
 # ---------------------------------------------------------------------------
 # Annual EFD where Schedule A is labelled "Assets and Unearned Income"
 # ---------------------------------------------------------------------------
 
-_ASSETS_ALIAS_PAGES = ["""\
+_ASSETS_ALIAS_PAGES = [
+    """\
 Annual Report for Calendar Year 2022
 
 United States Senate
@@ -175,7 +180,8 @@ Assets and Unearned Income
 SP   Asset Name                   Asset Type   Value of Asset        Income Type   Income Amount
 self  Fidelity Contrafund          MF           $100,001 - $250,000   Dividends     $1,001 - $15,000
 sp   Johnson & Johnson             STK          $50,001 - $100,000    Dividends     $1,001 - $15,000
-"""]
+"""
+]
 
 
 # ---------------------------------------------------------------------------
@@ -288,12 +294,16 @@ class TestRealisticAnnualFiling:
 
     def test_transaction_ticker_extracted(self):
         result = parse_senate_text(_ANNUAL_PAGES, _annual())
-        vti = next(t for t in result.transactions if t.issuer_name == "Vanguard Total Stock Market ETF")
+        vti = next(
+            t for t in result.transactions if t.issuer_name == "Vanguard Total Stock Market ETF"
+        )
         assert vti.issuer_ticker == "VTI"
 
     def test_transaction_amount_range_parsed(self):
         result = parse_senate_text(_ANNUAL_PAGES, _annual())
-        vti = next(t for t in result.transactions if t.issuer_name == "Vanguard Total Stock Market ETF")
+        vti = next(
+            t for t in result.transactions if t.issuer_name == "Vanguard Total Stock Market ETF"
+        )
         assert vti.amount_min == Decimal("15001")
         assert vti.amount_max == Decimal("50000")
 
@@ -443,7 +453,7 @@ class TestMalformedTransactionRows:
 
     def test_too_few_cells_skipped(self):
         lines = (
-            "01/06/2024  self  TSLA",                   # 3 cells only
+            "01/06/2024  self  TSLA",  # 3 cells only
             "01/07/2024  sp  AAPL  Apple Inc  Purchase  $15,001 - $50,000",
         )
         result = _transactions_from_section(lines)
@@ -516,18 +526,14 @@ class TestOfficeHeaderExtractionInteractions:
 
     def test_preamble_bounded_at_first_section_header(self):
         all_lines = tuple(
-            line
-            for line in _PREAMBLE_WITH_OFFICE_BOILERPLATE.splitlines()
-            if line.strip()
+            line for line in _PREAMBLE_WITH_OFFICE_BOILERPLATE.splitlines() if line.strip()
         ) + ("Schedule A",)
         preamble = _preamble_lines(all_lines)
         assert "Schedule A" not in preamble
 
     def test_address_lines_included_in_preamble(self):
         all_lines = tuple(
-            line
-            for line in _PREAMBLE_WITH_OFFICE_BOILERPLATE.splitlines()
-            if line.strip()
+            line for line in _PREAMBLE_WITH_OFFICE_BOILERPLATE.splitlines() if line.strip()
         )
         preamble = _preamble_lines(all_lines)
         # All address/office lines precede any section header, so they're in preamble.
@@ -617,16 +623,12 @@ class TestHoldingsSectionRealistica:
         assert result[0].owner_type == OwnerType.JOINT
 
     def test_dependent_owner_holding(self):
-        lines = (
-            "dc  Fidelity Growth Fund  MF  $1,001 - $15,000  None  None",
-        )
+        lines = ("dc  Fidelity Growth Fund  MF  $1,001 - $15,000  None  None",)
         result = _holdings_from_section(lines)
         assert result[0].owner_type == OwnerType.DEPENDENT
 
     def test_none_income_label_preserved(self):
-        lines = (
-            "self  Cash Account  CASH  $1,001 - $15,000  None  None",
-        )
+        lines = ("self  Cash Account  CASH  $1,001 - $15,000  None  None",)
         result = _holdings_from_section(lines)
         assert result[0].income_label == "None"
 
@@ -635,16 +637,14 @@ class TestHoldingsSectionRealistica:
             "SCHEDULE A (Continued)",
             "SP  Asset Name  Asset Type  Value of Asset  Income Type  Income Amount",
             "self  Apple Inc  STK  $15,001 - $50,000  Dividends  $1,001 - $15,000",
-            "1",      # page number artefact
+            "1",  # page number artefact
             "sp  Microsoft Corp  STK  $50,001 - $100,000  Dividends  $1,001 - $15,000",
         )
         result = _holdings_from_section(lines)
         assert len(result) == 2
 
     def test_income_range_parsed(self):
-        lines = (
-            "self  Apple Inc  STK  $15,001 - $50,000  Dividends  $1,001 - $15,000",
-        )
+        lines = ("self  Apple Inc  STK  $15,001 - $50,000  Dividends  $1,001 - $15,000",)
         result = _holdings_from_section(lines)
         assert result[0].income_min == Decimal("1001")
         assert result[0].income_max == Decimal("15000")
@@ -654,24 +654,18 @@ class TestOutsidePositionsSectionRealistic:
     """Realistic Part I rows."""
 
     def test_position_without_to_date(self):
-        lines = (
-            "self  Acme Holdings LLC  Managing Member  01/01/2018",
-        )
+        lines = ("self  Acme Holdings LLC  Managing Member  01/01/2018",)
         result = _outside_positions_from_section(lines)
         assert len(result) == 1
         assert result[0].to_date is None
 
     def test_present_marker_in_to_date_is_none(self):
-        lines = (
-            "self  Beta Corp  Director  01/01/2020  present",
-        )
+        lines = ("self  Beta Corp  Director  01/01/2020  present",)
         result = _outside_positions_from_section(lines)
         assert result[0].to_date is None
 
     def test_dash_in_to_date_is_none(self):
-        lines = (
-            "sp  Gamma LLC  Advisor  03/15/2019  -",
-        )
+        lines = ("sp  Gamma LLC  Advisor  03/15/2019  -",)
         result = _outside_positions_from_section(lines)
         assert result[0].to_date is None
 

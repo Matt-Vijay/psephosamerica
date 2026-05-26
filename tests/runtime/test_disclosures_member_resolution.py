@@ -326,8 +326,8 @@ class TestResolveDisclosureMembers:
 
     def test_mixed_outcomes(self):
         identities = [
-            house_identity("Pelosi", "Nancy", "CA11"),    # Resolved
-            house_identity("Ghost", "X", "CA11"),          # NoMatch
+            house_identity("Pelosi", "Nancy", "CA11"),  # Resolved
+            house_identity("Ghost", "X", "CA11"),  # NoMatch
         ]
         results = resolve_disclosure_members(identities, _ROWS)
         assert isinstance(results[0], Resolved)

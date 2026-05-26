@@ -11,10 +11,13 @@ Path; no fake seams are introduced in the production code under test.
 
 No network calls, no DB.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
 from unittest.mock import patch
+
+import pytest
 
 from src.runtime.publish_verify import verify_local_publish
 from src.runtime.publish_verify_types import (
@@ -31,6 +34,8 @@ _VERIFY_MANIFEST = "src.runtime.publish_verify.verify_local_manifest"
 _LOAD_MANIFEST = "src.runtime.publish_verify._find_and_load_manifest"
 _VERIFY_PROFILES = "src.runtime.publish_verify.verify_local_member_profiles"
 _VERIFY_EVIDENCE = "src.runtime.publish_verify.verify_local_evidence_cards"
+_VERIFY_ONTOLOGY = "src.runtime.publish_verify.verify_local_ontology_edges"
+_VERIFY_PREDICTION = "src.runtime.publish_verify.verify_local_prediction_artifacts"
 _VERIFY_ZIP = "src.runtime.publish_verify.verify_local_zip_feeds"
 
 
@@ -39,6 +44,12 @@ _VERIFY_ZIP = "src.runtime.publish_verify.verify_local_zip_feeds"
 # ---------------------------------------------------------------------------
 
 _SENTINEL = object()
+
+
+@pytest.fixture(autouse=True)
+def _patch_prediction_stage_by_default():
+    with patch(_VERIFY_PREDICTION, return_value=_ok_stage("prediction")):
+        yield
 
 
 def _ok_stage(name: str, checked: int = 3) -> PublishVerifyStageResult:
@@ -56,12 +67,13 @@ def _warning_stage(name: str, message: str = "warn") -> PublishVerifyStageResult
 
 
 def _all_ok():
-    """Return patch context managers that make all five callables succeed."""
+    """Return patch context managers that make all six callables succeed."""
     return (
         patch(_VERIFY_MANIFEST, return_value=_ok_stage("manifest")),
         patch(_LOAD_MANIFEST, return_value=(_SENTINEL, "")),
         patch(_VERIFY_PROFILES, return_value=_ok_stage("profiles")),
         patch(_VERIFY_EVIDENCE, return_value=_ok_stage("evidence")),
+        patch(_VERIFY_ONTOLOGY, return_value=_ok_stage("ontology")),
         patch(_VERIFY_ZIP, return_value=_ok_stage("zip")),
     )
 
@@ -78,27 +90,29 @@ class TestVerifyLocalPublishShape:
             patch(_LOAD_MANIFEST, return_value=(_SENTINEL, "")),
             patch(_VERIFY_PROFILES, return_value=_ok_stage("profiles")),
             patch(_VERIFY_EVIDENCE, return_value=_ok_stage("evidence")),
+            patch(_VERIFY_ONTOLOGY, return_value=_ok_stage("ontology")),
             patch(_VERIFY_ZIP, return_value=_ok_stage("zip")),
         ):
             result = verify_local_publish(tmp_path)
 
         assert isinstance(result, PublishVerifyResult)
 
-    def test_stages_tuple_has_four_entries(self, tmp_path: Path) -> None:
+    def test_stages_tuple_has_six_entries(self, tmp_path: Path) -> None:
         with (
             patch(_VERIFY_MANIFEST, return_value=_ok_stage("manifest")),
             patch(_LOAD_MANIFEST, return_value=(_SENTINEL, "")),
             patch(_VERIFY_PROFILES, return_value=_ok_stage("profiles")),
             patch(_VERIFY_EVIDENCE, return_value=_ok_stage("evidence")),
+            patch(_VERIFY_ONTOLOGY, return_value=_ok_stage("ontology")),
             patch(_VERIFY_ZIP, return_value=_ok_stage("zip")),
         ):
             result = verify_local_publish(tmp_path)
 
-        assert len(result.stages) == 4
+        assert len(result.stages) == 6
 
 
 # ---------------------------------------------------------------------------
-# Stage order is manifest -> profiles -> evidence -> zip
+# Stage order is manifest -> profiles -> evidence -> ontology -> prediction -> zip
 # ---------------------------------------------------------------------------
 
 
@@ -109,16 +123,25 @@ class TestVerifyLocalPublishStageOrder:
             patch(_LOAD_MANIFEST, return_value=(_SENTINEL, "")),
             patch(_VERIFY_PROFILES, return_value=_ok_stage("profiles")),
             patch(_VERIFY_EVIDENCE, return_value=_ok_stage("evidence")),
+            patch(_VERIFY_ONTOLOGY, return_value=_ok_stage("ontology")),
             patch(_VERIFY_ZIP, return_value=_ok_stage("zip")),
         ):
             result = verify_local_publish(tmp_path)
 
-        assert [s.stage for s in result.stages] == ["manifest", "profiles", "evidence", "zip"]
+        assert [s.stage for s in result.stages] == [
+            "manifest",
+            "profiles",
+            "evidence",
+            "ontology",
+            "prediction",
+            "zip",
+        ]
 
     def test_stage_result_objects_are_preserved(self, tmp_path: Path) -> None:
         manifest_r = _ok_stage("manifest", checked=10)
         profiles_r = _ok_stage("profiles", checked=20)
         evidence_r = _ok_stage("evidence", checked=30)
+        ontology_r = _ok_stage("ontology", checked=35)
         zip_r = _ok_stage("zip", checked=40)
 
         with (
@@ -126,6 +149,7 @@ class TestVerifyLocalPublishStageOrder:
             patch(_LOAD_MANIFEST, return_value=(_SENTINEL, "")),
             patch(_VERIFY_PROFILES, return_value=profiles_r),
             patch(_VERIFY_EVIDENCE, return_value=evidence_r),
+            patch(_VERIFY_ONTOLOGY, return_value=ontology_r),
             patch(_VERIFY_ZIP, return_value=zip_r),
         ):
             result = verify_local_publish(tmp_path)
@@ -133,7 +157,9 @@ class TestVerifyLocalPublishStageOrder:
         assert result.stages[0] is manifest_r
         assert result.stages[1] is profiles_r
         assert result.stages[2] is evidence_r
-        assert result.stages[3] is zip_r
+        assert result.stages[3] is ontology_r
+        assert result.stages[4].stage == "prediction"
+        assert result.stages[5] is zip_r
 
 
 # ---------------------------------------------------------------------------
@@ -148,6 +174,7 @@ class TestVerifyLocalPublishCallArgs:
             patch(_LOAD_MANIFEST, return_value=(_SENTINEL, "")),
             patch(_VERIFY_PROFILES, return_value=_ok_stage("profiles")),
             patch(_VERIFY_EVIDENCE, return_value=_ok_stage("evidence")),
+            patch(_VERIFY_ONTOLOGY, return_value=_ok_stage("ontology")),
             patch(_VERIFY_ZIP, return_value=_ok_stage("zip")),
         ):
             verify_local_publish(tmp_path)
@@ -160,6 +187,7 @@ class TestVerifyLocalPublishCallArgs:
             patch(_LOAD_MANIFEST, return_value=(_SENTINEL, "")) as m,
             patch(_VERIFY_PROFILES, return_value=_ok_stage("profiles")),
             patch(_VERIFY_EVIDENCE, return_value=_ok_stage("evidence")),
+            patch(_VERIFY_ONTOLOGY, return_value=_ok_stage("ontology")),
             patch(_VERIFY_ZIP, return_value=_ok_stage("zip")),
         ):
             verify_local_publish(tmp_path)
@@ -173,6 +201,7 @@ class TestVerifyLocalPublishCallArgs:
             patch(_LOAD_MANIFEST, return_value=(sentinel, "")),
             patch(_VERIFY_PROFILES, return_value=_ok_stage("profiles")) as m,
             patch(_VERIFY_EVIDENCE, return_value=_ok_stage("evidence")),
+            patch(_VERIFY_ONTOLOGY, return_value=_ok_stage("ontology")),
             patch(_VERIFY_ZIP, return_value=_ok_stage("zip")),
         ):
             verify_local_publish(tmp_path)
@@ -186,6 +215,21 @@ class TestVerifyLocalPublishCallArgs:
             patch(_LOAD_MANIFEST, return_value=(sentinel, "")),
             patch(_VERIFY_PROFILES, return_value=_ok_stage("profiles")),
             patch(_VERIFY_EVIDENCE, return_value=_ok_stage("evidence")) as m,
+            patch(_VERIFY_ONTOLOGY, return_value=_ok_stage("ontology")),
+            patch(_VERIFY_ZIP, return_value=_ok_stage("zip")),
+        ):
+            verify_local_publish(tmp_path)
+
+        m.assert_called_once_with(tmp_path, sentinel)
+
+    def test_loaded_manifest_passed_to_ontology_verifier(self, tmp_path: Path) -> None:
+        sentinel = object()
+        with (
+            patch(_VERIFY_MANIFEST, return_value=_ok_stage("manifest")),
+            patch(_LOAD_MANIFEST, return_value=(sentinel, "")),
+            patch(_VERIFY_PROFILES, return_value=_ok_stage("profiles")),
+            patch(_VERIFY_EVIDENCE, return_value=_ok_stage("evidence")),
+            patch(_VERIFY_ONTOLOGY, return_value=_ok_stage("ontology")) as m,
             patch(_VERIFY_ZIP, return_value=_ok_stage("zip")),
         ):
             verify_local_publish(tmp_path)
@@ -199,6 +243,7 @@ class TestVerifyLocalPublishCallArgs:
             patch(_LOAD_MANIFEST, return_value=(sentinel, "")),
             patch(_VERIFY_PROFILES, return_value=_ok_stage("profiles")),
             patch(_VERIFY_EVIDENCE, return_value=_ok_stage("evidence")),
+            patch(_VERIFY_ONTOLOGY, return_value=_ok_stage("ontology")),
             patch(_VERIFY_ZIP, return_value=_ok_stage("zip")) as m,
         ):
             verify_local_publish(tmp_path)
@@ -220,18 +265,26 @@ class TestVerifyLocalPublishManifestUnavailable:
             patch(_LOAD_MANIFEST, return_value=(None, self._REASON)),
             patch(_VERIFY_PROFILES, return_value=_ok_stage("profiles")),
             patch(_VERIFY_EVIDENCE, return_value=_ok_stage("evidence")),
+            patch(_VERIFY_ONTOLOGY, return_value=_ok_stage("ontology")),
             patch(_VERIFY_ZIP, return_value=_ok_stage("zip")),
         ):
             result = verify_local_publish(tmp_path)
         return result
 
-    def test_still_returns_four_stages_when_manifest_missing(self, tmp_path: Path) -> None:
+    def test_still_returns_six_stages_when_manifest_missing(self, tmp_path: Path) -> None:
         result = self._run_no_manifest(tmp_path)
-        assert len(result.stages) == 4
+        assert len(result.stages) == 6
 
     def test_stage_order_preserved_when_manifest_missing(self, tmp_path: Path) -> None:
         result = self._run_no_manifest(tmp_path)
-        assert [s.stage for s in result.stages] == ["manifest", "profiles", "evidence", "zip"]
+        assert [s.stage for s in result.stages] == [
+            "manifest",
+            "profiles",
+            "evidence",
+            "ontology",
+            "prediction",
+            "zip",
+        ]
 
     def test_profiles_stage_is_error_when_manifest_missing(self, tmp_path: Path) -> None:
         result = self._run_no_manifest(tmp_path)
@@ -243,7 +296,7 @@ class TestVerifyLocalPublishManifestUnavailable:
 
     def test_zip_stage_is_error_when_manifest_missing(self, tmp_path: Path) -> None:
         result = self._run_no_manifest(tmp_path)
-        assert not result.stages[3].ok
+        assert not result.stages[5].ok
 
     def test_downstream_verifiers_not_called_when_manifest_missing(self, tmp_path: Path) -> None:
         with (
@@ -251,12 +304,16 @@ class TestVerifyLocalPublishManifestUnavailable:
             patch(_LOAD_MANIFEST, return_value=(None, self._REASON)),
             patch(_VERIFY_PROFILES, return_value=_ok_stage("profiles")) as m_prof,
             patch(_VERIFY_EVIDENCE, return_value=_ok_stage("evidence")) as m_ev,
+            patch(_VERIFY_ONTOLOGY, return_value=_ok_stage("ontology")) as m_ont,
+            patch(_VERIFY_PREDICTION, return_value=_ok_stage("prediction")) as m_pred,
             patch(_VERIFY_ZIP, return_value=_ok_stage("zip")) as m_zip,
         ):
             verify_local_publish(tmp_path)
 
         m_prof.assert_not_called()
         m_ev.assert_not_called()
+        m_ont.assert_not_called()
+        m_pred.assert_not_called()
         m_zip.assert_not_called()
 
     def test_aggregate_not_ok_when_manifest_missing(self, tmp_path: Path) -> None:
@@ -281,6 +338,7 @@ class TestVerifyLocalPublishOkFlag:
             patch(_LOAD_MANIFEST, return_value=(_SENTINEL, "")),
             patch(_VERIFY_PROFILES, return_value=_ok_stage("profiles")),
             patch(_VERIFY_EVIDENCE, return_value=_ok_stage("evidence")),
+            patch(_VERIFY_ONTOLOGY, return_value=_ok_stage("ontology")),
             patch(_VERIFY_ZIP, return_value=_ok_stage("zip")),
         ):
             result = verify_local_publish(tmp_path)
@@ -293,6 +351,7 @@ class TestVerifyLocalPublishOkFlag:
             patch(_LOAD_MANIFEST, return_value=(_SENTINEL, "")),
             patch(_VERIFY_PROFILES, return_value=_ok_stage("profiles")),
             patch(_VERIFY_EVIDENCE, return_value=_ok_stage("evidence")),
+            patch(_VERIFY_ONTOLOGY, return_value=_ok_stage("ontology")),
             patch(_VERIFY_ZIP, return_value=_ok_stage("zip")),
         ):
             result = verify_local_publish(tmp_path)
@@ -305,6 +364,7 @@ class TestVerifyLocalPublishOkFlag:
             patch(_LOAD_MANIFEST, return_value=(_SENTINEL, "")),
             patch(_VERIFY_PROFILES, return_value=_ok_stage("profiles")),
             patch(_VERIFY_EVIDENCE, return_value=_ok_stage("evidence")),
+            patch(_VERIFY_ONTOLOGY, return_value=_ok_stage("ontology")),
             patch(_VERIFY_ZIP, return_value=_error_stage("zip")),
         ):
             result = verify_local_publish(tmp_path)
@@ -317,6 +377,7 @@ class TestVerifyLocalPublishOkFlag:
             patch(_LOAD_MANIFEST, return_value=(_SENTINEL, "")),
             patch(_VERIFY_PROFILES, return_value=_warning_stage("profiles")),
             patch(_VERIFY_EVIDENCE, return_value=_ok_stage("evidence")),
+            patch(_VERIFY_ONTOLOGY, return_value=_warning_stage("ontology")),
             patch(_VERIFY_ZIP, return_value=_ok_stage("zip")),
         ):
             result = verify_local_publish(tmp_path)
@@ -336,11 +397,12 @@ class TestVerifyLocalPublishAggregateCounts:
             patch(_LOAD_MANIFEST, return_value=(_SENTINEL, "")),
             patch(_VERIFY_PROFILES, return_value=_ok_stage("profiles", checked=10)),
             patch(_VERIFY_EVIDENCE, return_value=_ok_stage("evidence", checked=15)),
+            patch(_VERIFY_ONTOLOGY, return_value=_ok_stage("ontology", checked=2)),
             patch(_VERIFY_ZIP, return_value=_ok_stage("zip", checked=20)),
         ):
             result = verify_local_publish(tmp_path)
 
-        assert result.total_checked == 50
+        assert result.total_checked == 55
 
     def test_total_errors_sums_across_stages(self, tmp_path: Path) -> None:
         with (
@@ -348,6 +410,7 @@ class TestVerifyLocalPublishAggregateCounts:
             patch(_LOAD_MANIFEST, return_value=(_SENTINEL, "")),
             patch(_VERIFY_PROFILES, return_value=_error_stage("profiles")),
             patch(_VERIFY_EVIDENCE, return_value=_ok_stage("evidence")),
+            patch(_VERIFY_ONTOLOGY, return_value=_ok_stage("ontology")),
             patch(_VERIFY_ZIP, return_value=_ok_stage("zip")),
         ):
             result = verify_local_publish(tmp_path)
@@ -360,11 +423,12 @@ class TestVerifyLocalPublishAggregateCounts:
             patch(_LOAD_MANIFEST, return_value=(_SENTINEL, "")),
             patch(_VERIFY_PROFILES, return_value=_ok_stage("profiles")),
             patch(_VERIFY_EVIDENCE, return_value=_warning_stage("evidence")),
+            patch(_VERIFY_ONTOLOGY, return_value=_warning_stage("ontology")),
             patch(_VERIFY_ZIP, return_value=_ok_stage("zip")),
         ):
             result = verify_local_publish(tmp_path)
 
-        assert result.total_warnings == 2
+        assert result.total_warnings == 3
 
     def test_all_issues_in_stage_order(self, tmp_path: Path) -> None:
         with (
@@ -372,6 +436,7 @@ class TestVerifyLocalPublishAggregateCounts:
             patch(_LOAD_MANIFEST, return_value=(_SENTINEL, "")),
             patch(_VERIFY_PROFILES, return_value=_ok_stage("profiles")),
             patch(_VERIFY_EVIDENCE, return_value=_warning_stage("evidence", "e-warn")),
+            patch(_VERIFY_ONTOLOGY, return_value=_ok_stage("ontology")),
             patch(_VERIFY_ZIP, return_value=_error_stage("zip", "z-err")),
         ):
             result = verify_local_publish(tmp_path)
@@ -397,6 +462,7 @@ class TestVerifyLocalPublishStageLookup:
             patch(_LOAD_MANIFEST, return_value=(_SENTINEL, "")),
             patch(_VERIFY_PROFILES, return_value=_ok_stage("profiles")),
             patch(_VERIFY_EVIDENCE, return_value=evidence_r),
+            patch(_VERIFY_ONTOLOGY, return_value=_ok_stage("ontology")),
             patch(_VERIFY_ZIP, return_value=_ok_stage("zip")),
         ):
             result = verify_local_publish(tmp_path)
@@ -409,6 +475,7 @@ class TestVerifyLocalPublishStageLookup:
             patch(_LOAD_MANIFEST, return_value=(_SENTINEL, "")),
             patch(_VERIFY_PROFILES, return_value=_ok_stage("profiles")),
             patch(_VERIFY_EVIDENCE, return_value=_ok_stage("evidence")),
+            patch(_VERIFY_ONTOLOGY, return_value=_ok_stage("ontology")),
             patch(_VERIFY_ZIP, return_value=_ok_stage("zip")),
         ):
             result = verify_local_publish(tmp_path)

@@ -161,9 +161,7 @@ class TestDbWiring:
     def test_passes_chamber_to_fetch(self, tmp_path):
         conn = MagicMock()
         with patch(_FETCH, return_value=[]) as mock_fetch:
-            load_unparsed_disclosure_artifacts(
-                conn, local_root=tmp_path, chamber="senate"
-            )
+            load_unparsed_disclosure_artifacts(conn, local_root=tmp_path, chamber="senate")
         _, kwargs = mock_fetch.call_args
         assert kwargs.get("chamber") == "senate"
 
@@ -219,3 +217,19 @@ class TestMissingFile:
         with patch(_FETCH, return_value=[_SENATE_ROW, _HOUSE_ROW]):
             with pytest.raises(FileNotFoundError, match="DOC1.pdf"):
                 load_unparsed_disclosure_artifacts(conn, local_root=tmp_path)
+
+
+class TestPathConfinement:
+    def test_rejects_symlink_escape_before_reading_artifact(self, tmp_path: Path):
+        root = tmp_path / "root"
+        outside = tmp_path / "outside"
+        outside_file = outside / "senate" / "2024" / "S000001" / "DOC1.pdf"
+        outside_file.parent.mkdir(parents=True)
+        outside_file.write_bytes(_PDF_BYTES)
+        root.mkdir()
+        (root / "disclosures").symlink_to(outside, target_is_directory=True)
+
+        conn = MagicMock()
+        with patch(_FETCH, return_value=[_SENATE_ROW]):
+            with pytest.raises(ValueError, match="storage_uri"):
+                load_unparsed_disclosure_artifacts(conn, local_root=root)

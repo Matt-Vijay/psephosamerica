@@ -3,12 +3,14 @@
 Pure models/helpers only — no filesystem or DB I/O.
 
 A roundtrip check walks the full DB→publish pipeline and confirms that
-each output stage produced coherent, non-empty artefacts.  Five named
+each output stage produced coherent, non-empty artefacts.  Seven named
 stages are defined:
 
     snapshot   – the snapshot row and manifest were written correctly
     profiles   – per-member profile JSON was emitted for every member
     evidence   – evidence-card JSON was emitted for every card
+    ontology   – ontology graph JSON matches canonical ontology DB rows
+    prediction – prediction/simulation JSON matches DB-derived inputs
     zip        – per-ZIP feed JSON was emitted for every mapped ZIP
     homepage   – the homepage/feed JSON matches the read model
     lookup     – the compact current-member lookup matches member profiles
@@ -30,7 +32,16 @@ from typing import Literal
 IssueSeverity = Literal["error", "warning"]
 
 # Ordered stage names for the publish roundtrip pipeline.
-ROUNDTRIP_STAGES = ("snapshot", "profiles", "evidence", "zip", "homepage", "lookup")
+ROUNDTRIP_STAGES = (
+    "snapshot",
+    "profiles",
+    "evidence",
+    "ontology",
+    "prediction",
+    "zip",
+    "homepage",
+    "lookup",
+)
 
 
 # ---------------------------------------------------------------------------

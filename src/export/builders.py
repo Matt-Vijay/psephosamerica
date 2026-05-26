@@ -61,7 +61,12 @@ def _normalize_source_anchors(anchors: list[SourceAnchor]) -> list[SourceAnchor]
             best_by_identity[identity] = anchor
             continue
 
-        existing_key = (existing.url is None, -len(existing.label), existing.label, existing.url or "")
+        existing_key = (
+            existing.url is None,
+            -len(existing.label),
+            existing.label,
+            existing.url or "",
+        )
         candidate_key = (anchor.url is None, -len(anchor.label), anchor.label, anchor.url or "")
         if candidate_key < existing_key:
             best_by_identity[identity] = anchor
@@ -86,15 +91,17 @@ def build_evidence_card(
         )
         for b in raw_blocks
     ]
-    anchors = _normalize_source_anchors([
-        SourceAnchor(
-            source_type=_req(s, "source_type", "source"),
-            source_id=_req(s, "source_id", "source"),
-            url=s.get("url"),
-            label=_req(s, "label", "source"),
-        )
-        for s in source_rows
-    ])
+    anchors = _normalize_source_anchors(
+        [
+            SourceAnchor(
+                source_type=_req(s, "source_type", "source"),
+                source_id=_req(s, "source_id", "source"),
+                url=s.get("url"),
+                label=_req(s, "label", "source"),
+            )
+            for s in source_rows
+        ]
+    )
     return EvidenceCardPayload(
         evidence_card_id=_req(rule_fire, "evidence_card_id", "rule_fire"),
         member_bioguide_id=_req(member, "bioguide_id", "member"),
@@ -226,7 +233,9 @@ def _validate_manifest_entries(entries: list[ManifestEntry]) -> None:
 
     for entry in entries:
         if not _is_confined(entry.path):
-            raise ValueError(f"manifest entry path must stay confined to publish root: {entry.path!r}")
+            raise ValueError(
+                f"manifest entry path must stay confined to publish root: {entry.path!r}"
+            )
         if entry.path in seen_paths:
             duplicate_paths.add(entry.path)
         seen_paths.add(entry.path)

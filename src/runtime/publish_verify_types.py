@@ -1,8 +1,8 @@
 """Typed contracts for publish verification results.
 
 Pure models only — no filesystem I/O.  Each published snapshot passes through
-four named stages (manifest, profiles, evidence, zip); these types surface
-counts and ok/failure state at both the stage and aggregate levels.
+six named stages (manifest, profiles, evidence, ontology, prediction, zip); these
+types surface counts and ok/failure state at both the stage and aggregate levels.
 """
 
 from __future__ import annotations
@@ -19,7 +19,7 @@ from typing import Literal
 IssueSeverity = Literal["error", "warning"]
 
 # Valid stage names for the publish verification pipeline.
-PUBLISH_STAGES = ("manifest", "profiles", "evidence", "zip")
+PUBLISH_STAGES = ("manifest", "profiles", "evidence", "ontology", "prediction", "zip")
 
 
 def path_is_confined(path: str) -> bool:
@@ -41,7 +41,7 @@ class PublishVerifyIssue:
     """A single problem found during one verification stage.
 
     Attributes:
-        stage:    Which stage produced this issue (manifest/profiles/evidence/zip).
+        stage:    Which stage produced this issue.
         message:  Human-readable description of the problem.
         severity: "error" blocks ok; "warning" is informational only.
         path:     Relative path within the publish tree, when applicable.
@@ -63,7 +63,7 @@ class PublishVerifyStageResult:
     """Verification outcome for one named stage.
 
     Attributes:
-        stage:   Stage name (e.g. "manifest", "profiles", "evidence", "zip").
+        stage:   Stage name (e.g. "manifest", "profiles", "evidence", "ontology", "prediction", "zip").
         checked: Number of individual items inspected (files, entries, etc.).
         issues:  All issues raised during this stage.
     """

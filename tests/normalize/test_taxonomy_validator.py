@@ -39,24 +39,32 @@ class TestSectorsYaml:
 
     def test_duplicate_sector_id_detected(self, tmp_path: Path) -> None:
         p = tmp_path / "sectors.yaml"
-        p.write_text(yaml.dump({
-            "version": 1,
-            "taxonomy_name": "test",
-            "sectors": [
-                {"sector_id": "a", "label": "A", "description": "A"},
-                {"sector_id": "a", "label": "B", "description": "B"},
-            ],
-        }))
+        p.write_text(
+            yaml.dump(
+                {
+                    "version": 1,
+                    "taxonomy_name": "test",
+                    "sectors": [
+                        {"sector_id": "a", "label": "A", "description": "A"},
+                        {"sector_id": "a", "label": "B", "description": "B"},
+                    ],
+                }
+            )
+        )
         _, errors = validate_sectors_yaml(p)
         assert any("Duplicate" in e.message for e in errors)
 
     def test_missing_required_field(self, tmp_path: Path) -> None:
         p = tmp_path / "sectors.yaml"
-        p.write_text(yaml.dump({
-            "version": 1,
-            "taxonomy_name": "test",
-            "sectors": [{"sector_id": "a", "label": "A"}],
-        }))
+        p.write_text(
+            yaml.dump(
+                {
+                    "version": 1,
+                    "taxonomy_name": "test",
+                    "sectors": [{"sector_id": "a", "label": "A"}],
+                }
+            )
+        )
         _, errors = validate_sectors_yaml(p)
         assert any("description" in e.message for e in errors)
 
@@ -80,19 +88,23 @@ class TestCommitteeSectorMap:
 
     def test_unknown_sector_id_detected(self, tmp_path: Path) -> None:
         p = tmp_path / "map.csv"
-        p.write_text(textwrap.dedent("""\
+        p.write_text(
+            textwrap.dedent("""\
             congress,chamber,committee_name,subcommittee_name,sector_id,mapping_tier,jurisdiction_basis,basis_source,notes
             119,House,Test,,bogus_sector,deterministic,test basis,src,
-        """))
+        """)
+        )
         errors = validate_committee_sector_map(p, {"agriculture_food"})
         assert any("bogus_sector" in e.message for e in errors)
 
     def test_invalid_tier_detected(self, tmp_path: Path) -> None:
         p = tmp_path / "map.csv"
-        p.write_text(textwrap.dedent("""\
+        p.write_text(
+            textwrap.dedent("""\
             congress,chamber,committee_name,subcommittee_name,sector_id,mapping_tier,jurisdiction_basis,basis_source,notes
             119,House,Test,,agriculture_food,maybe,test basis,src,
-        """))
+        """)
+        )
         errors = validate_committee_sector_map(p, {"agriculture_food"})
         assert any("maybe" in e.message for e in errors)
 
@@ -104,10 +116,12 @@ class TestCommitteeSectorMap:
 
     def test_empty_jurisdiction_basis_detected(self, tmp_path: Path) -> None:
         p = tmp_path / "map.csv"
-        p.write_text(textwrap.dedent("""\
+        p.write_text(
+            textwrap.dedent("""\
             congress,chamber,committee_name,subcommittee_name,sector_id,mapping_tier,jurisdiction_basis,basis_source,notes
             119,House,Test,,agriculture_food,deterministic,,src,
-        """))
+        """)
+        )
         errors = validate_committee_sector_map(p, {"agriculture_food"})
         assert any("jurisdiction_basis" in e.message for e in errors)
 
@@ -118,17 +132,17 @@ class TestCommitteeSectorMap:
 class TestCrpCrosswalk:
     def test_real_file_passes(self, data_root: Path) -> None:
         sector_ids, _ = validate_sectors_yaml(data_root / "taxonomy" / "sectors.yaml")
-        errors = validate_crp_crosswalk(
-            data_root / "crosswalks" / "crp_to_sector.csv", sector_ids
-        )
+        errors = validate_crp_crosswalk(data_root / "crosswalks" / "crp_to_sector.csv", sector_ids)
         assert errors == [], [repr(e) for e in errors]
 
     def test_unknown_sector_id_detected(self, tmp_path: Path) -> None:
         p = tmp_path / "crp.csv"
-        p.write_text(textwrap.dedent("""\
+        p.write_text(
+            textwrap.dedent("""\
             crp_category,crp_label,sector_id,mapping_tier,notes
             test,Test,nonexistent,deterministic,
-        """))
+        """)
+        )
         errors = validate_crp_crosswalk(p, {"agriculture_food"})
         assert any("nonexistent" in e.message for e in errors)
 

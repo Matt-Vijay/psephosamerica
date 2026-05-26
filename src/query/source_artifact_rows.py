@@ -20,7 +20,9 @@ _DISCLOSURE_SLUGS = (_HOUSE_SLUG, _SENATE_SLUG)
 
 # Chamber is a function of the data_source portal, not a stored column on
 # source_artifact.  The CASE expression makes that derivation explicit.
-_CHAMBER_CASE = "CASE ds.slug WHEN 'house-disclosures' THEN 'house' WHEN 'senate-disclosures' THEN 'senate' END"
+_CHAMBER_CASE = (
+    "CASE ds.slug WHEN 'house-disclosures' THEN 'house' WHEN 'senate-disclosures' THEN 'senate' END"
+)
 
 _SELECT_COLS = f"""
     sa.id,

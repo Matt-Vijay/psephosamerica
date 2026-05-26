@@ -26,9 +26,7 @@ from src.ingest.fec.transform import (
 
 _TABLE_FEC_COMMITTEE = "fec_committee"
 _TABLE_CONTRIBUTION = "contribution"
-# Not a canonical DB table — write/entity-resolution layer consumes these
-# rows to populate match_decision or drive bioguide_id lookups.
-_TABLE_LINKAGE_HINT = "_fec_linkage_hint"
+_TABLE_CANDIDATE_COMMITTEE_LINKAGE = "fec_candidate_committee_linkage"
 
 
 def plan_fec_committees(
@@ -63,15 +61,22 @@ def plan_contributions(
 def plan_linkage_hints(
     records: Iterable[CandidateCommitteeLinkage],
 ) -> dict[str, Any]:
-    """Hint batch for unresolved candidate-committee linkages.
-    Member resolution is NOT performed here — that is the entity-resolution layer.
+    """Canonical FEC candidate-committee linkage rows.
+
+    Member resolution is NOT performed here. The persisted linkage lets later
+    ontology queries attribute committee receipts to members by fec_candidate_id.
     """
     rows = [linkage_to_row(r) for r in records]
     return {
-        "table": _TABLE_LINKAGE_HINT,
+        "table": _TABLE_CANDIDATE_COMMITTEE_LINKAGE,
         "rows": rows,
-        "conflict_columns": ["fec_candidate_id", "fec_committee_id"],
-        "mode": "hints",
+        "conflict_columns": [
+            "fec_candidate_id",
+            "fec_committee_id",
+            "election_year",
+            "linkage_type",
+        ],
+        "mode": "upsert",
     }
 
 
@@ -85,7 +90,7 @@ def plan_fec_load(
     Execute in list order:
       1. fec_committee — no FK dependencies within this batch
       2. contribution  — FK into fec_committee; must follow committee rows
-      3. linkage hints — no canonical-schema FK; resolution happens later
+      3. FEC candidate-committee linkage — FK into fec_committee
     """
     return [
         plan_fec_committees(committees),

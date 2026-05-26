@@ -6,6 +6,7 @@ import pytest
 
 from src.export.contracts import MemberProfilePayload
 from src.identity.current_member_lookup import (
+    CurrentMemberLookupPayload,
     build_current_member_lookup,
     normalize_lookup_name,
     search_current_member_lookup,
@@ -74,6 +75,15 @@ def test_build_current_member_lookup_emits_compact_alias_contract() -> None:
             }
         ],
     }
+
+
+def test_current_member_lookup_rejects_boolean_version() -> None:
+    with pytest.raises(ValueError, match="version must be an integer"):
+        CurrentMemberLookupPayload(
+            version=True,
+            snapshot_date=_SNAPSHOT_DATE,
+            members=[],
+        )
 
 
 def test_build_current_member_lookup_is_sorted_deterministically() -> None:
@@ -175,9 +185,7 @@ def test_validate_current_member_lookup_rejects_stale_search_name() -> None:
     )
     stale = payload.model_copy(
         update={
-            "members": [
-                payload.members[0].model_copy(update={"search_name": "stale lookup name"})
-            ]
+            "members": [payload.members[0].model_copy(update={"search_name": "stale lookup name"})]
         }
     )
 

@@ -32,8 +32,8 @@ class DisclosureHeaderIdentity:
 
     last_name: str
     first_name: str
-    chamber: str         # 'house' | 'senate'
-    state: str           # 2-char abbreviation (e.g. 'CA')
+    chamber: str  # 'house' | 'senate'
+    state: str  # 2-char abbreviation (e.g. 'CA')
     district: Optional[int] = None  # House only; None for Senate
 
 
@@ -123,7 +123,7 @@ class NoMatch:
 @dataclass(frozen=True)
 class Ambiguous:
     identity: DisclosureHeaderIdentity
-    candidates: tuple[str, ...]   # bioguide_ids of all matching members
+    candidates: tuple[str, ...]  # bioguide_ids of all matching members
 
 
 ResolutionResult = Union[Resolved, NoMatch, Ambiguous]
@@ -167,7 +167,8 @@ def resolve_disclosure_member(
 
     # Step 1 — narrow by geographic location + chamber
     location_matches = [
-        row for row in member_rows
+        row
+        for row in member_rows
         if _norm(row.get("chamber") or "") == chamber.upper()
         and _norm(row.get("state") or "") == state
         and row.get("district") == district
@@ -178,8 +179,7 @@ def resolve_disclosure_member(
 
     # Step 2 — narrow by last_name (case-insensitive)
     last_matches = [
-        row for row in location_matches
-        if _norm(row.get("last_name") or "") == target_last
+        row for row in location_matches if _norm(row.get("last_name") or "") == target_last
     ]
 
     if not last_matches:
@@ -192,8 +192,7 @@ def resolve_disclosure_member(
     target_first = _first_token(identity.first_name)
     if target_first:
         first_matches = [
-            row for row in last_matches
-            if _first_token(row.get("first_name") or "") == target_first
+            row for row in last_matches if _first_token(row.get("first_name") or "") == target_first
         ]
         if len(first_matches) == 1:
             return Resolved(bioguide_id=first_matches[0]["bioguide_id"], identity=identity)

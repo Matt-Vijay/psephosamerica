@@ -17,6 +17,7 @@ inline content.
 
 Flow under test: validate → stage → parse inputs → parse → transform → load
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -78,7 +79,7 @@ def _house_bundle_dict(sha256: str = _SHA256) -> dict:
                 "filing_year": 2024,
                 "storage_uri": _HOUSE_STORAGE_URI,
                 "source_url": (
-                    "https://disclosures.house.gov/public_disc/ptr-pdfs/2024/12345.pdf"
+                    "https://disclosures.house.gov/public_disc/financial-pdfs/2024/12345.pdf"
                 ),
                 "source_slug": "house_disclosures",
                 "artifact_kind": "pdf",
@@ -106,9 +107,7 @@ def _senate_bundle_dict(sha256: str = _SHA256) -> dict:
                 "chamber": "senate",
                 "filing_year": 2023,
                 "storage_uri": _SENATE_STORAGE_URI,
-                "source_url": (
-                    "https://efdsearch.senate.gov/search/view/paper/uuid-xyz/"
-                ),
+                "source_url": ("https://efdsearch.senate.gov/search/view/paper/uuid-xyz/"),
                 "source_slug": "senate_disclosures",
                 "artifact_kind": "pdf",
                 "sha256": sha256,
@@ -406,32 +405,17 @@ class TestBundleProcessSha256E2E:
         # parse_session must not have been called — sha256 aborted first
         mocks["parse_session"].assert_not_called()
 
-    def test_local_root_none_uses_absolute_bundle_storage_uri(self, tmp_path):
-        """When the bundle already carries a resolvable artifact path, parse inputs
-        are built explicitly even with local_root=None.
-        """
+    def test_absolute_bundle_storage_uri_rejected(self, tmp_path):
+        """Bundle storage paths stay confined to the artifact root."""
         artifact_path = tmp_path / "house" / "2024" / "12345.pdf"
         artifact_path.parent.mkdir(parents=True, exist_ok=True)
         artifact_path.write_bytes(_STUB_BYTES)
 
         bundle_dict = _house_bundle_dict()
         bundle_dict["artifacts"][0]["storage_uri"] = str(artifact_path)
-        bundle = disclosures_bundle_from_dict(bundle_dict)
-        conn = MagicMock()
-        staged_row = _house_artifact_row()
-        staged_row["storage_uri"] = str(artifact_path)
 
-        with _E2EPatchContext(stage_result=_staged_result(staged_row)) as mocks:
-            with patch(_LOAD_UNPARSED, side_effect=AssertionError("db fallback not allowed")) as mock_load:
-                result = run_disclosures_bundle_process(
-                    conn,
-                    bundle,
-                    local_root=None,
-                )
-
-        assert isinstance(result, DisclosuresBundleProcessResult)
-        mocks["parse_session"].assert_called_once()
-        mock_load.assert_not_called()
+        with pytest.raises(ValueError, match="storage_uri"):
+            disclosures_bundle_from_dict(bundle_dict)
 
     def test_realistic_text_payload_sha256_passes(self, tmp_path):
         """Realistic text content (not a short stub) passes real SHA-256 verification."""
@@ -813,6 +797,7 @@ class TestMultiArtifactFixtureE2E:
         fixture = build_house_senate_fixture(tmp_path)
         bundle_json = fixture.bundle_json_path
         from src.runtime.disclosures_bundle import load_disclosures_bundle
+
         bundle = load_disclosures_bundle(bundle_json)
 
         assert len(bundle.artifacts) == 2
@@ -826,6 +811,7 @@ class TestMultiArtifactFixtureE2E:
     def test_two_artifact_fixture_index_rows_typed(self, tmp_path):
         fixture = build_house_senate_fixture(tmp_path)
         from src.runtime.disclosures_bundle import load_disclosures_bundle
+
         bundle = load_disclosures_bundle(fixture.bundle_json_path)
 
         house_entry = next(e for e in bundle.artifacts if e.chamber == "house")
@@ -837,6 +823,7 @@ class TestMultiArtifactFixtureE2E:
         """Both artifacts auto-built from the fixture pass real SHA-256 checks."""
         fixture = build_house_senate_fixture(tmp_path)
         from src.runtime.disclosures_bundle import load_disclosures_bundle
+
         bundle = load_disclosures_bundle(fixture.bundle_json_path)
 
         # Simulate staged rows for both artifacts.

@@ -59,12 +59,12 @@ class BundleArtifactSpec:
     """
 
     source_record_id: str
-    chamber: str           # "house" | "senate"
+    chamber: str  # "house" | "senate"
     filing_year: int
-    storage_uri: str       # relative path within local_root
+    storage_uri: str  # relative path within local_root
     source_url: str
     source_slug: str
-    index_row: dict[str, Any]   # raw index_row dict (chamber-specific fields)
+    index_row: dict[str, Any]  # raw index_row dict (chamber-specific fields)
     artifact_kind: str = "pdf"
     text_payload: bytes | None = None  # explicit content; None → placeholder
 
@@ -99,8 +99,8 @@ class DisclosureBundleFixture:
 
     bundle_json_path: Path
     local_root: Path
-    artifact_paths: dict[str, Path]     # source_record_id -> path
-    index_rows: list[dict[str, Any]]    # one per artifact, same order as specs
+    artifact_paths: dict[str, Path]  # source_record_id -> path
+    index_rows: list[dict[str, Any]]  # one per artifact, same order as specs
     sha256s: dict[str, str] = field(default_factory=dict)  # source_record_id -> hex
 
 
@@ -299,9 +299,7 @@ def make_senate_annual_text(
         "",
     ]
     if is_amended:
-        lines.append(
-            f"Amendment No. {amendment_number}" if amendment_number > 0 else "Amendment"
-        )
+        lines.append(f"Amendment No. {amendment_number}" if amendment_number > 0 else "Amendment")
         lines.append("")
     lines += [
         "PART III - ASSETS AND UNEARNED INCOME",
@@ -410,8 +408,9 @@ def make_house_spec(
     fixture closer to what real text-extraction would produce.
     """
     storage_uri = f"house/{filing_year}/{source_record_id}.pdf"
+    kind_path = "ptr-pdfs" if filing_kind == "ptr" else "financial-pdfs"
     source_url = (
-        f"https://disclosures.house.gov/public_disc/ptr-pdfs/"
+        f"https://disclosures.house.gov/public_disc/{kind_path}/"
         f"{filing_year}/{source_record_id}.pdf"
     )
     index_row: dict[str, Any] = {
@@ -482,9 +481,7 @@ def make_senate_spec(
     ``make_senate_annual_text`` rather than a short placeholder.
     """
     storage_uri = f"senate/{filing_year}/{source_record_id}.pdf"
-    source_url = (
-        f"https://efdsearch.senate.gov/search/view/paper/{source_record_id}/"
-    )
+    source_url = f"https://efdsearch.senate.gov/search/view/paper/{source_record_id}/"
     index_row: dict[str, Any] = {
         "first_name": first_name,
         "last_name": last_name,

@@ -39,7 +39,7 @@ FROM fec_committee
 """
 
 _FINANCIAL_DISCLOSURE_SQL = """
-SELECT id, member_id, filing_year, filing_type, amendment_number
+SELECT id, member_id, filing_year, filing_type, amendment_number, source_record_id
 FROM financial_disclosure
 """
 

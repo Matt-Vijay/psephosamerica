@@ -26,6 +26,7 @@ from pathlib import Path
 from typing import Any
 
 from src.pipeline.publish_snapshot_run import ZipBundleInputs
+from src.runtime.disclosures_bundle import DisclosuresBundle
 from src.runtime.congress_archive import run_congress_archive_load
 from src.runtime.congress_options import CongressLoadOptions
 from src.runtime.disclosures_bundle_process import (
@@ -50,6 +51,31 @@ def _required_source_slug(data_source: dict[str, Any]) -> str:
     if not isinstance(slug, str) or not slug:
         raise ValueError("runtime result is missing a data_source slug")
     return slug
+
+
+def _scope_disclosures_bundle(
+    bundle: Any,
+    *,
+    chamber: str | None,
+    limit: int | None,
+) -> DisclosuresBundle:
+    if not hasattr(bundle, "artifacts"):
+        raise TypeError(f"bundle must have an 'artifacts' attribute, got {type(bundle).__name__}")
+    artifacts = tuple(bundle.artifacts)
+    if chamber is not None:
+        artifacts = tuple(entry for entry in artifacts if entry.chamber == chamber)
+    if limit is not None:
+        artifacts = artifacts[:limit]
+    return DisclosuresBundle(artifacts=artifacts)
+
+
+def _partition_disclosures_bundle_by_source(
+    bundle: DisclosuresBundle,
+) -> list[DisclosuresBundle]:
+    grouped: dict[str, list[Any]] = {}
+    for entry in bundle.artifacts:
+        grouped.setdefault(entry.source_slug, []).append(entry)
+    return [DisclosuresBundle(artifacts=tuple(entries)) for entries in grouped.values()]
 
 
 # ---------------------------------------------------------------------------
@@ -125,11 +151,20 @@ def run_oracle_local(
     )
 
     # 2. Local disclosure process
-    disclosures_result: DisclosuresBundleProcessResult = run_disclosures_bundle_process(
-        conn,
+    scoped_disclosures_bundle = _scope_disclosures_bundle(
         disclosures_bundle,
-        local_root=options.artifact_root,
+        chamber=options.congress_options.chamber,
+        limit=options.congress_options.limit,
     )
+    disclosures_results: list[DisclosuresBundleProcessResult] = []
+    for partition in _partition_disclosures_bundle_by_source(scoped_disclosures_bundle):
+        disclosures_results.append(
+            run_disclosures_bundle_process(
+                conn,
+                partition,
+                local_root=options.artifact_root,
+            )
+        )
 
     # 3. Recompute
     recompute_result: RuntimeRecomputeResult = run_recompute_runtime(
@@ -158,21 +193,40 @@ def run_oracle_local(
     # 6. Roundtrip — DB→publish check; failures are included in the result, not raised
     roundtrip_result: PublishRoundtripResult = _run_roundtrip(conn, options.target_dir)
 
-    load_summary = disclosures_result.load_result.load_summary
+    disclosures_run_ids = [result.load_result.run_id for result in disclosures_results]
+    disclosures_source_slugs = [
+        _required_source_slug(result.load_result.data_source) for result in disclosures_results
+    ]
+    disclosures_parse_succeeded = sum(
+        result.parse_result.succeeded_count for result in disclosures_results
+    )
+    disclosures_parse_failed = sum(
+        result.parse_result.failed_count for result in disclosures_results
+    )
+    disclosures_transform_count = sum(result.transform_count for result in disclosures_results)
+    disclosures_total_written = sum(
+        result.load_result.load_summary.total_written for result in disclosures_results
+    )
+    disclosures_load_ok = all(result.load_result.load_summary.ok for result in disclosures_results)
 
     return LocalOracleRunResult(
         snapshot_id=options.resolved_snapshot_id(),
         congress=congress_summary,
         disclosures={
-            "run_id": disclosures_result.load_result.run_id,
-            "source_slug": disclosures_result.load_result.data_source.get("slug"),
+            "run_id": disclosures_run_ids[0] if len(disclosures_run_ids) == 1 else None,
+            "run_ids": disclosures_run_ids,
+            "source_slug": disclosures_source_slugs[0]
+            if len(disclosures_source_slugs) == 1
+            else None,
+            "source_slugs": disclosures_source_slugs,
             "requested_chamber": options.congress_options.chamber or "both",
             "artifact_limit": options.congress_options.limit,
-            "parse_succeeded": disclosures_result.parse_result.succeeded_count,
-            "parse_failed": disclosures_result.parse_result.failed_count,
-            "transform_count": disclosures_result.transform_count,
-            "total_written": load_summary.total_written,
-            "load_ok": load_summary.ok,
+            "processed_artifact_count": len(scoped_disclosures_bundle.artifacts),
+            "parse_succeeded": disclosures_parse_succeeded,
+            "parse_failed": disclosures_parse_failed,
+            "transform_count": disclosures_transform_count,
+            "total_written": disclosures_total_written,
+            "load_ok": disclosures_load_ok,
         },
         recompute={
             "run_id": recompute_result.run_id,
@@ -184,8 +238,10 @@ def run_oracle_local(
             "run_id": publish_result.run_id,
             "snapshot_id": publish_result.snapshot_id,
             "source_slug": publish_result.data_source.get("slug"),
+            "planned_count": publish_result.publish_result.planned_count,
             "written_count": publish_result.publish_result.written_count,
             "succeeded": publish_result.publish_result.succeeded,
+            "verification_failures": publish_result.publish_result.verification_failures,
             "zip_feeds_generated": False,
         },
         verify=verify_result,

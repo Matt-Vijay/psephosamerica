@@ -86,8 +86,7 @@ def _compare_payloads(
         if pub_val != rea_val:
             issues.append(
                 _issue(
-                    f"field '{field_name}' mismatch: "
-                    f"published={pub_val!r} db={rea_val!r}",
+                    f"field '{field_name}' mismatch: published={pub_val!r} db={rea_val!r}",
                     path=path,
                 )
             )
@@ -104,19 +103,12 @@ def _compare_payloads(
         )
 
     # source_anchors ─────────────────────────────────────────────────────────
-    pub_anchors = [
-        (a.source_type, a.source_id, a.url, a.label)
-        for a in published.source_anchors
-    ]
-    rea_anchors = [
-        (a.source_type, a.source_id, a.url, a.label)
-        for a in reassembled.source_anchors
-    ]
+    pub_anchors = [(a.source_type, a.source_id, a.url, a.label) for a in published.source_anchors]
+    rea_anchors = [(a.source_type, a.source_id, a.url, a.label) for a in reassembled.source_anchors]
     if pub_anchors != rea_anchors:
         issues.append(
             _issue(
-                f"source_anchors mismatch: "
-                f"published={pub_anchors!r} db={rea_anchors!r}",
+                f"source_anchors mismatch: published={pub_anchors!r} db={rea_anchors!r}",
                 path=path,
             )
         )
@@ -166,9 +158,7 @@ def verify_published_evidence_roundtrip(
 
     # Stage 2: fetch all DB rows in one query, index by public_id
     db_rows = fetch_all_evidence_card_rows(conn)
-    db_by_id: dict[str, dict[str, Any]] = {
-        row["public_id"]: row for row in db_rows
-    }
+    db_by_id: dict[str, dict[str, Any]] = {row["public_id"]: row for row in db_rows}
 
     issues: list[PublishRoundtripIssue] = []
     checked = 0
@@ -204,8 +194,7 @@ def verify_published_evidence_roundtrip(
         except Exception as exc:
             issues.append(
                 _issue(
-                    f"failed to assemble evidence card '{evidence_card_id}' "
-                    f"from DB: {exc}",
+                    f"failed to assemble evidence card '{evidence_card_id}' from DB: {exc}",
                     path=entry_path,
                 )
             )

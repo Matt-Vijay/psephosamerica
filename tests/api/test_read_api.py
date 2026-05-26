@@ -101,6 +101,7 @@ def _evidence_payload() -> EvidenceCardPayload:
             SourceAnchor(
                 source_type="financial_disclosure",
                 source_id="fd-99",
+                url="https://disclosures.house.gov/public_disc/ptr-pdfs/2024/fd-99.pdf",
                 label="2025 Annual Disclosure",
             )
         ],

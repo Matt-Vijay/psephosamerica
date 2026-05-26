@@ -16,6 +16,7 @@ classify_from_pages(pages, chamber, *, known_headers, **flags) -> ClassifyResult
     heuristic classifier — wiring repeated-header and noise-page detection
     without requiring the caller to assemble TextMetrics manually.
 """
+
 from __future__ import annotations
 
 from collections.abc import Sequence
@@ -147,8 +148,10 @@ def classify_from_pages(
         Fraction of pages a header token must appear on to be flagged as
         repeated.  Passed through to detect_repeated_headers.
     """
-    effective_known_headers = known_headers if known_headers is not None else (
-        _PTR_SECTION_HEADERS if is_ptr else _ANNUAL_SECTION_HEADERS
+    effective_known_headers = (
+        known_headers
+        if known_headers is not None
+        else (_PTR_SECTION_HEADERS if is_ptr else _ANNUAL_SECTION_HEADERS)
     )
 
     profile = build_document_profile(

@@ -182,9 +182,9 @@ class TestRowsToFeedEvents:
     def test_default_builder_matches_explicit_make_feed_event_id(self):
         rows = [_row("card-1", "alice-smith")]
         default_ev = rows_to_feed_events(rows, snapshot_date=_SNAP)[0]
-        explicit_ev = rows_to_feed_events(
-            rows, snapshot_date=_SNAP, id_builder=make_feed_event_id
-        )[0]
+        explicit_ev = rows_to_feed_events(rows, snapshot_date=_SNAP, id_builder=make_feed_event_id)[
+            0
+        ]
         assert default_ev.feed_event_id == explicit_ev.feed_event_id
 
 
@@ -260,14 +260,38 @@ class TestMemberMetaFromRows:
 class TestAssembleHomepagePayload:
     def _rows(self) -> list[dict[str, Any]]:
         return [
-            _row("card-a", "alice-smith", member_bioguide_id="A000001", score_delta=-30.0,
-                 rendered_at=dt.date(2025, 2, 25), chamber="house", party="D", state="CA"),
-            _row("card-b", "bob-jones", member_bioguide_id="B000002", score_delta=-15.0,
-                 rendered_at=dt.date(2025, 2, 20),
-                 member_full_name="Bob Jones", chamber="senate", party="R", state="TX"),
-            _row("card-c", "carol-lee", member_bioguide_id="C000003", score_delta=-5.0,
-                 rendered_at=None,
-                 member_full_name="Carol Lee", chamber="house", party="R", state="FL"),
+            _row(
+                "card-a",
+                "alice-smith",
+                member_bioguide_id="A000001",
+                score_delta=-30.0,
+                rendered_at=dt.date(2025, 2, 25),
+                chamber="house",
+                party="D",
+                state="CA",
+            ),
+            _row(
+                "card-b",
+                "bob-jones",
+                member_bioguide_id="B000002",
+                score_delta=-15.0,
+                rendered_at=dt.date(2025, 2, 20),
+                member_full_name="Bob Jones",
+                chamber="senate",
+                party="R",
+                state="TX",
+            ),
+            _row(
+                "card-c",
+                "carol-lee",
+                member_bioguide_id="C000003",
+                score_delta=-5.0,
+                rendered_at=None,
+                member_full_name="Carol Lee",
+                chamber="house",
+                party="R",
+                state="FL",
+            ),
         ]
 
     def test_returns_homepage_feed_payload(self):
@@ -316,8 +340,13 @@ class TestAssembleHomepagePayload:
 
     def test_dimension_filter_restricts_both_surfaces(self):
         rows = self._rows() + [
-            _row("card-other", "alice-smith", dimension="other_dim", score_delta=-99.0,
-                 rendered_at=dt.date(2025, 2, 28)),
+            _row(
+                "card-other",
+                "alice-smith",
+                dimension="other_dim",
+                score_delta=-99.0,
+                rendered_at=dt.date(2025, 2, 28),
+            ),
         ]
         result = assemble_homepage_payload(
             rows, snapshot_date=_SNAP, dimension="conflict_of_interest_risk"

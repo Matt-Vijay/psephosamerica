@@ -289,19 +289,27 @@ class TestRuntimeStatusDict:
     def test_exact_top_level_keys_with_artifacts(self):
         result = runtime_status_dict([], [], [], source_artifacts=[])
         assert set(result.keys()) == {
-            "ingestion_runs", "parse_runs", "data_sources", "source_artifacts", "summary",
+            "ingestion_runs",
+            "parse_runs",
+            "data_sources",
+            "source_artifacts",
+            "summary",
         }
 
     def test_exact_summary_keys_without_artifacts(self):
         result = runtime_status_dict([], [], [])
         assert set(result["summary"].keys()) == {
-            "ingestion_run_count", "parse_run_count", "data_source_count",
+            "ingestion_run_count",
+            "parse_run_count",
+            "data_source_count",
         }
 
     def test_exact_summary_keys_with_artifacts(self):
         result = runtime_status_dict([], [], [], source_artifacts=[])
         assert set(result["summary"].keys()) == {
-            "ingestion_run_count", "parse_run_count", "data_source_count",
+            "ingestion_run_count",
+            "parse_run_count",
+            "data_source_count",
             "source_artifact_count",
         }
 

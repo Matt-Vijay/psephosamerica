@@ -69,9 +69,7 @@ def _senate_index_path(archive_dir: Path, congress: int, session: int) -> Path:
     return archive_dir / "senate" / prefix / "vote_summary.xml"
 
 
-def _senate_vote_path(
-    archive_dir: Path, congress: int, session: int, vote_number: int
-) -> Path:
+def _senate_vote_path(archive_dir: Path, congress: int, session: int, vote_number: int) -> Path:
     prefix = f"vote{congress}{session}"
     filename = f"vote_{congress}_{session}_{vote_number:05d}.xml"
     return archive_dir / "senate" / prefix / filename

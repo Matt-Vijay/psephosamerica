@@ -184,9 +184,7 @@ def validate_one_to_one(records: Sequence[CrosswalkRecord]) -> List[MappingConfl
             # For non-bioguide fields, "many bioguides -> same secondary ID" is
             # the collision.  For bioguide itself, duplicate rows are the issue.
             unique_bioguides = list(dict.fromkeys(bioguide_ids))
-            if len(unique_bioguides) > 1 or (
-                field == "bioguide_id" and len(hits) > 1
-            ):
+            if len(unique_bioguides) > 1 or (field == "bioguide_id" and len(hits) > 1):
                 conflicts.append(
                     MappingConflict(
                         field=field,

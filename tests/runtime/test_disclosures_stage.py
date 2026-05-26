@@ -148,7 +148,7 @@ class TestHappyPathSingleEntry:
             "https://efdsearch.senate.gov",
         )
 
-    def test_ingestion_run_started_with_parameters(self):
+    def test_ingestion_run_started_with_ingest_type_and_stage_parameters(self):
         conn = MagicMock()
         bundle = _make_bundle(entries=(_make_entry(),))
 
@@ -158,8 +158,12 @@ class TestHappyPathSingleEntry:
         mocks["start"].assert_called_once_with(
             conn,
             _DS_ROW["id"],
-            "bundle_stage",
-            parameters={"source_slug": "senate-disclosures", "entry_count": 1},
+            "ingest",
+            parameters={
+                "stage": "bundle_stage",
+                "source_slug": "senate-disclosures",
+                "entry_count": 1,
+            },
         )
 
     def test_create_artifact_called_with_correct_args(self):
@@ -181,6 +185,7 @@ class TestHappyPathSingleEntry:
             fetched_at=None,
             source_record_id="DOC1",
             ingestion_run_id=_RUN_ID,
+            commit=False,
         )
 
     def test_finish_called_with_row_count(self):
@@ -292,6 +297,15 @@ class TestMultipleEntries:
 
 
 class TestFailureHandling:
+    def test_create_uses_outer_transaction(self):
+        conn = MagicMock()
+        bundle = _make_bundle(entries=(_make_entry(),))
+
+        with _patch_all() as mocks:
+            stage_disclosures_bundle(conn, bundle)
+
+        assert mocks["create"].call_args.kwargs["commit"] is False
+
     def test_fail_called_on_create_error(self):
         conn = MagicMock()
         bundle = _make_bundle(entries=(_make_entry(),))
@@ -302,6 +316,20 @@ class TestFailureHandling:
                 stage_disclosures_bundle(conn, bundle)
 
         mocks["fail"].assert_called_once_with(conn, _RUN_ID, "db error")
+
+    def test_create_error_rolls_back_partial_artifacts_before_marking_failed(self):
+        conn = MagicMock()
+        bundle = _make_bundle(entries=(_make_entry(),))
+        order: list[str] = []
+        conn.rollback.side_effect = lambda: order.append("rollback")
+
+        with _patch_all() as mocks:
+            mocks["create"].side_effect = RuntimeError("db error")
+            mocks["fail"].side_effect = lambda *a, **k: order.append("fail")
+            with pytest.raises(RuntimeError, match="db error"):
+                stage_disclosures_bundle(conn, bundle)
+
+        assert order == ["rollback", "fail"]
 
     def test_finish_not_called_on_error(self):
         conn = MagicMock()

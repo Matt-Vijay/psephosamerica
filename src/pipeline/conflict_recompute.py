@@ -193,17 +193,13 @@ def recompute_conflicts(
             }
 
             if bioguide_id not in member_buckets:
-                member_buckets[bioguide_id] = MemberRecomputeResult(
-                    member_bioguide_id=bioguide_id
-                )
+                member_buckets[bioguide_id] = MemberRecomputeResult(member_bioguide_id=bioguide_id)
             bucket = member_buckets[bioguide_id]
 
             fires = _fires_for_bundle(bundle, family_rules, recompute_run_id, fired_at)
 
             for fire in fires:
-                card = _build_card_from_fire(
-                    fire, member, bundle, snapshot_date, id_generator
-                )
+                card = _build_card_from_fire(fire, member, bundle, snapshot_date, id_generator)
                 bucket.rule_fires.append(fire)
                 bucket.evidence_cards.append(card)
                 all_fires.append(fire)

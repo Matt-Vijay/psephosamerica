@@ -11,7 +11,12 @@ from src.runtime.disclosures_artifacts import DisclosureArtifactIngestResult
 from src.runtime.disclosures_bundle_process import DisclosuresBundleProcessResult
 from src.runtime.disclosures_load_from_parse import DisclosuresParseLoadResult
 from src.runtime.disclosures_parse import DisclosureParseRuntimeResult
-from src.runtime.history_backfill import LocalHistoryBackfillResult
+from src.runtime.fec import FecLocalLoadResult
+from src.runtime.member_fec_crosswalk import MemberFecCrosswalkLoadResult
+from src.runtime.history_backfill import (
+    LocalHistoryBackfillResult,
+    build_history_backfill_report,
+)
 from src.runtime.history_verify_types import HistoryVerifyResult
 from src.runtime.oracle_contracts import LocalOracleRunResult
 from src.runtime.publish import PublishRuntimeResult
@@ -19,14 +24,18 @@ from src.runtime.publish_roundtrip_types import PublishRoundtripResult
 from src.runtime.publish_verify_types import PublishVerifyResult
 from src.runtime.recompute import RuntimeRecomputeResult
 
+_SUMMARY_ISSUE_LIMIT = 20
+
 
 def as_json(obj: Any, *, indent: int | None = None) -> str:
     return json.dumps(obj, default=str, indent=indent)
 
 
-def summarize_load_result(result: CongressLoadResult | DisclosuresLoadRuntimeResult) -> dict[str, Any]:
+def summarize_load_result(
+    result: CongressLoadResult | DisclosuresLoadRuntimeResult | FecLocalLoadResult,
+) -> dict[str, Any]:
     summary: LoadSummary = result.load_summary
-    return {
+    out = {
         "run_id": result.run_id,
         "data_source": result.data_source.get("slug"),
         "ok": summary.ok,
@@ -49,11 +58,75 @@ def summarize_load_result(result: CongressLoadResult | DisclosuresLoadRuntimeRes
             for r in summary.table_results
         ],
     }
+    if isinstance(result, CongressLoadResult):
+        out["source_state"] = _congress_load_source_state(summary)
+    return out
+
+
+def _congress_load_source_state(summary: LoadSummary) -> dict[str, Any]:
+    table_counts: dict[str, int] = {}
+    for row in summary.table_results:
+        table_counts[row.table] = table_counts.get(row.table, 0) + row.inserted + row.updated
+    member_row_count = table_counts.get("member", 0)
+    member_term_row_count = table_counts.get("member_term", 0)
+    committee_row_count = table_counts.get("committee", 0)
+    bill_row_count = table_counts.get("bill", 0)
+    bill_sponsor_row_count = table_counts.get("bill_sponsor", 0)
+    vote_event_row_count = table_counts.get("vote_event", 0)
+    vote_cast_row_count = table_counts.get("vote_cast", 0)
+    source_family_ids = []
+    if committee_row_count:
+        source_family_ids.append("committee_membership")
+    if bill_row_count or bill_sponsor_row_count:
+        source_family_ids.append("congress_bill")
+    if vote_event_row_count or vote_cast_row_count:
+        source_family_ids.append("congress_vote")
+    return {
+        "source_family_ids": source_family_ids,
+        "source_family_count": len(source_family_ids),
+        "member_row_count": member_row_count,
+        "member_term_row_count": member_term_row_count,
+        "committee_row_count": committee_row_count,
+        "bill_row_count": bill_row_count,
+        "bill_sponsor_row_count": bill_sponsor_row_count,
+        "vote_event_row_count": vote_event_row_count,
+        "vote_cast_row_count": vote_cast_row_count,
+        "prediction_member_inputs_available": member_row_count > 0,
+        "prediction_bill_inputs_available": bill_row_count > 0,
+        "prediction_vote_inputs_available": vote_event_row_count > 0 and vote_cast_row_count > 0,
+    }
+
+
+def summarize_fec_load_result(result: FecLocalLoadResult) -> dict[str, Any]:
+    out = summarize_load_result(result)
+    out["parsed_counts"] = dict(result.parsed_counts)
+    out["artifact_count"] = len(result.artifact_rows)
+    return out
+
+
+def summarize_member_fec_crosswalk_load_result(
+    result: MemberFecCrosswalkLoadResult,
+) -> dict[str, Any]:
+    return {
+        "run_id": result.run_id,
+        "data_source": result.data_source.get("slug"),
+        "ok": True,
+        "parsed_count": result.parsed_count,
+        "parsed_member_term_count": result.parsed_member_term_count,
+        "updated_count": result.updated_count,
+        "member_term_upserted_count": result.member_term_upserted_count,
+        "skipped_count": len(result.skipped_bioguide_ids),
+        "skipped_bioguide_ids": list(result.skipped_bioguide_ids),
+        "skipped_member_term_count": len(result.skipped_member_term_bioguide_ids),
+        "skipped_member_term_bioguide_ids": list(result.skipped_member_term_bioguide_ids),
+        "source_artifact_id": result.source_artifact.get("id"),
+    }
 
 
 def summarize_recompute_result(result: RuntimeRecomputeResult) -> dict[str, Any]:
     recompute = result.recompute_result
     load: LoadSummary | None = recompute.load_summary
+    ontology_edges = recompute.ontology_edges
 
     out: dict[str, Any] = {
         "run_id": result.run_id,
@@ -61,6 +134,14 @@ def summarize_recompute_result(result: RuntimeRecomputeResult) -> dict[str, Any]
         "rule_fires": len(recompute.rule_fires),
         "evidence_cards": len(recompute.evidence_cards),
     }
+    if ontology_edges:
+        edge_counts: dict[str, int] = {}
+        for edge in ontology_edges:
+            edge_counts[edge.edge_type] = edge_counts.get(edge.edge_type, 0) + 1
+        out["ontology_edges"] = {
+            "count": len(ontology_edges),
+            "by_type": dict(sorted(edge_counts.items())),
+        }
 
     unresolved_committee_matches = recompute.unresolved_committee_matches
     if load is not None or unresolved_committee_matches:
@@ -165,75 +246,31 @@ def summarize_local_oracle_run_result(result: LocalOracleRunResult) -> dict[str,
 
 
 def summarize_local_history_backfill_result(result: LocalHistoryBackfillResult) -> dict[str, Any]:
-    attempts: list[dict[str, Any]] = []
-    for attempt in result.attempts:
-        attempt_out: dict[str, Any] = {
-            "snapshot_id": attempt.snapshot_id,
-            "snapshot_date": attempt.snapshot_date.isoformat(),
-            "publish_root": str(attempt.publish_root),
-            "status": attempt.status,
-            "reason": attempt.reason,
-            "error": attempt.error,
-        }
-        oracle_result = result.snapshot_results.get(attempt.snapshot_id)
+    result_out = build_history_backfill_report(result).model_dump(mode="json")
+    for attempt_out in result_out["attempts"]:
+        snapshot_id = attempt_out["snapshot_id"]
+        oracle_result = result.snapshot_results.get(snapshot_id)
         if oracle_result is not None:
             attempt_out["oracle"] = summarize_local_oracle_run_result(oracle_result)
-            attempt_out["ok"] = (
-                oracle_result.congress.load_ok
-                and bool(oracle_result.disclosures.get("load_ok", True))
-                and bool(oracle_result.publish.get("succeeded", True))
-                and oracle_result.verify.ok
-                and oracle_result.roundtrip.ok
-            )
-        else:
-            attempt_out["ok"] = None
-        attempts.append(attempt_out)
-
-    aggregate_out: dict[str, Any] | None = None
-    if result.aggregate is not None:
-        aggregate_out = {
-            "latest_snapshot_id": result.aggregate.latest_snapshot_id,
-            "snapshot_count": result.aggregate.snapshot_count,
-            "member_history_count": result.aggregate.member_history_count,
-            "target_root": str(result.aggregate.target_root),
-            "verify": (
-                summarize_history_verify_result(result.aggregate.verify)
-                if result.aggregate.verify is not None
-                else None
-            ),
-        }
-
-    return {
-        "congress": result.plan.congress,
-        "cadence": result.plan.cadence,
-        "target_root": str(result.target_root),
-        "overwrite": result.overwrite,
-        "continue_on_error": result.continue_on_error,
-        "date_window": {
-            "start_date": result.plan.date_window.start_date.isoformat(),
-            "end_date": result.plan.date_window.end_date.isoformat(),
-            "bounded_by_today": result.plan.date_window.bounded_by_today,
-        },
-        "planned_count": len(result.plan.targets),
-        "attempted_count": result.attempted_count,
-        "completed_count": result.completed_count,
-        "skipped_count": result.skipped_count,
-        "failed_count": result.failed_count,
-        "remaining_count": result.remaining_count,
-        "aggregate_source_count": len(result.aggregate_source_roots),
-        "aggregate_error": result.aggregate_error,
-        "attempts": attempts,
-        "aggregate": aggregate_out,
-    }
+    if result.aggregate is not None and result_out["aggregate"] is not None:
+        result_out["aggregate"]["verify"] = (
+            summarize_history_verify_result(result.aggregate.verify)
+            if result.aggregate.verify is not None
+            else None
+        )
+    return result_out
 
 
 def summarize_publish_verify_result(result: PublishVerifyResult) -> dict[str, Any]:
     """Compact summary of a publish verification outcome."""
+    issues = _summarize_stage_issues(result.stages)
     return {
         "ok": result.ok,
         "total_checked": result.total_checked,
         "total_errors": result.total_errors,
         "total_warnings": result.total_warnings,
+        "issues": issues,
+        "issues_truncated": len(result.all_issues()) > len(issues),
         "stages": [
             {
                 "stage": s.stage,
@@ -249,11 +286,14 @@ def summarize_publish_verify_result(result: PublishVerifyResult) -> dict[str, An
 
 def summarize_publish_roundtrip_result(result: PublishRoundtripResult) -> dict[str, Any]:
     """Compact summary of a publish roundtrip verification outcome."""
+    issues = _summarize_stage_issues(result.stages)
     return {
         "ok": result.ok,
         "total_checked": result.total_checked,
         "total_errors": result.total_errors,
         "total_warnings": result.total_warnings,
+        "issues": issues,
+        "issues_truncated": len(result.all_issues()) > len(issues),
         "stages": [
             {
                 "stage": s.stage,
@@ -265,6 +305,23 @@ def summarize_publish_roundtrip_result(result: PublishRoundtripResult) -> dict[s
             for s in result.stages
         ],
     }
+
+
+def _summarize_stage_issues(stages: Any) -> list[dict[str, Any]]:
+    issues: list[dict[str, Any]] = []
+    for stage in stages:
+        for issue in stage.issues:
+            if len(issues) >= _SUMMARY_ISSUE_LIMIT:
+                return issues
+            issues.append(
+                {
+                    "stage": issue.stage,
+                    "severity": issue.severity,
+                    "path": issue.path,
+                    "message": issue.message,
+                }
+            )
+    return issues
 
 
 def summarize_history_verify_result(result: HistoryVerifyResult) -> dict[str, Any]:

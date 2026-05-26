@@ -26,6 +26,10 @@ from __future__ import annotations
 from datetime import UTC, date, datetime
 from typing import Any
 
+from src.evidence.source_anchor_policy import (
+    describe_missing_source_anchor_urls,
+    has_https_source_url,
+)
 from src.export.contracts import (
     ConfidenceLabel,
     EvidenceBlock,
@@ -55,9 +59,7 @@ def _section_blocks(
         return []
     if isinstance(data, dict):
         return [
-            EvidenceBlock(section=section, text=text)
-            for _, text in sorted(data.items())
-            if text
+            EvidenceBlock(section=section, text=text) for _, text in sorted(data.items()) if text
         ]
     return [EvidenceBlock(section=section, text=text) for text in data if text]
 
@@ -94,7 +96,12 @@ def _parse_anchors(raw: list[dict[str, Any]] | None) -> list[SourceAnchor]:
             best_by_identity[identity] = anchor
             continue
 
-        existing_key = (existing.url is None, -len(existing.label), existing.label, existing.url or "")
+        existing_key = (
+            existing.url is None,
+            -len(existing.label),
+            existing.label,
+            existing.url or "",
+        )
         candidate_key = (anchor.url is None, -len(anchor.label), anchor.label, anchor.url or "")
         if candidate_key < existing_key:
             best_by_identity[identity] = anchor
@@ -134,6 +141,19 @@ def assemble_evidence_card(row: dict[str, Any]) -> EvidenceCardPayload:
         row.get("normative_judgments"),
     )
     anchors = _parse_anchors(row.get("source_anchors"))
+    score_delta = float(row["score_delta"])
+    if score_delta != 0 and not any(block.section is EvidenceSection.FACT for block in blocks):
+        raise ValueError("Nonzero persisted evidence cards require at least one fact block")
+    if score_delta != 0 and not anchors:
+        raise ValueError("Nonzero persisted evidence cards require at least one source anchor")
+    if score_delta != 0 and not has_https_source_url(anchors):
+        raise ValueError("Nonzero persisted evidence cards require at least one HTTPS source URL")
+    missing_source_urls = describe_missing_source_anchor_urls(anchors)
+    if score_delta != 0 and missing_source_urls:
+        raise ValueError(
+            "Nonzero persisted evidence cards require HTTPS source URLs for "
+            f"claim-bearing anchors: {missing_source_urls}"
+        )
     member_name = row.get("member_full_name") or row.get("full_name", "")
 
     return EvidenceCardPayload(
@@ -143,8 +163,8 @@ def assemble_evidence_card(row: dict[str, Any]) -> EvidenceCardPayload:
         member_slug=row["member_slug"],
         dimension=row["dimension"],
         rule_id=row["rule_id"],
-        rule_version=int(row["rule_version"]),
-        score_delta=float(row["score_delta"]),
+        rule_version=_rule_version(row["rule_version"]),
+        score_delta=score_delta,
         short_explanation=row["short_explanation"],
         blocks=blocks,
         source_anchors=anchors,
@@ -152,3 +172,9 @@ def assemble_evidence_card(row: dict[str, Any]) -> EvidenceCardPayload:
         snapshot_date=_snapshot_date(row),
         created_at=_created_at(row),
     )
+
+
+def _rule_version(value: Any) -> int:
+    if isinstance(value, bool):
+        raise ValueError("rule_version must be an integer")
+    return int(value)

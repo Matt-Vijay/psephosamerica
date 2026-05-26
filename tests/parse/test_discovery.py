@@ -112,7 +112,9 @@ class TestFetchHouseArtifacts:
     def test_ptr_source_url_uses_ptr_path(self):
         from src.parse.disclosures.discovery import fetch_house_artifacts
 
-        with patch(_PATCH_HOUSE, return_value=[_house_row("DOC123", filing_kind=HouseFilingKind.PTR)]):
+        with patch(
+            _PATCH_HOUSE, return_value=[_house_row("DOC123", filing_kind=HouseFilingKind.PTR)]
+        ):
             results = fetch_house_artifacts(2024, "ptr")
 
         assert "ptr-pdfs" in results[0].source_url
@@ -121,7 +123,9 @@ class TestFetchHouseArtifacts:
     def test_annual_source_url_uses_financial_path(self):
         from src.parse.disclosures.discovery import fetch_house_artifacts
 
-        with patch(_PATCH_HOUSE, return_value=[_house_row("ANN456", filing_kind=HouseFilingKind.ANNUAL)]):
+        with patch(
+            _PATCH_HOUSE, return_value=[_house_row("ANN456", filing_kind=HouseFilingKind.ANNUAL)]
+        ):
             results = fetch_house_artifacts(2024, "annual")
 
         assert "financial-pdfs" in results[0].source_url

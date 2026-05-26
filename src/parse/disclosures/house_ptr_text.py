@@ -71,13 +71,13 @@ _AMENDMENT_ROW_MARKERS: frozenset[str] = frozenset({"*", "[a]"})
 # warning.  Silently skip them before the amount-presence check.
 _RE_HEADER_FOOTER_BLEED = re.compile(
     r"^(?:"
-    r"date\s+filed\s*:"           # "Date Filed: 01/15/2024"
-    r"|filed\s*date\s*:"          # "Filed Date: 01/15/2024"
-    r"|for\s+calendar\s+year\s*:" # "For Calendar Year: 2023"
-    r"|calendar\s+year\s*:"       # "Calendar Year: 2023"
-    r"|reporting\s+year\s*:"      # "Reporting Year: 2023"
-    r"|member\s+name\s*:"         # "Member Name: SMITH, JOHN"
-    r"|page\s+\d+\s+of\s+\d+"     # "Page 1 of 3"
+    r"date\s+filed\s*:"  # "Date Filed: 01/15/2024"
+    r"|filed\s*date\s*:"  # "Filed Date: 01/15/2024"
+    r"|for\s+calendar\s+year\s*:"  # "For Calendar Year: 2023"
+    r"|calendar\s+year\s*:"  # "Calendar Year: 2023"
+    r"|reporting\s+year\s*:"  # "Reporting Year: 2023"
+    r"|member\s+name\s*:"  # "Member Name: SMITH, JOHN"
+    r"|page\s+\d+\s+of\s+\d+"  # "Page 1 of 3"
     r")",
     re.IGNORECASE,
 )
@@ -172,9 +172,7 @@ def _header_warnings(header: HeaderFields, member_bioguide_id: str) -> list[str]
         warnings.append("filing date not found in header")
     # Warn on unexpected chamber/type signals — the parser's invariants may be wrong.
     if header.chamber is not None and header.chamber != Chamber.HOUSE:
-        warnings.append(
-            f"unexpected chamber {header.chamber.value!r} detected; expected house"
-        )
+        warnings.append(f"unexpected chamber {header.chamber.value!r} detected; expected house")
     if header.filing_type is not None and header.filing_type != FilingType.PTR:
         warnings.append(
             f"unexpected filing type {header.filing_type.value!r} detected; expected ptr"

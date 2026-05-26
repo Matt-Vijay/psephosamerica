@@ -3,6 +3,7 @@
 No live DB. DB fetchers and payload assemblers are mocked. Filesystem writes
 use pytest's tmp_path.
 """
+
 from __future__ import annotations
 
 from datetime import UTC, date, datetime
@@ -14,12 +15,15 @@ from src.api.read_service import get_homepage_bootstrap
 from src.api.read_service import get_zip_entry
 from src.export.contracts import (  # noqa: E402
     ConfidenceLabel,
+    EvidenceBlock,
     EvidenceCardPayload,
+    EvidenceSection,
     HistoricalCommitteeMembership,
     MemberHistoryEvent,
     MemberHistoryPayload,
     MemberHistorySnapshot,
     MemberProfilePayload,
+    SourceAnchor,
     ZipFeedPayload,
 )
 from src.export.manifest import SnapshotManifest
@@ -30,6 +34,7 @@ from src.pipeline.publish_snapshot_run import (  # noqa: E402
     _build_current_member_lookup_file,
     _build_current_member_lookup_payload,
     _build_evidence_cards,
+    _build_ontology_edges,
     _build_member_histories,
     _build_homepage_bootstrap_file,
     _build_homepage_file,
@@ -38,7 +43,34 @@ from src.pipeline.publish_snapshot_run import (  # noqa: E402
     _make_planner,
     publish_snapshot_run,
 )
-from src.export.writer import zip_entry_path
+from src.export.writer import (
+    ontology_agent_tools_path,
+    ontology_frontend_client_path,
+    ontology_frontend_contract_path,
+    ontology_frontend_types_path,
+    ontology_frontend_index_path,
+    ontology_index_path,
+    ontology_member_features_path,
+    ontology_member_edges_path,
+    ontology_schema_path,
+    prediction_bootstrap_path,
+    prediction_committee_context_path,
+    prediction_committee_readiness_path,
+    prediction_member_context_path,
+    prediction_member_readiness_path,
+    prediction_readiness_path,
+    prediction_readiness_index_path,
+    prediction_sector_readiness_path,
+    prediction_source_context_path,
+    prediction_source_index_path,
+    prediction_topology_path,
+    zip_entry_path,
+)
+from src.ontology.contracts import OntologyEdgePayload, OntologyNodeRef
+from src.prediction.contracts import (
+    PredictionReadinessCoveragePayload,
+    PredictionReadinessPayload,
+)
 from src.zip.resolve import (  # noqa: E402
     DistrictMemberRow,
     SenatorRow,
@@ -81,8 +113,17 @@ def _evidence_card(card_id: str = "ec-001") -> EvidenceCardPayload:
         rule_version=1,
         score_delta=2.0,
         short_explanation="Committee overlap detected.",
-        blocks=[],
-        source_anchors=[],
+        blocks=[
+            EvidenceBlock(section=EvidenceSection.FACT, text="PTR disclosed a trade."),
+        ],
+        source_anchors=[
+            SourceAnchor(
+                source_type="financial_disclosure",
+                source_id="fd-001",
+                url="https://disclosures.house.gov/public_disc/ptr-pdfs/2024/fd-001.pdf",
+                label="Financial disclosure",
+            )
+        ],
         confidence=ConfidenceLabel.HIGH,
         snapshot_date=_SNAP_DATE,
         created_at=datetime(2026, 4, 14, tzinfo=UTC),
@@ -143,21 +184,95 @@ def _member_history(slug: str = "alice-smith") -> MemberHistoryPayload:
     )
 
 
+def _ontology_edge() -> OntologyEdgePayload:
+    return OntologyEdgePayload(
+        edge_id="ont-edge-001",
+        edge_type="member_committee_assignment",
+        subject=OntologyNodeRef(
+            node_type="member",
+            node_id="B001",
+            label="Alice Smith",
+        ),
+        object=OntologyNodeRef(
+            node_type="committee",
+            node_id="HSEC",
+            label="Energy",
+        ),
+        source_anchors=[
+            SourceAnchor(
+                source_type="committee_membership",
+                source_id="cm-1",
+                url="https://api.congress.gov/v3/committee/house/HSEC?format=json",
+                label="Committee membership",
+            )
+        ],
+        attributes={"role": "Member"},
+    )
+
+
 def _zip_bundle(zip5_codes: list[str] | None = None) -> ZipBundleInputs:
     codes = ["90210"] if zip5_codes is None else zip5_codes
     return ZipBundleInputs(
         zip5_codes=codes,
-        zip_district_rows=[ZipDistrictRow(zip5="90210", state="CA", district=30, population_share=1.0)],
-        district_member_rows=[DistrictMemberRow(state="CA", district=30, bioguide_id="B001", full_name="Alice Smith", party="D", slug="alice-smith")],
+        zip_district_rows=[
+            ZipDistrictRow(zip5="90210", state="CA", district=30, population_share=1.0)
+        ],
+        district_member_rows=[
+            DistrictMemberRow(
+                state="CA",
+                district=30,
+                bioguide_id="B001",
+                full_name="Alice Smith",
+                party="D",
+                slug="alice-smith",
+            )
+        ],
         senator_rows=[
-            SenatorRow(state="CA", bioguide_id="S001", full_name="Sen One", party="D", slug="sen-one", seat=1),
-            SenatorRow(state="CA", bioguide_id="S002", full_name="Sen Two", party="D", slug="sen-two", seat=2),
+            SenatorRow(
+                state="CA",
+                bioguide_id="S001",
+                full_name="Sen One",
+                party="D",
+                slug="sen-one",
+                seat=1,
+            ),
+            SenatorRow(
+                state="CA",
+                bioguide_id="S002",
+                full_name="Sen Two",
+                party="D",
+                slug="sen-two",
+                seat=2,
+            ),
         ],
     )
 
 
+def _prediction_readiness() -> PredictionReadinessPayload:
+    return PredictionReadinessPayload(
+        snapshot_id=_SNAP_ID,
+        snapshot_date=_SNAP_DATE,
+        member_count=0,
+        ready_member_count=0,
+        partial_member_count=0,
+        blocked_member_count=0,
+        vote_event_count=0,
+        vote_cast_count=0,
+        coverage=PredictionReadinessCoveragePayload(
+            readiness_rate=0,
+            vote_coverage_rate=0,
+            ontology_coverage_rate=0,
+            average_votes_per_member=0,
+            average_ontology_edges_per_member=0,
+        ),
+        members=[],
+    )
+
+
 def _empty_zip_bundle() -> ZipBundleInputs:
-    return ZipBundleInputs(zip5_codes=[], zip_district_rows=[], district_member_rows=[], senator_rows=[])
+    return ZipBundleInputs(
+        zip5_codes=[], zip_district_rows=[], district_member_rows=[], senator_rows=[]
+    )
 
 
 def _fake_homepage_payload() -> HomepageFeedPayload:
@@ -181,6 +296,7 @@ _FETCH_PATCHES: dict[str, Any] = {
     "src.pipeline.publish_snapshot_run.fetch_member_rule_fire_rows": mock.DEFAULT,
     "src.pipeline.publish_snapshot_run.fetch_member_committee_rows": mock.DEFAULT,
     "src.pipeline.publish_snapshot_run.fetch_all_evidence_card_rows": mock.DEFAULT,
+    "src.pipeline.publish_snapshot_run.fetch_all_ontology_edge_rows": mock.DEFAULT,
     "src.pipeline.publish_snapshot_run.fetch_homepage_feed_rows": mock.DEFAULT,
     "src.pipeline.publish_snapshot_run.fetch_zip_member_summary_rows": mock.DEFAULT,
     "src.pipeline.publish_snapshot_run.fetch_recent_evidence_ids_by_bioguide": mock.DEFAULT,
@@ -202,11 +318,22 @@ class TestBuildMemberProfiles:
         conn = object()
         profile = _member_profile()
         with (
-            mock.patch("src.pipeline.publish_snapshot_run.fetch_member_row_by_slug", return_value={"id": 1}) as _row,
-            mock.patch("src.pipeline.publish_snapshot_run.fetch_member_score_snapshot_rows", return_value=[]),
-            mock.patch("src.pipeline.publish_snapshot_run.fetch_member_rule_fire_rows", return_value=[]),
-            mock.patch("src.pipeline.publish_snapshot_run.fetch_member_committee_rows", return_value=[]),
-            mock.patch("src.pipeline.publish_snapshot_run.assemble_member_profile", return_value=profile) as assemble,
+            mock.patch(
+                "src.pipeline.publish_snapshot_run.fetch_member_row_by_slug", return_value={"id": 1}
+            ) as _row,
+            mock.patch(
+                "src.pipeline.publish_snapshot_run.fetch_member_score_snapshot_rows",
+                return_value=[],
+            ),
+            mock.patch(
+                "src.pipeline.publish_snapshot_run.fetch_member_rule_fire_rows", return_value=[]
+            ),
+            mock.patch(
+                "src.pipeline.publish_snapshot_run.fetch_member_committee_rows", return_value=[]
+            ),
+            mock.patch(
+                "src.pipeline.publish_snapshot_run.assemble_member_profile", return_value=profile
+            ) as assemble,
         ):
             result = _build_member_profiles(conn, ["alice-smith"])
         assert result == [profile]
@@ -214,7 +341,9 @@ class TestBuildMemberProfiles:
 
     def test_missing_row_is_skipped(self) -> None:
         conn = object()
-        with mock.patch("src.pipeline.publish_snapshot_run.fetch_member_row_by_slug", return_value=None):
+        with mock.patch(
+            "src.pipeline.publish_snapshot_run.fetch_member_row_by_slug", return_value=None
+        ):
             result = _build_member_profiles(conn, ["ghost-slug"])
         assert result == []
 
@@ -232,11 +361,23 @@ class TestBuildMemberProfiles:
             return p
 
         with (
-            mock.patch("src.pipeline.publish_snapshot_run.fetch_member_row_by_slug", side_effect=_row_side),
-            mock.patch("src.pipeline.publish_snapshot_run.fetch_member_score_snapshot_rows", return_value=[]),
-            mock.patch("src.pipeline.publish_snapshot_run.fetch_member_rule_fire_rows", return_value=[]),
-            mock.patch("src.pipeline.publish_snapshot_run.fetch_member_committee_rows", return_value=[]),
-            mock.patch("src.pipeline.publish_snapshot_run.assemble_member_profile", side_effect=_assemble_side),
+            mock.patch(
+                "src.pipeline.publish_snapshot_run.fetch_member_row_by_slug", side_effect=_row_side
+            ),
+            mock.patch(
+                "src.pipeline.publish_snapshot_run.fetch_member_score_snapshot_rows",
+                return_value=[],
+            ),
+            mock.patch(
+                "src.pipeline.publish_snapshot_run.fetch_member_rule_fire_rows", return_value=[]
+            ),
+            mock.patch(
+                "src.pipeline.publish_snapshot_run.fetch_member_committee_rows", return_value=[]
+            ),
+            mock.patch(
+                "src.pipeline.publish_snapshot_run.assemble_member_profile",
+                side_effect=_assemble_side,
+            ),
         ):
             result = _build_member_profiles(conn, ["s1", "s2"])
         assert len(result) == 2
@@ -247,8 +388,13 @@ class TestBuildEvidenceCards:
         conn = object()
         card = _evidence_card()
         with (
-            mock.patch("src.pipeline.publish_snapshot_run.fetch_all_evidence_card_rows", return_value=[{"id": 1}]),
-            mock.patch("src.pipeline.publish_snapshot_run.assemble_evidence_card", return_value=card) as assemble,
+            mock.patch(
+                "src.pipeline.publish_snapshot_run.fetch_all_evidence_card_rows",
+                return_value=[{"id": 1}],
+            ),
+            mock.patch(
+                "src.pipeline.publish_snapshot_run.assemble_evidence_card", return_value=card
+            ) as assemble,
         ):
             result = _build_evidence_cards(conn)
         assert result == [card]
@@ -256,9 +402,36 @@ class TestBuildEvidenceCards:
 
     def test_empty_returns_empty(self) -> None:
         conn = object()
-        with mock.patch("src.pipeline.publish_snapshot_run.fetch_all_evidence_card_rows", return_value=[]):
+        with mock.patch(
+            "src.pipeline.publish_snapshot_run.fetch_all_evidence_card_rows", return_value=[]
+        ):
             result = _build_evidence_cards(conn)
         assert result == []
+
+
+class TestBuildOntologyEdges:
+    def test_assembles_rows_into_payloads(self) -> None:
+        conn = object()
+        edge = _ontology_edge()
+        row = {
+            "edge_id": edge.edge_id,
+            "edge_type": edge.edge_type,
+            "subject_node_type": edge.subject.node_type,
+            "subject_node_id": edge.subject.node_id,
+            "subject_node_label": edge.subject.label,
+            "object_node_type": edge.object.node_type,
+            "object_node_id": edge.object.node_id,
+            "object_node_label": edge.object.label,
+            "source_anchors": [anchor.model_dump() for anchor in edge.source_anchors],
+            "confidence": edge.confidence,
+            "attributes": edge.attributes,
+        }
+        with mock.patch(
+            "src.pipeline.publish_snapshot_run.fetch_all_ontology_edge_rows",
+            return_value=[row],
+        ):
+            result = _build_ontology_edges(conn)
+        assert result == [edge]
 
 
 class TestBuildMemberHistories:
@@ -266,11 +439,22 @@ class TestBuildMemberHistories:
         conn = object()
         history = _member_history()
         with (
-            mock.patch("src.pipeline.publish_snapshot_run.fetch_member_row_by_slug", return_value={"id": 1}) as _row,
-            mock.patch("src.pipeline.publish_snapshot_run.fetch_member_score_snapshot_rows", return_value=[]),
-            mock.patch("src.pipeline.publish_snapshot_run.fetch_member_rule_fire_rows", return_value=[]),
-            mock.patch("src.pipeline.publish_snapshot_run.fetch_member_committee_rows", return_value=[]),
-            mock.patch("src.pipeline.publish_snapshot_run.assemble_member_history", return_value=history) as assemble,
+            mock.patch(
+                "src.pipeline.publish_snapshot_run.fetch_member_row_by_slug", return_value={"id": 1}
+            ) as _row,
+            mock.patch(
+                "src.pipeline.publish_snapshot_run.fetch_member_score_snapshot_rows",
+                return_value=[],
+            ),
+            mock.patch(
+                "src.pipeline.publish_snapshot_run.fetch_member_rule_fire_rows", return_value=[]
+            ),
+            mock.patch(
+                "src.pipeline.publish_snapshot_run.fetch_member_committee_rows", return_value=[]
+            ),
+            mock.patch(
+                "src.pipeline.publish_snapshot_run.assemble_member_history", return_value=history
+            ) as assemble,
         ):
             result = _build_member_histories(conn, ["alice-smith"])
         assert result == [history]
@@ -283,9 +467,16 @@ class TestBuildZipFeeds:
         feed = _zip_feed()
         inputs = _zip_bundle(["90210"])
         with (
-            mock.patch("src.pipeline.publish_snapshot_run.fetch_zip_member_summary_rows", return_value=[]),
-            mock.patch("src.pipeline.publish_snapshot_run.fetch_recent_evidence_ids_by_bioguide", return_value={}),
-            mock.patch("src.pipeline.publish_snapshot_run.assemble_zip_feed", return_value=feed) as assemble,
+            mock.patch(
+                "src.pipeline.publish_snapshot_run.fetch_zip_member_summary_rows", return_value=[]
+            ),
+            mock.patch(
+                "src.pipeline.publish_snapshot_run.fetch_recent_evidence_ids_by_bioguide",
+                return_value={},
+            ),
+            mock.patch(
+                "src.pipeline.publish_snapshot_run.assemble_zip_feed", return_value=feed
+            ) as assemble,
         ):
             result = _build_zip_feeds(conn, inputs, _SNAP_DATE)
         assert result == [feed]
@@ -295,7 +486,7 @@ class TestBuildZipFeeds:
         conn = object()
         inputs = ZipBundleInputs(
             zip5_codes=["99999"],
-            zip_district_rows=[],   # no crosswalk row → bundle = None
+            zip_district_rows=[],  # no crosswalk row → bundle = None
             district_member_rows=[],
             senator_rows=[],
         )
@@ -314,8 +505,12 @@ class TestBuildHomepageFile:
         conn = object()
         payload = _fake_homepage_payload()
         with (
-            mock.patch("src.pipeline.publish_snapshot_run.fetch_homepage_feed_rows", return_value=[]),
-            mock.patch("src.pipeline.publish_snapshot_run.assemble_homepage_payload", return_value=payload),
+            mock.patch(
+                "src.pipeline.publish_snapshot_run.fetch_homepage_feed_rows", return_value=[]
+            ),
+            mock.patch(
+                "src.pipeline.publish_snapshot_run.assemble_homepage_payload", return_value=payload
+            ),
         ):
             pf = _build_homepage_file(conn, _SNAP_DATE)
         assert pf.path == "homepage/feed.json"
@@ -419,8 +614,10 @@ class TestMakePlanner:
             [history],
             [feed],
             [card],
+            [],
             lookup,
             homepage,
+            _prediction_readiness(),
         )
         planned = planner()
 
@@ -434,7 +631,9 @@ class TestMakePlanner:
         assert "homepage/feed.json" in paths
         assert "homepage/bootstrap.json" in paths
         # homepage sits after the manifest
-        assert paths.index("homepage/feed.json") > paths.index(f"snapshots/{_SNAP_ID}/manifest.json")
+        assert paths.index("homepage/feed.json") > paths.index(
+            f"snapshots/{_SNAP_ID}/manifest.json"
+        )
         assert paths.index("homepage/bootstrap.json") > paths.index("homepage/feed.json")
 
 
@@ -454,6 +653,7 @@ class TestPublishSnapshotRun:
         profiles: list[MemberProfilePayload] | None = None,
         member_histories: list[MemberHistoryPayload] | None = None,
         evidence_cards: list[EvidenceCardPayload] | None = None,
+        ontology_edges: list[OntologyEdgePayload] | None = None,
         zip_feeds: list[ZipFeedPayload] | None = None,
         zip_bundle: ZipBundleInputs | None = None,
         homepage_payload: HomepageFeedPayload | None = None,
@@ -462,6 +662,7 @@ class TestPublishSnapshotRun:
         profiles = profiles or []
         member_histories = member_histories or []
         evidence_cards = evidence_cards or []
+        ontology_edges = ontology_edges or []
         zip_feeds = zip_feeds or []
         zip_bundle = zip_bundle if zip_bundle is not None else _empty_zip_bundle()
         homepage_payload = homepage_payload or _fake_homepage_payload()
@@ -472,20 +673,80 @@ class TestPublishSnapshotRun:
         feed_iter = iter(zip_feeds)
 
         with (
-            mock.patch("src.pipeline.publish_snapshot_run.fetch_current_member_slugs", return_value=member_slugs),
-            mock.patch("src.pipeline.publish_snapshot_run.fetch_member_row_by_slug", return_value={"id": 1}),
-            mock.patch("src.pipeline.publish_snapshot_run.fetch_member_score_snapshot_rows", return_value=[]),
-            mock.patch("src.pipeline.publish_snapshot_run.fetch_member_rule_fire_rows", return_value=[]),
-            mock.patch("src.pipeline.publish_snapshot_run.fetch_member_committee_rows", return_value=[]),
-            mock.patch("src.pipeline.publish_snapshot_run.assemble_member_profile", side_effect=lambda *_: next(profile_iter)),
-            mock.patch("src.pipeline.publish_snapshot_run.assemble_member_history", side_effect=lambda *_: next(history_iter)),
-            mock.patch("src.pipeline.publish_snapshot_run.fetch_all_evidence_card_rows", return_value=[None] * len(evidence_cards)),
-            mock.patch("src.pipeline.publish_snapshot_run.assemble_evidence_card", side_effect=lambda *_: next(card_iter)),
-            mock.patch("src.pipeline.publish_snapshot_run.fetch_zip_member_summary_rows", return_value=[]),
-            mock.patch("src.pipeline.publish_snapshot_run.fetch_recent_evidence_ids_by_bioguide", return_value={}),
-            mock.patch("src.pipeline.publish_snapshot_run.assemble_zip_feed", side_effect=lambda *_: next(feed_iter)),
-            mock.patch("src.pipeline.publish_snapshot_run.fetch_homepage_feed_rows", return_value=[]),
-            mock.patch("src.pipeline.publish_snapshot_run.assemble_homepage_payload", return_value=homepage_payload),
+            mock.patch(
+                "src.pipeline.publish_snapshot_run.fetch_current_member_slugs",
+                return_value=member_slugs,
+            ),
+            mock.patch(
+                "src.pipeline.publish_snapshot_run.fetch_member_row_by_slug", return_value={"id": 1}
+            ),
+            mock.patch(
+                "src.pipeline.publish_snapshot_run.fetch_member_score_snapshot_rows",
+                return_value=[],
+            ),
+            mock.patch(
+                "src.pipeline.publish_snapshot_run.fetch_member_rule_fire_rows", return_value=[]
+            ),
+            mock.patch(
+                "src.pipeline.publish_snapshot_run.fetch_member_committee_rows", return_value=[]
+            ),
+            mock.patch(
+                "src.pipeline.publish_snapshot_run.assemble_member_profile",
+                side_effect=lambda *_: next(profile_iter),
+            ),
+            mock.patch(
+                "src.pipeline.publish_snapshot_run.assemble_member_history",
+                side_effect=lambda *_: next(history_iter),
+            ),
+            mock.patch(
+                "src.pipeline.publish_snapshot_run.fetch_all_evidence_card_rows",
+                return_value=[None] * len(evidence_cards),
+            ),
+            mock.patch(
+                "src.pipeline.publish_snapshot_run.fetch_all_ontology_edge_rows",
+                return_value=[
+                    {
+                        "edge_id": edge.edge_id,
+                        "edge_type": edge.edge_type,
+                        "subject_node_type": edge.subject.node_type,
+                        "subject_node_id": edge.subject.node_id,
+                        "subject_node_label": edge.subject.label,
+                        "object_node_type": edge.object.node_type,
+                        "object_node_id": edge.object.node_id,
+                        "object_node_label": edge.object.label,
+                        "source_anchors": [anchor.model_dump() for anchor in edge.source_anchors],
+                        "confidence": edge.confidence,
+                        "attributes": edge.attributes,
+                    }
+                    for edge in ontology_edges
+                ],
+            ),
+            mock.patch(
+                "src.pipeline.publish_snapshot_run.fetch_vote_prediction_readiness_rows",
+                return_value=[],
+            ),
+            mock.patch(
+                "src.pipeline.publish_snapshot_run.assemble_evidence_card",
+                side_effect=lambda *_: next(card_iter),
+            ),
+            mock.patch(
+                "src.pipeline.publish_snapshot_run.fetch_zip_member_summary_rows", return_value=[]
+            ),
+            mock.patch(
+                "src.pipeline.publish_snapshot_run.fetch_recent_evidence_ids_by_bioguide",
+                return_value={},
+            ),
+            mock.patch(
+                "src.pipeline.publish_snapshot_run.assemble_zip_feed",
+                side_effect=lambda *_: next(feed_iter),
+            ),
+            mock.patch(
+                "src.pipeline.publish_snapshot_run.fetch_homepage_feed_rows", return_value=[]
+            ),
+            mock.patch(
+                "src.pipeline.publish_snapshot_run.assemble_homepage_payload",
+                return_value=homepage_payload,
+            ),
         ):
             return publish_snapshot_run(
                 conn=object(),
@@ -540,6 +801,21 @@ class TestPublishSnapshotRun:
         )
         assert (tmp_path / "evidence" / "ec-001.json").exists()
 
+    def test_ontology_edges_file_written(self, tmp_path: Path) -> None:
+        self._run(tmp_path, ontology_edges=[_ontology_edge()])
+
+        assert (tmp_path / "ontology" / "edges.json").exists()
+
+    def test_prediction_readiness_file_written(self, tmp_path: Path) -> None:
+        self._run(
+            tmp_path,
+            member_slugs=["alice-smith"],
+            profiles=[_member_profile()],
+            member_histories=[_member_history()],
+        )
+
+        assert (tmp_path / prediction_readiness_path()).exists()
+
     def test_zip_file_written(self, tmp_path: Path) -> None:
         self._run(
             tmp_path,
@@ -566,21 +842,46 @@ class TestPublishSnapshotRun:
         assert (tmp_path / "identity" / "current-member-lookup.json").exists()
 
     def test_planned_count_one_of_each(self, tmp_path: Path) -> None:
-        # 1 member + 1 member page + 1 member history + 1 card + 1 zip + 1 zip-entry + 1 lookup + 1 manifest + 1 homepage + 1 homepage bootstrap = 10
+        # Includes ontology index, global ontology, member graph, and member features.
         result = self._run(
             tmp_path,
             member_slugs=["alice-smith"],
             profiles=[_member_profile()],
             member_histories=[_member_history()],
             evidence_cards=[_evidence_card()],
+            ontology_edges=[_ontology_edge()],
             zip_feeds=[_zip_feed()],
             zip_bundle=_zip_bundle(["90210"]),
         )
         assert (tmp_path / "member-pages" / "alice-smith.json").exists()
+        assert (tmp_path / ontology_agent_tools_path()).exists()
+        assert (tmp_path / ontology_schema_path()).exists()
+        assert (tmp_path / ontology_frontend_client_path()).exists()
+        assert (tmp_path / ontology_frontend_contract_path()).exists()
+        assert (tmp_path / ontology_frontend_types_path()).exists()
+        assert (tmp_path / ontology_index_path()).exists()
+        assert (tmp_path / ontology_frontend_index_path()).exists()
+        assert (tmp_path / ontology_member_features_path("B001")).exists()
+        assert (tmp_path / ontology_member_edges_path("B001")).exists()
         assert (tmp_path / zip_entry_path("90210")).exists()
         assert (tmp_path / "homepage" / "bootstrap.json").exists()
-        assert result.planned_count == 10
-        assert result.written_count == 10
+        assert (tmp_path / prediction_bootstrap_path()).exists()
+        assert (tmp_path / prediction_topology_path()).exists()
+        assert (tmp_path / prediction_committee_readiness_path()).exists()
+        assert (tmp_path / prediction_committee_context_path("HSEC")).exists()
+        assert (tmp_path / prediction_readiness_path()).exists()
+        assert (tmp_path / prediction_readiness_index_path()).exists()
+        assert (tmp_path / prediction_source_index_path()).exists()
+        source_context_files = list((tmp_path / "prediction" / "source-context").glob("*.json"))
+        assert len(source_context_files) == 1
+        assert (
+            tmp_path / prediction_source_context_path(source_context_files[0].stem)
+        ) == source_context_files[0]
+        assert (tmp_path / prediction_sector_readiness_path()).exists()
+        assert (tmp_path / prediction_member_readiness_path("B001")).exists()
+        assert (tmp_path / prediction_member_context_path("B001")).exists()
+        assert result.planned_count == 31
+        assert result.written_count == 31
 
     def test_written_homepage_bootstrap_matches_fallback_service(self, tmp_path: Path) -> None:
         homepage_payload = HomepageFeedPayload(
@@ -630,7 +931,9 @@ class TestPublishSnapshotRun:
         fallback_result = get_homepage_bootstrap(snapshot_root=tmp_path)
 
         assert fallback_result.ok is True
-        assert artifact_result.data.model_dump(mode="json") == fallback_result.data.model_dump(mode="json")
+        assert artifact_result.data.model_dump(mode="json") == fallback_result.data.model_dump(
+            mode="json"
+        )
 
     def test_written_zip_entry_matches_fallback_service(self, tmp_path: Path) -> None:
         self._run(
@@ -649,16 +952,37 @@ class TestPublishSnapshotRun:
         fallback_result = get_zip_entry("90210", snapshot_root=tmp_path)
 
         assert fallback_result.ok is True
-        assert artifact_result.data.model_dump(mode="json") == fallback_result.data.model_dump(mode="json")
+        assert artifact_result.data.model_dump(mode="json") == fallback_result.data.model_dump(
+            mode="json"
+        )
 
     def test_missing_member_row_does_not_fail_run(self, tmp_path: Path) -> None:
         # fetch_member_row_by_slug returns None → member skipped, run still OK
         with (
-            mock.patch("src.pipeline.publish_snapshot_run.fetch_current_member_slugs", return_value=["ghost"]),
-            mock.patch("src.pipeline.publish_snapshot_run.fetch_member_row_by_slug", return_value=None),
-            mock.patch("src.pipeline.publish_snapshot_run.fetch_all_evidence_card_rows", return_value=[]),
-            mock.patch("src.pipeline.publish_snapshot_run.fetch_homepage_feed_rows", return_value=[]),
-            mock.patch("src.pipeline.publish_snapshot_run.assemble_homepage_payload", return_value=_fake_homepage_payload()),
+            mock.patch(
+                "src.pipeline.publish_snapshot_run.fetch_current_member_slugs",
+                return_value=["ghost"],
+            ),
+            mock.patch(
+                "src.pipeline.publish_snapshot_run.fetch_member_row_by_slug", return_value=None
+            ),
+            mock.patch(
+                "src.pipeline.publish_snapshot_run.fetch_all_evidence_card_rows", return_value=[]
+            ),
+            mock.patch(
+                "src.pipeline.publish_snapshot_run.fetch_all_ontology_edge_rows", return_value=[]
+            ),
+            mock.patch(
+                "src.pipeline.publish_snapshot_run.fetch_vote_prediction_readiness_rows",
+                return_value=[],
+            ),
+            mock.patch(
+                "src.pipeline.publish_snapshot_run.fetch_homepage_feed_rows", return_value=[]
+            ),
+            mock.patch(
+                "src.pipeline.publish_snapshot_run.assemble_homepage_payload",
+                return_value=_fake_homepage_payload(),
+            ),
         ):
             result = publish_snapshot_run(
                 conn=object(),

@@ -83,9 +83,7 @@ def _make_verify_stage(target_dir: Path) -> StageDefinition:
         context["verification_failures"] = failures
         if failures:
             logs.append(f"hash mismatch for {len(failures)} file(s): {failures}")
-            raise ValueError(
-                f"Verification failed for {len(failures)} file(s): {failures}"
-            )
+            raise ValueError(f"Verification failed for {len(failures)} file(s): {failures}")
         logs.append(f"all {len(planned)} planned file(s) verified")
         return failures
 

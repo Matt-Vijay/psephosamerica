@@ -243,6 +243,15 @@ def test_get_snapshot_compare_returns_window_movement_and_featured_member_change
         "ec-0002",
         "ec-1001",
     ]
+    assert [card.evidence_card_id for card in result.data.evidence_cards] == [
+        "ec-0003",
+        "ec-0002",
+        "ec-1002",
+        "ec-1001",
+    ]
+    assert result.data.missing_evidence_card_ids == []
+    first_card = result.data.model_dump(mode="json")["evidence_cards"][0]
+    assert first_card["primary_source_url"].startswith("https://disclosures.house.gov/")
     assert [summary.slug for summary in result.data.featured_member_changes] == [
         "nancy-pelosi",
         "chuck-schumer",

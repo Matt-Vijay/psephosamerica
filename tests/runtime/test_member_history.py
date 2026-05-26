@@ -6,16 +6,25 @@ import json
 import src.runtime as runtime
 from src.api.contracts import (
     HistoryBootstrapPayload,
+    HistoryEventPagePayload,
     HistoryPresetRangePayload,
     MemberHistoryPagePayload,
     MemberPagePayload,
 )
 from src.export.contracts import (
     DimensionChangeSummary,
+    HistoryCoveragePayload,
     MemberChangeSummaryPayload,
     MemberHistoryChartPayload,
     MemberHistoryChartPoint,
+    MemberHistoryCoveragePayload,
+    MemberHistoryCoverageIndexPayload,
     MemberHistoryComparePreset,
+    MemberTimelineDimensionPayload,
+    MemberTimelineEventPayload,
+    MemberTimelineIndexPayload,
+    MemberTimelinePagePayload,
+    MemberTimelineYearPayload,
     SnapshotComparePresetPayload,
     MemberTrendSummaryPayload,
     MemberTrendWindowPayload,
@@ -24,10 +33,19 @@ from src.export.filesystem import write_planned_files
 from src.export.writer import (
     PlannedFile,
     history_bootstrap_path,
+    history_event_path,
+    history_event_page_path,
+    history_coverage_path,
     history_preset_range_path,
     member_change_summary_path,
+    member_history_coverage_path,
+    member_history_coverage_index_path,
     member_history_chart_path,
     member_history_page_path,
+    member_timeline_index_path,
+    member_timeline_page_path,
+    member_timeline_dimension_path,
+    member_timeline_year_path,
     member_preset_compare_path,
     member_trend_summary_path,
     movement_window_path,
@@ -42,10 +60,20 @@ from src.homepage.contracts import (
 )
 from src.runtime.inspect import (
     load_local_history_bootstrap,
+    load_local_history_event,
+    load_local_history_event_page,
+    load_local_history_coverage,
     load_local_history_preset_range,
     load_local_member_change_summary,
+    load_local_member_history_coverage,
+    load_local_member_history_coverage_index,
     load_local_member_history_chart,
     load_local_member_history_page,
+    load_local_member_timeline_index,
+    load_local_member_timeline_page,
+    load_local_member_timeline_dimension,
+    load_local_member_timeline_year,
+    load_local_member_page,
     load_local_member_preset_compare,
     load_local_member_history,
     load_local_snapshot_preset_compare,
@@ -116,6 +144,101 @@ def test_load_local_member_change_summary_roundtrip(tmp_path: Path) -> None:
 
 def test_runtime_exports_member_change_summary_loader() -> None:
     assert runtime.load_local_member_change_summary is load_local_member_change_summary
+
+
+def test_load_local_member_history_coverage_roundtrip(tmp_path: Path) -> None:
+    payload = MemberHistoryCoveragePayload(
+        bioguide_id="P000197",
+        name="Nancy Pelosi",
+        slug="nancy-pelosi",
+        state="CA",
+        district="11",
+        chamber="house",
+        party="Democrat",
+        earliest_snapshot_date="2026-01-01",
+        latest_snapshot_date="2026-02-01",
+        latest_event_date="2026-02-01",
+        earliest_event_date="2026-01-01",
+        snapshot_count=2,
+        total_events=3,
+        available_years=[2026],
+        years=[{"year": 2026, "event_count": 3}],
+        dimensions=[{"dimension": "conflict_of_interest_risk", "event_count": 3}],
+        windows=[
+            {
+                "window_key": "4w",
+                "requested_days": 28,
+                "has_full_window": True,
+                "start_snapshot_date": "2026-01-01",
+                "end_snapshot_date": "2026-02-01",
+            }
+        ],
+    )
+    write_planned_files(
+        [
+            PlannedFile.from_bytes(
+                member_history_coverage_path(payload.slug),
+                json.dumps(payload.model_dump(mode="json"), sort_keys=True).encode("utf-8"),
+            )
+        ],
+        tmp_path,
+    )
+
+    result = load_local_member_history_coverage("nancy-pelosi", snapshot_root=tmp_path)
+
+    assert result.slug == "nancy-pelosi"
+    assert result.snapshot_count == 2
+    assert result.dimensions[0].dimension == "conflict_of_interest_risk"
+
+
+def test_runtime_exports_member_history_coverage_loader() -> None:
+    assert runtime.load_local_member_history_coverage is load_local_member_history_coverage
+
+
+def test_load_local_member_history_coverage_index_roundtrip(tmp_path: Path) -> None:
+    payload = MemberHistoryCoverageIndexPayload(
+        total_members=1,
+        members=[
+            {
+                "bioguide_id": "P000197",
+                "name": "Nancy Pelosi",
+                "slug": "nancy-pelosi",
+                "state": "CA",
+                "district": "11",
+                "chamber": "house",
+                "party": "Democrat",
+                "earliest_snapshot_date": "2026-01-01",
+                "latest_snapshot_date": "2026-02-01",
+                "latest_event_date": "2026-02-01",
+                "snapshot_count": 2,
+                "total_events": 3,
+                "available_years": [2026],
+                "has_full_4w": True,
+                "has_full_12w": False,
+                "has_full_cycle": True,
+            }
+        ],
+    )
+    write_planned_files(
+        [
+            PlannedFile.from_bytes(
+                member_history_coverage_index_path(),
+                json.dumps(payload.model_dump(mode="json"), sort_keys=True).encode("utf-8"),
+            )
+        ],
+        tmp_path,
+    )
+
+    result = load_local_member_history_coverage_index(snapshot_root=tmp_path)
+
+    assert result.total_members == 1
+    assert result.members[0].slug == "nancy-pelosi"
+
+
+def test_runtime_exports_member_history_coverage_index_loader() -> None:
+    assert (
+        runtime.load_local_member_history_coverage_index is load_local_member_history_coverage_index
+    )
 
 
 def test_load_local_member_trend_summary_roundtrip(tmp_path: Path) -> None:
@@ -223,6 +346,347 @@ def test_runtime_exports_member_history_chart_loader() -> None:
     assert runtime.load_local_member_history_chart is load_local_member_history_chart
 
 
+def test_load_local_member_timeline_index_roundtrip(tmp_path: Path) -> None:
+    payload = MemberTimelineIndexPayload(
+        bioguide_id="P000197",
+        name="Nancy Pelosi",
+        slug="nancy-pelosi",
+        state="CA",
+        district="11",
+        chamber="house",
+        party="Democrat",
+        latest_snapshot_date="2026-02-01",
+        page_size=25,
+        total_pages=1,
+        total_events=1,
+        latest_event_id="he-test",
+        latest_event_date="2026-02-01",
+        earliest_event_date="2026-02-01",
+        available_years=[2026],
+        year_buckets=[
+            {
+                "year": 2026,
+                "event_count": 1,
+                "start_page": 1,
+                "end_page": 1,
+                "latest_event_date": "2026-02-01",
+                "earliest_event_date": "2026-02-01",
+            }
+        ],
+    )
+    write_planned_files(
+        [
+            PlannedFile.from_bytes(
+                member_timeline_index_path(payload.slug),
+                json.dumps(payload.model_dump(mode="json"), sort_keys=True).encode("utf-8"),
+            )
+        ],
+        tmp_path,
+    )
+
+    result = load_local_member_timeline_index("nancy-pelosi", snapshot_root=tmp_path)
+
+    assert result.slug == "nancy-pelosi"
+    assert result.latest_event_id == "he-test"
+
+
+def test_runtime_exports_member_timeline_index_loader() -> None:
+    assert runtime.load_local_member_timeline_index is load_local_member_timeline_index
+
+
+def test_load_local_member_timeline_year_roundtrip(tmp_path: Path) -> None:
+    payload = MemberTimelineYearPayload(
+        year=2026,
+        timeline_index=MemberTimelineIndexPayload(
+            bioguide_id="P000197",
+            name="Nancy Pelosi",
+            slug="nancy-pelosi",
+            state="CA",
+            district="11",
+            chamber="house",
+            party="Democrat",
+            latest_snapshot_date="2026-02-01",
+            page_size=25,
+            total_pages=1,
+            total_events=1,
+            latest_event_id="he-test",
+            latest_event_date="2026-02-01",
+            earliest_event_date="2026-02-01",
+            available_years=[2026],
+            year_buckets=[
+                {
+                    "year": 2026,
+                    "event_count": 1,
+                    "start_page": 1,
+                    "end_page": 1,
+                    "latest_event_date": "2026-02-01",
+                    "earliest_event_date": "2026-02-01",
+                }
+            ],
+        ),
+        year_bucket={
+            "year": 2026,
+            "event_count": 1,
+            "start_page": 1,
+            "end_page": 1,
+            "latest_event_date": "2026-02-01",
+            "earliest_event_date": "2026-02-01",
+        },
+        timeline_page=MemberTimelinePagePayload(
+            bioguide_id="P000197",
+            name="Nancy Pelosi",
+            slug="nancy-pelosi",
+            state="CA",
+            district="11",
+            chamber="house",
+            party="Democrat",
+            page=1,
+            page_size=25,
+            total_pages=1,
+            total_events=1,
+            next_page=None,
+            previous_page=None,
+            events=[],
+        ),
+    )
+    write_planned_files(
+        [
+            PlannedFile.from_bytes(
+                member_timeline_year_path("nancy-pelosi", 2026),
+                json.dumps(payload.model_dump(mode="json"), sort_keys=True).encode("utf-8"),
+            )
+        ],
+        tmp_path,
+    )
+
+    result = load_local_member_timeline_year("nancy-pelosi", 2026, snapshot_root=tmp_path)
+
+    assert result.year == 2026
+    assert result.timeline_page.page == 1
+
+
+def test_runtime_exports_member_timeline_year_loader() -> None:
+    assert runtime.load_local_member_timeline_year is load_local_member_timeline_year
+
+
+def test_load_local_member_timeline_dimension_roundtrip(tmp_path: Path) -> None:
+    payload = MemberTimelineDimensionPayload(
+        dimension="conflict_of_interest_risk",
+        timeline_index=MemberTimelineIndexPayload(
+            bioguide_id="P000197",
+            name="Nancy Pelosi",
+            slug="nancy-pelosi",
+            state="CA",
+            district="11",
+            chamber="house",
+            party="Democrat",
+            latest_snapshot_date="2026-02-01",
+            page_size=25,
+            total_pages=1,
+            total_events=1,
+            latest_event_id="he-test",
+            latest_event_date="2026-02-01",
+            earliest_event_date="2026-02-01",
+            available_years=[2026],
+            year_buckets=[
+                {
+                    "year": 2026,
+                    "event_count": 1,
+                    "start_page": 1,
+                    "end_page": 1,
+                    "latest_event_date": "2026-02-01",
+                    "earliest_event_date": "2026-02-01",
+                }
+            ],
+        ),
+        timeline_page=MemberTimelinePagePayload(
+            bioguide_id="P000197",
+            name="Nancy Pelosi",
+            slug="nancy-pelosi",
+            state="CA",
+            district="11",
+            chamber="house",
+            party="Democrat",
+            page=1,
+            page_size=25,
+            total_pages=1,
+            total_events=1,
+            next_page=None,
+            previous_page=None,
+            events=[],
+        ),
+    )
+    write_planned_files(
+        [
+            PlannedFile.from_bytes(
+                member_timeline_dimension_path("nancy-pelosi", "conflict_of_interest_risk"),
+                json.dumps(payload.model_dump(mode="json"), sort_keys=True).encode("utf-8"),
+            )
+        ],
+        tmp_path,
+    )
+
+    result = load_local_member_timeline_dimension(
+        "nancy-pelosi",
+        "conflict_of_interest_risk",
+        snapshot_root=tmp_path,
+    )
+
+    assert result.dimension == "conflict_of_interest_risk"
+    assert result.timeline_page.page == 1
+
+
+def test_runtime_exports_member_timeline_dimension_loader() -> None:
+    assert runtime.load_local_member_timeline_dimension is load_local_member_timeline_dimension
+
+
+def test_load_local_member_timeline_page_roundtrip(tmp_path: Path) -> None:
+    event = MemberTimelineEventPayload(
+        event_id="he-test",
+        bioguide_id="P000197",
+        name="Nancy Pelosi",
+        slug="nancy-pelosi",
+        state="CA",
+        district="11",
+        chamber="house",
+        party="Democrat",
+        event_date="2026-02-01",
+        snapshot_date="2026-02-01",
+        fired_at="2026-02-01T00:00:00Z",
+        rule_id="committee_sector_trade.v1",
+        dimension="conflict_of_interest_risk",
+        severity="high",
+        evidence_card_id="ec-0001",
+        short_explanation="Test event.",
+        score_delta=10.0,
+    )
+    payload = MemberTimelinePagePayload(
+        bioguide_id="P000197",
+        name="Nancy Pelosi",
+        slug="nancy-pelosi",
+        state="CA",
+        district="11",
+        chamber="house",
+        party="Democrat",
+        page=1,
+        page_size=25,
+        total_pages=1,
+        total_events=1,
+        next_page=None,
+        previous_page=None,
+        events=[event],
+    )
+    write_planned_files(
+        [
+            PlannedFile.from_bytes(
+                member_timeline_page_path(payload.slug, payload.page),
+                json.dumps(payload.model_dump(mode="json"), sort_keys=True).encode("utf-8"),
+            ),
+            PlannedFile.from_bytes(
+                history_event_path(event.event_id),
+                json.dumps(event.model_dump(mode="json"), sort_keys=True).encode("utf-8"),
+            ),
+        ],
+        tmp_path,
+    )
+
+    page = load_local_member_timeline_page("nancy-pelosi", 1, snapshot_root=tmp_path)
+    event_result = load_local_history_event("he-test", snapshot_root=tmp_path)
+
+    assert page.slug == "nancy-pelosi"
+    assert page.events[0].event_id == "he-test"
+    assert event_result.event_id == "he-test"
+    assert event_result.slug == "nancy-pelosi"
+
+
+def test_runtime_exports_member_timeline_page_loader() -> None:
+    assert runtime.load_local_member_timeline_page is load_local_member_timeline_page
+
+
+def test_runtime_exports_history_event_loader() -> None:
+    assert runtime.load_local_history_event is load_local_history_event
+
+
+def test_load_local_history_event_page_roundtrip(tmp_path: Path) -> None:
+    make_snapshot(tmp_path)
+    event = MemberTimelineEventPayload(
+        event_id="he-test",
+        bioguide_id="P000197",
+        name="Nancy Pelosi",
+        slug="nancy-pelosi",
+        state="CA",
+        district="11",
+        chamber="house",
+        party="Democrat",
+        event_date="2026-02-01",
+        snapshot_date="2026-02-01",
+        fired_at="2026-02-01T00:00:00Z",
+        rule_id="committee_sector_trade.v1",
+        dimension="conflict_of_interest_risk",
+        severity="high",
+        evidence_card_id="ec-0001",
+        short_explanation="Test event.",
+        score_delta=10.0,
+    )
+    payload = HistoryEventPagePayload(
+        event=event,
+        member_page=load_local_member_page("nancy-pelosi", snapshot_root=tmp_path),
+        evidence_card=None,
+        previous_event_id=None,
+        next_event_id=None,
+    )
+    write_planned_files(
+        [
+            PlannedFile.from_bytes(
+                history_event_page_path(event.event_id),
+                json.dumps(payload.model_dump(mode="json"), sort_keys=True).encode("utf-8"),
+            )
+        ],
+        tmp_path,
+    )
+
+    result = load_local_history_event_page("he-test", snapshot_root=tmp_path)
+
+    assert result.event.event_id == "he-test"
+    assert result.member_page is not None
+    assert result.member_page.profile.slug == "nancy-pelosi"
+
+
+def test_runtime_exports_history_event_page_loader() -> None:
+    assert runtime.load_local_history_event_page is load_local_history_event_page
+
+
+def test_load_local_history_coverage_roundtrip(tmp_path: Path) -> None:
+    payload = HistoryCoveragePayload(
+        earliest_snapshot_id="2026-01-01",
+        earliest_snapshot_date="2026-01-01",
+        latest_snapshot_id="2026-02-01",
+        latest_snapshot_date="2026-02-01",
+        snapshot_count=5,
+        member_history_count=2,
+        total_events=7,
+        available_years=[2026],
+    )
+    write_planned_files(
+        [
+            PlannedFile.from_bytes(
+                history_coverage_path(),
+                json.dumps(payload.model_dump(mode="json"), sort_keys=True).encode("utf-8"),
+            )
+        ],
+        tmp_path,
+    )
+
+    result = load_local_history_coverage(snapshot_root=tmp_path)
+
+    assert result.latest_snapshot_id == "2026-02-01"
+    assert result.total_events == 7
+
+
+def test_runtime_exports_history_coverage_loader() -> None:
+    assert runtime.load_local_history_coverage is load_local_history_coverage
+
+
 def test_load_local_member_preset_compare_roundtrip(tmp_path: Path) -> None:
     payload = {
         "bioguide_id": "P000197",
@@ -310,7 +774,9 @@ def test_runtime_exports_snapshot_preset_compare_loader() -> None:
 def test_load_local_member_history_page_roundtrip(tmp_path: Path) -> None:
     payload = MemberHistoryPagePayload(
         member_page=MemberPagePayload(
-            profile=make_member_history().model_dump(mode="json") if False else {
+            profile=make_member_history().model_dump(mode="json")
+            if False
+            else {
                 "bioguide_id": "P000197",
                 "name": "Nancy Pelosi",
                 "slug": "nancy-pelosi",

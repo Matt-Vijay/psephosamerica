@@ -199,6 +199,10 @@ class TestDisclosureBatch:
         batch = self._batch()
         assert batch.rows[0]["source_record_id"] == "FILING-001"
 
+    def test_row_contains_source_artifact_id(self) -> None:
+        batch = self._batch()
+        assert batch.rows[0]["source_artifact_id"] == 2
+
     def test_row_contains_supersedes_filing_source_id(self) -> None:
         filing = _filing(
             filing_type=FilingType.AMENDMENT,
@@ -289,6 +293,10 @@ class TestHoldingBatch:
         assert row["is_liquid"] is True
         assert row["source_record_id"] == "H-003"
 
+    def test_row_contains_source_artifact_id(self) -> None:
+        batch = self._batch([_result(holdings=[_holding()])])
+        assert batch.rows[0]["source_artifact_id"] == 2
+
     def test_holdings_from_different_filings_carry_correct_disclosure_ref(self) -> None:
         filing_a = _filing(member_bioguide_id="A000001", filing_year=2022, source_record_id="FA")
         filing_b = _filing(member_bioguide_id="B000002", filing_year=2023, source_record_id="FB")
@@ -363,6 +371,10 @@ class TestTransactionBatch:
         assert row["amount_label"] == "$50,001 - $100,000"
         assert row["asset_description"] == "Common Stock"
         assert row["source_record_id"] == "TX-005"
+
+    def test_row_contains_source_artifact_id(self) -> None:
+        batch = self._batch([_result(transactions=[_transaction()])])
+        assert batch.rows[0]["source_artifact_id"] == 2
 
     def test_transactions_from_different_filings_carry_correct_disclosure_ref(self) -> None:
         filing_a = _filing(member_bioguide_id="A000001", amendment_number=0, source_record_id="FA")
@@ -531,10 +543,12 @@ class TestSidecars:
             _outside_position(line_number=1, entity_name="OrgB1"),
             _outside_position(line_number=2, entity_name="OrgB2"),
         ]
-        plan = plan_disclosure_load([
-            _result(filing_a, outside_positions=ops_a),
-            _result(filing_b, outside_positions=ops_b),
-        ])
+        plan = plan_disclosure_load(
+            [
+                _result(filing_a, outside_positions=ops_a),
+                _result(filing_b, outside_positions=ops_b),
+            ]
+        )
         assert len(plan.sidecars) == 3
         names = [sc.entity_name for sc in plan.sidecars]
         assert names == ["OrgA", "OrgB1", "OrgB2"]

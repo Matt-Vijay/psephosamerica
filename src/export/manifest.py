@@ -5,13 +5,22 @@ import json
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import Field, field_validator
+
+from src.export.contracts import ExportContractModel
 
 
-class ManifestEntry(BaseModel):
+class ManifestEntry(ExportContractModel):
     path: str = Field(description="Key / relative path inside the snapshot")
     sha256: str = Field(min_length=64, max_length=64)
     size_bytes: int = Field(ge=0)
+
+    @field_validator("sha256")
+    @classmethod
+    def sha256_is_hex(cls, value: str) -> str:
+        if not _is_sha256_hex(value):
+            raise ValueError("sha256 must be a 64-character hex string")
+        return value
 
 
 def _entry_record(entry: ManifestEntry | dict[str, Any]) -> dict[str, Any]:
@@ -42,7 +51,7 @@ def manifest_root_sha256(entries: list[ManifestEntry] | list[dict[str, Any]]) ->
     return hashlib.sha256(payload).hexdigest()
 
 
-class SnapshotManifest(BaseModel):
+class SnapshotManifest(ExportContractModel):
     snapshot_id: str = Field(description="e.g. '2026-04-13'")
     created_at: datetime
     entries: list[ManifestEntry]
@@ -50,8 +59,18 @@ class SnapshotManifest(BaseModel):
     total_bytes: int
     root_sha256: str = Field(min_length=64, max_length=64)
 
+    @field_validator("root_sha256")
+    @classmethod
+    def root_sha256_is_hex(cls, value: str) -> str:
+        if not _is_sha256_hex(value):
+            raise ValueError("root_sha256 must be a 64-character hex string")
+        return value
+
     def verify_counts(self) -> bool:
-        return (
-            self.total_files == len(self.entries)
-            and self.total_bytes == sum(e.size_bytes for e in self.entries)
+        return self.total_files == len(self.entries) and self.total_bytes == sum(
+            e.size_bytes for e in self.entries
         )
+
+
+def _is_sha256_hex(value: str) -> bool:
+    return len(value) == 64 and all(char in "0123456789abcdefABCDEF" for char in value)

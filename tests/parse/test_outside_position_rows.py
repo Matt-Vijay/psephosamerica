@@ -237,7 +237,7 @@ class TestOutsidePositionRowsFromTable:
         # line_number counts all input rows (including skipped), not just results
         rows = [
             self._row(organization="First"),
-            self._row(organization=""),   # skipped but still increments counter
+            self._row(organization=""),  # skipped but still increments counter
             self._row(organization="Third"),
         ]
         result = outside_position_rows_from_table(rows)

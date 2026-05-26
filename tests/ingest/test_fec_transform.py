@@ -78,6 +78,7 @@ def _linkage(**overrides) -> CandidateCommitteeLinkage:
 # committee_to_row
 # ---------------------------------------------------------------------------
 
+
 class TestCommitteeToRow:
     def test_canonical_keys_present(self):
         row = committee_to_row(_committee())
@@ -109,10 +110,15 @@ class TestCommitteeToRow:
         assert row["state"] is None
 
     def test_none_optional_fields(self):
-        row = committee_to_row(_committee(
-            treasurer_name=None, city=None, state=None,
-            committee_type=None, designation_code=None,
-        ))
+        row = committee_to_row(
+            _committee(
+                treasurer_name=None,
+                city=None,
+                state=None,
+                committee_type=None,
+                designation_code=None,
+            )
+        )
         assert row["treasurer_name"] is None
         assert row["city"] is None
         assert row["state"] is None
@@ -135,6 +141,7 @@ class TestCommitteeToRow:
 # ---------------------------------------------------------------------------
 # contribution_to_row
 # ---------------------------------------------------------------------------
+
 
 class TestContributionToRow:
     def test_canonical_keys_present(self):
@@ -242,23 +249,23 @@ class TestContributionToRow:
 
     def test_employer_normalized_in_supplemental(self):
         row = contribution_to_row(_contribution(employer="ACME INC"))
-        assert row["_donor_employer_raw"] == "ACME"
+        assert row["donor_employer"] == "ACME"
 
     def test_occupation_normalized_in_supplemental(self):
         row = contribution_to_row(_contribution(occupation="ATTORNEY"))
-        assert row["_donor_occupation_raw"] == "ATTORNEY"
+        assert row["donor_occupation"] == "ATTORNEY"
 
     def test_occupation_generic_becomes_empty(self):
         row = contribution_to_row(_contribution(occupation="RETIRED"))
-        assert row["_donor_occupation_raw"] == ""
+        assert row["donor_occupation"] == ""
 
     def test_donor_state_cleaned(self):
         row = contribution_to_row(_contribution(state="tn"))
-        assert row["_donor_state"] == "TN"
+        assert row["donor_state"] == "TN"
 
     def test_donor_state_invalid_becomes_none(self):
         row = contribution_to_row(_contribution(state="TNN"))
-        assert row["_donor_state"] is None
+        assert row["donor_state"] is None
 
     def test_invalid_committee_id_raises(self):
         with pytest.raises(ValueError, match="Invalid recipient fec_committee_id"):
@@ -268,6 +275,7 @@ class TestContributionToRow:
 # ---------------------------------------------------------------------------
 # linkage_to_row
 # ---------------------------------------------------------------------------
+
 
 class TestLinkageToRow:
     def test_canonical_keys_present(self):

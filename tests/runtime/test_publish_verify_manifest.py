@@ -15,7 +15,9 @@ from src.export.manifest import ManifestEntry, SnapshotManifest, manifest_root_s
 from src.export.writer import (
     PlannedFile,
     manifest_path,
+    member_page_payload_path,
     member_path,
+    ontology_member_edges_path,
     serialize_payload,
 )
 from src.runtime.publish_verify_manifest import verify_local_manifest
@@ -114,7 +116,9 @@ class TestValidManifest:
     def test_ok_for_manifest_with_one_entry(self, tmp_path: Path) -> None:
         planned = _member_file("test-member", b'{"member":"ok"}')
         _write_planned(tmp_path, planned)
-        entry = ManifestEntry(path=planned.path, sha256=planned.sha256, size_bytes=planned.size_bytes)
+        entry = ManifestEntry(
+            path=planned.path, sha256=planned.sha256, size_bytes=planned.size_bytes
+        )
         _write_manifest(tmp_path, _minimal_manifest(entries=[entry]))
         result = verify_local_manifest(tmp_path)
         assert result.ok is True
@@ -129,13 +133,49 @@ class TestValidManifest:
         assert any("expected exactly one manifest" in issue.message for issue in result.issues)
 
     def test_identity_lookup_missing_from_manifest_is_error(self, tmp_path: Path) -> None:
-        planned = _root_file("identity/current-member-lookup.json", b'{"v":1,"sd":"2026-04-14","m":[]}')
+        planned = _root_file(
+            "identity/current-member-lookup.json", b'{"v":1,"sd":"2026-04-14","m":[]}'
+        )
         _write_planned(tmp_path, planned)
         _write_manifest(tmp_path, _minimal_manifest())
         result = verify_local_manifest(tmp_path)
         assert result.ok is False
         assert any(
             issue.path == "identity/current-member-lookup.json"
+            and "managed file not listed in manifest" in issue.message
+            for issue in result.issues
+        )
+
+    def test_member_page_missing_from_manifest_is_error(self, tmp_path: Path) -> None:
+        planned = _root_file(
+            member_page_payload_path("listed-member"),
+            b'{"profile":{"slug":"listed-member"},"top_evidence_cards":[],"recent_evidence_cards":[]}',
+        )
+        _write_planned(tmp_path, planned)
+        _write_manifest(tmp_path, _minimal_manifest())
+
+        result = verify_local_manifest(tmp_path)
+
+        assert result.ok is False
+        assert any(
+            issue.path == member_page_payload_path("listed-member")
+            and "managed file not listed in manifest" in issue.message
+            for issue in result.issues
+        )
+
+    def test_ontology_member_graph_missing_from_manifest_is_error(self, tmp_path: Path) -> None:
+        planned = _root_file(
+            ontology_member_edges_path("P000197"),
+            b'{"snapshot_id":"2026-04-14","member_bioguide_id":"P000197","edge_count":0,"edges":[]}',
+        )
+        _write_planned(tmp_path, planned)
+        _write_manifest(tmp_path, _minimal_manifest())
+
+        result = verify_local_manifest(tmp_path)
+
+        assert result.ok is False
+        assert any(
+            issue.path == ontology_member_edges_path("P000197")
             and "managed file not listed in manifest" in issue.message
             for issue in result.issues
         )
@@ -285,6 +325,23 @@ class TestEntriesShape:
         assert result.ok is False
         assert any("sha256" in i.message for i in result.issues)
 
+    def test_error_when_entry_sha256_is_not_hex(self, tmp_path: Path) -> None:
+        _write_raw(
+            tmp_path,
+            _SNAP_ID,
+            self._base_with_entry(
+                {
+                    "path": "members/foo.json",
+                    "sha256": "z" * 64,
+                    "size_bytes": 10,
+                }
+            ),
+        )
+        result = verify_local_manifest(tmp_path)
+        assert result.ok is False
+        assert any("sha256" in i.message and "hex" in i.message for i in result.issues)
+        assert not any("sha256 mismatch" in i.message for i in result.issues)
+
     def test_error_when_entry_missing_path(self, tmp_path: Path) -> None:
         _write_raw(
             tmp_path,
@@ -365,7 +422,9 @@ class TestCountMismatch:
 class TestManifestEntryIntegrity:
     def test_error_when_manifest_entry_file_missing(self, tmp_path: Path) -> None:
         planned = _member_file("ghost-member", b'{"member":"ghost"}')
-        entry = ManifestEntry(path=planned.path, sha256=planned.sha256, size_bytes=planned.size_bytes)
+        entry = ManifestEntry(
+            path=planned.path, sha256=planned.sha256, size_bytes=planned.size_bytes
+        )
         _write_manifest(tmp_path, _minimal_manifest(entries=[entry]))
 
         result = verify_local_manifest(tmp_path)
@@ -419,7 +478,9 @@ class TestManifestEntryIntegrity:
     def test_error_when_manifest_contains_duplicate_entry_paths(self, tmp_path: Path) -> None:
         planned = _member_file("duplicate-member", b'{"member":"dup"}')
         _write_planned(tmp_path, planned)
-        entry = ManifestEntry(path=planned.path, sha256=planned.sha256, size_bytes=planned.size_bytes)
+        entry = ManifestEntry(
+            path=planned.path, sha256=planned.sha256, size_bytes=planned.size_bytes
+        )
         _write_manifest(tmp_path, _minimal_manifest(entries=[entry, entry]))
 
         result = verify_local_manifest(tmp_path)
@@ -499,7 +560,9 @@ class TestManifestEntryIntegrity:
         result = verify_local_manifest(tmp_path)
 
         assert result.ok is True
-        assert any(i.path == "homepage/feed.json" and i.severity == "warning" for i in result.issues)
+        assert any(
+            i.path == "homepage/feed.json" and i.severity == "warning" for i in result.issues
+        )
         assert not any("root_sha256 mismatch" in i.message for i in result.issues)
 
     def test_error_when_root_sha256_does_not_match_entries(self, tmp_path: Path) -> None:
@@ -522,6 +585,29 @@ class TestManifestEntryIntegrity:
 
         assert result.ok is False
         assert any("root_sha256 mismatch" in i.message for i in result.issues)
+
+    def test_error_when_root_sha256_is_not_hex(self, tmp_path: Path) -> None:
+        planned = _member_file("invalid-root", b'{"member":"ok"}')
+        _write_planned(tmp_path, planned)
+        manifest = _minimal_manifest(
+            entries=[
+                ManifestEntry(
+                    path=planned.path,
+                    sha256=planned.sha256,
+                    size_bytes=planned.size_bytes,
+                )
+            ]
+        )
+        raw = json.loads(serialize_payload(manifest))
+        raw["root_sha256"] = "z" * 64
+        _write_raw(tmp_path, manifest.snapshot_id, raw)
+
+        result = verify_local_manifest(tmp_path)
+
+        assert result.ok is False
+        assert any("root_sha256" in i.message and "hex" in i.message for i in result.issues)
+        assert not any("root_sha256 mismatch" in i.message for i in result.issues)
+
 
 # ---------------------------------------------------------------------------
 # Issue attributes
@@ -560,9 +646,7 @@ class TestPathConfinement:
         _write_raw(
             tmp_path,
             _SNAP_ID,
-            self._base_with_entry(
-                {"path": "/etc/passwd", "sha256": "a" * 64, "size_bytes": 10}
-            ),
+            self._base_with_entry({"path": "/etc/passwd", "sha256": "a" * 64, "size_bytes": 10}),
         )
         result = verify_local_manifest(tmp_path)
         assert result.ok is False

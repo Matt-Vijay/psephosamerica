@@ -34,29 +34,33 @@ _MIN_CHARS_PER_TEXT_PAGE = 200
 # House filings use a stricter text ratio because they are more often scanned.
 _HOUSE_TEXT_PAGE_RATIO_THRESHOLD = 0.90
 
-_ANNUAL_SECTION_HEADERS = frozenset({
-    "schedule a",
-    "schedule b",
-    "schedule c",
-    "schedule d",
-    "part i",
-    "part ii",
-    "part iii",
-    "part iv",
-    "part v",
-    "part vi",
-    "part vii",
-    "part viii",
-    "part ix",
-})
+_ANNUAL_SECTION_HEADERS = frozenset(
+    {
+        "schedule a",
+        "schedule b",
+        "schedule c",
+        "schedule d",
+        "part i",
+        "part ii",
+        "part iii",
+        "part iv",
+        "part v",
+        "part vi",
+        "part vii",
+        "part viii",
+        "part ix",
+    }
+)
 
-_PTR_SECTION_HEADERS = frozenset({
-    "transaction",
-    "owner",
-    "asset",
-    "amount",
-    "date",
-})
+_PTR_SECTION_HEADERS = frozenset(
+    {
+        "transaction",
+        "owner",
+        "asset",
+        "amount",
+        "date",
+    }
+)
 
 
 @dataclass(frozen=True)

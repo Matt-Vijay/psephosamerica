@@ -8,9 +8,12 @@ No DB I/O is performed here.
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 Row = dict[str, Any]
+
+_IDENTIFIER_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 
 def _columns(row: Row) -> list[str]:
@@ -25,6 +28,17 @@ def _values(row: Row) -> list[Any]:
     return list(row.values())
 
 
+def quote_identifier(identifier: str) -> str:
+    """Quote an internal SQL identifier after strict validation."""
+    if not _IDENTIFIER_RE.fullmatch(identifier):
+        raise ValueError(f"invalid SQL identifier: {identifier!r}")
+    return f'"{identifier}"'
+
+
+def _identifier_list(identifiers: list[str]) -> str:
+    return ", ".join(quote_identifier(identifier) for identifier in identifiers)
+
+
 def build_insert(table: str, row: Row) -> tuple[str, list[Any]]:
     """Return (sql, params) for a plain INSERT."""
     if not row:
@@ -32,8 +46,9 @@ def build_insert(table: str, row: Row) -> tuple[str, list[Any]]:
 
     cols = _columns(row)
     placeholders = _placeholders(row)
+    # Safe dynamic SQL: table and columns are strictly validated identifiers.
     sql = (
-        f"INSERT INTO {table} ({', '.join(cols)})"
+        f"INSERT INTO {quote_identifier(table)} ({_identifier_list(cols)})"  # nosec B608
         f" VALUES ({', '.join(placeholders)})"
     )
     return sql, _values(row)
@@ -64,9 +79,10 @@ def build_upsert(
         # Nothing to update: use DO NOTHING
         cols = _columns(row)
         placeholders = _placeholders(row)
-        conflict_target = ", ".join(conflict_columns)
+        conflict_target = _identifier_list(conflict_columns)
+        # Safe dynamic SQL: table, columns, and conflict target are validated identifiers.
         sql = (
-            f"INSERT INTO {table} ({', '.join(cols)})"
+            f"INSERT INTO {quote_identifier(table)} ({_identifier_list(cols)})"  # nosec B608
             f" VALUES ({', '.join(placeholders)})"
             f" ON CONFLICT ({conflict_target}) DO NOTHING"
         )
@@ -74,12 +90,13 @@ def build_upsert(
 
     cols = _columns(row)
     placeholders = _placeholders(row)
-    conflict_target = ", ".join(conflict_columns)
-    set_clause = ", ".join(f"{c} = %s" for c in update_cols)
+    conflict_target = _identifier_list(conflict_columns)
+    set_clause = ", ".join(f"{quote_identifier(c)} = %s" for c in update_cols)
     update_values = [row[c] for c in update_cols]
 
+    # Safe dynamic SQL: table, columns, and conflict target are validated identifiers.
     sql = (
-        f"INSERT INTO {table} ({', '.join(cols)})"
+        f"INSERT INTO {quote_identifier(table)} ({_identifier_list(cols)})"  # nosec B608
         f" VALUES ({', '.join(placeholders)})"
         f" ON CONFLICT ({conflict_target}) DO UPDATE SET {set_clause}"
     )

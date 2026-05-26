@@ -50,10 +50,7 @@ def compute_dimension_scores(
     delta_by_dimension: dict[str, list[float]],
 ) -> dict[str, float]:
     """Sum deltas per dimension from 100, clamped to [0, 100]."""
-    return {
-        dim: clamp(_SCORE_START + sum(deltas))
-        for dim, deltas in delta_by_dimension.items()
-    }
+    return {dim: clamp(_SCORE_START + sum(deltas)) for dim, deltas in delta_by_dimension.items()}
 
 
 def compute_score_total(dimension_scores: dict[str, float]) -> float:

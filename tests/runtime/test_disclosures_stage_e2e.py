@@ -92,7 +92,7 @@ def _house_bundle_json(storage_uri: str, data: bytes) -> dict[str, Any]:
                 "chamber": "house",
                 "filing_year": 2024,
                 "storage_uri": storage_uri,
-                "source_url": "https://disclosures.house.gov/public_disc/ptr-pdfs/2024/30001.pdf",
+                "source_url": "https://disclosures.house.gov/public_disc/financial-pdfs/2024/30001.pdf",
                 "source_slug": "house-disclosures",
                 "artifact_kind": "pdf",
                 "sha256": sha256,
@@ -266,9 +266,7 @@ class TestArtifactMetaDerivedCorrectly:
 
     def test_house_entry_yields_house_chamber(self) -> None:
         data = b"house pdf"
-        bundle = disclosures_bundle_from_dict(
-            _house_bundle_json("house/2024/30001.pdf", data)
-        )
+        bundle = disclosures_bundle_from_dict(_house_bundle_json("house/2024/30001.pdf", data))
         meta = entry_artifact_meta(bundle.artifacts[0], bioguide_id="S000001")
         assert meta.chamber == Chamber.HOUSE
 
@@ -515,10 +513,7 @@ class TestStagingRowsReflectRealBundleEntries:
     def test_multi_entry_bundle_all_sha256_forwarded(self) -> None:
         conn = MagicMock()
         payloads = [b"first filing", b"second filing", b"third filing"]
-        entries = [
-            (f"senate/2024/UUID-MULTI-{i}.pdf", data)
-            for i, data in enumerate(payloads)
-        ]
+        entries = [(f"senate/2024/UUID-MULTI-{i}.pdf", data) for i, data in enumerate(payloads)]
         bundle_dict = _multi_entry_senate_bundle_json(entries)
         bundle = disclosures_bundle_from_dict(bundle_dict)
         ds_row: dict[str, Any] = {"id": 10, "slug": "senate-disclosures"}
@@ -534,10 +529,7 @@ class TestStagingRowsReflectRealBundleEntries:
     def test_multi_entry_storage_uris_forwarded_in_order(self) -> None:
         conn = MagicMock()
         payloads = [b"a", b"b"]
-        entries = [
-            (f"senate/2024/UUID-MULTI-{i}.pdf", data)
-            for i, data in enumerate(payloads)
-        ]
+        entries = [(f"senate/2024/UUID-MULTI-{i}.pdf", data) for i, data in enumerate(payloads)]
         bundle_dict = _multi_entry_senate_bundle_json(entries)
         bundle = disclosures_bundle_from_dict(bundle_dict)
         ds_row: dict[str, Any] = {"id": 10, "slug": "senate-disclosures"}

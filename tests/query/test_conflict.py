@@ -26,6 +26,7 @@ from src.query.conflict import (
 BIOGUIDE = "A000001"
 DISC_ID = "disc-101"
 MEMB_ID = "memb-55"
+COMMITTEE_MEMBERSHIP_URL = "https://api.congress.gov/v3/committee/house/HSEN?format=json"
 
 BASE_COMMITTEE_ROW: dict = {
     "member_bioguide_id": BIOGUIDE,
@@ -39,12 +40,14 @@ BASE_COMMITTEE_ROW: dict = {
     "sector_name": "Energy & Natural Resources",
     "disclosure_period_start": dt.date(2022, 1, 1),
     "disclosure_period_end": dt.date(2022, 12, 31),
+    "committee_membership_source_url": COMMITTEE_MEMBERSHIP_URL,
 }
 
 
 # ---------------------------------------------------------------------------
 # committee_sector_trade
 # ---------------------------------------------------------------------------
+
 
 class TestCommitteeSectorTrade:
     def test_returns_conflict_bundle(self):
@@ -73,10 +76,24 @@ class TestCommitteeSectorTrade:
         disc = next(a for a in bundle.source_anchors if a.source_type == "financial_disclosure")
         assert disc.source_id == DISC_ID
 
+    def test_disclosure_anchor_uses_source_url(self):
+        row = {
+            **BASE_COMMITTEE_ROW,
+            "source_url": "https://disclosures.house.gov/public_disc/ptr-pdfs/2024/DOC.pdf",
+        }
+        bundle = assemble_committee_sector_trade_bundle(row)
+        disc = next(a for a in bundle.source_anchors if a.source_type == "financial_disclosure")
+        assert disc.url == row["source_url"]
+
     def test_committee_anchor_source_id(self):
         bundle = assemble_committee_sector_trade_bundle(BASE_COMMITTEE_ROW)
         mem = next(a for a in bundle.source_anchors if a.source_type == "committee_membership")
         assert mem.source_id == MEMB_ID
+
+    def test_committee_anchor_uses_source_url(self):
+        bundle = assemble_committee_sector_trade_bundle(BASE_COMMITTEE_ROW)
+        mem = next(a for a in bundle.source_anchors if a.source_type == "committee_membership")
+        assert mem.url == COMMITTEE_MEMBERSHIP_URL
 
     def test_context_contains_derived_overlap(self):
         bundle = assemble_committee_sector_trade_bundle(BASE_COMMITTEE_ROW)
@@ -125,9 +142,24 @@ class TestCommitteeSectorTrade:
 # ---------------------------------------------------------------------------
 
 TRANSACTIONS = [
-    {"transaction_date": dt.date(2022, 3, 10), "sector": "energy"},
-    {"transaction_date": dt.date(2022, 6, 15), "sector": "energy"},
-    {"transaction_date": dt.date(2022, 6, 15), "sector": "energy"},  # same day
+    {
+        "financial_disclosure_id": DISC_ID,
+        "transaction_id": "tx-1",
+        "transaction_date": dt.date(2022, 3, 10),
+        "sector": "energy",
+    },
+    {
+        "financial_disclosure_id": "disc-102",
+        "transaction_id": "tx-2",
+        "transaction_date": dt.date(2022, 6, 15),
+        "sector": "energy",
+    },
+    {
+        "financial_disclosure_id": "disc-102",
+        "transaction_id": "tx-3",
+        "transaction_date": dt.date(2022, 6, 15),
+        "sector": "energy",
+    },  # same day
     {"transaction_date": dt.date(2022, 9, 1), "sector": "healthcare"},  # different sector
 ]
 
@@ -140,6 +172,7 @@ TRADING_ROW: dict = {
     "committee_start_date": dt.date(2022, 1, 3),
     "committee_end_date": dt.date(2023, 1, 3),
     "transactions": TRANSACTIONS,
+    "committee_membership_source_url": COMMITTEE_MEMBERSHIP_URL,
 }
 
 
@@ -156,9 +189,9 @@ class TestRepeatedCommitteeLinkedTrading:
         bundle = assemble_repeated_committee_linked_trading_bundle(TRADING_ROW)
         assert bundle.superseded_filing_id is None
 
-    def test_two_source_anchors(self):
+    def test_source_anchors_include_distinct_disclosures_and_committee(self):
         bundle = assemble_repeated_committee_linked_trading_bundle(TRADING_ROW)
-        assert len(bundle.source_anchors) == 2
+        assert len(bundle.source_anchors) == 3
 
     def test_matching_transaction_count(self):
         bundle = assemble_repeated_committee_linked_trading_bundle(TRADING_ROW)
@@ -189,6 +222,71 @@ class TestRepeatedCommitteeLinkedTrading:
         bundle = assemble_repeated_committee_linked_trading_bundle(TRADING_ROW)
         types = {a.source_type for a in bundle.source_anchors}
         assert types == {"financial_disclosure", "committee_membership"}
+
+    def test_committee_anchor_uses_source_url(self):
+        bundle = assemble_repeated_committee_linked_trading_bundle(TRADING_ROW)
+        mem = next(a for a in bundle.source_anchors if a.source_type == "committee_membership")
+        assert mem.url == COMMITTEE_MEMBERSHIP_URL
+
+    def test_repeated_trading_anchors_distinct_disclosures_from_transactions(self):
+        bundle = assemble_repeated_committee_linked_trading_bundle(TRADING_ROW)
+        disclosure_ids = [
+            a.source_id for a in bundle.source_anchors if a.source_type == "financial_disclosure"
+        ]
+        assert disclosure_ids == [DISC_ID, "disc-102"]
+
+    def test_repeated_trading_disclosure_anchors_use_transaction_source_urls(self):
+        row = {
+            **TRADING_ROW,
+            "transactions": [
+                {
+                    **TRANSACTIONS[0],
+                    "source_url": "https://efdsearch.senate.gov/search/view/paper/DOC1/",
+                },
+                {
+                    **TRANSACTIONS[1],
+                    "source_url": "https://efdsearch.senate.gov/search/view/paper/DOC2/",
+                },
+            ],
+        }
+        bundle = assemble_repeated_committee_linked_trading_bundle(row)
+        urls = [a.url for a in bundle.source_anchors if a.source_type == "financial_disclosure"]
+        assert urls == [
+            "https://efdsearch.senate.gov/search/view/paper/DOC1/",
+            "https://efdsearch.senate.gov/search/view/paper/DOC2/",
+        ]
+
+    def test_repeated_trading_disclosure_anchors_skip_out_of_window_transactions(self):
+        row = {
+            **TRADING_ROW,
+            "transactions": [
+                {
+                    **TRANSACTIONS[0],
+                    "financial_disclosure_id": DISC_ID,
+                    "source_url": "https://efdsearch.senate.gov/search/view/paper/IN_WINDOW/",
+                },
+                {
+                    **TRANSACTIONS[1],
+                    "financial_disclosure_id": "disc-outside",
+                    "transaction_date": dt.date(2024, 1, 10),
+                    "source_url": "https://efdsearch.senate.gov/search/view/paper/OUTSIDE/",
+                },
+            ],
+        }
+
+        bundle = assemble_repeated_committee_linked_trading_bundle(row)
+
+        disclosure_anchors = [
+            a for a in bundle.source_anchors if a.source_type == "financial_disclosure"
+        ]
+        assert [(a.source_id, a.url) for a in disclosure_anchors] == [
+            (DISC_ID, "https://efdsearch.senate.gov/search/view/paper/IN_WINDOW/")
+        ]
+
+    def test_repeated_trading_skips_missing_disclosure_anchor(self):
+        row = {**TRADING_ROW, "financial_disclosure_id": None, "transactions": []}
+        bundle = assemble_repeated_committee_linked_trading_bundle(row)
+        assert [a.source_type for a in bundle.source_anchors] == ["committee_membership"]
 
     def test_open_ended_service_requires_snapshot_or_reference_date(self):
         row = {**TRADING_ROW, "committee_end_date": None}
@@ -268,6 +366,14 @@ class TestLateOrAmendedDisclosure:
         bundle = assemble_late_or_amended_disclosure_bundle(ORIGINAL_FILING_ROW)
         assert bundle.source_anchors[0].source_id == DISC_ID
 
+    def test_disclosure_anchor_uses_source_url(self):
+        row = {
+            **ORIGINAL_FILING_ROW,
+            "source_url": "https://efdsearch.senate.gov/search/view/paper/DOC/",
+        }
+        bundle = assemble_late_or_amended_disclosure_bundle(row)
+        assert bundle.source_anchors[0].url == row["source_url"]
+
     def test_days_late_computed(self):
         bundle = assemble_late_or_amended_disclosure_bundle(ORIGINAL_FILING_ROW)
         # filed 2022-06-20, deadline 2022-05-15 → 36 days late
@@ -315,6 +421,7 @@ HOLDINGS_ROW: dict = {
     "holding_value_max": 50_000.0,
     "disclosure_period_start": dt.date(2022, 1, 1),
     "disclosure_period_end": dt.date(2022, 12, 31),
+    "committee_membership_source_url": COMMITTEE_MEMBERSHIP_URL,
 }
 
 
@@ -363,6 +470,20 @@ class TestSectorHoldingsOverlap:
         bundle = assemble_sector_holdings_overlap_bundle(HOLDINGS_ROW)
         mem = next(a for a in bundle.source_anchors if a.source_type == "committee_membership")
         assert "Committee on Energy" in mem.label
+
+    def test_committee_anchor_uses_source_url(self):
+        bundle = assemble_sector_holdings_overlap_bundle(HOLDINGS_ROW)
+        mem = next(a for a in bundle.source_anchors if a.source_type == "committee_membership")
+        assert mem.url == COMMITTEE_MEMBERSHIP_URL
+
+    def test_disclosure_anchor_uses_source_url(self):
+        row = {
+            **HOLDINGS_ROW,
+            "source_url": "https://disclosures.house.gov/public_disc/financial-pdfs/2024/DOC.pdf",
+        }
+        bundle = assemble_sector_holdings_overlap_bundle(row)
+        disc = next(a for a in bundle.source_anchors if a.source_type == "financial_disclosure")
+        assert disc.url == row["source_url"]
 
     def test_open_ended_service_still_computes_overlap(self):
         row = {**HOLDINGS_ROW, "committee_end_date": None}

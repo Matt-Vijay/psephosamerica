@@ -39,7 +39,7 @@ def _coerce_date(value: dt.date | str) -> dt.date:
 
 def _occurred_at_rank(value: dt.date) -> float:
     rank = getattr(value, "_rank", None)
-    if isinstance(rank, (int, float)):
+    if isinstance(rank, (int, float)) and not isinstance(rank, bool):
         return float(rank)
     return float(value.toordinal())
 

@@ -34,10 +34,16 @@ from src.parse.disclosures.text_document import (
 # Shared constants and fixtures
 # ---------------------------------------------------------------------------
 
-_ANNUAL_HEADERS: frozenset[str] = frozenset({
-    "schedule a", "schedule b", "schedule c",
-    "part i", "part ii", "part iii",
-})
+_ANNUAL_HEADERS: frozenset[str] = frozenset(
+    {
+        "schedule a",
+        "schedule b",
+        "schedule c",
+        "part i",
+        "part ii",
+        "part iii",
+    }
+)
 
 _RICH_TEXT = "a" * MIN_TEXT_PAGE_CHARS  # exactly at the text threshold
 
@@ -70,13 +76,7 @@ _TRANSACTION_PAGE = (
 )
 
 # Cover page / noise page: only headers, numbers, whitespace.
-_COVER_PAGE_NOISE = (
-    "   \n"
-    "United States House of Representatives\n"
-    "   \n"
-    "2023\n"
-    "Page 1\n"
-)
+_COVER_PAGE_NOISE = "   \nUnited States House of Representatives\n   \n2023\nPage 1\n"
 
 
 # ---------------------------------------------------------------------------
@@ -266,8 +266,8 @@ class TestDocumentMetrics_Function:
         pages = [PageText(page_number=1, text="a" * 500)]
         m = document_metrics(pages)
         # total_pages, text_pages, avg_chars_per_text_page
-        _ = m.page_count          # → total_pages
-        _ = m.text_page_count     # → text_pages
+        _ = m.page_count  # → total_pages
+        _ = m.text_page_count  # → text_pages
         _ = m.avg_chars_per_text_page
 
 
@@ -319,16 +319,16 @@ class TestClassifyPageKind:
     def test_mixed_document_page_kinds(self) -> None:
         """A realistic 10-page filing: 6 rich, 2 sparse/OCR, 2 noise."""
         pages = [
-            PageText(page_number=1, text=""),                             # NOISE
-            PageText(page_number=2, text=_HOLDING_PAGE),                  # TEXT
-            PageText(page_number=3, text=_HOLDING_PAGE),                  # TEXT
-            PageText(page_number=4, text="x" * 30),                       # OCR_CANDIDATE
-            PageText(page_number=5, text=_TRANSACTION_PAGE),              # TEXT
-            PageText(page_number=6, text=_TRANSACTION_PAGE),              # TEXT
+            PageText(page_number=1, text=""),  # NOISE
+            PageText(page_number=2, text=_HOLDING_PAGE),  # TEXT
+            PageText(page_number=3, text=_HOLDING_PAGE),  # TEXT
+            PageText(page_number=4, text="x" * 30),  # OCR_CANDIDATE
+            PageText(page_number=5, text=_TRANSACTION_PAGE),  # TEXT
+            PageText(page_number=6, text=_TRANSACTION_PAGE),  # TEXT
             PageText(page_number=7, text="Schedule B\nNone reported\n" + "y" * 60),  # SPARSE
-            PageText(page_number=8, text=_HOLDING_PAGE),                  # TEXT
-            PageText(page_number=9, text="   \n1\n2\n   "),               # NOISE
-            PageText(page_number=10, text=_HOLDING_PAGE),                 # TEXT
+            PageText(page_number=8, text=_HOLDING_PAGE),  # TEXT
+            PageText(page_number=9, text="   \n1\n2\n   "),  # NOISE
+            PageText(page_number=10, text=_HOLDING_PAGE),  # TEXT
         ]
         kinds = [classify_page_kind(p) for p in pages]
         assert kinds[0] == PageKind.NOISE
@@ -393,10 +393,7 @@ class TestDetectRepeatedHeaders:
     def test_header_on_every_page_is_flagged(self) -> None:
         """10-page doc: 'schedule a' appears on every page → flagged as repeated."""
         header_line = "schedule a\n"
-        pages = [
-            PageText(page_number=i, text=header_line + "x" * 100)
-            for i in range(1, 11)
-        ]
+        pages = [PageText(page_number=i, text=header_line + "x" * 100) for i in range(1, 11)]
         result = detect_repeated_headers(pages, _ANNUAL_HEADERS)
         assert "schedule a" in result
 
@@ -405,9 +402,7 @@ class TestDetectRepeatedHeaders:
         pages = [
             PageText(page_number=1, text="schedule a\nholdings data here"),
             PageText(page_number=2, text="part i\nlegislative activity"),
-        ] + [
-            PageText(page_number=i, text="x" * 100) for i in range(3, 11)
-        ]
+        ] + [PageText(page_number=i, text="x" * 100) for i in range(3, 11)]
         result = detect_repeated_headers(pages, _ANNUAL_HEADERS, min_page_fraction=0.5)
         # 2/10 = 20 % < 50 % threshold
         assert "schedule a" not in result
@@ -460,10 +455,7 @@ class TestDetectRepeatedHeaders:
 
     def test_case_insensitive_matching(self) -> None:
         """Headers in the page text are lower-cased before matching."""
-        pages = [
-            PageText(page_number=i, text="Schedule A\nAsset info\n")
-            for i in range(1, 5)
-        ]
+        pages = [PageText(page_number=i, text="Schedule A\nAsset info\n") for i in range(1, 5)]
         result = detect_repeated_headers(pages, _ANNUAL_HEADERS)
         assert "schedule a" in result
 
@@ -495,9 +487,9 @@ class TestBuildDocumentProfile:
 
     def test_noise_page_count_matches_noise_classifications(self) -> None:
         pages = [
-            PageText(page_number=1, text=""),           # NOISE
+            PageText(page_number=1, text=""),  # NOISE
             PageText(page_number=2, text=_HOLDING_PAGE),  # TEXT
-            PageText(page_number=3, text="   \n"),       # NOISE
+            PageText(page_number=3, text="   \n"),  # NOISE
         ]
         profile = build_document_profile(pages, _ANNUAL_HEADERS)
         assert profile.noise_page_count == 2
@@ -505,18 +497,15 @@ class TestBuildDocumentProfile:
     def test_ocr_candidate_count(self) -> None:
         pages = [
             PageText(page_number=1, text=_HOLDING_PAGE),  # TEXT
-            PageText(page_number=2, text="x" * 20),       # OCR_CANDIDATE
-            PageText(page_number=3, text="y" * 15),       # OCR_CANDIDATE
+            PageText(page_number=2, text="x" * 20),  # OCR_CANDIDATE
+            PageText(page_number=3, text="y" * 15),  # OCR_CANDIDATE
         ]
         profile = build_document_profile(pages, _ANNUAL_HEADERS)
         assert profile.ocr_candidate_count == 2
 
     def test_repeated_headers_detected(self) -> None:
         """A header on 8/10 pages is flagged in the profile."""
-        pages = [
-            PageText(page_number=i, text="schedule a\n" + "x" * 50)
-            for i in range(1, 11)
-        ]
+        pages = [PageText(page_number=i, text="schedule a\n" + "x" * 50) for i in range(1, 11)]
         profile = build_document_profile(pages, _ANNUAL_HEADERS)
         assert "schedule a" in profile.repeated_headers
 
@@ -542,18 +531,18 @@ class TestBuildDocumentProfile:
     def test_realistic_mixed_ocr_and_text_document(self) -> None:
         """Senate annual disclosure: 8 text pages, 2 image-based → profile summary."""
         good_page = _HOLDING_PAGE  # ~TEXT
-        image_page = "x" * 10     # OCR_CANDIDATE
+        image_page = "x" * 10  # OCR_CANDIDATE
         pages = [
-            PageText(page_number=1, text=""),            # NOISE (cover)
-            PageText(page_number=2, text=good_page),     # TEXT
-            PageText(page_number=3, text=good_page),     # TEXT
-            PageText(page_number=4, text=image_page),    # OCR_CANDIDATE
-            PageText(page_number=5, text=good_page),     # TEXT
-            PageText(page_number=6, text=good_page),     # TEXT
-            PageText(page_number=7, text=good_page),     # TEXT
-            PageText(page_number=8, text=image_page),    # OCR_CANDIDATE
-            PageText(page_number=9, text=good_page),     # TEXT
-            PageText(page_number=10, text=good_page),    # TEXT
+            PageText(page_number=1, text=""),  # NOISE (cover)
+            PageText(page_number=2, text=good_page),  # TEXT
+            PageText(page_number=3, text=good_page),  # TEXT
+            PageText(page_number=4, text=image_page),  # OCR_CANDIDATE
+            PageText(page_number=5, text=good_page),  # TEXT
+            PageText(page_number=6, text=good_page),  # TEXT
+            PageText(page_number=7, text=good_page),  # TEXT
+            PageText(page_number=8, text=image_page),  # OCR_CANDIDATE
+            PageText(page_number=9, text=good_page),  # TEXT
+            PageText(page_number=10, text=good_page),  # TEXT
         ]
         profile = build_document_profile(pages, _ANNUAL_HEADERS)
         assert profile.metrics.page_count == 10

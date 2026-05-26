@@ -16,20 +16,23 @@ by name+state_dst matching against the member roster.
 
 from __future__ import annotations
 
-import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from datetime import date
 from enum import Enum
-from typing import Optional
+from typing import Any, Optional
+from urllib.parse import urlparse
 
+from defusedxml.ElementTree import fromstring
 import httpx
 
 
 _BASE = "https://disclosures.house.gov"
+_HOUSE_INDEX_HOST = "disclosures.house.gov"
+_MAX_INDEX_BYTES = 10 * 1024 * 1024
 
 # Invariant: only two filing kinds are in v1 scope.
 _INDEX_PATH: dict[str, str] = {
-    "ptr":    "public_disc/ptr-pdfs/{year}PTRindex.xml",
+    "ptr": "public_disc/ptr-pdfs/{year}PTRindex.xml",
     "annual": "public_disc/financial-pdfs/{year}FDindex.xml",
 }
 
@@ -55,9 +58,9 @@ class HouseIndexRow:
 
     last_name: str
     first_name: str
-    suffix: str           # empty string when the XML element is absent or blank
+    suffix: str  # empty string when the XML element is absent or blank
     raw_filing_type: str
-    state_dst: str        # e.g. "CA08" — state abbreviation + zero-padded district
+    state_dst: str  # e.g. "CA08" — state abbreviation + zero-padded district
     year: int
     filing_date: date
     doc_id: str
@@ -85,7 +88,7 @@ def parse_house_index(
 
     Raises ValueError on missing required fields or unparseable dates.
     """
-    root = ET.fromstring(html.strip())
+    root = fromstring(html.strip())
     rows: list[HouseIndexRow] = []
     for entry in root:
         rows.append(
@@ -118,12 +121,8 @@ def fetch_house_index(
     Raises httpx.HTTPStatusError on non-2xx responses.
     """
     url = house_index_url(year, filing_kind)
-    if client is not None:
-        response = client.get(url, follow_redirects=True)
-    else:
-        response = httpx.get(url, follow_redirects=True, timeout=30.0)
-    response.raise_for_status()
-    return parse_house_index(response.text, year=year, filing_kind=filing_kind)
+    html = _fetch_house_index_text(url, client=client, max_bytes=_MAX_INDEX_BYTES)
+    return parse_house_index(html, year=year, filing_kind=filing_kind)
 
 
 # ---------------------------------------------------------------------------
@@ -131,21 +130,106 @@ def fetch_house_index(
 # ---------------------------------------------------------------------------
 
 
-def _required(entry: ET.Element, tag: str) -> str:
+def _required(entry: Any, tag: str) -> str:
     el = entry.find(tag)
     if el is None or el.text is None:
         raise ValueError(f"Missing required field <{tag}> in <{entry.tag}>")
-    value = el.text.strip()
+    raw_text = el.text
+    if not isinstance(raw_text, str):
+        raise ValueError(f"Field <{tag}> in <{entry.tag}> must be text")
+    value = raw_text.strip()
     if not value:
         raise ValueError(f"Empty required field <{tag}> in <{entry.tag}>")
     return value
 
 
-def _text_or_empty(entry: ET.Element, tag: str) -> str:
+def _validate_house_index_response(response: Any, url: str) -> None:
+    status_code = getattr(response, "status_code", None)
+    if isinstance(status_code, int) and 300 <= status_code < 400:
+        raise ValueError(f"redirect response rejected for House disclosure index URL: {url!r}")
+
+    response_url = getattr(response, "url", None)
+    if not isinstance(response_url, (str, httpx.URL)):
+        return
+    parsed = urlparse(str(response_url))
+    if parsed.scheme != "https" or parsed.hostname != _HOUSE_INDEX_HOST:
+        raise ValueError(f"off-origin response rejected for House disclosure index URL: {url!r}")
+
+
+def _fetch_house_index_text(
+    url: str,
+    *,
+    client: httpx.Client | None,
+    max_bytes: int,
+) -> str:
+    if client is None:
+        with httpx.stream("GET", url, follow_redirects=False, timeout=30.0) as response:
+            return _bounded_response_text(response, url, max_bytes=max_bytes)
+    if isinstance(client, httpx.Client):
+        with client.stream("GET", url, follow_redirects=False) as response:
+            return _bounded_response_text(response, url, max_bytes=max_bytes)
+
+    response = client.get(url, follow_redirects=False)
+    return _bounded_response_text(response, url, max_bytes=max_bytes)
+
+
+def _bounded_response_text(response: Any, url: str, *, max_bytes: int) -> str:
+    _validate_house_index_response(response, url)
+    response.raise_for_status()
+    return _bounded_text(response, max_bytes=max_bytes)
+
+
+def _content_length(response: Any) -> int | None:
+    headers = getattr(response, "headers", None)
+    get = getattr(headers, "get", None)
+    if get is None:
+        return None
+    raw = get("content-length")
+    if raw is None:
+        return None
+    try:
+        return int(raw)
+    except (TypeError, ValueError):
+        return None
+
+
+def _bounded_text(response: Any, *, max_bytes: int) -> str:
+    length = _content_length(response)
+    if length is not None and length > max_bytes:
+        raise ValueError(
+            f"House disclosure index exceeds maximum size of {max_bytes} bytes: {length}"
+        )
+    try:
+        text = getattr(response, "text", None)
+    except httpx.ResponseNotRead:
+        text = None
+    if not isinstance(text, str):
+        iter_bytes = getattr(response, "iter_bytes", None)
+        if not callable(iter_bytes):
+            raise ValueError("House disclosure index response text must be a string")
+        total = 0
+        chunks: list[bytes] = []
+        for chunk in iter_bytes():
+            if not isinstance(chunk, bytes):
+                raise ValueError("House disclosure index response yielded non-bytes chunk")
+            total += len(chunk)
+            if total > max_bytes:
+                raise ValueError(
+                    f"House disclosure index exceeds maximum size of {max_bytes} bytes"
+                )
+            chunks.append(chunk)
+        return b"".join(chunks).decode("utf-8")
+    if len(text.encode("utf-8")) > max_bytes:
+        raise ValueError(f"House disclosure index exceeds maximum size of {max_bytes} bytes")
+    return text
+
+
+def _text_or_empty(entry: Any, tag: str) -> str:
     el = entry.find(tag)
     if el is None or el.text is None:
         return ""
-    return el.text.strip()
+    raw_text = el.text
+    return raw_text.strip() if isinstance(raw_text, str) else ""
 
 
 def _parse_filing_date(value: str) -> date:

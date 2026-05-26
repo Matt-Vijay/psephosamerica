@@ -4,6 +4,7 @@ No subprocesses.  No live DB.
 All runtime construction, command execution, and I/O are mocked at their
 module-level import paths.
 """
+
 from __future__ import annotations
 
 import datetime as dt
@@ -72,6 +73,21 @@ def _run_module_as_main():
             sys.modules["src.runtime.main"] = existing
 
 
+@contextmanager
+def _fresh_runtime_module_import():
+    removed: dict[str, object] = {}
+    prefixes = ("src.runtime", "src.api", "src.pipeline.publish_snapshot_run")
+    for name in list(sys.modules):
+        if name == "src" or any(
+            name == prefix or name.startswith(f"{prefix}.") for prefix in prefixes
+        ):
+            removed[name] = sys.modules.pop(name)
+    try:
+        yield
+    finally:
+        sys.modules.update(removed)
+
+
 # ---------------------------------------------------------------------------
 # No-command / help path
 # ---------------------------------------------------------------------------
@@ -81,6 +97,12 @@ class TestNoCommand:
     def test_returns_parse_exit_code_when_no_subcommand(self) -> None:
         code = run([])
         assert code == 2
+
+    def test_boolean_parse_exit_code_fails_closed(self) -> None:
+        with patch(f"{_MAIN_MOD}.parse_args", side_effect=SystemExit(False)):
+            code = run([])
+
+        assert code == 1
 
     def test_does_not_call_build_runtime_on_empty_argv(self) -> None:
         with patch(f"{_MOD}.build_runtime") as mock_build:
@@ -218,7 +240,9 @@ class TestRecomputeCommand:
     def test_passes_context_and_date_to_recompute_snapshot(self) -> None:
         with _run_harness() as h:
             with (
-                patch(f"{_MOD}.recompute_snapshot", return_value=self._recompute_result()) as mock_cmd,
+                patch(
+                    f"{_MOD}.recompute_snapshot", return_value=self._recompute_result()
+                ) as mock_cmd,
                 patch(f"{_MOD}.summarize_recompute_result", return_value=self._summary()),
             ):
                 run(["recompute", "--snapshot-date", self._DATE_STR])
@@ -229,7 +253,9 @@ class TestRecomputeCommand:
         with _run_harness():
             with (
                 patch(f"{_MOD}.recompute_snapshot", return_value=recompute_result),
-                patch(f"{_MOD}.summarize_recompute_result", return_value=self._summary()) as mock_summarize,
+                patch(
+                    f"{_MOD}.summarize_recompute_result", return_value=self._summary()
+                ) as mock_summarize,
             ):
                 run(["recompute", "--snapshot-date", self._DATE_STR])
         mock_summarize.assert_called_once_with(recompute_result)
@@ -258,7 +284,9 @@ class TestRecomputeCommand:
     def test_missing_date_flag_defaults_to_today(self) -> None:
         with _run_harness() as h:
             with (
-                patch(f"{_MOD}.recompute_snapshot", return_value=self._recompute_result()) as mock_cmd,
+                patch(
+                    f"{_MOD}.recompute_snapshot", return_value=self._recompute_result()
+                ) as mock_cmd,
                 patch(f"{_MOD}.summarize_recompute_result", return_value=self._summary()),
             ):
                 code = run(["recompute"])
@@ -287,9 +315,12 @@ class TestPublishCommand:
     def _argv(self) -> list[str]:
         return [
             "publish",
-            "--snapshot-date", self._DATE_STR,
-            "--out-dir", str(self._TARGET_DIR),
-            "--zip-bundle", str(self._ZIP_BUNDLE_PATH),
+            "--snapshot-date",
+            self._DATE_STR,
+            "--out-dir",
+            str(self._TARGET_DIR),
+            "--zip-bundle",
+            str(self._ZIP_BUNDLE_PATH),
         ]
 
     @contextmanager
@@ -477,12 +508,20 @@ class TestLoadDisclosuresCommand:
     def test_respects_explicit_local_root(self) -> None:
         summary = self._artifact_result("senate-disclosures", 1)
         with _run_harness():
-            with patch(f"{_MOD}.run_disclosure_artifact_ingest", return_value=summary) as mock_ingest:
-                run([
-                    "load-disclosures", "--chamber", "senate",
-                    "--year", str(self._YEAR),
-                    "--local-root", "/tmp/custom-artifacts",
-                ])
+            with patch(
+                f"{_MOD}.run_disclosure_artifact_ingest", return_value=summary
+            ) as mock_ingest:
+                run(
+                    [
+                        "load-disclosures",
+                        "--chamber",
+                        "senate",
+                        "--year",
+                        str(self._YEAR),
+                        "--local-root",
+                        "/tmp/custom-artifacts",
+                    ]
+                )
         assert mock_ingest.call_args.kwargs["local_root"] == Path("/tmp/custom-artifacts")
 
     def test_returns_1_on_exception(self) -> None:
@@ -525,7 +564,9 @@ class TestParseDisclosuresCommand:
         summary = summary or self._summary()
         with (
             patch(f"{_MOD}.run_disclosure_parse_runtime", return_value=parse_result) as mock_parse,
-            patch(f"{_MOD}.summarize_parse_disclosures_result", return_value=summary) as mock_summarize,
+            patch(
+                f"{_MOD}.summarize_parse_disclosures_result", return_value=summary
+            ) as mock_summarize,
             patch(f"{_MOD}.local_artifact_root", return_value=MagicMock()) as mock_root,
         ):
             yield SimpleNamespace(
@@ -568,7 +609,9 @@ class TestParseDisclosuresCommand:
     def test_explicit_local_root_forwarded(self) -> None:
         with _run_harness():
             with (
-                patch(f"{_MOD}.run_disclosure_parse_runtime", return_value=self._parse_result()) as mock_parse,
+                patch(
+                    f"{_MOD}.run_disclosure_parse_runtime", return_value=self._parse_result()
+                ) as mock_parse,
                 patch(f"{_MOD}.summarize_parse_disclosures_result", return_value=self._summary()),
             ):
                 run(["parse-disclosures", "--local-root", "/tmp/artifacts"])
@@ -603,7 +646,9 @@ class TestParseDisclosuresCommand:
     def test_returns_1_on_exception(self) -> None:
         with _run_harness() as h:
             with (
-                patch(f"{_MOD}.run_disclosure_parse_runtime", side_effect=RuntimeError("disk full")),
+                patch(
+                    f"{_MOD}.run_disclosure_parse_runtime", side_effect=RuntimeError("disk full")
+                ),
                 patch(f"{_MOD}.local_artifact_root", return_value=MagicMock()),
             ):
                 code = run(self._DEFAULT_ARGV)
@@ -659,8 +704,12 @@ class TestProcessDisclosuresCommand:
         process_result = process_result or self._process_result()
         summary = summary or self._summary()
         with (
-            patch(f"{_MOD}.run_disclosures_parse_load_runtime", return_value=process_result) as mock_run,
-            patch(f"{_MOD}.summarize_process_disclosures_result", return_value=summary) as mock_summarize,
+            patch(
+                f"{_MOD}.run_disclosures_parse_load_runtime", return_value=process_result
+            ) as mock_run,
+            patch(
+                f"{_MOD}.summarize_process_disclosures_result", return_value=summary
+            ) as mock_summarize,
             patch(f"{_MOD}.local_artifact_root", return_value=MagicMock()) as mock_root,
         ):
             yield SimpleNamespace(
@@ -704,7 +753,10 @@ class TestProcessDisclosuresCommand:
     def test_explicit_local_root_forwarded(self) -> None:
         with _run_harness():
             with (
-                patch(f"{_MOD}.run_disclosures_parse_load_runtime", return_value=self._process_result()) as mock_run,
+                patch(
+                    f"{_MOD}.run_disclosures_parse_load_runtime",
+                    return_value=self._process_result(),
+                ) as mock_run,
                 patch(f"{_MOD}.summarize_process_disclosures_result", return_value=self._summary()),
             ):
                 run(["process-disclosures", "--local-root", "/tmp/artifacts"])
@@ -739,7 +791,10 @@ class TestProcessDisclosuresCommand:
     def test_returns_1_on_parse_exception(self) -> None:
         with _run_harness() as h:
             with (
-                patch(f"{_MOD}.run_disclosures_parse_load_runtime", side_effect=RuntimeError("parse failed")),
+                patch(
+                    f"{_MOD}.run_disclosures_parse_load_runtime",
+                    side_effect=RuntimeError("parse failed"),
+                ),
                 patch(f"{_MOD}.local_artifact_root", return_value=MagicMock()),
             ):
                 code = run(self._DEFAULT_ARGV)
@@ -751,7 +806,10 @@ class TestProcessDisclosuresCommand:
     def test_returns_1_on_process_exception(self) -> None:
         with _run_harness() as h:
             with (
-                patch(f"{_MOD}.run_disclosures_parse_load_runtime", side_effect=RuntimeError("db write failed")),
+                patch(
+                    f"{_MOD}.run_disclosures_parse_load_runtime",
+                    side_effect=RuntimeError("db write failed"),
+                ),
                 patch(f"{_MOD}.local_artifact_root", return_value=MagicMock()),
             ):
                 code = run(self._DEFAULT_ARGV)
@@ -858,7 +916,11 @@ class TestLoadCongressCommand:
     def test_all_vote_flags_forwarded_together(self) -> None:
         with _run_harness():
             with self._congress_env() as c:
-                run(self._argv(["--include-votes", "--house-vote-year", "2023", "--senate-session", "1"]))
+                run(
+                    self._argv(
+                        ["--include-votes", "--house-vote-year", "2023", "--senate-session", "1"]
+                    )
+                )
         options = c.mock_run.call_args.args[1]
         assert options.include_votes is True
         assert options.house_vote_year == 2023
@@ -919,8 +981,10 @@ class TestLoadCongressLocalCommand:
     def _argv(self) -> list[str]:
         return [
             "load-congress-local",
-            "--archive", str(self._ARCHIVE_PATH),
-            "--congress", str(self._CONGRESS),
+            "--archive",
+            str(self._ARCHIVE_PATH),
+            "--congress",
+            str(self._CONGRESS),
         ]
 
     @contextmanager
@@ -982,7 +1046,9 @@ class TestLoadCongressLocalCommand:
 
     def test_returns_1_on_exception(self) -> None:
         with _run_harness() as h:
-            with patch(f"{_MOD}.load_congress_local", side_effect=RuntimeError("bundle parse failed")):
+            with patch(
+                f"{_MOD}.load_congress_local", side_effect=RuntimeError("bundle parse failed")
+            ):
                 code = run(self._argv())
         assert code == 1
         printed = _printed(h)
@@ -1028,7 +1094,9 @@ class TestProcessDisclosuresLocalCommand:
         with (
             patch(f"{_MOD}.load_disclosures_bundle", return_value=bundle) as mock_load,
             patch(f"{_MOD}.process_disclosures_local", return_value=process_result) as mock_run,
-            patch(f"{_MOD}.summarize_disclosures_bundle_process_result", return_value=summary) as mock_summarize,
+            patch(
+                f"{_MOD}.summarize_disclosures_bundle_process_result", return_value=summary
+            ) as mock_summarize,
         ):
             yield SimpleNamespace(
                 mock_load=mock_load,
@@ -1082,7 +1150,9 @@ class TestProcessDisclosuresLocalCommand:
 
     def test_returns_1_on_load_exception(self) -> None:
         with _run_harness() as h:
-            with patch(f"{_MOD}.load_disclosures_bundle", side_effect=FileNotFoundError("no bundle")):
+            with patch(
+                f"{_MOD}.load_disclosures_bundle", side_effect=FileNotFoundError("no bundle")
+            ):
                 code = run(self._argv())
         assert code == 1
         printed = _printed(h)
@@ -1146,15 +1216,25 @@ class TestRunOracleLocalCommand:
     def _argv(self, extra: list[str] | None = None) -> list[str]:
         base = [
             "run-oracle-local",
-            "--congress-archive", str(self._CONGRESS_ARCHIVE),
-            "--disclosures-bundle", str(self._DISCLOSURES_BUNDLE),
-            "--snapshot-date", self._DATE_STR,
-            "--target-dir", str(self._TARGET_DIR),
+            "--congress-archive",
+            str(self._CONGRESS_ARCHIVE),
+            "--disclosures-bundle",
+            str(self._DISCLOSURES_BUNDLE),
+            "--snapshot-date",
+            self._DATE_STR,
+            "--target-dir",
+            str(self._TARGET_DIR),
         ]
         return base + (extra or [])
 
     def _roundtrip_summary(self) -> dict:
-        return {"ok": True, "total_checked": 4, "total_errors": 0, "total_warnings": 0, "stages": []}
+        return {
+            "ok": True,
+            "total_checked": 4,
+            "total_errors": 0,
+            "total_warnings": 0,
+            "stages": [],
+        }
 
     @contextmanager
     def _oracle_env(self, oracle_result=None, summary=None, bundle=None):
@@ -1164,7 +1244,9 @@ class TestRunOracleLocalCommand:
         with (
             patch(f"{_MOD}.load_disclosures_bundle", return_value=bundle) as mock_load_bundle,
             patch(f"{_MOD}.run_oracle_local_command", return_value=oracle_result) as mock_oracle,
-            patch(f"{_MOD}.summarize_local_oracle_run_result", return_value=summary) as mock_summarize,
+            patch(
+                f"{_MOD}.summarize_local_oracle_run_result", return_value=summary
+            ) as mock_summarize,
         ):
             yield SimpleNamespace(
                 mock_load_bundle=mock_load_bundle,
@@ -1281,7 +1363,9 @@ class TestRunOracleLocalCommand:
         with _run_harness() as h:
             with (
                 patch(f"{_MOD}.load_disclosures_bundle", return_value=MagicMock()),
-                patch(f"{_MOD}.run_oracle_local_command", side_effect=RuntimeError("oracle failed")),
+                patch(
+                    f"{_MOD}.run_oracle_local_command", side_effect=RuntimeError("oracle failed")
+                ),
             ):
                 code = run(self._argv())
         assert code == 1
@@ -1369,7 +1453,13 @@ class TestRunOracleLocalCommand:
         assert _printed(h)["ok"] is False
 
     def test_roundtrip_included_in_oracle_output(self) -> None:
-        roundtrip = {"ok": True, "total_checked": 5, "total_errors": 0, "total_warnings": 0, "stages": []}
+        roundtrip = {
+            "ok": True,
+            "total_checked": 5,
+            "total_errors": 0,
+            "total_warnings": 0,
+            "stages": [],
+        }
         summary = self._summary() | {"roundtrip": roundtrip}
         with _run_harness() as h:
             with self._oracle_env(summary=summary):
@@ -1386,7 +1476,13 @@ class TestRunOracleLocalCommand:
         o.mock_summarize.assert_called_once_with(o.mock_oracle.return_value)
 
     def test_roundtrip_errors_surfaced_in_output(self) -> None:
-        roundtrip = {"ok": False, "total_checked": 3, "total_errors": 1, "total_warnings": 0, "stages": []}
+        roundtrip = {
+            "ok": False,
+            "total_checked": 3,
+            "total_errors": 1,
+            "total_warnings": 0,
+            "stages": [],
+        }
         summary = self._summary() | {"roundtrip": roundtrip}
         with _run_harness() as h:
             with self._oracle_env(summary=summary):
@@ -1396,7 +1492,13 @@ class TestRunOracleLocalCommand:
         assert printed["roundtrip"]["total_errors"] == 1
 
     def test_returns_nonzero_when_roundtrip_fails(self) -> None:
-        roundtrip = {"ok": False, "total_checked": 3, "total_errors": 1, "total_warnings": 0, "stages": []}
+        roundtrip = {
+            "ok": False,
+            "total_checked": 3,
+            "total_errors": 1,
+            "total_warnings": 0,
+            "stages": [],
+        }
         summary = self._summary() | {"roundtrip": roundtrip}
         with _run_harness() as h:
             with self._oracle_env(summary=summary):
@@ -1405,7 +1507,13 @@ class TestRunOracleLocalCommand:
         assert _printed(h)["ok"] is False
 
     def test_output_contains_both_verify_and_roundtrip(self) -> None:
-        roundtrip = {"ok": True, "total_checked": 4, "total_errors": 0, "total_warnings": 0, "stages": []}
+        roundtrip = {
+            "ok": True,
+            "total_checked": 4,
+            "total_errors": 0,
+            "total_warnings": 0,
+            "stages": [],
+        }
         summary = self._summary() | {"verify": {"ok": True, "stages": []}, "roundtrip": roundtrip}
         with _run_harness() as h:
             with self._oracle_env(summary=summary):
@@ -1559,8 +1667,12 @@ class TestVerifyPublishRoundtripCommand:
             "stages": [],
         }
         with (
-            patch(f"{_MOD}.verify_publish_roundtrip_local", return_value=verify_result) as mock_verify,
-            patch(f"{_MOD}.summarize_publish_roundtrip_result", return_value=roundtrip_summary) as mock_summarize,
+            patch(
+                f"{_MOD}.verify_publish_roundtrip_local", return_value=verify_result
+            ) as mock_verify,
+            patch(
+                f"{_MOD}.summarize_publish_roundtrip_result", return_value=roundtrip_summary
+            ) as mock_summarize,
         ):
             yield SimpleNamespace(
                 mock_verify=mock_verify,
@@ -1632,7 +1744,9 @@ class TestVerifyPublishRoundtripCommand:
 
     def test_returns_1_on_exception(self) -> None:
         with _run_harness() as h:
-            with patch(f"{_MOD}.verify_publish_roundtrip_local", side_effect=RuntimeError("broken tree")):
+            with patch(
+                f"{_MOD}.verify_publish_roundtrip_local", side_effect=RuntimeError("broken tree")
+            ):
                 code = run(self._argv())
         assert code == 1
         printed = _printed(h)
@@ -1678,25 +1792,76 @@ class TestVerifyPublishRoundtripCommand:
 class TestCommandRegistry:
     """Tests for the COMMAND_REGISTRY dispatch table."""
 
-    _EXPECTED_COMMANDS = frozenset({
-        "bootstrap-db",
-        "status",
-        "load-congress",
-        "load-disclosures",
-        "parse-disclosures",
-        "process-disclosures",
-        "recompute",
-        "publish",
-        "load-congress-local",
-        "process-disclosures-local",
-        "run-oracle-local",
-        "plan-history-backfill",
-        "run-history-backfill-local",
-        "aggregate-history",
-        "verify-publish",
-        "verify-publish-roundtrip",
-        "verify-history-aggregate",
-    })
+    _EXPECTED_COMMANDS = frozenset(
+        {
+            "bootstrap-db",
+            "runtime-env-preflight",
+            "verify-runtime-env-preflight",
+            "status",
+            "load-congress",
+            "materialize-fec-bulk-files",
+            "materialize-member-fec-crosswalk",
+            "materialize-public-statement-rss",
+            "materialize-public-statement-rows",
+            "load-fec-local",
+            "load-member-fec-crosswalk-local",
+            "verify-fec-inputs",
+            "load-disclosures",
+            "parse-disclosures",
+            "process-disclosures",
+            "recompute",
+            "verify-public-statement-rows",
+            "publish",
+            "load-congress-local",
+            "process-disclosures-local",
+            "run-oracle-local",
+            "plan-history-backfill",
+            "check-history-backfill-inputs",
+            "write-congress-archive-manifest",
+            "materialize-congress-archive",
+            "materialize-history-backfill-inputs",
+            "materialize-disclosures-bundle",
+            "materialize-bill-semantics",
+            "verify-bill-semantics",
+            "verify-bill-semantics-plan",
+            "run-history-launch-local",
+            "run-history-backfill-local",
+            "aggregate-history",
+            "prediction-backtest",
+            "prediction-input-inventory",
+            "verify-prediction-input-inventory",
+            "prediction-eval-report",
+            "prediction-eval-window-plan",
+            "verify-prediction-eval-window-plan",
+            "prediction-eval-window-summary",
+            "verify-prediction-eval-window-summary",
+            "verify-prediction-eval-window-run",
+            "prediction-source-url-audit",
+            "verify-prediction-source-url-audit",
+            "verify-prediction-eval-manifest",
+            "verify-prediction-backtest",
+            "verify-prediction-benchmark",
+            "verify-prediction-backfill-plan",
+            "prediction-offline-readiness-summary",
+            "verify-prediction-offline-readiness-summary",
+            "verify-prediction-resume-script",
+            "verify-prediction-operator-handoff",
+            "verify-prediction-operator-runbook",
+            "prediction-operator-status",
+            "verify-prediction-operator-status",
+            "prediction-operator-packet-manifest",
+            "verify-prediction-operator-packet-manifest",
+            "prediction-operator-packet-export",
+            "verify-prediction-operator-packet-export",
+            "verify-prediction-operator-packet-directory",
+            "prediction-operator-resume-plan",
+            "verify-prediction-operator-resume-plan",
+            "verify-prediction-operator-resume-run",
+            "verify-publish",
+            "verify-publish-roundtrip",
+            "verify-history-aggregate",
+        }
+    )
 
     def test_registry_contains_all_commands(self) -> None:
         assert set(COMMAND_REGISTRY.keys()) == self._EXPECTED_COMMANDS
@@ -1733,8 +1898,12 @@ class TestCommandRegistry:
 class TestModuleEntrypoint:
     def test_module_invocation_exits_nonzero_for_verify_publish_failures(self) -> None:
         with (
-            patch.object(sys, "argv", ["python3", "verify-publish", "--publish-root", "/tmp/snapshot"]),
-            patch("src.runtime.cli.parse_args", return_value=SimpleNamespace(command="verify-publish")),
+            patch.object(
+                sys, "argv", ["python3", "verify-publish", "--publish-root", "/tmp/snapshot"]
+            ),
+            patch(
+                "src.runtime.cli.parse_args", return_value=SimpleNamespace(command="verify-publish")
+            ),
             patch(
                 "src.runtime.commands.dispatch_command",
                 return_value={"ok": False, "command": "verify-publish", "total_errors": 1},
@@ -1761,7 +1930,11 @@ class TestModuleEntrypoint:
             ),
             patch(
                 "src.runtime.commands.dispatch_command",
-                return_value={"ok": False, "command": "verify-publish-roundtrip", "roundtrip": {"ok": False}},
+                return_value={
+                    "ok": False,
+                    "command": "verify-publish-roundtrip",
+                    "roundtrip": {"ok": False},
+                },
             ),
             patch("src.runtime.output.as_json", side_effect=lambda obj: obj),
             patch("builtins.print"),
@@ -1785,7 +1958,11 @@ class TestModuleEntrypoint:
             ),
             patch(
                 "src.runtime.commands.dispatch_command",
-                return_value={"ok": False, "command": "verify-history-aggregate", "total_errors": 1},
+                return_value={
+                    "ok": False,
+                    "command": "verify-history-aggregate",
+                    "total_errors": 1,
+                },
             ),
             patch("src.runtime.output.as_json", side_effect=lambda obj: obj),
             patch("builtins.print"),
@@ -1808,3 +1985,15 @@ class TestModuleEntrypoint:
         assert excinfo.value.code == 0
         assert "db/schema.sql" in captured.out
         assert "Show the bootstrap plan without applying schema SQL." in captured.out
+
+    def test_module_help_survives_fresh_import_graph(self, capsys) -> None:
+        with (
+            patch.object(sys, "argv", ["python3", "--help"]),
+            _fresh_runtime_module_import(),
+            pytest.raises(SystemExit) as excinfo,
+        ):
+            runpy.run_module("src.runtime.main", run_name="__main__", alter_sys=True)
+
+        captured = capsys.readouterr()
+        assert excinfo.value.code == 0
+        assert "plan-history-backfill" in captured.out

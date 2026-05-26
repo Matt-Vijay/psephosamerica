@@ -11,6 +11,7 @@ For each zip entry that *is* present the verifier checks:
   - zip_code in the payload matches the filename
   - members field is a list (schema guarantees this; the check is explicit)
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -85,9 +86,7 @@ def verify_local_zip_feeds(
             issues.append(_issue(f"zip feed file missing: {path}", path=path))
             continue
         except Exception as exc:
-            issues.append(
-                _issue(f"zip feed failed to load ({path}): {exc}", path=path)
-            )
+            issues.append(_issue(f"zip feed failed to load ({path}): {exc}", path=path))
             continue
 
         if feed.zip_code != zip_code:
@@ -100,9 +99,7 @@ def verify_local_zip_feeds(
             )
 
         if not isinstance(feed.members, list):
-            issues.append(
-                _issue(f"members field is not a list in {path}", path=path)
-            )
+            issues.append(_issue(f"members field is not a list in {path}", path=path))
 
     return PublishVerifyStageResult(
         stage=_STAGE,

@@ -76,7 +76,5 @@ def run_batch(
 ) -> list[RuleFire]:
     fires: list[RuleFire] = []
     for member_bioguide_id, contexts in member_contexts.items():
-        fires.extend(
-            run_member_batch(rules, member_bioguide_id, contexts, recompute_run_id)
-        )
+        fires.extend(run_member_batch(rules, member_bioguide_id, contexts, recompute_run_id))
     return fires

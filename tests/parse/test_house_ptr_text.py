@@ -216,9 +216,7 @@ class TestTableDetection:
 
 class TestTransactionRowParsing:
     def test_single_purchase_row(self) -> None:
-        pages = _one_page(
-            rows=("1 Self Apple Inc. (AAPL) Purchase 12/01/2023 $1,001 - $15,000",)
-        )
+        pages = _one_page(rows=("1 Self Apple Inc. (AAPL) Purchase 12/01/2023 $1,001 - $15,000",))
         result = parse_house_ptr(pages, member_bioguide_id="S000001")
         assert len(result.transactions) == 1
         tx = result.transactions[0]
@@ -253,31 +251,23 @@ class TestTransactionRowParsing:
         assert [t.line_number for t in result.transactions] == [1, 2, 3]
 
     def test_joint_owner_code(self) -> None:
-        pages = _one_page(
-            rows=("1 JT Amazon.com Inc (AMZN) Purchase 11/01/2023 $1,001 - $15,000",)
-        )
+        pages = _one_page(rows=("1 JT Amazon.com Inc (AMZN) Purchase 11/01/2023 $1,001 - $15,000",))
         result = parse_house_ptr(pages, member_bioguide_id="S000001")
         assert result.transactions[0].owner_type == OwnerType.JOINT
 
     def test_dependent_child_owner_code(self) -> None:
-        pages = _one_page(
-            rows=("1 DC Nvidia Corp (NVDA) Purchase 10/15/2023 $1,001 - $15,000",)
-        )
+        pages = _one_page(rows=("1 DC Nvidia Corp (NVDA) Purchase 10/15/2023 $1,001 - $15,000",))
         result = parse_house_ptr(pages, member_bioguide_id="S000001")
         assert result.transactions[0].owner_type == OwnerType.DEPENDENT
 
     def test_no_ticker_in_row(self) -> None:
-        pages = _one_page(
-            rows=("1 Self Municipal Bond Fund Purchase 09/01/2023 $1,001 - $15,000",)
-        )
+        pages = _one_page(rows=("1 Self Municipal Bond Fund Purchase 09/01/2023 $1,001 - $15,000",))
         result = parse_house_ptr(pages, member_bioguide_id="S000001")
         assert len(result.transactions) == 1
         assert result.transactions[0].issuer_ticker is None
 
     def test_over_amount_label_parsed(self) -> None:
-        pages = _one_page(
-            rows=("1 Self Apple Inc. (AAPL) Sale 06/01/2023 Over $50,000,000",)
-        )
+        pages = _one_page(rows=("1 Self Apple Inc. (AAPL) Sale 06/01/2023 Over $50,000,000",))
         result = parse_house_ptr(pages, member_bioguide_id="S000001")
         assert len(result.transactions) == 1
 
@@ -304,9 +294,7 @@ class TestTransactionRowParsing:
 
     def test_asterisk_amendment_marker_stripped(self) -> None:
         """Row prefixed with * is parsed as if the marker were absent."""
-        pages = _one_page(
-            rows=("* 1 Self Apple Inc. (AAPL) Purchase 12/01/2023 $1,001 - $15,000",)
-        )
+        pages = _one_page(rows=("* 1 Self Apple Inc. (AAPL) Purchase 12/01/2023 $1,001 - $15,000",))
         result = parse_house_ptr(pages, member_bioguide_id="S000001")
         assert len(result.transactions) == 1
         tx = result.transactions[0]
@@ -346,9 +334,7 @@ class TestTransactionRowParsing:
         assert len(result.transactions) == 2
 
     def test_transaction_date_on_filing(self) -> None:
-        pages = _one_page(
-            rows=("1 Self Apple Inc. (AAPL) Purchase 08/15/2023 $1,001 - $15,000",)
-        )
+        pages = _one_page(rows=("1 Self Apple Inc. (AAPL) Purchase 08/15/2023 $1,001 - $15,000",))
         result = parse_house_ptr(pages, member_bioguide_id="S000001")
         assert result.transactions[0].transaction_date == date(2023, 8, 15)
 
@@ -369,9 +355,7 @@ class TestEdgeCases:
         assert result.transactions == ()
 
     def test_no_parse_warnings_on_clean_filing(self) -> None:
-        pages = _one_page(
-            rows=("1 Self Apple Inc. (AAPL) Purchase 12/01/2023 $1,001 - $15,000",)
-        )
+        pages = _one_page(rows=("1 Self Apple Inc. (AAPL) Purchase 12/01/2023 $1,001 - $15,000",))
         result = parse_house_ptr(pages, member_bioguide_id="S000001")
         # Only acceptable warning: none (all fields present, clean row).
         assert result.meta.parse_warnings == ()
@@ -479,9 +463,7 @@ class TestAmendmentMarkersDeeper:
     def test_marker_without_row_number_still_parsed(self) -> None:
         """An amendment marker directly before the owner (no row number) is
         stripped, leaving the owner as the first substantive token."""
-        pages = _one_page(
-            rows=("* Self Apple Inc. (AAPL) Purchase 12/01/2023 $1,001 - $15,000",)
-        )
+        pages = _one_page(rows=("* Self Apple Inc. (AAPL) Purchase 12/01/2023 $1,001 - $15,000",))
         result = parse_house_ptr(pages, member_bioguide_id="S000001")
         assert len(result.transactions) == 1
         tx = result.transactions[0]
@@ -595,9 +577,7 @@ class TestEmptyIssuerWarning:
     def test_issuer_only_ticker_warns_and_skips(self) -> None:
         """A row where the 'issuer' field is just '(AAPL)' collapses to an
         empty string after ticker removal → warning emitted, row skipped."""
-        pages = _one_page(
-            rows=("1 Self (AAPL) Purchase 12/01/2023 $1,001 - $15,000",)
-        )
+        pages = _one_page(rows=("1 Self (AAPL) Purchase 12/01/2023 $1,001 - $15,000",))
         result = parse_house_ptr(pages, member_bioguide_id="S000001")
         assert len(result.transactions) == 0
         assert any("issuer" in w for w in result.meta.parse_warnings)
@@ -612,9 +592,7 @@ class TestRowWithoutRowNumber:
     def test_row_missing_row_number_still_parsed(self) -> None:
         """A line that starts directly with the owner code (no integer prefix)
         must be parsed correctly — the row-number skip is optional."""
-        pages = _one_page(
-            rows=("Self Apple Inc. (AAPL) Purchase 12/01/2023 $1,001 - $15,000",)
-        )
+        pages = _one_page(rows=("Self Apple Inc. (AAPL) Purchase 12/01/2023 $1,001 - $15,000",))
         result = parse_house_ptr(pages, member_bioguide_id="S000001")
         assert len(result.transactions) == 1
         tx = result.transactions[0]
@@ -626,9 +604,7 @@ class TestRowWithoutRowNumber:
     def test_two_digit_row_number_skipped_correctly(self) -> None:
         """A two-digit row number (e.g. '12') must be consumed as the row
         number, not mistaken for the owner."""
-        pages = _one_page(
-            rows=("12 Self Apple Inc. (AAPL) Purchase 12/01/2023 $1,001 - $15,000",)
-        )
+        pages = _one_page(rows=("12 Self Apple Inc. (AAPL) Purchase 12/01/2023 $1,001 - $15,000",))
         result = parse_house_ptr(pages, member_bioguide_id="S000001")
         assert len(result.transactions) == 1
         assert result.transactions[0].owner_type == OwnerType.SELF

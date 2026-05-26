@@ -8,6 +8,8 @@ from __future__ import annotations
 from datetime import date
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from src.db.load_report import (
     LoadSummary,
     TableWriteResult,
@@ -115,6 +117,7 @@ def _empty_summary(table: str = "financial_disclosure") -> LoadSummary:
 def _bundle_initial() -> LookupBundle:
     b = LookupBundle()
     b.bioguide_map[_BIOGUIDE] = _MEMBER_ID
+    b.disclosure_source_record_id_map["FILING-000"] = 200
     return b
 
 
@@ -150,14 +153,46 @@ class TestResolveDisclosureRows:
         assert out[0]["member_id"] == _MEMBER_ID
         assert "member_bioguide_id" not in out[0]
 
-    def test_strips_supersedes_hint(self):
+    def test_resolves_supersedes_filing_source_id(self):
         bundle = _bundle_initial()
         warn_error = WarnErrorSummary()
-        rows = self._rows_from(_disclosure())
+        disclosure = _disclosure()
+        disclosure = FinancialDisclosurePayload(
+            **{
+                **disclosure.__dict__,
+                "filing_type": "amendment",
+                "amendment_number": 1,
+                "supersedes_filing_source_id": "FILING-000",
+            }
+        )
+        rows = self._rows_from(disclosure)
 
         out = _resolve_disclosure_rows(rows, bundle, warn_error)
 
         assert "supersedes_filing_source_id" not in out[0]
+        assert out[0]["supersedes_financial_disclosure_id"] == 200
+
+    def test_unresolved_supersedes_filing_source_id_warns_but_keeps_row(self):
+        bundle = _bundle_initial()
+        warn_error = WarnErrorSummary()
+        disclosure = _disclosure()
+        disclosure = FinancialDisclosurePayload(
+            **{
+                **disclosure.__dict__,
+                "filing_type": "amendment",
+                "amendment_number": 1,
+                "supersedes_filing_source_id": "MISSING-FILING",
+            }
+        )
+        rows = self._rows_from(disclosure)
+
+        out = _resolve_disclosure_rows(rows, bundle, warn_error)
+
+        assert len(out) == 1
+        assert "supersedes_filing_source_id" not in out[0]
+        assert "supersedes_financial_disclosure_id" not in out[0]
+        assert warn_error.warning_count == 1
+        assert "MISSING-FILING" in warn_error.warnings[0]
 
     def test_unknown_bioguide_skipped_with_warning(self):
         bundle = LookupBundle()  # empty — no members
@@ -367,6 +402,168 @@ class TestRunDisclosuresLoad:
 
         assert all(r == 42 for r in captured)
 
+    def test_phase_writes_defer_commit_to_outer_transaction(self):
+        captured: list[bool | None] = []
+        loader = MagicMock(side_effect=self._loader_side_effects())
+        conn = MagicMock()
+
+        def _fake_exec(conn, ops, **kwargs):
+            captured.append(kwargs.get("commit"))
+            return _empty_summary(ops[0]["table"])
+
+        result = _transform_result(holdings=[_holding()], transactions=[_transaction()])
+        with patch(self._TARGET, side_effect=_fake_exec):
+            run_disclosures_load([result], conn, lookup_loader=loader)
+
+        assert captured == [False, False, False]
+
+    def test_same_batch_amendment_supersession_is_resolved_after_refresh(self):
+        captured: list[tuple[str, list[dict]]] = []
+        conn = MagicMock()
+        original = _disclosure()
+        original = FinancialDisclosurePayload(
+            **{
+                **original.__dict__,
+                "source_record_id": "FILING-000",
+            }
+        )
+        amendment = _disclosure()
+        amendment = FinancialDisclosurePayload(
+            **{
+                **amendment.__dict__,
+                "filing_type": "amendment",
+                "amendment_number": 1,
+                "source_record_id": "FILING-001",
+                "supersedes_filing_source_id": "FILING-000",
+            }
+        )
+        result = DisclosureTransformResult(disclosure=original)
+        amendment_result = DisclosureTransformResult(disclosure=amendment)
+        initial_bundle = LookupBundle()
+        initial_bundle.bioguide_map[_BIOGUIDE] = _MEMBER_ID
+        refreshed_bundle = LookupBundle()
+        refreshed_bundle.bioguide_map[_BIOGUIDE] = _MEMBER_ID
+        refreshed_bundle.disclosure_natural_key_map[(_MEMBER_ID, 2024, "annual", 0)] = 200
+        refreshed_bundle.disclosure_natural_key_map[(_MEMBER_ID, 2024, "amendment", 1)] = 201
+        refreshed_bundle.disclosure_source_record_id_map["FILING-000"] = 200
+        loader = MagicMock(side_effect=[initial_bundle, refreshed_bundle])
+
+        def _fake_exec(conn, ops, **kwargs):
+            captured.append((ops[0]["table"], list(ops[0]["rows"])))
+            return _empty_summary(ops[0]["table"])
+
+        with patch(self._TARGET, side_effect=_fake_exec):
+            run_disclosures_load([result, amendment_result], conn, lookup_loader=loader)
+
+        fd_writes = [rows for table, rows in captured if table == "financial_disclosure"]
+        assert len(fd_writes) == 2
+        assert len(fd_writes[1]) == 1
+        update_row = fd_writes[1][0]
+        assert update_row["member_id"] == _MEMBER_ID
+        assert update_row["chamber"] == "senate"
+        assert update_row["filing_year"] == 2024
+        assert update_row["filing_type"] == "amendment"
+        assert update_row["amendment_number"] == 1
+        assert update_row["supersedes_financial_disclosure_id"] == 200
+        assert "supersedes_filing_source_id" not in update_row
+
+    def test_success_commits_once_after_all_phases(self):
+        loader = MagicMock(side_effect=self._loader_side_effects())
+        conn = MagicMock()
+        result = _transform_result(holdings=[_holding()])
+
+        with patch(self._TARGET, return_value=_empty_summary()):
+            run_disclosures_load([result], conn, lookup_loader=loader)
+
+        conn.commit.assert_called_once()
+        conn.rollback.assert_not_called()
+
+    def test_commit_true_rejects_autocommit_connection_before_phase_writes(self):
+        loader = MagicMock(side_effect=self._loader_side_effects())
+        conn = MagicMock()
+        conn.autocommit = True
+        result = _transform_result(holdings=[_holding()])
+
+        with patch(self._TARGET) as mock_exec:
+            with pytest.raises(RuntimeError, match="autocommit"):
+                run_disclosures_load([result], conn, lookup_loader=loader)
+
+        mock_exec.assert_not_called()
+        conn.commit.assert_not_called()
+        conn.rollback.assert_not_called()
+
+    def test_final_commit_failure_rolls_back_outer_transaction(self):
+        loader = MagicMock(side_effect=self._loader_side_effects())
+        conn = MagicMock()
+        conn.commit.side_effect = RuntimeError("commit failed")
+        result = _transform_result(holdings=[_holding()])
+
+        with patch(self._TARGET, return_value=_empty_summary()):
+            with pytest.raises(RuntimeError, match="commit failed"):
+                run_disclosures_load([result], conn, lookup_loader=loader)
+
+        conn.commit.assert_called_once()
+        conn.rollback.assert_called_once()
+
+    def test_commit_false_defers_final_commit(self):
+        loader = MagicMock(side_effect=self._loader_side_effects())
+        conn = MagicMock()
+        result = _transform_result(holdings=[_holding()])
+
+        with patch(self._TARGET, return_value=_empty_summary()):
+            run_disclosures_load([result], conn, lookup_loader=loader, commit=False)
+
+        conn.commit.assert_not_called()
+        conn.rollback.assert_not_called()
+
+    def test_phase_failure_rolls_back_outer_transaction(self):
+        loader = MagicMock(side_effect=self._loader_side_effects())
+        conn = MagicMock()
+        result = _transform_result(holdings=[_holding()])
+
+        with patch(
+            self._TARGET,
+            side_effect=[_empty_summary("financial_disclosure"), RuntimeError("phase failed")],
+        ):
+            with pytest.raises(RuntimeError, match="phase failed"):
+                run_disclosures_load([result], conn, lookup_loader=loader)
+
+        conn.commit.assert_not_called()
+        conn.rollback.assert_called_once()
+
+    def test_phase_failure_with_commit_false_defers_rollback_to_caller(self):
+        loader = MagicMock(side_effect=self._loader_side_effects())
+        conn = MagicMock()
+        result = _transform_result(holdings=[_holding()])
+
+        with patch(
+            self._TARGET,
+            side_effect=[_empty_summary("financial_disclosure"), RuntimeError("phase failed")],
+        ):
+            with pytest.raises(RuntimeError, match="phase failed"):
+                run_disclosures_load(
+                    [result],
+                    conn,
+                    lookup_loader=loader,
+                    commit=False,
+                )
+
+        conn.commit.assert_not_called()
+        conn.rollback.assert_not_called()
+
+    def test_lookup_refresh_failure_after_financial_disclosure_write_rolls_back(self):
+        loader = MagicMock(side_effect=[_bundle_initial(), RuntimeError("lookup failed")])
+        conn = MagicMock()
+        result = _transform_result(holdings=[_holding()])
+
+        with patch(self._TARGET, return_value=_empty_summary()) as mock_exec:
+            with pytest.raises(RuntimeError, match="lookup failed"):
+                run_disclosures_load([result], conn, lookup_loader=loader)
+
+        mock_exec.assert_called_once()
+        conn.commit.assert_not_called()
+        conn.rollback.assert_called_once()
+
     def test_unresolved_member_produces_warning(self):
         loader = MagicMock(side_effect=[LookupBundle(), LookupBundle()])
         conn = MagicMock()
@@ -427,3 +624,81 @@ class TestRunDisclosuresLoad:
         assert "holding" not in sent_tables
         assert "transaction" not in sent_tables
         assert "review_queue" not in sent_tables
+
+    def test_child_cleanup_deletes_stale_lines_before_child_upserts(self):
+        loader = MagicMock(side_effect=self._loader_side_effects())
+        conn = MagicMock()
+        events: list[tuple] = []
+        cursor = conn.cursor.return_value.__enter__.return_value
+
+        def _capture_delete(sql, params=None):
+            events.append(("delete", sql, params))
+
+        def _fake_exec(conn, ops, **kwargs):
+            events.append(("upsert", ops[0]["table"], list(ops[0]["rows"])))
+            return _empty_summary(ops[0]["table"])
+
+        cursor.execute.side_effect = _capture_delete
+        result = _transform_result(
+            holdings=[_holding(1)],
+            transactions=[_transaction(1)],
+        )
+
+        with patch(self._TARGET, side_effect=_fake_exec):
+            run_disclosures_load([result], conn, lookup_loader=loader)
+
+        holding_delete_index = next(
+            i
+            for i, event in enumerate(events)
+            if event[0] == "delete" and 'DELETE FROM "holding"' in event[1]
+        )
+        holding_upsert_index = next(
+            i for i, event in enumerate(events) if event[0] == "upsert" and event[1] == "holding"
+        )
+        transaction_delete_index = next(
+            i
+            for i, event in enumerate(events)
+            if event[0] == "delete" and 'DELETE FROM "transaction"' in event[1]
+        )
+        transaction_upsert_index = next(
+            i
+            for i, event in enumerate(events)
+            if event[0] == "upsert" and event[1] == "transaction"
+        )
+
+        assert holding_delete_index < holding_upsert_index
+        assert transaction_delete_index < transaction_upsert_index
+        assert events[holding_delete_index][2] == (_FD_ID, 1)
+        assert events[transaction_delete_index][2] == (_FD_ID, 1)
+        assert '"line_number" NOT IN (%s)' in events[holding_delete_index][1]
+        assert '"line_number" NOT IN (%s)' in events[transaction_delete_index][1]
+
+    def test_child_cleanup_deletes_all_child_rows_when_reparse_has_none(self):
+        loader = MagicMock(side_effect=self._loader_side_effects())
+        conn = MagicMock()
+        cursor = conn.cursor.return_value.__enter__.return_value
+        deletes: list[tuple[str, tuple]] = []
+
+        def _capture_delete(sql, params=None):
+            deletes.append((sql, params))
+
+        cursor.execute.side_effect = _capture_delete
+        result = _transform_result()
+
+        with patch(self._TARGET, return_value=_empty_summary()):
+            run_disclosures_load([result], conn, lookup_loader=loader)
+
+        holding_delete = next(
+            sql_params for sql_params in deletes if 'DELETE FROM "holding"' in sql_params[0]
+        )
+        transaction_delete = next(
+            sql_params for sql_params in deletes if 'DELETE FROM "transaction"' in sql_params[0]
+        )
+        assert holding_delete == (
+            'DELETE FROM "holding" WHERE "financial_disclosure_id" = %s',
+            (_FD_ID,),
+        )
+        assert transaction_delete == (
+            'DELETE FROM "transaction" WHERE "financial_disclosure_id" = %s',
+            (_FD_ID,),
+        )

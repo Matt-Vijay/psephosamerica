@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
-from typing import Optional
+from typing import Literal, Optional
 
 from src.parse.disclosures.models import Chamber
 
@@ -23,6 +23,11 @@ SENATE_DISCLOSURE_SOURCE = "senate-disclosures"
 
 _HOUSE_BASE = "https://disclosures.house.gov"
 _SENATE_BASE = "https://efdsearch.senate.gov"
+_HOUSE_FILING_KIND_PATH: dict[str, str] = {
+    "ptr": "public_disc/ptr-pdfs",
+    "annual": "public_disc/financial-pdfs",
+}
+HouseArtifactFilingKind = Literal["ptr", "annual"]
 
 
 @dataclass(frozen=True)
@@ -47,8 +52,13 @@ def house_artifact_meta(
     bioguide_id: str,
     filing_year: int,
     doc_id: str,
+    *,
+    filing_kind: HouseArtifactFilingKind = "ptr",
 ) -> ArtifactMeta:
-    source_url = f"{_HOUSE_BASE}/public_disc/ptr-pdfs/{filing_year}/{doc_id}.pdf"
+    kind_path = _HOUSE_FILING_KIND_PATH.get(filing_kind)
+    if kind_path is None:
+        raise ValueError(f"filing_kind must be 'ptr' or 'annual', got {filing_kind!r}")
+    source_url = f"{_HOUSE_BASE}/{kind_path}/{filing_year}/{doc_id}.pdf"
     return ArtifactMeta(
         source_slug=HOUSE_DISCLOSURE_SOURCE,
         chamber=Chamber.HOUSE,

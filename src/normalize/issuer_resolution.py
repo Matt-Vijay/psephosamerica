@@ -61,11 +61,12 @@ class IssuerCandidate:
 # Internal indices – built once per reference dataset
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class _RefIndex:
-    by_ticker: dict[str, IssuerRecord]           # TICKER -> record
-    by_norm_name: dict[str, IssuerRecord]         # normalized_name -> record
-    by_alias: dict[str, IssuerRecord]             # normalized_alias -> record
+    by_ticker: dict[str, IssuerRecord]  # TICKER -> record
+    by_norm_name: dict[str, IssuerRecord]  # normalized_name -> record
+    by_alias: dict[str, IssuerRecord]  # normalized_alias -> record
     all_records: list[IssuerRecord]
 
     @staticmethod
@@ -81,18 +82,14 @@ class _RefIndex:
             norm = _normalize_name(rec.name)
             existing_alias = by_alias.get(norm)
             if norm and existing_alias is not None and existing_alias != rec:
-                raise ValueError(
-                    f"duplicate normalized name collides with alias: {norm}"
-                )
+                raise ValueError(f"duplicate normalized name collides with alias: {norm}")
             _bind_unique_record_key(by_norm_name, norm, rec, "normalized name")
 
             for alias in rec.aliases:
                 norm_alias = _normalize_name(alias)
                 existing_name = by_norm_name.get(norm_alias)
                 if norm_alias and existing_name is not None and existing_name != rec:
-                    raise ValueError(
-                        f"duplicate alias collides with canonical name: {norm_alias}"
-                    )
+                    raise ValueError(f"duplicate alias collides with canonical name: {norm_alias}")
                 _bind_unique_record_key(by_alias, norm_alias, rec, "alias")
 
         return _RefIndex(
@@ -187,6 +184,7 @@ def _extract_tickers_from_text(text: str) -> list[str]:
 # Public API
 # ---------------------------------------------------------------------------
 
+
 def build_index(records: Sequence[IssuerRecord]) -> _RefIndex:
     """Build a lookup index from a reference dataset.  Call once, reuse often."""
     return _RefIndex.build(records)
@@ -210,14 +208,16 @@ def resolve_issuer(
         ticker_key = issuer_ticker_hint.upper().strip()
         if ticker_key in index.by_ticker:
             rec = index.by_ticker[ticker_key]
-            candidates.append(IssuerCandidate(
-                ticker=rec.ticker,
-                cik=rec.cik,
-                confidence_label="HIGH",
-                match_method="regex_ticker",
-                score=1.0,
-                matched_name=rec.name,
-            ))
+            candidates.append(
+                IssuerCandidate(
+                    ticker=rec.ticker,
+                    cik=rec.cik,
+                    confidence_label="HIGH",
+                    match_method="regex_ticker",
+                    score=1.0,
+                    matched_name=rec.name,
+                )
+            )
 
     # ------------------------------------------------------------------
     # Step 2: regex ticker extraction from the name text
@@ -227,14 +227,16 @@ def resolve_issuer(
         for t in extracted:
             if t in index.by_ticker:
                 rec = index.by_ticker[t]
-                candidates.append(IssuerCandidate(
-                    ticker=rec.ticker,
-                    cik=rec.cik,
-                    confidence_label="HIGH",
-                    match_method="regex_ticker",
-                    score=0.98,
-                    matched_name=rec.name,
-                ))
+                candidates.append(
+                    IssuerCandidate(
+                        ticker=rec.ticker,
+                        cik=rec.cik,
+                        confidence_label="HIGH",
+                        match_method="regex_ticker",
+                        score=0.98,
+                        matched_name=rec.name,
+                    )
+                )
                 break  # first match wins at this stage
 
     # ------------------------------------------------------------------
@@ -244,14 +246,16 @@ def resolve_issuer(
         norm = _normalize_name(issuer_name)
         if norm in index.by_norm_name:
             rec = index.by_norm_name[norm]
-            candidates.append(IssuerCandidate(
-                ticker=rec.ticker,
-                cik=rec.cik,
-                confidence_label="HIGH",
-                match_method="exact_name",
-                score=0.97,
-                matched_name=rec.name,
-            ))
+            candidates.append(
+                IssuerCandidate(
+                    ticker=rec.ticker,
+                    cik=rec.cik,
+                    confidence_label="HIGH",
+                    match_method="exact_name",
+                    score=0.97,
+                    matched_name=rec.name,
+                )
+            )
 
     # ------------------------------------------------------------------
     # Step 4: alias match
@@ -260,14 +264,16 @@ def resolve_issuer(
         norm = _normalize_name(issuer_name)
         if norm in index.by_alias:
             rec = index.by_alias[norm]
-            candidates.append(IssuerCandidate(
-                ticker=rec.ticker,
-                cik=rec.cik,
-                confidence_label="MEDIUM",
-                match_method="alias_match",
-                score=0.80,
-                matched_name=rec.name,
-            ))
+            candidates.append(
+                IssuerCandidate(
+                    ticker=rec.ticker,
+                    cik=rec.cik,
+                    confidence_label="MEDIUM",
+                    match_method="alias_match",
+                    score=0.80,
+                    matched_name=rec.name,
+                )
+            )
 
     # ------------------------------------------------------------------
     # Step 5: fuzzy token-overlap scoring across all names + aliases
@@ -295,27 +301,31 @@ def resolve_issuer(
             else:
                 confidence = "MEDIUM" if best_score >= 0.60 else "LOW"
 
-            candidates.append(IssuerCandidate(
-                ticker=best_rec.ticker,
-                cik=best_rec.cik,
-                confidence_label=confidence,
-                match_method="fuzzy_score",
-                score=best_score,
-                matched_name=best_rec.name,
-            ))
+            candidates.append(
+                IssuerCandidate(
+                    ticker=best_rec.ticker,
+                    cik=best_rec.cik,
+                    confidence_label=confidence,
+                    match_method="fuzzy_score",
+                    score=best_score,
+                    matched_name=best_rec.name,
+                )
+            )
 
     # ------------------------------------------------------------------
     # Fallback: unresolved
     # ------------------------------------------------------------------
     if not candidates:
-        candidates.append(IssuerCandidate(
-            ticker=None,
-            cik=None,
-            confidence_label="LOW",
-            match_method="unresolved",
-            score=0.0,
-            matched_name=None,
-        ))
+        candidates.append(
+            IssuerCandidate(
+                ticker=None,
+                cik=None,
+                confidence_label="LOW",
+                match_method="unresolved",
+                score=0.0,
+                matched_name=None,
+            )
+        )
 
     # Sort best first (higher score = better)
     candidates.sort(key=lambda c: c.score, reverse=True)

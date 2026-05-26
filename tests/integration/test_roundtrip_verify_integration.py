@@ -336,10 +336,7 @@ class TestRoundtripVerify:
         # Manifest should cover evidence card files and any additional
         # publish-layer sidecars, but not the manifest itself.
         manifest_paths = {entry.path for entry in manifest.entries}
-        expected_evidence_paths = {
-            evidence_path(card.evidence_card_id)
-            for card in cards
-        }
+        expected_evidence_paths = {evidence_path(card.evidence_card_id) for card in cards}
         assert expected_evidence_paths.issubset(manifest_paths)
         assert "manifest.json" not in manifest_paths
         assert manifest.total_files == len(manifest.entries)
@@ -355,9 +352,7 @@ class TestRoundtripVerify:
     def test_full_snapshot_with_profile_and_card(self, pg_conn_clean, tmp_path: Path):
         """Publish a snapshot with both a member profile and evidence card, verify both."""
         conn = pg_conn_clean
-        member_dict, cards = self._seed_and_recompute(
-            conn, bioguide="F000001", slug="rep-full"
-        )
+        member_dict, cards = self._seed_and_recompute(conn, bioguide="F000001", slug="rep-full")
 
         # Build a member profile payload from the recompute results
         profile = build_member_profile(
@@ -386,9 +381,7 @@ class TestRoundtripVerify:
                     "snapshot_date": _SNAPSHOT_DATE,
                 }
             ],
-            committee_rows=[
-                {"committee_name": "Energy Committee", "role": "Member"}
-            ],
+            committee_rows=[{"committee_name": "Energy Committee", "role": "Member"}],
             total_evidence_cards=1,
             snapshot_date=_SNAPSHOT_DATE,
         )

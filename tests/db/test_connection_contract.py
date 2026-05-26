@@ -16,7 +16,12 @@ import pytest
 
 from src.db.bootstrap import apply_sql, read_migration_sql, read_schema_sql
 from src.db.connection import DBSettings, build_connection_kwargs
-from src.db.repositories import execute_many, execute_one, fetch_all
+from src.db.repositories import (
+    ensure_transactional_for_commit,
+    execute_many,
+    execute_one,
+    fetch_all,
+)
 
 # ---------------------------------------------------------------------------
 # Fixtures / helpers
@@ -55,8 +60,10 @@ class TestDBSettingsProtocol:
         assert not isinstance(incomplete, DBSettings)
 
     def test_all_required_attributes_present(self):
-        annotations = DBSettings.__protocol_attrs__ if hasattr(DBSettings, "__protocol_attrs__") else set(
-            k for k in DBSettings.__annotations__
+        annotations = (
+            DBSettings.__protocol_attrs__
+            if hasattr(DBSettings, "__protocol_attrs__")
+            else set(k for k in DBSettings.__annotations__)
         )
         expected = {"db_host", "db_port", "db_name", "db_user", "db_password"}
         assert expected == set(annotations)
@@ -150,8 +157,26 @@ class TestConnect:
             result = connect(settings)
 
         expected_kwargs = build_connection_kwargs(settings)
-        mock_connect.assert_called_once_with(**expected_kwargs)
+        mock_connect.assert_called_once_with(**expected_kwargs, autocommit=False)
         assert result is mock_conn
+
+
+class TestTransactionalCommitGuard:
+    def test_commit_true_rejects_autocommit_connection(self):
+        conn = SimpleNamespace(autocommit=True)
+
+        with pytest.raises(RuntimeError, match="autocommit"):
+            ensure_transactional_for_commit(conn, commit=True)
+
+    def test_commit_false_allows_autocommit_connection(self):
+        conn = SimpleNamespace(autocommit=True)
+
+        ensure_transactional_for_commit(conn, commit=False)
+
+    def test_missing_autocommit_attribute_is_allowed(self):
+        conn = SimpleNamespace()
+
+        ensure_transactional_for_commit(conn, commit=True)
 
 
 # ---------------------------------------------------------------------------
@@ -185,10 +210,21 @@ class TestBootstrapFileLoading:
 
     def test_read_migration_sql_contains_all_core_tables(self):
         core_tables = [
-            "member", "member_term", "committee", "committee_membership",
-            "bill", "bill_sponsor", "vote_event", "vote_cast",
-            "fec_committee", "contribution", "financial_disclosure",
-            "holding", "rule_fire", "evidence_card", "score_snapshot",
+            "member",
+            "member_term",
+            "committee",
+            "committee_membership",
+            "bill",
+            "bill_sponsor",
+            "vote_event",
+            "vote_cast",
+            "fec_committee",
+            "contribution",
+            "financial_disclosure",
+            "holding",
+            "rule_fire",
+            "evidence_card",
+            "score_snapshot",
         ]
         sql = read_migration_sql().lower()
         for table in core_tables:
@@ -216,6 +252,20 @@ class TestApplySql:
 
         mock_cur.execute.assert_called_once_with("SELECT 1")
         mock_conn.commit.assert_called_once()
+
+    def test_apply_sql_commit_failure_rolls_back(self):
+        mock_conn = MagicMock()
+        mock_cur = MagicMock()
+        mock_conn.cursor.return_value.__enter__ = MagicMock(return_value=mock_cur)
+        mock_conn.cursor.return_value.__exit__ = MagicMock(return_value=False)
+        mock_conn.commit.side_effect = RuntimeError("commit failed")
+
+        with pytest.raises(RuntimeError, match="commit failed"):
+            apply_sql(mock_conn, "SELECT 1")
+
+        mock_cur.execute.assert_called_once_with("SELECT 1")
+        mock_conn.commit.assert_called_once()
+        mock_conn.rollback.assert_called_once()
 
 
 # ---------------------------------------------------------------------------
@@ -277,6 +327,48 @@ class TestExecuteOne:
         mock_cur.execute.assert_called_once()
         mock_conn.commit.assert_called_once()
 
+    def test_commit_false_defers_commit(self):
+        mock_conn = MagicMock()
+        mock_cur = MagicMock()
+        mock_conn.cursor.return_value.__enter__ = MagicMock(return_value=mock_cur)
+        mock_conn.cursor.return_value.__exit__ = MagicMock(return_value=False)
+
+        execute_one(mock_conn, "INSERT INTO foo VALUES (%s)", (1,), commit=False)
+
+        mock_cur.execute.assert_called_once()
+        mock_conn.commit.assert_not_called()
+
+    def test_rolls_back_when_execute_fails(self):
+        mock_conn = MagicMock()
+        mock_cur = MagicMock()
+        mock_cur.execute.side_effect = RuntimeError("boom")
+        mock_conn.cursor.return_value.__enter__ = MagicMock(return_value=mock_cur)
+        mock_conn.cursor.return_value.__exit__ = MagicMock(return_value=False)
+
+        with pytest.raises(RuntimeError, match="boom"):
+            execute_one(mock_conn, "INSERT INTO foo VALUES (%s)", (1,))
+
+        mock_conn.commit.assert_not_called()
+        mock_conn.rollback.assert_called_once()
+
+    def test_does_not_roll_back_when_execute_fails_and_commit_false(self):
+        mock_conn = MagicMock()
+        mock_cur = MagicMock()
+        mock_cur.execute.side_effect = RuntimeError("boom")
+        mock_conn.cursor.return_value.__enter__ = MagicMock(return_value=mock_cur)
+        mock_conn.cursor.return_value.__exit__ = MagicMock(return_value=False)
+
+        with pytest.raises(RuntimeError, match="boom"):
+            execute_one(
+                mock_conn,
+                "INSERT INTO foo VALUES (%s)",
+                (1,),
+                commit=False,
+            )
+
+        mock_conn.commit.assert_not_called()
+        mock_conn.rollback.assert_not_called()
+
 
 class TestExecuteMany:
     def test_executemany_called_and_committed(self):
@@ -290,6 +382,39 @@ class TestExecuteMany:
 
         mock_cur.executemany.assert_called_once()
         mock_conn.commit.assert_called_once()
+
+    def test_rolls_back_when_executemany_fails_and_helper_owns_commit(self):
+        mock_conn = MagicMock()
+        mock_cur = MagicMock()
+        mock_cur.executemany.side_effect = RuntimeError("boom")
+        mock_conn.cursor.return_value.__enter__ = MagicMock(return_value=mock_cur)
+        mock_conn.cursor.return_value.__exit__ = MagicMock(return_value=False)
+
+        rows = [(1, "a"), (2, "b")]
+        with pytest.raises(RuntimeError, match="boom"):
+            execute_many(mock_conn, "INSERT INTO foo VALUES (%s, %s)", rows)
+
+        mock_conn.commit.assert_not_called()
+        mock_conn.rollback.assert_called_once()
+
+    def test_does_not_roll_back_when_executemany_fails_and_commit_false(self):
+        mock_conn = MagicMock()
+        mock_cur = MagicMock()
+        mock_cur.executemany.side_effect = RuntimeError("boom")
+        mock_conn.cursor.return_value.__enter__ = MagicMock(return_value=mock_cur)
+        mock_conn.cursor.return_value.__exit__ = MagicMock(return_value=False)
+
+        rows = [(1, "a"), (2, "b")]
+        with pytest.raises(RuntimeError, match="boom"):
+            execute_many(
+                mock_conn,
+                "INSERT INTO foo VALUES (%s, %s)",
+                rows,
+                commit=False,
+            )
+
+        mock_conn.commit.assert_not_called()
+        mock_conn.rollback.assert_not_called()
 
 
 class TestFetchAll:

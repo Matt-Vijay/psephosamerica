@@ -200,7 +200,9 @@ def _patched_env(
             f"{_MOD}.load_manifest",
             return_value=manifest_return or default_manifest,
         ) as env.load_manifest,
-        patch(f"{_MOD}.validate_congress_archive_manifest") as env.validate_congress_archive_manifest,
+        patch(
+            f"{_MOD}.validate_congress_archive_manifest"
+        ) as env.validate_congress_archive_manifest,
     ):
         # Default: manifest is valid (no missing files)
         _valid_result = MagicMock()

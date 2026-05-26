@@ -40,6 +40,10 @@ _MEMBER_META: dict[str, dict] = {
 }
 
 
+class _RankedDate(dt.date):
+    pass
+
+
 def _make_event(
     bioguide_id: str,
     *,
@@ -338,6 +342,20 @@ class TestBuildRecentEvents:
         dates = [r.occurred_at for r in result]
         assert dates == [_LATER, _SNAP, _EARLIER]
 
+    def test_boolean_occurred_at_rank_does_not_override_calendar_order(self):
+        earlier = _RankedDate(2024, 10, 1)
+        earlier._rank = True
+        later = _RankedDate(2024, 11, 1)
+        later._rank = False
+        events = [
+            _make_event("A000001", delta=-10.0, occurred_at=earlier, discriminator="a"),
+            _make_event("B000002", delta=-20.0, occurred_at=later, discriminator="b"),
+        ]
+
+        result = build_recent_events(events, n=10)
+
+        assert [r.member_bioguide_id for r in result] == ["B000002", "A000001"]
+
     def test_tie_on_date_broken_by_feed_event_id_ascending(self):
         # Two events on the same date — order must be stable
         e1 = _make_event("A000001", delta=-10.0, occurred_at=_SNAP, discriminator="zzz")
@@ -465,21 +483,15 @@ class TestBuildHomepageFeed:
         ]
 
     def test_returns_homepage_feed_payload(self):
-        result = build_homepage_feed(
-            self._events(), _MEMBER_META, snapshot_date=_SNAP
-        )
+        result = build_homepage_feed(self._events(), _MEMBER_META, snapshot_date=_SNAP)
         assert isinstance(result, HomepageFeedPayload)
 
     def test_snapshot_date_set(self):
-        result = build_homepage_feed(
-            self._events(), _MEMBER_META, snapshot_date=_SNAP
-        )
+        result = build_homepage_feed(self._events(), _MEMBER_META, snapshot_date=_SNAP)
         assert result.snapshot_date == _SNAP
 
     def test_top_changes_ordered_by_magnitude(self):
-        result = build_homepage_feed(
-            self._events(), _MEMBER_META, snapshot_date=_SNAP
-        )
+        result = build_homepage_feed(self._events(), _MEMBER_META, snapshot_date=_SNAP)
         # A: abs 30, B: abs 15, C: abs 5
         assert [s.bioguide_id for s in result.top_changes] == [
             "A000001",
@@ -488,35 +500,25 @@ class TestBuildHomepageFeed:
         ]
 
     def test_recent_events_ordered_by_occurred_at(self):
-        result = build_homepage_feed(
-            self._events(), _MEMBER_META, snapshot_date=_SNAP
-        )
+        result = build_homepage_feed(self._events(), _MEMBER_META, snapshot_date=_SNAP)
         dates = [r.occurred_at for r in result.recent_events]
         assert dates == sorted(dates, reverse=True)
 
     def test_recent_evidence_card_ids_deduped_and_ordered(self):
-        result = build_homepage_feed(
-            self._events(), _MEMBER_META, snapshot_date=_SNAP
-        )
+        result = build_homepage_feed(self._events(), _MEMBER_META, snapshot_date=_SNAP)
         # card-a1 (LATER), card-b1 (SNAP), C has no card
         assert result.recent_evidence_card_ids == ["card-a1", "card-b1"]
 
     def test_top_n_respected(self):
-        result = build_homepage_feed(
-            self._events(), _MEMBER_META, snapshot_date=_SNAP, top_n=2
-        )
+        result = build_homepage_feed(self._events(), _MEMBER_META, snapshot_date=_SNAP, top_n=2)
         assert len(result.top_changes) == 2
 
     def test_recent_n_respected(self):
-        result = build_homepage_feed(
-            self._events(), _MEMBER_META, snapshot_date=_SNAP, recent_n=2
-        )
+        result = build_homepage_feed(self._events(), _MEMBER_META, snapshot_date=_SNAP, recent_n=2)
         assert len(result.recent_events) == 2
 
     def test_since_filter_applied_to_recent_events(self):
-        result = build_homepage_feed(
-            self._events(), _MEMBER_META, snapshot_date=_SNAP, since=_SNAP
-        )
+        result = build_homepage_feed(self._events(), _MEMBER_META, snapshot_date=_SNAP, since=_SNAP)
         assert all(r.occurred_at >= _SNAP for r in result.recent_events)
 
     def test_dimension_filter_applied(self):
@@ -552,9 +554,7 @@ class TestBuildHomepageFeed:
         results: list[HomepageFeedPayload] = []
         for _ in range(5):
             shuffled = random.sample(events, len(events))
-            results.append(
-                build_homepage_feed(shuffled, _MEMBER_META, snapshot_date=_SNAP)
-            )
+            results.append(build_homepage_feed(shuffled, _MEMBER_META, snapshot_date=_SNAP))
 
         first = results[0]
         for other in results[1:]:

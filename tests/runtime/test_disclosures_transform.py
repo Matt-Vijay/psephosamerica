@@ -3,6 +3,7 @@
 No DB, no network, no filesystem access.  All inputs are real typed objects
 from the parse layer; transform logic is exercised end-to-end.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -164,7 +165,10 @@ class TestBuildParseContext:
 class TestResultShape:
     def test_returns_disclosure_transform_result(self):
         result = transform_parsed_disclosure(
-            _filing(), [], [], [],
+            _filing(),
+            [],
+            [],
+            [],
         )
         assert isinstance(result, DisclosureTransformResult)
 
@@ -202,37 +206,55 @@ class TestResultShape:
 class TestDisclosurePayload:
     def test_member_bioguide_id_forwarded(self):
         result = transform_parsed_disclosure(
-            _filing(member_bioguide_id="B000042"), [], [], [],
+            _filing(member_bioguide_id="B000042"),
+            [],
+            [],
+            [],
         )
         assert result.disclosure.member_bioguide_id == "B000042"
 
     def test_chamber_forwarded(self):
         result = transform_parsed_disclosure(
-            _filing(chamber=Chamber.HOUSE), [], [], [],
+            _filing(chamber=Chamber.HOUSE),
+            [],
+            [],
+            [],
         )
         assert result.disclosure.chamber == "house"
 
     def test_filing_year_forwarded(self):
         result = transform_parsed_disclosure(
-            _filing(filing_year=2022), [], [], [],
+            _filing(filing_year=2022),
+            [],
+            [],
+            [],
         )
         assert result.disclosure.filing_year == 2022
 
     def test_filing_type_forwarded(self):
         result = transform_parsed_disclosure(
-            _filing(filing_type=FilingType.PTR), [], [], [],
+            _filing(filing_type=FilingType.PTR),
+            [],
+            [],
+            [],
         )
         assert result.disclosure.filing_type == "ptr"
 
     def test_amendment_number_forwarded(self):
         result = transform_parsed_disclosure(
-            _filing(amendment_number=2, is_amended=True), [], [], [],
+            _filing(amendment_number=2, is_amended=True),
+            [],
+            [],
+            [],
         )
         assert result.disclosure.amendment_number == 2
 
     def test_is_amended_forwarded(self):
         result = transform_parsed_disclosure(
-            _filing(is_amended=True, amendment_number=1), [], [], [],
+            _filing(is_amended=True, amendment_number=1),
+            [],
+            [],
+            [],
         )
         assert result.disclosure.is_amended is True
 
@@ -246,7 +268,10 @@ class TestProvenanceWiring:
     def test_null_provenance_accepted(self):
         # No error when all provenance IDs are None (dry-run / test mode).
         result = transform_parsed_disclosure(
-            _filing(), [], [], [],
+            _filing(),
+            [],
+            [],
+            [],
             parse_run_id=None,
             source_artifact_id=None,
             ingestion_run_id=None,
@@ -258,7 +283,10 @@ class TestProvenanceWiring:
         # flow through to that review item.
         op = _outside_position()
         result = transform_parsed_disclosure(
-            _filing(), [], [], [op],
+            _filing(),
+            [],
+            [],
+            [op],
             parse_run_id=11,
             source_artifact_id=22,
             ingestion_run_id=33,
@@ -271,7 +299,10 @@ class TestProvenanceWiring:
     def test_partial_provenance_ids_flow_through(self):
         op = _outside_position()
         result = transform_parsed_disclosure(
-            _filing(), [], [], [op],
+            _filing(),
+            [],
+            [],
+            [op],
             parse_run_id=7,
         )
         review = result.review_items[0]
@@ -288,20 +319,22 @@ class TestProvenanceWiring:
 class TestAmendmentReview:
     def test_amendment_filing_emits_review_item(self):
         result = transform_parsed_disclosure(
-            _filing(is_amended=True, amendment_number=1), [], [], [],
+            _filing(is_amended=True, amendment_number=1),
+            [],
+            [],
+            [],
         )
-        amendment_reviews = [
-            r for r in result.review_items if r.reason_code == "amendment_filing"
-        ]
+        amendment_reviews = [r for r in result.review_items if r.reason_code == "amendment_filing"]
         assert len(amendment_reviews) == 1
 
     def test_non_amendment_emits_no_amendment_review(self):
         result = transform_parsed_disclosure(
-            _filing(is_amended=False, filing_type=FilingType.ANNUAL), [], [], [],
+            _filing(is_amended=False, filing_type=FilingType.ANNUAL),
+            [],
+            [],
+            [],
         )
-        amendment_reviews = [
-            r for r in result.review_items if r.reason_code == "amendment_filing"
-        ]
+        amendment_reviews = [r for r in result.review_items if r.reason_code == "amendment_filing"]
         assert amendment_reviews == []
 
 
@@ -381,17 +414,13 @@ class TestOutsidePositionSidecar:
     def test_outside_position_always_emits_review_item(self):
         op = _outside_position()
         result = transform_parsed_disclosure(_filing(), [], [], [op])
-        op_reviews = [
-            r for r in result.review_items if r.reason_code == "no_canonical_table_v1"
-        ]
+        op_reviews = [r for r in result.review_items if r.reason_code == "no_canonical_table_v1"]
         assert len(op_reviews) == 1
 
     def test_multiple_outside_positions_each_emit_review_item(self):
         ops = [_outside_position(line_number=i) for i in range(1, 4)]
         result = transform_parsed_disclosure(_filing(), [], [], ops)
-        op_reviews = [
-            r for r in result.review_items if r.reason_code == "no_canonical_table_v1"
-        ]
+        op_reviews = [r for r in result.review_items if r.reason_code == "no_canonical_table_v1"]
         assert len(op_reviews) == 3
 
 
@@ -761,7 +790,10 @@ class TestTransformSingleSession:
         single = transform_single_session(session)
         batch = transform_parse_sessions(None, [session])
         assert isinstance(single, DisclosureTransformResult)
-        assert single.disclosure.member_bioguide_id == batch.transformed[0].disclosure.member_bioguide_id
+        assert (
+            single.disclosure.member_bioguide_id
+            == batch.transformed[0].disclosure.member_bioguide_id
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -828,7 +860,9 @@ class TestOutsidePositionUnknownOwner:
             entity_name="Lobbying LLC",
         )
         result = transform_parsed_disclosure(_filing(), [], [], [op])
-        assert len([r for r in result.review_items if r.reason_code == "no_canonical_table_v1"]) == 1
+        assert (
+            len([r for r in result.review_items if r.reason_code == "no_canonical_table_v1"]) == 1
+        )
         assert not any(r.reason_code == "unknown_owner_type" for r in result.review_items)
 
 
@@ -842,7 +876,11 @@ class TestSkipReasonConstants:
     transform_single_session and transform_parse_sessions."""
 
     def test_skip_constants_are_strings(self):
-        for const in (SKIP_NO_PARSE_RESULT, SKIP_NO_PARSED_DOCUMENT, SKIP_UNRESOLVED_MEMBER_IDENTITY):
+        for const in (
+            SKIP_NO_PARSE_RESULT,
+            SKIP_NO_PARSED_DOCUMENT,
+            SKIP_UNRESOLVED_MEMBER_IDENTITY,
+        ):
             assert isinstance(const, str)
 
     def test_no_parse_result_matches_constant(self):

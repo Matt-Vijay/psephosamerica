@@ -58,7 +58,16 @@ def _seed_member(conn, bioguide_id: str = "T000001") -> int:
         INSERT INTO member (bioguide_id, slug, last_name, full_name, party, state, chamber, is_current)
         VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
         """,
-        (bioguide_id, bioguide_id.lower(), "TestLast", f"Rep {bioguide_id}", "D", "CA", "house", True),
+        (
+            bioguide_id,
+            bioguide_id.lower(),
+            "TestLast",
+            f"Rep {bioguide_id}",
+            "D",
+            "CA",
+            "house",
+            True,
+        ),
     )
     rows = fetch_all(conn, "SELECT id FROM member WHERE bioguide_id = %s", (bioguide_id,))
     return rows[0]["id"]

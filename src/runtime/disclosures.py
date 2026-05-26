@@ -3,12 +3,14 @@ disclosure pipeline.
 
 Entry point: run_disclosures_load_runtime.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Any
 
 from src.db.load_report import LoadSummary
+from src.db.repositories import rollback_if_available
 from src.db.runtime_lookups import load_lookup_bundle
 from src.parse.disclosures.transform import (
     DisclosureTransformResult,
@@ -69,12 +71,18 @@ def run_disclosures_load_runtime(
             conn,
             lookup_loader=load_lookup_bundle,
             run_id=run_id,
+            commit=False,
         )
     except Exception as exc:
+        rollback_if_available(conn)
         fail_ingestion_run(conn, run_id, str(exc))
         raise
 
-    finish_ingestion_run(conn, run_id, load_summary.total_written)
+    try:
+        finish_ingestion_run(conn, run_id, load_summary.total_written)
+    except Exception:
+        rollback_if_available(conn)
+        raise
 
     return DisclosuresLoadRuntimeResult(
         data_source=data_source,

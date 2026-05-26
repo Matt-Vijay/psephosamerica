@@ -117,9 +117,7 @@ class TestBasicFieldMapping:
 
     def test_source_url_from_committee_url(self, member: MemberRecord) -> None:
         url = "https://api.congress.gov/v3/committee/house/HSAS00"
-        result = committee_membership_specs_from_detail(
-            _detail(_committee_item(url=url)), member
-        )
+        result = committee_membership_specs_from_detail(_detail(_committee_item(url=url)), member)
         assert result[0].source_url == url
 
     def test_empty_payload_returns_empty_list(self, member: MemberRecord) -> None:
@@ -145,25 +143,26 @@ class TestBasicFieldMapping:
 
 
 class TestRoleNormalization:
-    @pytest.mark.parametrize("raw,expected", [
-        ("Member", "member"),
-        ("member", "member"),
-        ("MEMBER", "member"),
-        ("Chair", "chair"),
-        ("Chairman", "chair"),
-        ("Chairwoman", "chair"),
-        ("CHAIR", "chair"),
-        ("Vice Chair", "vice_chair"),
-        ("Vice Chairman", "vice_chair"),
-        ("Vice Chairwoman", "vice_chair"),
-        ("Ranking Member", "ranking_member"),
-        ("Ranking Minority Member", "ranking_member"),
-        ("Ex Officio", "ex_officio"),
-    ])
+    @pytest.mark.parametrize(
+        "raw,expected",
+        [
+            ("Member", "member"),
+            ("member", "member"),
+            ("MEMBER", "member"),
+            ("Chair", "chair"),
+            ("Chairman", "chair"),
+            ("Chairwoman", "chair"),
+            ("CHAIR", "chair"),
+            ("Vice Chair", "vice_chair"),
+            ("Vice Chairman", "vice_chair"),
+            ("Vice Chairwoman", "vice_chair"),
+            ("Ranking Member", "ranking_member"),
+            ("Ranking Minority Member", "ranking_member"),
+            ("Ex Officio", "ex_officio"),
+        ],
+    )
     def test_known_roles(self, raw: str, expected: str, member: MemberRecord) -> None:
-        result = committee_membership_specs_from_detail(
-            _detail(_committee_item(role=raw)), member
-        )
+        result = committee_membership_specs_from_detail(_detail(_committee_item(role=raw)), member)
         assert result[0].role == expected
 
     def test_unknown_role_falls_back_to_member(self, member: MemberRecord) -> None:
@@ -193,7 +192,7 @@ class TestRoleNormalization:
 class TestDropsUnresolvableRows:
     def test_drops_item_with_no_system_code(self, member: MemberRecord) -> None:
         item = _committee_item()
-        item["committee"] = {"name": "Mystery Committee"}   # no systemCode
+        item["committee"] = {"name": "Mystery Committee"}  # no systemCode
         result = committee_membership_specs_from_detail(_detail(item), member)
         assert result == []
 
@@ -270,6 +269,12 @@ class TestDateParsing:
         item["congress"] = "118"
         result = committee_membership_specs_from_detail(_detail(item), member)
         assert result[0].congress == 118
+
+    def test_boolean_congress_is_dropped_not_coerced_to_one(self, member: MemberRecord) -> None:
+        item = _committee_item()
+        item["congress"] = True
+        result = committee_membership_specs_from_detail(_detail(item), member)
+        assert result == []
 
 
 # ---------------------------------------------------------------------------

@@ -13,14 +13,22 @@ from __future__ import annotations
 
 import datetime as dt
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Callable
 
 from src.db.load_executor import Resolvers, execute_load_plan
-from src.db.load_report import LoadSummary
+from src.db.load_report import LoadSummary, TableWriteResult, WarnErrorSummary, build_load_summary
+from src.db.recompute_resolvers import load_recompute_resolver_maps
+from src.db.repositories import (
+    commit_or_rollback,
+    ensure_transactional_for_commit,
+    rollback_if_available,
+)
 from src.db.runtime_lookups import load_lookup_bundle
 from src.export.contracts import EvidenceCardPayload
 from src.load.recompute import recompute_load_plan
 from src.normalize.taxonomy_runtime import TaxonomyRuntime
+from src.ontology.contracts import OntologyEdgePayload
+from src.ontology.member_interest_edges import build_member_interest_edges
 from src.pipeline.conflict_recompute import recompute_conflicts
 from src.query.conflict_inputs import (
     CommitteeSectorResolver,
@@ -29,6 +37,7 @@ from src.query.conflict_inputs import (
     assemble_repeated_committee_linked_trading_rows,
     assemble_sector_holdings_overlap_rows,
     fetch_committee_membership_rows,
+    fetch_contribution_rows,
     fetch_holding_rows,
     fetch_late_or_amended_rows,
     fetch_transaction_rows,
@@ -39,6 +48,8 @@ from src.query.recompute_rows import (
     index_latest_previous_snapshots,
 )
 from src.rules.models import RuleFire
+
+ContributionSectorResolver = Callable[[dict[str, Any]], str | None]
 
 
 # ---------------------------------------------------------------------------
@@ -67,6 +78,7 @@ class UnresolvedCommitteeMatch:
 class RecomputeRunResult:
     rule_fires: list[RuleFire] = field(default_factory=list)
     evidence_cards: list[EvidenceCardPayload] = field(default_factory=list)
+    ontology_edges: list[OntologyEdgePayload] = field(default_factory=list)
     load_summary: LoadSummary | None = None
     review_required_rows_by_family: dict[str, list[dict[str, Any]]] = field(default_factory=dict)
     unresolved_committee_matches: list[UnresolvedCommitteeMatch] = field(default_factory=list)
@@ -168,17 +180,125 @@ def _build_unresolved_committee_matches(
     return matches
 
 
-def _build_recompute_resolvers(bioguide_map: dict[str, int]) -> Resolvers:
+def _ontology_membership_rows(
+    membership_rows: list[dict[str, Any]],
+    *,
+    committee_sector_resolver: CommitteeSectorResolver,
+) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for row in membership_rows:
+        resolution = committee_sector_resolver(row["committee_code"], row["congress"])
+        sector = getattr(resolution, "sector_id", resolution)
+        rows.append(
+            {
+                **row,
+                "committee_sector": sector,
+                "committee_mapping_tier": (
+                    getattr(resolution, "mapping_tier", "deterministic")
+                    if sector is not None
+                    else None
+                ),
+                "committee_chamber": getattr(
+                    resolution,
+                    "chamber",
+                    row.get("committee_chamber"),
+                ),
+                "committee_subcommittee_name": getattr(
+                    resolution,
+                    "subcommittee_name",
+                    "",
+                ),
+            }
+        )
+    return rows
+
+
+def _ontology_holding_rows(
+    holding_rows: list[dict[str, Any]],
+    *,
+    issuer_sector_resolver: IssuerSectorResolver,
+) -> list[dict[str, Any]]:
+    return [
+        {
+            **row,
+            "holding_sector": issuer_sector_resolver(
+                row["issuer_name"],
+                row.get("issuer_ticker"),
+            ),
+        }
+        for row in holding_rows
+    ]
+
+
+def _ontology_transaction_rows(
+    transaction_rows: list[dict[str, Any]],
+    *,
+    issuer_sector_resolver: IssuerSectorResolver,
+) -> list[dict[str, Any]]:
+    return [
+        {
+            **row,
+            "sector": issuer_sector_resolver(
+                row["issuer_name"],
+                row.get("issuer_ticker"),
+            ),
+        }
+        for row in transaction_rows
+    ]
+
+
+def _ontology_contribution_rows(
+    contribution_rows: list[dict[str, Any]],
+    *,
+    contribution_sector_resolver: ContributionSectorResolver | None,
+) -> list[dict[str, Any]]:
+    if contribution_sector_resolver is None:
+        return []
+    return [
+        {
+            **row,
+            "sector": contribution_sector_resolver(row),
+        }
+        for row in contribution_rows
+    ]
+
+
+def _build_recompute_resolvers(
+    bioguide_map: dict[str, int],
+    *,
+    rule_fire_map: dict[str, int] | None = None,
+) -> Resolvers:
     """Build FK resolvers for the recompute write phase.
 
-    Only _bioguide_id needs resolution; rule_fire_id and
-    superseded_financial_disclosure_id are nullable and resolved to None
-    when absent — the load_executor strips unknown hint keys silently.
+    Rule fires target subject_member_id; evidence cards and snapshots target
+    member_id.  Financial-disclosure/rule-fire hints are nullable and unresolved
+    when absent.
     """
+
+    def _resolve_member_hint(row: dict[str, Any], hint: str) -> int | None:
+        key = row.get(hint)
+        return bioguide_map.get(key) if isinstance(key, str) else None
+
+    def _resolve_rule_fire_hint(row: dict[str, Any]) -> int | None:
+        key = row.get("_rule_fire_source_record_id")
+        return (rule_fire_map or {}).get(key) if isinstance(key, str) else None
+
     return {
-        "_bioguide_id": (
+        "_subject_member_bioguide_id": (
+            "subject_member_id",
+            lambda row: _resolve_member_hint(row, "_subject_member_bioguide_id"),
+        ),
+        "_member_bioguide_id": (
             "member_id",
-            lambda row: bioguide_map.get(row.get("_bioguide_id", "")),
+            lambda row: _resolve_member_hint(row, "_member_bioguide_id"),
+        ),
+        "_object_member_bioguide_id": (
+            "object_member_id",
+            lambda row: _resolve_member_hint(row, "_object_member_bioguide_id"),
+        ),
+        "_rule_fire_source_record_id": (
+            "rule_fire_id",
+            _resolve_rule_fire_hint,
         ),
     }
 
@@ -198,6 +318,20 @@ def _delta_rows_by_member_id(
     return grouped
 
 
+def _merge_load_summaries(
+    summaries: list[LoadSummary],
+    *,
+    run_id: int,
+) -> LoadSummary:
+    warn_error = WarnErrorSummary()
+    table_results: list[TableWriteResult] = []
+    for summary in summaries:
+        table_results.extend(summary.table_results)
+        warn_error.warnings.extend(summary.warn_error.warnings)
+        warn_error.errors.extend(summary.warn_error.errors)
+    return build_load_summary(table_results, warn_error=warn_error, run_id=run_id)
+
+
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
@@ -210,6 +344,9 @@ def run_recompute(
     snapshot_date: dt.date,
     taxonomy: TaxonomyRuntime,
     issuer_sector_resolver: IssuerSectorResolver,
+    contribution_sector_resolver: ContributionSectorResolver | None = None,
+    statement_rows: list[dict[str, Any]] | None = None,
+    commit: bool = True,
 ) -> RecomputeRunResult:
     """Execute a full conflict-of-interest recompute against the live database.
 
@@ -224,7 +361,12 @@ def run_recompute(
         issuer_sector_resolver: Callable(issuer_name, issuer_ticker) → sector
                                 slug or None; injected so callers control DB vs
                                 cached vs normalised resolution strategy.
+        contribution_sector_resolver:
+                                Optional callable(row) → sector slug or None
+                                for FEC contribution/donor-sector attribution.
     """
+    ensure_transactional_for_commit(conn, commit=commit)
+
     # ------------------------------------------------------------------ 1. --
     # Fetch member roster and previous score snapshots.
     members = fetch_recompute_members(conn)
@@ -243,20 +385,40 @@ def run_recompute(
 
     # ------------------------------------------------------------------ 2. --
     # Fetch canonical conflict inputs.
-    late_rows = fetch_late_or_amended_rows(
-        conn, bioguide_ids=bioguide_ids, filing_year=filing_year
-    )
+    late_rows = fetch_late_or_amended_rows(conn, bioguide_ids=bioguide_ids, filing_year=filing_year)
     membership_rows = fetch_committee_membership_rows(conn, bioguide_ids=bioguide_ids)
-    holding_rows = fetch_holding_rows(
-        conn, bioguide_ids=bioguide_ids, filing_year=filing_year
-    )
+    holding_rows = fetch_holding_rows(conn, bioguide_ids=bioguide_ids, filing_year=filing_year)
     transaction_rows = fetch_transaction_rows(
         conn, bioguide_ids=bioguide_ids, filing_year=filing_year
+    )
+    contribution_rows = fetch_contribution_rows(
+        conn,
+        bioguide_ids=bioguide_ids,
+        as_of_date=snapshot_date,
     )
 
     # ------------------------------------------------------------------ 3. --
     # Assemble per-family input rows with sector enrichment.
     committee_sector_resolver = _build_committee_sector_resolver(membership_rows, taxonomy)
+    ontology_edges = build_member_interest_edges(
+        membership_rows=_ontology_membership_rows(
+            membership_rows,
+            committee_sector_resolver=committee_sector_resolver,
+        ),
+        holding_rows=_ontology_holding_rows(
+            holding_rows,
+            issuer_sector_resolver=issuer_sector_resolver,
+        ),
+        transaction_rows=_ontology_transaction_rows(
+            transaction_rows,
+            issuer_sector_resolver=issuer_sector_resolver,
+        ),
+        contribution_rows=_ontology_contribution_rows(
+            contribution_rows,
+            contribution_sector_resolver=contribution_sector_resolver,
+        ),
+        statement_rows=statement_rows,
+    )
 
     assembled_rows_by_family: dict[str, list[dict[str, Any]]] = {
         "late_or_amended_disclosure": late_rows,
@@ -305,22 +467,59 @@ def run_recompute(
         delta_rows_by_member_id=deltas,
         snapshot_at=snapshot_date,
         recompute_run_id=recompute_run_id,
+        ontology_edges=ontology_edges,
     )
 
     # ------------------------------------------------------------------ 6. --
-    # Persist recompute outputs.
+    # Persist recompute outputs. Rule fires are written first so evidence-card
+    # FK hints can resolve against the exact source_record_id values just loaded.
     lookup_bundle = load_lookup_bundle(conn)
-    resolvers = _build_recompute_resolvers(lookup_bundle.bioguide_map)
-    load_summary = execute_load_plan(
-        conn,
-        operations,
-        resolvers=resolvers,
-        run_id=recompute_run_id,
-    )
+    member_resolvers = _build_recompute_resolvers(lookup_bundle.bioguide_map)
+    try:
+        if conflict_result.rule_fires:
+            rule_fire_summary = execute_load_plan(
+                conn,
+                operations[:1],
+                resolvers=member_resolvers,
+                run_id=recompute_run_id,
+                commit=False,
+            )
+            recompute_resolver_maps = load_recompute_resolver_maps(conn)
+            remaining_resolvers = _build_recompute_resolvers(
+                lookup_bundle.bioguide_map,
+                rule_fire_map=recompute_resolver_maps.rule_fire_by_source_record,
+            )
+            remaining_summary = execute_load_plan(
+                conn,
+                operations[1:],
+                resolvers=remaining_resolvers,
+                run_id=recompute_run_id,
+                commit=False,
+            )
+            load_summary = _merge_load_summaries(
+                [rule_fire_summary, remaining_summary],
+                run_id=recompute_run_id,
+            )
+        else:
+            load_summary = execute_load_plan(
+                conn,
+                operations,
+                resolvers=member_resolvers,
+                run_id=recompute_run_id,
+                commit=False,
+            )
+    except Exception:
+        if commit:
+            rollback_if_available(conn)
+        raise
+
+    if commit:
+        commit_or_rollback(conn)
 
     return RecomputeRunResult(
         rule_fires=conflict_result.rule_fires,
         evidence_cards=conflict_result.evidence_cards,
+        ontology_edges=ontology_edges,
         load_summary=load_summary,
         review_required_rows_by_family=review_required_rows_by_family,
         unresolved_committee_matches=unresolved_committee_matches,

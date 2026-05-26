@@ -13,6 +13,7 @@ from .house_votes import (
     roll_call_url as _house_vote_url,
 )
 from .models import VoteCastRecord, VoteEventRecord
+from .official_fetch import fetch_official_congress_text
 from .senate_votes import (
     parse_senate_vote_xml,
     roll_call_url as _senate_vote_url,
@@ -80,11 +81,4 @@ def fetch_senate_votes(
 
 
 def _get(url: str, client: httpx.Client | None) -> str:
-    if client is not None:
-        response = client.get(url)
-        response.raise_for_status()
-        return response.text
-    with httpx.Client(timeout=30.0) as c:
-        response = c.get(url)
-        response.raise_for_status()
-        return response.text
+    return fetch_official_congress_text(url, client=client)

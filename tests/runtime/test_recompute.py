@@ -7,39 +7,13 @@ from __future__ import annotations
 
 import contextlib
 import datetime as dt
-from pathlib import Path
-import sys
-import types
 from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-_RUNTIME_PACKAGE = types.ModuleType("src.runtime")
-_RUNTIME_PACKAGE.__path__ = [str(Path(__file__).resolve().parents[2] / "src" / "runtime")]
-sys.modules.setdefault("src.runtime", _RUNTIME_PACKAGE)
-
-
-def _stub_module(name: str, **attrs: Any) -> None:
-    module = types.ModuleType(name)
-    for key, value in attrs.items():
-        setattr(module, key, value)
-    sys.modules.setdefault(name, module)
-
-
-_Dummy = type("_Dummy", (), {})
-_stub_module("src.runtime.congress", CongressLoadResult=_Dummy)
-_stub_module("src.runtime.disclosures", DisclosuresLoadRuntimeResult=_Dummy)
-_stub_module("src.runtime.disclosures_artifacts", DisclosureArtifactIngestResult=_Dummy)
-_stub_module("src.runtime.disclosures_bundle_process", DisclosuresBundleProcessResult=_Dummy)
-_stub_module("src.runtime.disclosures_load_from_parse", DisclosuresParseLoadResult=_Dummy)
-_stub_module("src.runtime.disclosures_parse", DisclosureParseRuntimeResult=_Dummy)
-_stub_module("src.runtime.oracle_contracts", LocalOracleRunResult=_Dummy)
-_stub_module("src.runtime.publish", PublishRuntimeResult=_Dummy)
-_stub_module("src.runtime.publish_roundtrip_types", PublishRoundtripResult=_Dummy)
-_stub_module("src.runtime.publish_verify_types", PublishVerifyResult=_Dummy)
-
 from src.db.load_report import LoadSummary, WarnErrorSummary, build_load_summary  # noqa: E402
+from src.ontology.contracts import OntologyEdgePayload, OntologyNodeRef  # noqa: E402
 from src.pipeline.recompute_run import RecomputeRunResult  # noqa: E402
 from src.runtime.output import summarize_recompute_result  # noqa: E402
 from src.runtime.recompute import (  # noqa: E402
@@ -67,12 +41,33 @@ def _load_summary() -> LoadSummary:
     return build_load_summary([], warn_error=WarnErrorSummary(), run_id=_RUN_ID)
 
 
+def _ontology_edge() -> OntologyEdgePayload:
+    from src.export.contracts import SourceAnchor
+
+    return OntologyEdgePayload(
+        edge_id="ont-edge-test",
+        edge_type="member_committee_assignment",
+        subject=OntologyNodeRef(node_type="member", node_id="A000001"),
+        object=OntologyNodeRef(node_type="committee", node_id="HSEN"),
+        source_anchors=[
+            SourceAnchor(
+                source_type="committee_membership",
+                source_id="10",
+                url="https://api.congress.gov/v3/committee/house/HSEN?format=json",
+                label="Committee membership: Energy",
+            )
+        ],
+    )
+
+
 def _taxonomy() -> Any:
     return MagicMock()
 
 
 @contextlib.contextmanager
-def _patched_runtime(*, run_result=None, ensure=None, start=None, recompute=None, finish=None, fail=None):
+def _patched_runtime(
+    *, run_result=None, ensure=None, start=None, recompute=None, finish=None, fail=None
+):
     """Patch the five provenance/pipeline boundaries for run_recompute_runtime.
 
     Each kwarg overrides the default mock behaviour for that boundary.
@@ -82,9 +77,21 @@ def _patched_runtime(*, run_result=None, ensure=None, start=None, recompute=None
         run_result = _empty_run_result()
 
     with (
-        patch(f"{_MODULE}.ensure_data_source", side_effect=ensure, return_value=_DATA_SOURCE if ensure is None else None) as m_ensure,
-        patch(f"{_MODULE}.start_ingestion_run", side_effect=start, return_value=_RUN_ID if start is None else None) as m_start,
-        patch(f"{_MODULE}.run_recompute", side_effect=recompute, return_value=run_result if recompute is None else None) as m_recompute,
+        patch(
+            f"{_MODULE}.ensure_data_source",
+            side_effect=ensure,
+            return_value=_DATA_SOURCE if ensure is None else None,
+        ) as m_ensure,
+        patch(
+            f"{_MODULE}.start_ingestion_run",
+            side_effect=start,
+            return_value=_RUN_ID if start is None else None,
+        ) as m_start,
+        patch(
+            f"{_MODULE}.run_recompute",
+            side_effect=recompute,
+            return_value=run_result if recompute is None else None,
+        ) as m_recompute,
         patch(f"{_MODULE}.finish_ingestion_run", side_effect=finish) as m_finish,
         patch(f"{_MODULE}.fail_ingestion_run", side_effect=fail) as m_fail,
     ):
@@ -158,12 +165,19 @@ def test_run_recompute_receives_correct_kwargs() -> None:
     def resolver(name: str, ticker: str | None) -> str | None:
         return "finance"
 
+    def contribution_resolver(row: dict[str, Any]) -> str | None:
+        return "finance" if row.get("donor_name") else None
+
+    statement_rows = [{"member_bioguide_id": "A000001", "sector": "energy"}]
+
     with _patched_runtime() as mocks:
         run_recompute_runtime(
             conn,
             _SNAPSHOT_DATE,
             taxonomy=taxonomy,
             issuer_sector_resolver=resolver,
+            contribution_sector_resolver=contribution_resolver,
+            statement_rows=statement_rows,
         )
 
     mocks["recompute"].assert_called_once_with(
@@ -172,7 +186,34 @@ def test_run_recompute_receives_correct_kwargs() -> None:
         snapshot_date=_SNAPSHOT_DATE,
         taxonomy=taxonomy,
         issuer_sector_resolver=resolver,
+        contribution_sector_resolver=contribution_resolver,
+        statement_rows=statement_rows,
+        commit=False,
     )
+
+
+def test_start_ingestion_run_records_statement_row_source_metadata() -> None:
+    statement_rows = [{"member_bioguide_id": "A000001", "sector": "energy"}]
+    statement_rows_source = {
+        "path": "/tmp/statements.jsonl",
+        "sha256": "abc123",
+        "row_count": 1,
+    }
+
+    with _patched_runtime() as mocks:
+        run_recompute_runtime(
+            MagicMock(),
+            _SNAPSHOT_DATE,
+            taxonomy=_taxonomy(),
+            statement_rows=statement_rows,
+            statement_rows_source=statement_rows_source,
+        )
+
+    parameters = mocks["start"].call_args.kwargs["parameters"]
+    assert parameters == {
+        "snapshot_date": _SNAPSHOT_DATE.isoformat(),
+        "statement_rows_source": statement_rows_source,
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -257,6 +298,26 @@ def test_summary_surfaces_unresolved_committee_matches() -> None:
     assert item["deterministic"] is False
 
 
+def test_summary_surfaces_ontology_edge_counts_by_type() -> None:
+    result = RuntimeRecomputeResult(
+        data_source=_DATA_SOURCE,
+        run_id=_RUN_ID,
+        recompute_result=RecomputeRunResult(
+            rule_fires=[],
+            evidence_cards=[],
+            load_summary=_load_summary(),
+            ontology_edges=[_ontology_edge()],
+        ),
+    )
+
+    summary = summarize_recompute_result(result)
+
+    assert summary["ontology_edges"] == {
+        "count": 1,
+        "by_type": {"member_committee_assignment": 1},
+    }
+
+
 # ---------------------------------------------------------------------------
 # Failure: run_recompute raises → fail_ingestion_run called, exception re-raised
 # ---------------------------------------------------------------------------
@@ -272,6 +333,31 @@ def test_pipeline_failure_marks_run_failed_and_reraises() -> None:
 
     mocks["fail"].assert_called_once_with(conn, _RUN_ID, error_message="db exploded")
     mocks["finish"].assert_not_called()
+
+
+def test_pipeline_failure_rolls_back_uncommitted_recompute_before_marking_failed() -> None:
+    conn = MagicMock()
+    order: list[str] = []
+    conn.rollback.side_effect = lambda: order.append("rollback")
+
+    with _patched_runtime(
+        recompute=RuntimeError("db exploded"),
+        fail=lambda *_a, **_kw: order.append("fail"),
+    ):
+        with pytest.raises(RuntimeError, match="db exploded"):
+            run_recompute_runtime(conn, _SNAPSHOT_DATE, taxonomy=_taxonomy())
+
+    assert order == ["rollback", "fail"]
+
+
+def test_finish_failure_rolls_back_uncommitted_recompute() -> None:
+    conn = MagicMock()
+
+    with _patched_runtime(finish=RuntimeError("finish failed")):
+        with pytest.raises(RuntimeError, match="finish failed"):
+            run_recompute_runtime(conn, _SNAPSHOT_DATE, taxonomy=_taxonomy())
+
+    conn.rollback.assert_called_once()
 
 
 # ---------------------------------------------------------------------------
@@ -294,7 +380,9 @@ def test_taxonomy_loaded_from_data_root_when_none() -> None:
 
     with (
         _patched_runtime() as mocks,
-        patch("src.normalize.taxonomy_runtime.load_taxonomy_runtime", return_value=fake_taxonomy) as mock_load,
+        patch(
+            "src.normalize.taxonomy_runtime.load_taxonomy_runtime", return_value=fake_taxonomy
+        ) as mock_load,
     ):
         run_recompute_runtime(MagicMock(), _SNAPSHOT_DATE)
 
