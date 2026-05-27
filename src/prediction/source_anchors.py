@@ -43,12 +43,20 @@ def source_anchor_preference_key(
     )
 
 
+def _identity_sort_key(identity: SourceAnchorIdentity) -> tuple[str, ...]:
+    """None-safe, total ordering for identities (legislative context may be None)."""
+    return tuple("" if part is None else part for part in identity)
+
+
 def dedupe_prediction_source_anchors(anchors: Iterable[SourceAnchor]) -> list[SourceAnchor]:
     """Collapse duplicate prediction anchors by source identity with deterministic winners."""
     anchors_by_identity: dict[SourceAnchorIdentity, SourceAnchor] = {}
     for anchor in sorted(anchors, key=source_anchor_preference_key):
         anchors_by_identity.setdefault(source_anchor_identity(anchor), anchor)
-    return [anchors_by_identity[identity] for identity in sorted(anchors_by_identity)]
+    return [
+        anchors_by_identity[identity]
+        for identity in sorted(anchors_by_identity, key=_identity_sort_key)
+    ]
 
 
 def describe_missing_legislative_source_context(anchors: Iterable[SourceAnchor]) -> list[str]:
