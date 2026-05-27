@@ -372,3 +372,38 @@ def test_materialize_congress_archive_failure_leaves_no_partial_archive(
             )
 
     assert not archive_root.exists()
+
+
+def test_json_object_validator() -> None:
+    from src.runtime.congress_archive_materialize import _json_object
+
+    assert _json_object({"a": 1}, context="members") == {"a": 1}
+    with pytest.raises(ValueError, match="must be a JSON object"):
+        _json_object(["not", "a", "dict"], context="members")
+
+
+def test_list_items_validator() -> None:
+    from src.runtime.congress_archive_materialize import _list_items
+
+    assert _list_items({"items": [{"a": 1}, "skip", {"b": 2}]}, "items") == [{"a": 1}, {"b": 2}]
+    with pytest.raises(ValueError, match="must be a list"):
+        _list_items({"items": "not-a-list"}, "items")
+
+
+def test_string_field_validator() -> None:
+    from src.runtime.congress_archive_materialize import _string_field
+
+    assert _string_field({"name": "Pat"}, "name", location="member") == "Pat"
+    with pytest.raises(ValueError, match="must be a non-empty string"):
+        _string_field({"name": ""}, "name", location="member")
+
+
+def test_int_field_validator_rejects_bool_and_non_numeric() -> None:
+    from src.runtime.congress_archive_materialize import _int_field
+
+    assert _int_field({"n": 5}, "n", location="x") == 5
+    assert _int_field({"n": "12"}, "n", location="x") == 12
+    with pytest.raises(ValueError, match="must be an integer"):
+        _int_field({"n": True}, "n", location="x")
+    with pytest.raises(ValueError, match="must be an integer"):
+        _int_field({"n": "abc"}, "n", location="x")
