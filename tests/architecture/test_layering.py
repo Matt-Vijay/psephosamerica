@@ -70,3 +70,23 @@ def test_core_is_pure_foundation() -> None:
             assert package == "core", (
                 f"{file.relative_to(_SRC)} imports src.{package}; core must be foundation-only"
             )
+
+
+def test_prediction_does_not_depend_on_conflict_rule_engine() -> None:
+    # Prediction and conflict-scoring are separate products. Prediction may share
+    # the cross-cutting source-anchor policy utility (src.evidence.source_anchor_policy)
+    # but must not depend on the conflict rule engine.
+    for file in (_SRC / "prediction").rglob("*.py"):
+        assert "rules" not in _imported_src_packages(file), (
+            f"{file.relative_to(_SRC)} imports src.rules; prediction must stay decoupled "
+            "from the conflict rule engine"
+        )
+
+
+def test_conflict_scoring_does_not_depend_on_prediction() -> None:
+    for package in ("rules", "evidence"):
+        for file in (_SRC / package).rglob("*.py"):
+            assert "prediction" not in _imported_src_packages(file), (
+                f"{file.relative_to(_SRC)} imports src.prediction; conflict scoring must "
+                "stay decoupled from prediction"
+            )
