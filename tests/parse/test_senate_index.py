@@ -446,3 +446,15 @@ class TestFetchSenateIndex:
         ):
             with pytest.raises(ValueError, match="exceeds maximum size"):
                 fetch_senate_index(2023, client=client)
+
+
+def test_senate_artifact_meta_builds_official_paper_url() -> None:
+    from src.parse.disclosures.acquire import senate_artifact_meta
+    from src.parse.disclosures.models import Chamber
+
+    meta = senate_artifact_meta(bioguide_id="S000001", filing_year=2024, doc_id="DOC123")
+    assert meta.chamber is Chamber.SENATE
+    assert meta.member_bioguide_id == "S000001"
+    assert meta.filing_year == 2024
+    assert meta.source_url == "https://efdsearch.senate.gov/search/view/paper/DOC123/"
+    assert meta.source_record_id == "DOC123"
