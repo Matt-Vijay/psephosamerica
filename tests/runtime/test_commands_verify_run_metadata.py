@@ -49,3 +49,60 @@ def test_prediction_backtest_verify_run_metadata_defaults_and_missing_artifact(
     assert flags["require_bill_semantics_model_names"] == []
     assert md["artifact_sha256"] is None  # file does not exist
     assert "source_state" not in md  # omitted when not provided
+
+
+def test_runtime_env_preflight_verify_run_metadata(tmp_path: Path) -> None:
+    from src.runtime.commands import _runtime_env_preflight_verify_run_metadata
+
+    artifact = tmp_path / "preflight.json"
+    artifact.write_text("{}", encoding="utf-8")
+    args = SimpleNamespace(
+        require_next_actions=True,
+        require_template_output=False,
+        require_no_secret_literals=True,
+    )
+    md = _runtime_env_preflight_verify_run_metadata(
+        args, artifact_path=artifact, source_state={"a": 1}
+    )
+    assert md["command"] == "verify-runtime-env-preflight"
+    assert md["verification_flags"]["require_next_actions"] is True
+    assert md["verification_flags"]["require_no_secret_literals"] is True
+    assert md["artifact_sha256"] == hashlib.sha256(artifact.read_bytes()).hexdigest()
+    assert md["source_state"] == {"a": 1}
+
+    md2 = _runtime_env_preflight_verify_run_metadata(
+        SimpleNamespace(), artifact_path=tmp_path / "missing.json"
+    )
+    assert md2["artifact_sha256"] is None
+    assert "source_state" not in md2
+
+
+def test_read_dotenv_key_presence(tmp_path: Path) -> None:
+    from src.runtime.commands import _read_dotenv_key_presence
+
+    assert _read_dotenv_key_presence(None) == (set(), [])
+
+    missing = tmp_path / "nope.env"
+    keys, issues = _read_dotenv_key_presence(missing)
+    assert keys == set()
+    assert any("dotenv file not found" in issue for issue in issues)
+
+    env = tmp_path / ".env"
+    env.write_text(
+        "\n".join(
+            [
+                "# comment",
+                "",
+                "export FOO=bar",
+                "BAZ=qux",
+                "EMPTY=",  # present key, empty value -> not recorded, no issue
+                "noequals",  # -> missing '=' issue
+                "=novalue",  # -> missing key issue
+            ]
+        ),
+        encoding="utf-8",
+    )
+    keys, issues = _read_dotenv_key_presence(env)
+    assert keys == {"FOO", "BAZ"}
+    assert any("missing '='" in issue for issue in issues)
+    assert any("missing key" in issue for issue in issues)
