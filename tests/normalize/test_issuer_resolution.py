@@ -342,3 +342,36 @@ class TestEdgeCases:
     def test_ticker_hint_uppercase_coercion(self, index):
         top = resolve_best("Apple", "AaPl", index)
         assert top.ticker == "AAPL"
+
+
+def test_build_index_rejects_norm_name_colliding_with_existing_alias() -> None:
+    a = IssuerRecord(ticker="AAA", name="Foo", aliases=("bar",))
+    b = IssuerRecord(ticker="BBB", name="Bar")
+    with pytest.raises(ValueError, match="collides"):
+        build_index([a, b])
+
+
+def test_build_index_rejects_alias_colliding_with_canonical_name() -> None:
+    a = IssuerRecord(ticker="AAA", name="Foo")
+    b = IssuerRecord(ticker="BBB", name="Baz", aliases=("foo",))
+    with pytest.raises(ValueError, match="collides"):
+        build_index([a, b])
+
+
+def test_resolve_issuer_assigns_high_confidence_on_strong_fuzzy_match() -> None:
+    index = build_index([IssuerRecord(ticker="AAPL", name="Apple Inc")])
+    candidates = resolve_issuer(
+        "Apple Holdings",
+        None,
+        index,
+        fuzzy_high_threshold=0.1,
+        fuzzy_medium_threshold=0.05,
+    )
+    assert candidates[0].confidence_label == "HIGH"
+    assert candidates[0].match_method == "fuzzy_score"
+
+
+def test_build_index_tolerates_record_whose_name_normalizes_to_empty() -> None:
+    # A punctuation-only name normalizes to "" and must not be indexed or crash.
+    index = build_index([IssuerRecord(ticker="ZZZ", name="!!!")])
+    assert resolve_issuer("anything", None, index)[0].match_method == "unresolved"

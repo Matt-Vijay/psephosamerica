@@ -333,3 +333,32 @@ class TestLoadTaxonomyRuntime:
 
         with pytest.raises(ValueError, match="Taxonomy validation failed"):
             load_taxonomy_runtime(tmp_path)
+
+
+def test_committee_sector_chamber_scoped_subcommittee_falls_back_to_parent() -> None:
+    from normalize.taxonomy_runtime import CommitteeMapping, TaxonomyRuntime
+
+    parent = CommitteeMapping(
+        congress=119,
+        chamber="house",
+        committee_name="Energy Committee",
+        subcommittee_name="",
+        sector_id="energy_utilities",
+        mapping_tier="deterministic",
+        jurisdiction_basis="House Rules X",
+        basis_source="rules",
+        notes="",
+    )
+    rt = TaxonomyRuntime(sectors=[], committee_mappings=[parent], crp_mappings=[])
+
+    # Unmapped subcommittee under a known chamber+committee -> parent fallback.
+    hit = rt.committee_sector(
+        "Energy Committee",
+        subcommittee_name="Subcommittee on Nothing",
+        congress=119,
+        chamber="house",
+    )
+    assert hit is parent
+
+    # Unknown committee under a chamber, no subcommittee -> None.
+    assert rt.committee_sector("Unknown Committee", congress=119, chamber="house") is None
