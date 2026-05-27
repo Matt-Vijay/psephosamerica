@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from src.export.contracts import SourceAnchor
 from src.ontology.contracts import OntologyEdgePayload, OntologyNodeRef
 from src.ontology.static_schema import (
@@ -360,3 +362,36 @@ def test_frontend_index_rejects_boolean_count_map_values() -> None:
         assert "link_type_counts values must be integers" in str(exc)
     else:
         raise AssertionError("frontend index with boolean link_type_counts should fail")
+
+
+def _valid_frontend_index_payload() -> dict:
+    return build_ontology_frontend_index(
+        snapshot_id="2026-05-05",
+        edges=[_committee_edge()],
+    ).model_dump(mode="json")
+
+
+@pytest.mark.parametrize(
+    "mutate,message",
+    [
+        (lambda p: p.update(edge_count=99), "edge_count must match link_type_counts total"),
+        (lambda p: p.update(member_ids=["bogus"]), "member_ids must match by_member keys"),
+        (lambda p: p.update(committee_ids=["bogus"]), "committee_ids must match by_committee keys"),
+        (lambda p: p.update(sector_ids=["bogus"]), "sector_ids must match by_sector keys"),
+        (lambda p: p.update(issuer_ids=["bogus"]), "issuer_ids must match by_issuer keys"),
+        (lambda p: p.update(source_keys=["b", "a"]), "source_keys must be sorted and unique"),
+        (
+            lambda p: p.update(source_keys=["unmatched-key"]),
+            "source_keys must match by_source_key keys",
+        ),
+        (
+            lambda p: p["link_type_counts"].update({"bogus_link": 0}),
+            "link_type_counts must match by_link_type keys",
+        ),
+    ],
+)
+def test_frontend_index_match_validations_reject_inconsistent_payloads(mutate, message) -> None:
+    payload = _valid_frontend_index_payload()
+    mutate(payload)
+    with pytest.raises(ValueError, match=message):
+        OntologyFrontendIndexPayload.model_validate(payload)
