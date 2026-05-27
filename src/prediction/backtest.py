@@ -1242,13 +1242,6 @@ def _merge_member_signal_source_anchor_lookups(
     return merged
 
 
-def _sponsor_context_key(row: dict[str, Any]) -> str | None:
-    sponsor_id = _optional_stripped_string(row.get("sponsor_bioguide_id"))
-    if sponsor_id is None:
-        return None
-    return _member_context_key({**row, "bioguide_id": sponsor_id})
-
-
 def _sponsor_lookup_keys(row: dict[str, Any]) -> tuple[str, ...]:
     sponsor_id = _optional_stripped_string(row.get("sponsor_bioguide_id"))
     if sponsor_id is None:

@@ -876,17 +876,6 @@ def _ensure_cutoff_partition(
         raise ValueError(f"{field_name} cutoff audit counts must partition total")
 
 
-def _ensure_cutoff_pair(
-    *,
-    total: int,
-    cutoff: int,
-    future: int,
-    field_name: str,
-) -> None:
-    if cutoff + future != total:
-        raise ValueError(f"{field_name} cutoff audit counts must partition total")
-
-
 class PredictionEvalReportPayload(BaseModel):
     """Temporal benchmark comparing baseline, ontology, and learned signal models."""
 
@@ -3152,24 +3141,6 @@ def _signal_backfill_recommendations(
             )
         )
     return recommendations
-
-
-def _sample_vote_event_ids_for_unavailable_signal_predictions(
-    backtests: list[PredictionBacktestPayload],
-    signal_name: str,
-    *,
-    limit: int = 5,
-) -> list[int]:
-    samples: list[int] = []
-    for backtest in backtests:
-        for prediction in backtest.predictions:
-            if signal_name not in prediction.unavailable_signals:
-                continue
-            if prediction.vote_event_id not in samples:
-                samples.append(prediction.vote_event_id)
-            if len(samples) >= limit:
-                return samples
-    return samples
 
 
 def _sample_cases_for_unavailable_signal_predictions(
