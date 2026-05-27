@@ -11,7 +11,15 @@ from __future__ import annotations
 import datetime as dt
 import random
 
-from src.prediction.backtest import _date_from_value, _signal_row_available_at_or_before
+from src.export.contracts import SourceAnchor
+from src.ontology.contracts import OntologyEdgePayload, OntologyNodeRef
+from src.prediction.backtest import (
+    _EDGE_AVAILABILITY_DATE_KEYS,
+    _date_from_value,
+    _edge_available_at_or_before,
+    _edge_has_known_availability,
+    _signal_row_available_at_or_before,
+)
 
 _KEYS = ("contribution_date", "date", "as_of_date")
 
@@ -79,3 +87,53 @@ def test_signal_with_no_date_keys_is_never_available() -> None:
         # Rows carrying only non-date fields can never be proven pre-cutoff.
         row = {"sector": "energy", "alignment_score": 0.9}
         assert _signal_row_available_at_or_before(row, _rand_date(rng), _KEYS) is False
+
+
+def _edge(attributes: dict[str, object]) -> OntologyEdgePayload:
+    return OntologyEdgePayload(
+        edge_id="ont-edge-fuzz",
+        edge_type="member_committee_assignment",
+        subject=OntologyNodeRef(node_type="member", node_id="P000197", label="X"),
+        object=OntologyNodeRef(node_type="committee", node_id="HSEC", label="E"),
+        source_anchors=[
+            SourceAnchor(
+                source_type="committee_membership",
+                source_id="cm-1",
+                url="https://api.congress.gov/v3/committee/house/HSEC?format=json",
+                label="m",
+            )
+        ],
+        attributes=attributes,
+    )
+
+
+def test_edge_available_iff_known_and_all_dates_within_cutoff() -> None:
+    rng = random.Random(2024)
+    for _ in range(1500):
+        cutoff = _rand_date(rng)
+        attrs: dict[str, object] = {}
+        dates: list[dt.date] = []
+        for key in _EDGE_AVAILABILITY_DATE_KEYS:
+            if rng.random() < 0.25:
+                d = _rand_date(rng)
+                attrs[key] = d.isoformat()
+                dates.append(d)
+        edge = _edge(attrs)
+        result = _edge_available_at_or_before(edge, cutoff)
+        if not dates:
+            assert result is False
+            assert _edge_has_known_availability(edge) is False
+        else:
+            assert _edge_has_known_availability(edge) is True
+            # Available iff EVERY known date is at/before the cutoff.
+            assert result == (max(dates) <= cutoff)
+
+
+def test_edge_availability_is_monotonic_in_cutoff() -> None:
+    rng = random.Random(5)
+    for _ in range(800):
+        edge = _edge({"transaction_date": _rand_date(rng).isoformat()})
+        cutoff = _rand_date(rng)
+        if _edge_available_at_or_before(edge, cutoff):
+            later = cutoff + dt.timedelta(days=rng.randint(0, 400))
+            assert _edge_available_at_or_before(edge, later) is True
