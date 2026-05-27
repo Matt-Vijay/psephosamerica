@@ -225,6 +225,12 @@ def _build_cst_row(
         "disclosure_period_end": dt.date(2025, 12, 31),
         "financial_disclosure_id": str(fd_id),
         "committee_membership_id": str(cm_id),
+        # Public evidence cards require an HTTPS source anchor for every
+        # claim-bearing anchor on nonzero deltas (production threads these in).
+        "source_url": "https://disclosures.house.gov/public_disc/financial-pdfs/2025/"
+        + bioguide
+        + ".pdf",
+        "committee_membership_source_url": "https://www.congress.gov/committee/energy-committee",
     }
 
 

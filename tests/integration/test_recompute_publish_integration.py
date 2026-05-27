@@ -189,6 +189,11 @@ def _build_committee_sector_trade_row(
         "disclosure_period_end": dt.date(2025, 12, 31),
         "financial_disclosure_id": str(fd_id),
         "committee_membership_id": str(cm_id),
+        # Public evidence cards require an HTTPS source anchor for every
+        # claim-bearing anchor on nonzero deltas; production recompute threads
+        # these source URLs in from source_artifact / committee membership rows.
+        "source_url": "https://disclosures.house.gov/public_disc/financial-pdfs/2025/T000001.pdf",
+        "committee_membership_source_url": "https://www.congress.gov/committee/energy-committee",
     }
 
 
