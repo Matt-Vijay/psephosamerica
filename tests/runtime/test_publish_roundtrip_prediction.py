@@ -187,3 +187,31 @@ def test_verify_published_prediction_roundtrip_rejects_symlink_escape(
         and "confined" in issue.message
         for issue in result.issues
     )
+
+
+def test_verify_published_prediction_roundtrip_noop_without_prediction_artifacts(
+    tmp_path: Path,
+) -> None:
+    # A snapshot with no prediction artifacts has nothing to verify.
+    make_snapshot(tmp_path, member_profiles=[make_member_profile(snapshot_date=_SNAPSHOT_DATE)])
+    manifest = load_latest_manifest(tmp_path)
+    result = verify_published_prediction_roundtrip(object(), tmp_path, manifest)
+    assert result.checked == 0
+    assert result.ok is True
+
+
+def test_verify_published_prediction_roundtrip_reports_db_assembly_failure(
+    tmp_path: Path,
+) -> None:
+    member_profiles, ontology_edges, _readiness, manifest = _write_prediction_snapshot(tmp_path)
+    with (
+        patch(f"{_MOD}.fetch_current_member_slugs", return_value=["nancy-pelosi"]),
+        patch(f"{_MOD}._build_member_profiles", return_value=member_profiles),
+        patch(f"{_MOD}._build_ontology_edges", return_value=ontology_edges),
+        patch(f"{_MOD}._build_prediction_readiness", side_effect=RuntimeError("db boom")),
+    ):
+        result = verify_published_prediction_roundtrip(object(), tmp_path, manifest)
+    assert result.ok is False
+    assert any(
+        "failed to assemble prediction artifacts" in issue.message for issue in result.issues
+    )
