@@ -11,6 +11,8 @@ from __future__ import annotations
 import datetime as dt
 import random
 
+import pytest
+
 from src.export.contracts import SourceAnchor
 from src.ontology.contracts import OntologyEdgePayload, OntologyNodeRef
 from src.prediction.backtest import (
@@ -19,6 +21,7 @@ from src.prediction.backtest import (
     _edge_available_at_or_before,
     _edge_has_known_availability,
     _signal_row_available_at_or_before,
+    _validate_no_leakage,
 )
 
 _KEYS = ("contribution_date", "date", "as_of_date")
@@ -137,3 +140,39 @@ def test_edge_availability_is_monotonic_in_cutoff() -> None:
         if _edge_available_at_or_before(edge, cutoff):
             later = cutoff + dt.timedelta(days=rng.randint(0, 400))
             assert _edge_available_at_or_before(edge, later) is True
+
+
+def test_validate_no_leakage_rejects_feature_votes_after_cutoff() -> None:
+    rng = random.Random(11)
+    for _ in range(1000):
+        cutoff = _rand_date(rng)
+        label_start = cutoff + dt.timedelta(days=1)
+        label_end = label_start + dt.timedelta(days=30)
+        feature_rows = [{"latest_vote_date": _rand_date(rng)} for _ in range(rng.randint(0, 4))]
+        any_after = any(r["latest_vote_date"] > cutoff for r in feature_rows)
+        if any_after:
+            with pytest.raises(
+                ValueError, match="feature rows must not include votes after cutoff"
+            ):
+                _validate_no_leakage(cutoff, label_start, label_end, feature_rows, [])
+        else:
+            _validate_no_leakage(cutoff, label_start, label_end, feature_rows, [])
+
+
+def test_validate_no_leakage_rejects_labels_outside_window() -> None:
+    rng = random.Random(12)
+    for _ in range(1000):
+        label_start = _rand_date(rng)
+        label_end = label_start + dt.timedelta(days=rng.randint(0, 60))
+        cutoff = label_start - dt.timedelta(days=1)
+        label_rows = [{"vote_date": _rand_date(rng)} for _ in range(rng.randint(1, 4))]
+        any_outside = any(
+            r["vote_date"] < label_start or r["vote_date"] > label_end for r in label_rows
+        )
+        if any_outside:
+            with pytest.raises(
+                ValueError, match="label rows must stay inside the evaluation window"
+            ):
+                _validate_no_leakage(cutoff, label_start, label_end, [], label_rows)
+        else:
+            _validate_no_leakage(cutoff, label_start, label_end, [], label_rows)
