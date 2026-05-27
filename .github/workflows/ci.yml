@@ -63,7 +63,7 @@ jobs:
       - name: pytest unit with coverage gate
         run: |
           python -m coverage run -m pytest tests/ -q --ignore=tests/integration
-          python -m coverage report --fail-under=89
+          python -m coverage report --fail-under=90
 
   test-integration:
     name: Integration tests
