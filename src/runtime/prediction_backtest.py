@@ -1235,10 +1235,6 @@ def _is_sorted_string_list(value: object) -> TypeGuard[list[str]]:
     )
 
 
-def _is_numeric_non_bool(value: object) -> bool:
-    return isinstance(value, int | float) and not isinstance(value, bool)
-
-
 def _is_rate(value: object) -> bool:
     if not isinstance(value, int | float) or isinstance(value, bool):
         return False

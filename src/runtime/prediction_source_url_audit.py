@@ -1151,34 +1151,6 @@ def _audit_sample_context(
     )
 
 
-def _audit_sample_context_counts(
-    gaps: Any,
-) -> tuple[
-    int,
-    int,
-    int,
-    int,
-    int,
-    int,
-    int,
-    list[str],
-    list[str],
-    list[str],
-    list[str],
-    list[str],
-]:
-    return _audit_sample_context(gaps)
-
-
-def _audit_source_family_ids(gaps: Any) -> list[str]:
-    if not isinstance(gaps, list | tuple):
-        return []
-    source_family_ids: set[str] = set()
-    for gap in gaps:
-        source_family_ids.update(_gap_source_family_ids(gap))
-    return sorted(source_family_ids)
-
-
 def _gap_source_family_ids(gap: Any) -> list[str]:
     if isinstance(gap, dict):
         source_family_ids = gap.get("source_family_ids")
