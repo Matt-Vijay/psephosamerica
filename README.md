@@ -33,6 +33,20 @@ The remaining gap is depth, not shape:
 - disclosure parsing is still at the artifact/provenance boundary, not full PDF extraction over real stored artifacts
 - the public frontend is not started yet
 
+## Documentation
+
+Everything below is in-tree; see [`docs/README.md`](docs/README.md) for the
+index.
+
+- Methodology & spec: [`METHODOLOGY.md`](METHODOLOGY.md), [`ENGINEERING_SPEC_V1.md`](ENGINEERING_SPEC_V1.md)
+- Public formulas: [`docs/scoring.md`](docs/scoring.md)
+- Changelog: [`CHANGELOG.md`](CHANGELOG.md)
+- Public correction channel + SLA: [`docs/corrections.md`](docs/corrections.md)
+- Operator runbook: [`docs/operations.md`](docs/operations.md)
+- Developer guide & quality gates: [`docs/development.md`](docs/development.md)
+- Architecture decision records: [`docs/adr/`](docs/adr/)
+- Ontology artifact contract: [`docs/ontology-contract.md`](docs/ontology-contract.md)
+
 ## Runtime Entry Surface
 
 The operator entrypoint is:
