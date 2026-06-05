@@ -6418,6 +6418,13 @@ def _handle_verify_prediction_eval_manifest(args: Any) -> dict[str, Any]:
             args=args,
         )
     )
+    if report_payload is not None:
+        quality_gate_failures.extend(
+            _prediction_eval_manifest_unknown_availability_failures(
+                report=report_payload,
+                args=args,
+            )
+        )
     quality_gate_failures.extend(
         _prediction_eval_manifest_failure_analysis_failures(
             manifest=manifest,
@@ -6974,6 +6981,48 @@ def _prediction_eval_manifest_required_threshold_failures(
         for threshold_name in required_thresholds
         if thresholds.get(threshold_name) is not True
     ]
+
+
+def _prediction_eval_manifest_unknown_availability_failures(
+    *,
+    report: PredictionEvalReportPayload,
+    args: Any,
+) -> list[str]:
+    cutoff_audit = report.cutoff_audit
+    failures: list[str] = []
+    checks = (
+        (
+            "require_fail_on_unknown_bill_semantic_availability",
+            int(cutoff_audit.unknown_availability_bill_semantic_count),
+            "unknown_bill_semantic_availability",
+        ),
+        (
+            "require_fail_on_unknown_bill_signal_availability",
+            int(cutoff_audit.unknown_availability_bill_signal_row_count),
+            "unknown_bill_signal_availability",
+        ),
+        (
+            "require_fail_on_unknown_ontology_edge_availability",
+            int(cutoff_audit.unknown_availability_ontology_edge_count),
+            "unknown_ontology_edge_availability",
+        ),
+        (
+            "require_fail_on_unknown_contribution_signal_availability",
+            int(cutoff_audit.unknown_availability_training_contribution_signal_row_count)
+            + int(cutoff_audit.unknown_availability_evaluation_contribution_signal_row_count),
+            "unknown_contribution_signal_availability",
+        ),
+        (
+            "require_fail_on_unknown_statement_signal_availability",
+            int(cutoff_audit.unknown_availability_training_statement_signal_row_count)
+            + int(cutoff_audit.unknown_availability_evaluation_statement_signal_row_count),
+            "unknown_statement_signal_availability",
+        ),
+    )
+    for arg_name, unknown_count, failure_name in checks:
+        if bool(getattr(args, arg_name, False)) and unknown_count > 0:
+            failures.append(failure_name)
+    return failures
 
 
 _PREDICTION_EVAL_MANIFEST_FAILURE_ANALYSIS_KEYS = (

@@ -38991,6 +38991,101 @@ class TestPredictionEvalReportCommand:
             in result["quality_gate_failures"]
         )
 
+    def test_dispatch_verify_prediction_eval_manifest_rejects_unknown_availability_counts(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        report = tmp_path / "report.json"
+        dataset = tmp_path / "dataset.json"
+        report_payload = build_prediction_eval_report(
+            training_feature_cutoff=dt.date(2022, 12, 31),
+            train_start=dt.date(2023, 1, 1),
+            train_end=dt.date(2024, 12, 31),
+            feature_cutoff=dt.date(2024, 12, 31),
+            label_start=dt.date(2025, 1, 1),
+            label_end=dt.date(2025, 12, 31),
+            training_feature_rows=[],
+            evaluation_feature_rows=[],
+            training_label_rows=[],
+            evaluation_label_rows=[],
+            ontology_edges=[],
+            bill_signal_rows=[],
+        ).model_dump(mode="json")
+        report_payload["cutoff_audit"].update(
+            {
+                "ontology_edge_count": 1,
+                "unknown_availability_ontology_edge_count": 1,
+                "bill_signal_row_count": 1,
+                "unknown_availability_bill_signal_row_count": 1,
+                "bill_semantic_count": 1,
+                "unknown_availability_bill_semantic_count": 1,
+                "training_contribution_signal_row_count": 1,
+                "unknown_availability_training_contribution_signal_row_count": 1,
+                "evaluation_contribution_signal_row_count": 1,
+                "unknown_availability_evaluation_contribution_signal_row_count": 1,
+                "training_statement_signal_row_count": 1,
+                "unknown_availability_training_statement_signal_row_count": 1,
+                "evaluation_statement_signal_row_count": 1,
+                "unknown_availability_evaluation_statement_signal_row_count": 1,
+            }
+        )
+        report.write_text(json.dumps(report_payload, sort_keys=True), encoding="utf-8")
+        dataset.write_text(
+            json.dumps(report_payload["dataset"], sort_keys=True),
+            encoding="utf-8",
+        )
+        manifest = tmp_path / "manifest.json"
+        manifest.write_text(
+            json.dumps(
+                {
+                    "command": "prediction-eval-report",
+                    "artifacts": {
+                        "report": {
+                            "path": str(report),
+                            "sha256": hashlib.sha256(report.read_bytes()).hexdigest(),
+                        },
+                        "dataset": {
+                            "path": str(dataset),
+                            "sha256": hashlib.sha256(dataset.read_bytes()).hexdigest(),
+                        },
+                    },
+                    "quality": {
+                        "strict_readiness": False,
+                        "thresholds": {
+                            "fail_on_unknown_bill_semantic_availability": True,
+                            "fail_on_unknown_bill_signal_availability": True,
+                            "fail_on_unknown_ontology_edge_availability": True,
+                            "fail_on_unknown_contribution_signal_availability": True,
+                            "fail_on_unknown_statement_signal_availability": True,
+                        },
+                    },
+                },
+                sort_keys=True,
+            ),
+            encoding="utf-8",
+        )
+
+        result = dispatch_command(
+            SimpleNamespace(
+                command="verify-prediction-eval-manifest",
+                manifest=str(manifest),
+                require_fail_on_unknown_bill_semantic_availability=True,
+                require_fail_on_unknown_bill_signal_availability=True,
+                require_fail_on_unknown_ontology_edge_availability=True,
+                require_fail_on_unknown_contribution_signal_availability=True,
+                require_fail_on_unknown_statement_signal_availability=True,
+            )
+        )
+
+        assert result["ok"] is False
+        assert result["quality_gate_failures"] == [
+            "unknown_bill_semantic_availability",
+            "unknown_bill_signal_availability",
+            "unknown_ontology_edge_availability",
+            "unknown_contribution_signal_availability",
+            "unknown_statement_signal_availability",
+        ]
+
     def test_dispatch_verify_prediction_eval_manifest_can_require_ready_quality(
         self,
         tmp_path: Path,
