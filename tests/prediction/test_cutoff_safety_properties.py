@@ -176,3 +176,77 @@ def test_validate_no_leakage_rejects_labels_outside_window() -> None:
                 _validate_no_leakage(cutoff, label_start, label_end, [], label_rows)
         else:
             _validate_no_leakage(cutoff, label_start, label_end, [], label_rows)
+
+
+# ---------------------------------------------------------------------------
+# Explicit boundary "mutation kill" tests (pillar 11)
+#
+# Property/fuzz tests sweep many random combos, but mutation testing would
+# specifically target whether the inclusive/exclusive boundaries are exact.
+# These pin the four critical boundaries so an off-by-one mutation (> vs >=,
+# < vs <=) fails immediately.
+# ---------------------------------------------------------------------------
+
+
+def test_validate_no_leakage_feature_vote_on_cutoff_is_allowed() -> None:
+    # latest_vote_date == feature_cutoff is INSIDE the snapshot.
+    _validate_no_leakage(
+        dt.date(2024, 12, 31),
+        dt.date(2025, 1, 1),
+        dt.date(2025, 12, 31),
+        [{"latest_vote_date": dt.date(2024, 12, 31)}],
+        [],
+    )
+
+
+def test_validate_no_leakage_feature_vote_one_day_after_cutoff_is_rejected() -> None:
+    with pytest.raises(ValueError, match="feature rows must not include votes after cutoff"):
+        _validate_no_leakage(
+            dt.date(2024, 12, 31),
+            dt.date(2025, 1, 1),
+            dt.date(2025, 12, 31),
+            [{"latest_vote_date": dt.date(2025, 1, 1)}],
+            [],
+        )
+
+
+def test_validate_no_leakage_label_at_window_start_is_allowed() -> None:
+    _validate_no_leakage(
+        dt.date(2024, 12, 31),
+        dt.date(2025, 1, 1),
+        dt.date(2025, 12, 31),
+        [],
+        [{"vote_date": dt.date(2025, 1, 1)}],
+    )
+
+
+def test_validate_no_leakage_label_at_window_end_is_allowed() -> None:
+    _validate_no_leakage(
+        dt.date(2024, 12, 31),
+        dt.date(2025, 1, 1),
+        dt.date(2025, 12, 31),
+        [],
+        [{"vote_date": dt.date(2025, 12, 31)}],
+    )
+
+
+def test_validate_no_leakage_label_one_day_before_window_start_is_rejected() -> None:
+    with pytest.raises(ValueError, match="label rows must stay inside the evaluation window"):
+        _validate_no_leakage(
+            dt.date(2024, 12, 31),
+            dt.date(2025, 1, 1),
+            dt.date(2025, 12, 31),
+            [],
+            [{"vote_date": dt.date(2024, 12, 31)}],
+        )
+
+
+def test_validate_no_leakage_label_one_day_after_window_end_is_rejected() -> None:
+    with pytest.raises(ValueError, match="label rows must stay inside the evaluation window"):
+        _validate_no_leakage(
+            dt.date(2024, 12, 31),
+            dt.date(2025, 1, 1),
+            dt.date(2025, 12, 31),
+            [],
+            [{"vote_date": dt.date(2026, 1, 1)}],
+        )
