@@ -82,7 +82,17 @@ def _canonical_display_name(records: list[SourceRecord], entity_type: EntityType
     name. Both tie-break on the raw display string for determinism.
     """
     if entity_type == "person":
-        chosen = max(records, key=lambda r: (_completeness(r), len(r.display_name), r.display_name))
+        # Prefer the most complete name, then natural "First Last" order over the
+        # "Last, First" database form, then longer, then lexicographic.
+        chosen = max(
+            records,
+            key=lambda r: (
+                _completeness(r),
+                "," not in r.display_name,
+                len(r.display_name),
+                r.display_name,
+            ),
+        )
     else:
         chosen = max(
             records, key=lambda r: (len(normalize_name_token(r.display_name)), r.display_name)
