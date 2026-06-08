@@ -35,7 +35,15 @@ from src.prediction.backtest import (
     build_vote_baseline_backtest,
     build_vote_ontology_backtest,
 )
+from src.prediction.benchmark_gate import BenchmarkSliceMetrics
+from src.prediction.benchmark_slices import compute_benchmark_slices
+from src.prediction.calibration_dashboard import CalibrationDashboard, build_calibration_dashboard
 from src.prediction.llm_semantics import BillSemanticPayload
+from src.prediction.per_member_model import (
+    member_vote_examples_from_predictions,
+    score_per_member_backtest,
+    train_per_member_model,
+)
 from src.prediction.source_anchors import describe_missing_legislative_source_context
 
 if TYPE_CHECKING:
@@ -915,6 +923,8 @@ class PredictionEvalReportPayload(BaseModel):
         default_factory=list
     )
     comparisons: list[PredictionEvalComparisonPayload] = Field(default_factory=list)
+    benchmark_slices: list[BenchmarkSliceMetrics] = Field(default_factory=list)
+    calibration_dashboard: CalibrationDashboard | None = None
 
     @model_validator(mode="after")
     def windows_are_temporal(self) -> Self:
@@ -1440,6 +1450,9 @@ def build_prediction_eval_report(
         ),
     )
     learned_model = _train_learned_signal_model(training_ontology.predictions)
+    per_member_model = train_per_member_model(
+        member_vote_examples_from_predictions(training_ontology.predictions)
+    )
 
     baseline = build_vote_baseline_backtest(
         feature_cutoff=feature_cutoff,
@@ -1469,6 +1482,7 @@ def build_prediction_eval_report(
         ),
     )
     learned = _score_learned_signal_backtest(ontology, learned_model)
+    per_member = score_per_member_backtest(ontology, per_member_model)
     dataset = build_prediction_eval_dataset_from_backtests(
         training_feature_cutoff=training_feature_cutoff,
         train_start=train_start,
@@ -1483,9 +1497,10 @@ def build_prediction_eval_report(
         _model_summary_payload(baseline),
         _model_summary_payload(ontology),
         _model_summary_payload(learned),
+        _model_summary_payload(per_member),
     ]
     training_source_coverage = _feature_source_coverage([training_ontology])
-    evaluation_source_coverage = _feature_source_coverage([ontology, learned])
+    evaluation_source_coverage = _feature_source_coverage([ontology, learned, per_member])
     source_coverage = evaluation_source_coverage
     bill_metadata_coverage = _bill_metadata_coverage_payload(
         training_split=dataset.training,
@@ -1534,8 +1549,8 @@ def build_prediction_eval_report(
             else statement_signal_rows or []
         ),
     )
-    unavailable_signal_counts = _unavailable_signal_counts([ontology, learned])
-    failure_groups = _build_failure_groups([baseline, ontology, learned])
+    unavailable_signal_counts = _unavailable_signal_counts([ontology, learned, per_member])
+    failure_groups = _build_failure_groups([baseline, ontology, learned, per_member])
     return PredictionEvalReportPayload(
         training_feature_cutoff=training_feature_cutoff,
         train_start=train_start,
@@ -1572,7 +1587,7 @@ def build_prediction_eval_report(
         feature_source_coverage=source_coverage,
         cutoff_audit=cutoff_audit,
         unavailable_signal_counts=unavailable_signal_counts,
-        top_failure_cases=_build_failure_cases([baseline, ontology, learned]),
+        top_failure_cases=_build_failure_cases([baseline, ontology, learned, per_member]),
         failure_groups=failure_groups,
         backfill_recommendations=_build_backfill_recommendations(
             bill_semantic_coverage=bill_semantic_coverage,
@@ -1583,9 +1598,13 @@ def build_prediction_eval_report(
             failure_groups=failure_groups,
             cutoff_audit=cutoff_audit,
             source_coverage=source_coverage,
-            source_coverage_backtests=[ontology, learned],
+            source_coverage_backtests=[ontology, learned, per_member],
         ),
-        comparisons=_build_comparisons([baseline, ontology, learned]),
+        comparisons=_build_comparisons([baseline, ontology, learned, per_member]),
+        benchmark_slices=compute_benchmark_slices(per_member.predictions),
+        calibration_dashboard=build_calibration_dashboard(
+            per_member.model_name, compute_benchmark_slices(per_member.predictions)
+        ),
     )
 
 

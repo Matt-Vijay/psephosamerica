@@ -92,3 +92,22 @@ jobs:
       - run: pip install -e ".[dev]"
       - name: pytest integration
         run: python -m pytest tests/integration/ -x -q
+
+  benchmark-gate:
+    name: Benchmark no-regression gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e ".[dev]"
+      - name: Brier/log-loss must not regress on the cross-pressured benchmark slice
+        # Deterministic synthetic benchmark (no DB); fails on any unapproved
+        # Brier/log-loss regression vs the committed baseline. To deliberately
+        # accept a change, regenerate the pin with `--update-baseline` in the PR.
+        run: |
+          python -m src.runtime.prediction_benchmark_gate \
+            --from-synthetic 20260608 \
+            --baseline benchmarks/prediction_baseline.json \
+            --tolerance 0.01

@@ -363,8 +363,22 @@ def test_prediction_eval_report_trains_learned_signal_model_and_compares_every_e
         "member_vote_rate_baseline",
         "ontology_signal_model",
         "learned_signal_logistic",
+        "per_member_signal_model",
     ]
+    # The per-member partial-pooling model is scored on every evaluation vote
+    # alongside the global models, so its metrics are reported like the rest.
+    per_member_summary = next(
+        model for model in report.models if model.model_name == "per_member_signal_model"
+    )
+    assert per_member_summary.metrics.log_loss is not None
     assert all(model.metrics.log_loss is not None for model in report.models)
+    # Per-slice benchmark metrics for the per-member model are published for the
+    # dashboards and the no-regression gate (overall slice always present).
+    benchmark_slice_names = {item.slice_name for item in report.benchmark_slices}
+    assert "overall" in benchmark_slice_names
+    # The report also emits the calibration dashboard payload for the frontend.
+    assert report.calibration_dashboard is not None
+    assert report.calibration_dashboard.model_name == "per_member_signal_model"
     assert all(model.calibration_bins for model in report.models)
     learned_model_summary = next(
         model for model in report.models if model.model_name == "learned_signal_logistic"

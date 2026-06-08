@@ -33481,6 +33481,7 @@ class TestPredictionEvalReportCommand:
             "member_vote_rate_baseline",
             "ontology_signal_model",
             "learned_signal_logistic",
+            "per_member_signal_model",
         ]
 
     def test_run_prediction_eval_report_command_loads_bill_semantics_cache(self) -> None:
@@ -33658,6 +33659,7 @@ class TestPredictionEvalReportCommand:
             "member_vote_rate_baseline",
             "ontology_signal_model",
             "learned_signal_logistic",
+            "per_member_signal_model",
         ]
         assert written["run_metadata"]["command"] == "prediction-eval-report"
         assert written["run_metadata"]["bill_semantics_root"] == str(bill_semantics_root)
@@ -33699,7 +33701,7 @@ class TestPredictionEvalReportCommand:
         assert written["run_metadata"]["source_state"] == {
             "training_example_count": 0,
             "evaluation_label_count": 0,
-            "model_count": 3,
+            "model_count": 4,
             "comparison_count": 0,
             "dataset_training_examples": 0,
             "dataset_evaluation_examples": 0,
