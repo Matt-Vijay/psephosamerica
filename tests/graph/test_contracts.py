@@ -103,6 +103,13 @@ def test_canonical_person_id_property() -> None:
     assert person.canonical_person_id == person.canonical_id
 
 
+def test_build_output_with_persistent_id_override() -> None:
+    entity = _entity(_rec("Jane Doe", "1"))
+    out = build_entity_resolution_output(entity, canonical_id="ce-persistent-stable")
+    assert out.canonical_id == "ce-persistent-stable"
+    assert out.canonical_id != entity.canonical_id
+
+
 def test_canonical_person_id_none_for_org() -> None:
     out = EntityResolutionOutput(
         canonical_id="ce-x",

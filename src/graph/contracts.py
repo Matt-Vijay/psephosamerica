@@ -122,8 +122,18 @@ class EntityResolutionOutput(ExportContractModel):
         return self
 
 
-def build_entity_resolution_output(entity: CanonicalEntity) -> EntityResolutionOutput:
-    """Project a resolved canonical entity into the published output row."""
+def build_entity_resolution_output(
+    entity: CanonicalEntity,
+    *,
+    canonical_id: str | None = None,
+) -> EntityResolutionOutput:
+    """Project a resolved canonical entity into the published output row.
+
+    Pass ``canonical_id`` to publish under a *persistent* stable ID (from
+    :func:`~src.graph.entity_resolution.assignment.assign_canonical_ids`) instead
+    of the entity's content-addressed ID — which is what downstream consumers and
+    the CDC feed key on.
+    """
     anchors = [
         ContractSourceAnchor(
             source_system=anchor.source_system,
@@ -138,7 +148,7 @@ def build_entity_resolution_output(entity: CanonicalEntity) -> EntityResolutionO
         for anchor in entity.anchors
     ]
     return EntityResolutionOutput(
-        canonical_id=entity.canonical_id,
+        canonical_id=canonical_id if canonical_id is not None else entity.canonical_id,
         entity_type=entity.entity_type,
         display_name=entity.display_name,
         external_ids=[ext.canonical_key for ext in entity.external_ids],
