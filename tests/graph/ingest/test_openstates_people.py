@@ -4,7 +4,10 @@ from datetime import UTC, date, datetime
 
 import pytest
 
-from src.graph.ingest.openstates_people import parse_openstates_person_yaml
+from src.graph.ingest.openstates_people import (
+    parse_openstates_person_filename,
+    parse_openstates_person_yaml,
+)
 from src.graph.jurisdictions import Jurisdiction
 from src.graph.provenance import ProvenanceEnvelope
 
@@ -112,6 +115,23 @@ roles:
 """
     rec = parse_openstates_person_yaml(y, provenance=_PROV)
     assert rec.jurisdiction == "us-ny"
+
+
+def test_parse_filename_roster() -> None:
+    ocd, name = parse_openstates_person_filename(
+        "Andi-Story-7db414a5-dd7e-48a9-aba2-9c0204f93a5c.yml"
+    )
+    assert ocd == "ocd-person/7db414a5-dd7e-48a9-aba2-9c0204f93a5c"
+    assert name == "Andi Story"
+
+
+def test_parse_filename_without_uuid_is_none() -> None:
+    assert parse_openstates_person_filename("README.md") is None
+    assert parse_openstates_person_filename("settings.yml") is None
+
+
+def test_parse_filename_blank_name_is_none() -> None:
+    assert parse_openstates_person_filename("-7db414a5-dd7e-48a9-aba2-9c0204f93a5c.yml") is None
 
 
 def test_non_dict_party_entry_ignored() -> None:

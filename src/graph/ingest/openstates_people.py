@@ -22,6 +22,27 @@ from src.graph.ingest.officials import openstates_official_record
 from src.graph.provenance import ProvenanceEnvelope
 
 _STATE_RE = re.compile(r"state:([a-z]{2})\b")
+_FILENAME_UUID_RE = re.compile(
+    r"-([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\.ya?ml$"
+)
+
+
+def parse_openstates_person_filename(filename: str) -> tuple[str, str] | None:
+    """Extract ``(ocd_person_id, name)`` from an OpenStates people filename.
+
+    Files are named ``<Name-With-Hyphens>-<ocd-uuid>.yml``. This lets a
+    national-scale roster be built from directory *listings* alone (one request
+    per state) — the OCD ID and display name come straight from the filename,
+    no per-file fetch — for resolving every state legislator to a canonical ID.
+    Returns ``None`` when the filename does not carry an OCD UUID.
+    """
+    match = _FILENAME_UUID_RE.search(filename.strip())
+    if match is None:
+        return None
+    name = filename[: match.start()].replace("-", " ").strip()
+    if not name:
+        return None
+    return f"ocd-person/{match.group(1)}", name
 
 
 def _extract_state(roles: list[dict[str, Any]]) -> str | None:
