@@ -40,6 +40,7 @@ class EntityDelta(ExportContractModel):
     new_display_name: str | None = None
     old_enrichment_status: str | None = None
     new_enrichment_status: str | None = None
+    enrichment_changed: bool = False
 
     def _has_any_change(self) -> bool:
         return bool(
@@ -49,6 +50,7 @@ class EntityDelta(ExportContractModel):
             or self.removed_source_record_ids
             or self.old_display_name != self.new_display_name
             or self.old_enrichment_status != self.new_enrichment_status
+            or self.enrichment_changed
         )
 
     @model_validator(mode="after")
@@ -96,8 +98,21 @@ def _updated(
     added_rec = sorted(curr_rec - prev_rec)
     removed_rec = sorted(prev_rec - curr_rec)
     name_changed = prev.display_name != curr.display_name
-    enrich_changed = prev.enrichment_status != curr.enrichment_status
-    if not (added_ext or removed_ext or added_rec or removed_rec or name_changed or enrich_changed):
+    status_changed = prev.enrichment_status != curr.enrichment_status
+    enrichment_changed = (
+        prev.dossier_json != curr.dossier_json
+        or prev.dossier_embedding != curr.dossier_embedding
+        or prev.structural_embedding != curr.structural_embedding
+    )
+    if not (
+        added_ext
+        or removed_ext
+        or added_rec
+        or removed_rec
+        or name_changed
+        or status_changed
+        or enrichment_changed
+    ):
         return None
     return EntityDelta(
         canonical_id=canonical_id,
@@ -108,8 +123,9 @@ def _updated(
         removed_source_record_ids=removed_rec,
         old_display_name=prev.display_name if name_changed else None,
         new_display_name=curr.display_name if name_changed else None,
-        old_enrichment_status=prev.enrichment_status if enrich_changed else None,
-        new_enrichment_status=curr.enrichment_status if enrich_changed else None,
+        old_enrichment_status=prev.enrichment_status if status_changed else None,
+        new_enrichment_status=curr.enrichment_status if status_changed else None,
+        enrichment_changed=enrichment_changed,
     )
 
 

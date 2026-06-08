@@ -104,6 +104,23 @@ def test_display_name_change() -> None:
     assert delta.new_display_name == "Jane M. Doe"
 
 
+def test_enrichment_field_change_is_detected() -> None:
+    # Same identity/anchors/name/status, but the dossier was regenerated.
+    prev = {"ce-1": _output()}
+    curr_out = _output()
+    curr_out = curr_out.model_copy(update={"dossier_json": {"summary": "new"}})
+    delta = diff_outputs(prev, {"ce-1": curr_out})[0]
+    assert delta.change_type == "updated"
+    assert delta.enrichment_changed is True
+
+
+def test_structural_embedding_change_is_detected() -> None:
+    prev = {"ce-1": _output()}
+    curr_out = _output().model_copy(update={"structural_embedding": [1.0, 2.0]})
+    delta = diff_outputs(prev, {"ce-1": curr_out})[0]
+    assert delta.enrichment_changed is True
+
+
 def test_enrichment_status_change() -> None:
     prev = {"ce-1": _output(enrichment="pending")}
     curr = {
