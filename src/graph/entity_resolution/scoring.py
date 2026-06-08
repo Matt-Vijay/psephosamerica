@@ -105,6 +105,35 @@ def _external_id_conflict(a: SourceRecord, b: SourceRecord) -> bool:
     return False
 
 
+# Comparator dimensions whose agree/disagree weights can be learned from data.
+LEARNABLE_DIMENSIONS = ("family", "given", "middle", "jurisdiction", "region")
+
+
+def person_comparison_features(a: SourceRecord, b: SourceRecord) -> dict[str, bool]:
+    """The per-comparator agree/disagree outcomes for two *person* records.
+
+    Returns ``{dimension: agreed}`` for each applicable dimension (a dimension is
+    absent when one side lacks the data — e.g. no middle name). This is the
+    canonical feature view that both the scorer's term logic and the
+    weight learner (:mod:`src.graph.entity_resolution.weight_learning`) agree on,
+    so learned weights line up with how ``score_pair`` consumes them.
+    """
+    features: dict[str, bool] = {}
+    name_a, name_b = a.person_name(), b.person_name()
+    assert name_a is not None and name_b is not None  # callers pass person records
+    if name_a.family and name_b.family:
+        features["family"] = name_a.family == name_b.family
+    if name_a.given and name_b.given:
+        features["given"] = given_names_compatible(name_a.given, name_b.given)
+    if name_a.middle and name_b.middle:
+        features["middle"] = name_a.comparison_vector(name_b).middle_compatible
+    if a.jurisdiction is not None and b.jurisdiction is not None:
+        features["jurisdiction"] = a.jurisdiction == b.jurisdiction
+    if a.region is not None and b.region is not None:
+        features["region"] = a.region.casefold() == b.region.casefold()
+    return features
+
+
 def _person_terms(a: SourceRecord, b: SourceRecord, w: MatchWeights) -> list[tuple[str, float]]:
     name_a = a.person_name()
     name_b = b.person_name()
