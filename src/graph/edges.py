@@ -66,6 +66,11 @@ class GraphEdge(BaseModel):
     src_id: str = Field(min_length=1, description="Canonical ID of the source node.")
     dst_id: str = Field(min_length=1, description="Canonical ID of the destination node.")
     attributes: dict[str, str] = Field(default_factory=dict)
+    external_key: str | None = Field(
+        default=None,
+        description="Source-specific discriminator (transaction / roll-call ID) "
+        "for relations that recur on the same day between the same pair.",
+    )
     provenance: ProvenanceEnvelope
 
     @field_validator("edge_type", mode="before")
@@ -80,6 +85,13 @@ class GraphEdge(BaseModel):
     def _strip_ids(cls, value: object) -> object:
         if isinstance(value, str):
             return value.strip()
+        return value
+
+    @field_validator("external_key", mode="before")
+    @classmethod
+    def _blank_external_key_to_none(cls, value: object) -> object:
+        if isinstance(value, str):
+            return value.strip() or None
         return value
 
     @field_validator("edge_type")
@@ -97,9 +109,20 @@ class GraphEdge(BaseModel):
 
     @property
     def edge_id(self) -> str:
-        """Stable identity over (type, src, dst, valid_from) — not the payload."""
+        """Stable identity over (type, src, dst, valid_from, external_key).
+
+        The attribute payload never affects identity; ``external_key`` does, so
+        same-day recurring relations (multiple donations between a pair) stay
+        distinct when the source provides a transaction discriminator.
+        """
         return stable_id(
-            [self.edge_type, self.src_id, self.dst_id, self.provenance.valid_from.isoformat()],
+            [
+                self.edge_type,
+                self.src_id,
+                self.dst_id,
+                self.provenance.valid_from.isoformat(),
+                self.external_key or "",
+            ],
             "ge",
         )
 

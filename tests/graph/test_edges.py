@@ -102,10 +102,28 @@ def test_edge_id_changes_with_identity_fields(overrides: dict[str, object]) -> N
 
 
 def test_edge_id_ignores_attributes() -> None:
-    # Identity is (type, src, dst, valid_from); the payload does not change it.
+    # Identity is (type, src, dst, valid_from, external_key); payload is excluded.
     assert (
         _edge(attributes={"choice": "yea"}).edge_id == _edge(attributes={"choice": "nay"}).edge_id
     )
+
+
+def test_external_key_distinguishes_same_day_relations() -> None:
+    a = _edge(edge_type="donation", external_key="txn-1")
+    b = _edge(edge_type="donation", external_key="txn-2")
+    assert a.edge_id != b.edge_id
+    assert a.external_key == "txn-1"
+
+
+def test_blank_external_key_is_none() -> None:
+    assert _edge(external_key="   ").external_key is None
+    # None and absent behave identically for identity.
+    assert _edge(external_key="   ").edge_id == _edge().edge_id
+
+
+def test_non_string_external_key_rejected() -> None:
+    with pytest.raises(ValidationError):
+        _edge(external_key=123)
 
 
 # ── bitemporal + leakage passthrough ───────────────────────────────
