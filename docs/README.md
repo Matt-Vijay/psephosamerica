@@ -28,6 +28,11 @@ file that matches what you need.
 
 - [`ontology-contract.md`](ontology-contract.md) — stable website /
   LLM-facing ontology artifact contract.
+- [`graph-data-layer.md`](graph-data-layer.md) — the `src/graph/`
+  universal data layer: bitemporal provenance, the entity-resolution
+  pipeline (records → scoring → linker → canonical → persistent IDs),
+  the heterogeneous knowledge graph + ingestion adapters, and the
+  `EntityResolutionOutput` contract + CDC delta feed.
 - Architecture decision records ([`adr/`](adr/)):
   - [`0001`](adr/0001-cutoff-safe-no-leakage-prediction.md) — cutoff-safe,
     no-leakage legislative prediction.
@@ -47,6 +52,7 @@ file that matches what you need.
 | Conflict rule engine | `src/rules/`, rule YAMLs in `src/rules/conflict_of_interest/` |
 | Disclosure parser | `src/parse/disclosures/` |
 | Prediction subsystem | `src/prediction/`, `src/runtime/prediction_*` |
+| Graph data layer / entity resolution | `src/graph/` (see [`graph-data-layer.md`](graph-data-layer.md)) |
 | Ontology | `src/ontology/`, `data/taxonomy/` |
 | Read API | `src/api/`, `src/export/` |
 | Architecture enforcement | `tests/architecture/test_layering.py` |

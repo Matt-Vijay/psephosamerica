@@ -27,6 +27,7 @@ _GUARDED = sorted(
         "ingest",
         "parse",
         "evidence",
+        "graph",
         "identity",
         "ontology",
         "zip",
