@@ -20,26 +20,16 @@ leakage gate (``known_as_of``) and replayability hold at the record level.
 
 from __future__ import annotations
 
-import base64
-import hashlib
 from datetime import datetime
 from typing import Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from src.graph.entity_resolution.ids import stable_id
 from src.graph.entity_resolution.names import PersonName
 from src.graph.provenance import ProvenanceEnvelope
 
 EntityType = Literal["person", "org"]
-
-_DIGEST_SIZE = 10  # 80 bits — ample for non-adversarial collision resistance
-
-
-def _digest(parts: list[str], prefix: str) -> str:
-    payload = "|".join(parts).encode("utf-8")
-    raw = hashlib.blake2b(payload, digest_size=_DIGEST_SIZE).digest()
-    encoded = base64.b32encode(raw).decode("ascii").rstrip("=").lower()
-    return f"{prefix}-{encoded}"
 
 
 class ExternalId(BaseModel):
@@ -137,7 +127,7 @@ class SourceRecord(BaseModel):
     @property
     def record_id(self) -> str:
         """Stable, source-scoped ID: ``sr-<digest(type, system, source_id)>``."""
-        return _digest([self.entity_type, self.source_system, self.source_record_id], "sr")
+        return stable_id([self.entity_type, self.source_system, self.source_record_id], "sr")
 
     @property
     def external_id_keys(self) -> frozenset[str]:
