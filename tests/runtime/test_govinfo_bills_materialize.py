@@ -2,15 +2,18 @@ from __future__ import annotations
 
 import json
 from datetime import UTC, datetime
+from pathlib import Path
 
 import httpx
 import pytest
 
+from src.graph.export import read_contract_corpus
 from src.graph.ingest.govinfo_billstatus import canonical_bill_id, parse_billstatus_xml
 from src.runtime.govinfo_bills_materialize import (
     billstatus_listing_url,
     fetch_billstatus_rows,
     list_billstatus_file_urls,
+    materialize_govinfo_bill_corpus,
 )
 
 
@@ -164,3 +167,83 @@ def test_default_client_is_constructed_and_closed_for_fetch(
     _patch_default_client(monkeypatch, handler)
     rows, report = fetch_billstatus_rows(118, bill_types=["hr"])  # client=None
     assert report.parsed == 1 and len(rows) == 1
+
+
+def test_materialize_with_default_client(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    _patch_default_client(monkeypatch, _corpus_handler([1]))
+    result = materialize_govinfo_bill_corpus(  # client=None -> owns + closes
+        congresses=[118],
+        directory=tmp_path,
+        as_of=datetime(2025, 1, 1, tzinfo=UTC),
+        bill_types=["hr"],
+        first_observed_at=datetime(2024, 1, 1, tzinfo=UTC),
+    )
+    assert result.bill_count == 1
+
+
+def _corpus_handler(numbers: list[int]):
+    def handler(request: httpx.Request) -> httpx.Response:
+        if "/json/" in request.url.path:
+            return httpx.Response(200, text=_listing([f"BILLSTATUS-118hr{n}.xml" for n in numbers]))
+        number = int(request.url.path.split("118hr")[1].split(".")[0])
+        return httpx.Response(200, text=_billstatus_xml(118, "hr", number, f"Act {number}"))
+
+    return handler
+
+
+def test_materialize_exports_dense_corpus_and_creates_deltas(tmp_path: Path) -> None:
+    as_of = datetime(2025, 1, 1, tzinfo=UTC)
+    result = materialize_govinfo_bill_corpus(
+        congresses=[118],
+        directory=tmp_path,
+        as_of=as_of,
+        bill_types=["hr"],
+        client=_client(_corpus_handler([1, 2])),
+        first_observed_at=datetime(2024, 1, 1, tzinfo=UTC),
+    )
+    assert result.bill_count == 2
+    assert result.delta_count == 2  # both created
+    assert result.manifest.record_count == 2
+    rows = read_contract_corpus(tmp_path)
+    assert all(r.entity_type == "bill" for r in rows)
+    assert all(r.enrichment_status == "ready" for r in rows)
+    assert all(r.dossier_embedding and len(r.dossier_embedding) == 256 for r in rows)
+    # distinct embeddings (no sector collapse)
+    assert len({tuple(r.dossier_embedding) for r in rows}) == 2  # type: ignore[arg-type]
+
+
+def test_materialize_is_idempotent_then_incremental(tmp_path: Path) -> None:
+    as_of = datetime(2025, 1, 1, tzinfo=UTC)
+    first = materialize_govinfo_bill_corpus(
+        congresses=[118],
+        directory=tmp_path,
+        as_of=as_of,
+        bill_types=["hr"],
+        client=_client(_corpus_handler([1, 2])),
+        first_observed_at=datetime(2024, 1, 1, tzinfo=UTC),
+    )
+    assert first.delta_count == 2
+    # same bills again -> no new deltas (idempotent CDC)
+    again = materialize_govinfo_bill_corpus(
+        congresses=[118],
+        directory=tmp_path,
+        as_of=as_of,
+        bill_types=["hr"],
+        client=_client(_corpus_handler([1, 2])),
+        first_observed_at=datetime(2024, 1, 1, tzinfo=UTC),
+    )
+    assert again.delta_count == 0
+    # a third bill appears -> exactly one created delta, corpus grows to 3
+    grown = materialize_govinfo_bill_corpus(
+        congresses=[118],
+        directory=tmp_path,
+        as_of=as_of,
+        bill_types=["hr"],
+        client=_client(_corpus_handler([1, 2, 3])),
+        first_observed_at=datetime(2024, 1, 1, tzinfo=UTC),
+    )
+    assert grown.delta_count == 1
+    assert grown.manifest.record_count == 3
+    # the appended delta feed holds 2 (first run) + 0 + 1 = 3 lines
+    feed = (tmp_path / "deltas.jsonl").read_text().strip().splitlines()
+    assert len(feed) == 3

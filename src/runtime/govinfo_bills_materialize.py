@@ -16,14 +16,22 @@ per-file fetch/parse failure is skipped and counted, never fabricated.
 from __future__ import annotations
 
 import hashlib
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from pathlib import Path
 
 import httpx
 
 from src.graph.contracts import EntityResolutionOutput
+from src.graph.export import (
+    CorpusManifest,
+    read_contract_corpus,
+    write_contract_corpus,
+    write_delta_feed,
+)
 from src.graph.ingest.govinfo_billstatus import billstatus_bill_row, parse_billstatus_xml
+from src.graph.regenerate import regenerate_corpus
 
 _USER_AGENT = "openpact-research/0.1 (public-record bill ingest)"
 _BULK = "https://www.govinfo.gov/bulkdata"
@@ -144,4 +152,74 @@ def fetch_billstatus_rows(
         skipped=skipped,
         bill_types=types,
         errors=errors,
+    )
+
+
+@dataclass(frozen=True)
+class BillCorpusResult:
+    """The outcome of one bill-corpus materialize+export pass."""
+
+    manifest: CorpusManifest
+    bill_count: int
+    delta_count: int
+    fetch_reports: tuple[FetchReport, ...]
+
+
+def materialize_govinfo_bill_corpus(
+    *,
+    congresses: Iterable[int],
+    directory: Path | str,
+    as_of: datetime,
+    bill_types: Iterable[str] = BILLSTATUS_BILL_TYPES,
+    client: httpx.Client | None = None,
+    first_observed_at: datetime | None = None,
+    limit_per_congress: int | None = None,
+) -> BillCorpusResult:
+    """Fetch BILLSTATUS bills, enrich to dense rows, export corpus + delta-CDC.
+
+    Bills are written to ``directory`` (``records.jsonl`` + ``manifest.json``) and
+    a CDC ``deltas.jsonl`` is appended by diffing against the corpus already at
+    ``directory`` -- so a re-run with no new bills emits zero deltas, and new
+    bills surface as ``created`` deltas Track B tails to hot-swap. Person rows are
+    out of scope here (bill-only export); ``regenerate_corpus`` still produces the
+    dense ``dossier_embedding`` + ``structural_embedding`` for every bill.
+    """
+    out_dir = Path(directory)
+    types = tuple(bill_types)
+    http, owns = _client(client)
+    rows: list[EntityResolutionOutput] = []
+    reports: list[FetchReport] = []
+    try:
+        for congress in congresses:
+            congress_rows, report = fetch_billstatus_rows(
+                congress,
+                bill_types=types,
+                client=http,
+                first_observed_at=first_observed_at,
+                limit=limit_per_congress,
+            )
+            rows.extend(congress_rows)
+            reports.append(report)
+    finally:
+        if owns:
+            http.close()
+
+    prior: Mapping[str, EntityResolutionOutput] = {}
+    if (out_dir / "records.jsonl").exists():
+        prior = {row.canonical_id: row for row in read_contract_corpus(out_dir)}
+
+    result = regenerate_corpus(
+        person_records=[],
+        bill_outputs=rows,
+        edges=[],
+        as_of=as_of,
+        prior_outputs=prior,
+    )
+    manifest = write_contract_corpus(result.rows, directory=out_dir, as_of=as_of)
+    delta_count = write_delta_feed(result.deltas, path=out_dir / "deltas.jsonl", append=True)
+    return BillCorpusResult(
+        manifest=manifest,
+        bill_count=len(result.rows),
+        delta_count=delta_count,
+        fetch_reports=tuple(reports),
     )
