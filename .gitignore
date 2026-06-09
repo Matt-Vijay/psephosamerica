@@ -30,3 +30,4 @@ data/crosswalks/member_fec.csv
 # OS / editor
 .DS_Store
 *.swp
+data/real/
