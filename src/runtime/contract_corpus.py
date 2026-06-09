@@ -16,6 +16,7 @@ adopt torch) -- the 256-d/64-d vectors feed ``token_projection`` directly.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 
 import numpy as np
@@ -27,6 +28,16 @@ Array = npt.NDArray[np.float64]
 
 
 @dataclass(frozen=True)
+class EvidenceAnchorData:
+    """A real source anchor from the contract (URL + sha256 + timestamp)."""
+
+    label: str
+    source_url: str
+    content_sha256: str
+    known_at: datetime
+
+
+@dataclass(frozen=True)
 class ContractEntity:
     """One enriched canonical entity with its dossier + structural embeddings."""
 
@@ -35,6 +46,7 @@ class ContractEntity:
     external_ids: tuple[str, ...]
     dossier_embedding: Array
     structural_embedding: Array
+    evidence: tuple[EvidenceAnchorData, ...] = ()
 
 
 def load_contract_entities(path: Path) -> list[ContractEntity]:
@@ -50,6 +62,16 @@ def load_contract_entities(path: Path) -> list[ContractEntity]:
             or record.structural_embedding is None
         ):
             continue
+        evidence = tuple(
+            EvidenceAnchorData(
+                label=f"{anchor.source_system}:{anchor.record_id}",
+                source_url=anchor.source_url,
+                content_sha256=anchor.content_sha256,
+                known_at=anchor.known_at,
+            )
+            for anchor in record.source_anchors
+            if anchor.source_url
+        )
         entities.append(
             ContractEntity(
                 canonical_id=record.canonical_id,
@@ -57,6 +79,7 @@ def load_contract_entities(path: Path) -> list[ContractEntity]:
                 external_ids=tuple(record.external_ids),
                 dossier_embedding=np.asarray(record.dossier_embedding, dtype=np.float64),
                 structural_embedding=np.asarray(record.structural_embedding, dtype=np.float64),
+                evidence=evidence,
             )
         )
     return entities

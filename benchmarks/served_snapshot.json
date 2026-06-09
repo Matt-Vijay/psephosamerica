@@ -1,0 +1,2103 @@
+{
+"meta": {
+"generated_at": "2026-06-09T04:30:42Z",
+"content_sha256": "a815f223eacb56310a3e809cd65862f9a13628520d7633c401b1c0b95a7e9648",
+"prediction_count": 80
+},
+"predictions": [
+{
+"canonical_person_id": "bioguide:A000055",
+"canonical_bill_id": "us_congress:118:party-line-demo",
+"model_name": "per_member_signal_model",
+"known_at": "2026-06-09",
+"probability_yea": 0.9637175548962299,
+"uncertainty": {
+"confidence_level": 0.9,
+"interval_lower": 0.9591390051184809,
+"interval_upper": 0.9672538038304608,
+"conformal_label_set": [
+"yea"
+]
+},
+"evidence_anchors": [
+{
+"label": "us_house_clerk:sr-xkd2uzgyfc7itz4r",
+"source_url": "https://clerk.house.gov/evs/2023/roll021.xml",
+"content_sha256": "279e374a220735201ac148623bf6b2a2a5f598d0d9843e1866ebbf6108074d36",
+"retrieved_at": "2026-06-08T00:00:00Z",
+"contribution": 0.462052174948943
+}
+],
+"llm_explanation": "On a party-line bill the model expects this member to vote yea (96% yea), driven by their party-alignment record across prior roll calls.",
+"counterfactual": "Removing 'party_alignment' would drop the yea probability from 96% to 54% -- it is the strongest driver of this prediction."
+},
+{
+"canonical_person_id": "bioguide:A000148",
+"canonical_bill_id": "us_congress:118:party-line-demo",
+"model_name": "per_member_signal_model",
+"known_at": "2026-06-09",
+"probability_yea": 0.9412353278346831,
+"uncertainty": {
+"confidence_level": 0.9,
+"interval_lower": 0.918980674456155,
+"interval_upper": 0.9534329666852291,
+"conformal_label_set": [
+"yea"
+]
+},
+"evidence_anchors": [
+{
+"label": "us_house_clerk:sr-gbpevkn25oos6ryz",
+"source_url": "https://clerk.house.gov/evs/2023/roll021.xml",
+"content_sha256": "279e374a220735201ac148623bf6b2a2a5f598d0d9843e1866ebbf6108074d36",
+"retrieved_at": "2026-06-08T00:00:00Z",
+"contribution": 0.4369196863300655
+}
+],
+"llm_explanation": "On a party-line bill the model expects this member to vote yea (94% yea), driven by their party-alignment record across prior roll calls.",
+"counterfactual": "Removing 'party_alignment' would drop the yea probability from 94% to 46% -- it is the strongest driver of this prediction."
+},
+{
+"canonical_person_id": "bioguide:A000369",
+"canonical_bill_id": "us_congress:118:party-line-demo",
+"model_name": "per_member_signal_model",
+"known_at": "2026-06-09",
+"probability_yea": 0.9541855753913611,
+"uncertainty": {
+"confidence_level": 0.9,
+"interval_lower": 0.9398218411471119,
+"interval_upper": 0.9672443542531807,
+"conformal_label_set": [
+"yea"
+]
+},
+"evidence_anchors": [
+{
+"label": "us_house_clerk:sr-4grg3mje2sfqfowd",
+"source_url": "https://clerk.house.gov/evs/2023/roll021.xml",
+"content_sha256": "279e374a220735201ac148623bf6b2a2a5f598d0d9843e1866ebbf6108074d36",
+"retrieved_at": "2026-06-08T00:00:00Z",
+"contribution": 0.45874559530657155
+}
+],
+"llm_explanation": "On a party-line bill the model expects this member to vote yea (95% yea), driven by their party-alignment record across prior roll calls.",
+"counterfactual": "Removing 'party_alignment' would drop the yea probability from 95% to 54% -- it is the strongest driver of this prediction."
+},
+{
+"canonical_person_id": "bioguide:A000370",
+"canonical_bill_id": "us_congress:118:party-line-demo",
+"model_name": "per_member_signal_model",
+"known_at": "2026-06-09",
+"probability_yea": 0.9248813988776942,
+"uncertainty": {
+"confidence_level": 0.9,
+"interval_lower": 0.90604589254048,
+"interval_upper": 0.9368998908013114,
+"conformal_label_set": [
+"yea"
+]
+},
+"evidence_anchors": [
+{
+"label": "us_house_clerk:sr-6ifan3ktrmuq6q6u",
+"source_url": "https://clerk.house.gov/evs/2023/roll021.xml",
+"content_sha256": "279e374a220735201ac148623bf6b2a2a5f598d0d9843e1866ebbf6108074d36",
+"retrieved_at": "2026-06-08T00:00:00Z",
+"contribution": 0.4368998908013114
+}
+],
+"llm_explanation": "On a party-line bill the model expects this member to vote yea (92% yea), driven by their party-alignment record across prior roll calls.",
+"counterfactual": "Removing 'party_alignment' would drop the yea probability from 92% to 48% -- it is the strongest driver of this prediction."
+},
+{
+"canonical_person_id": "bioguide:A000371",
+"canonical_bill_id": "us_congress:118:party-line-demo",
+"model_name": "per_member_signal_model",
+"known_at": "2026-06-09",
+"probability_yea": 0.9518504527152196,
+"uncertainty": {
+"confidence_level": 0.9,
+"interval_lower": 0.9400679104083626,
+"interval_upper": 0.9604768952761886,
+"conformal_label_set": [
+"yea"
+]
+},
+"evidence_anchors": [
+{
+"label": "us_house_clerk:sr-x6km7hipqa3d3ox7",
+"source_url": "https://clerk.house.gov/evs/2023/roll021.xml",
+"content_sha256": "279e374a220735201ac148623bf6b2a2a5f598d0d9843e1866ebbf6108074d36",
+"retrieved_at": "2026-06-08T00:00:00Z",
+"contribution": 0.4604768952761886
+}
+],
+"llm_explanation": "On a party-line bill the model expects this member to vote yea (95% yea), driven by their party-alignment record across prior roll calls.",
+"counterfactual": "Removing 'party_alignment' would drop the yea probability from 95% to 54% -- it is the strongest driver of this prediction."
+},
+{
+"canonical_person_id": "bioguide:A000372",
+"canonical_bill_id": "us_congress:118:party-line-demo",
+"model_name": "per_member_signal_model",
+"known_at": "2026-06-09",
+"probability_yea": 0.8885319004537188,
+"uncertainty": {
+"confidence_level": 0.9,
+"interval_lower": 0.8446055938750484,
+"interval_upper": 0.931269829040194,
+"conformal_label_set": [
+"yea"
+]
+},
+"evidence_anchors": [
+{
+"label": "us_house_clerk:sr-sfoplmmd5iz3dy2u",
+"source_url": "https://clerk.house.gov/evs/2023/roll021.xml",
+"content_sha256": "279e374a220735201ac148623bf6b2a2a5f598d0d9843e1866ebbf6108074d36",
+"retrieved_at": "2026-06-08T00:00:00Z",
+"contribution": 0.38935232209839366
+}
+],
+"llm_explanation": "On a party-line bill the model expects this member to vote yea (89% yea), driven by their party-alignment record across prior roll calls.",
+"counterfactual": "Removing 'party_alignment' would drop the yea probability from 89% to 47% -- it is the strongest driver of this prediction."
+},
+{
+"canonical_person_id": "bioguide:A000375",
+"canonical_bill_id": "us_congress:118:party-line-demo",
+"model_name": "per_member_signal_model",
+"known_at": "2026-06-09",
+"probability_yea": 0.9549918184262106,
+"uncertainty": {
+"confidence_level": 0.9,
+"interval_lower": 0.9476747401656034,
+"interval_upper": 0.9610002808264098,
+"conformal_label_set": [
+"yea"
+]
+},
+"evidence_anchors": [
+{
+"label": "us_house_clerk:sr-huy4ifhxy4niek3c",
+"source_url": "https://clerk.house.gov/evs/2023/roll021.xml",
+"content_sha256": "279e374a220735201ac148623bf6b2a2a5f598d0d9843e1866ebbf6108074d36",
+"retrieved_at": "2026-06-08T00:00:00Z",
+"contribution": 0.4546148460595397
+}
+],
+"llm_explanation": "On a party-line bill the model expects this member to vote yea (95% yea), driven by their party-alignment record across prior roll calls.",
+"counterfactual": "Removing 'party_alignment' would drop the yea probability from 95% to 84% -- it is the strongest driver of this prediction."
+},
+{
+"canonical_person_id": "bioguide:A000376",
+"canonical_bill_id": "us_congress:118:party-line-demo",
+"model_name": "per_member_signal_model",
+"known_at": "2026-06-09",
+"probability_yea": 0.9277518732267357,
+"uncertainty": {
+"confidence_level": 0.9,
+"interval_lower": 0.9119208320076225,
+"interval_upper": 0.9398531832028727,
+"conformal_label_set": [
+"yea"
+]
+},
+"evidence_anchors": [
+{
+"label": "us_house_clerk:sr-6ptrage2scw4jck6",
+"source_url": "https://clerk.house.gov/evs/2023/roll021.xml",
+"content_sha256": "279e374a220735201ac148623bf6b2a2a5f598d0d9843e1866ebbf6108074d36",
+"retrieved_at": "2026-06-08T00:00:00Z",
+"contribution": 0.43070907891778387
+}
+],
+"llm_explanation": "On a party-line bill the model expects this member to vote yea (93% yea), driven by their party-alignment record across prior roll calls.",
+"counterfactual": "Removing 'party_alignment' would drop the yea probability from 93% to 62% -- it is the strongest driver of this prediction."
+},
+{
+"canonical_person_id": "bioguide:A000377",
+"canonical_bill_id": "us_congress:118:party-line-demo",
+"model_name": "per_member_signal_model",
+"known_at": "2026-06-09",
+"probability_yea": 0.9652595929062521,
+"uncertainty": {
+"confidence_level": 0.9,
+"interval_lower": 0.9593683358402227,
+"interval_upper": 0.9708698688251748,
+"conformal_label_set": [
+"yea"
+]
+},
+"evidence_anchors": [
+{
+"label": "us_house_clerk:sr-gqjobafxu5xqurlj",
+"source_url": "https://clerk.house.gov/evs/2023/roll021.xml",
+"content_sha256": "279e374a220735201ac148623bf6b2a2a5f598d0d9843e1866ebbf6108074d36",
+"retrieved_at": "2026-06-08T00:00:00Z",
+"contribution": 0.4647361594156232
+}
+],
+"llm_explanation": "On a party-line bill the model expects this member to vote yea (97% yea), driven by their party-alignment record across prior roll calls.",
+"counterfactual": "Removing 'party_alignment' would drop the yea probability from 97% to 58% -- it is the strongest driver of this prediction."
+},
+{
+"canonical_person_id": "bioguide:A000379",
+"canonical_bill_id": "us_congress:118:party-line-demo",
+"model_name": "per_member_signal_model",
+"known_at": "2026-06-09",
+"probability_yea": 0.9550643459859851,
+"uncertainty": {
+"confidence_level": 0.9,
+"interval_lower": 0.9476261626339191,
+"interval_upper": 0.9634557191674282,
+"conformal_label_set": [
+"yea"
+]
+},
+"evidence_anchors": [
+{
+"label": "us_house_clerk:sr-dxjhva4annwoukdo",
+"source_url": "https://clerk.house.gov/evs/2023/roll021.xml",
+"content_sha256": "279e374a220735201ac148623bf6b2a2a5f598d0d9843e1866ebbf6108074d36",
+"retrieved_at": "2026-06-08T00:00:00Z",
+"contribution": 0.4634557191674282
+}
+],
+"llm_explanation": "On a party-line bill the model expects this member to vote yea (96% yea), driven by their party-alignment record across prior roll calls.",
+"counterfactual": "Removing 'party_alignment' would drop the yea probability from 96% to 74% -- it is the strongest driver of this prediction."
+},
+{
+"canonical_person_id": "bioguide:B000490",
+"canonical_bill_id": "us_congress:118:party-line-demo",
+"model_name": "per_member_signal_model",
+"known_at": "2026-06-09",
+"probability_yea": 0.9453321786384936,
+"uncertainty": {
+"confidence_level": 0.9,
+"interval_lower": 0.9346511575817272,
+"interval_upper": 0.9534329666852291,
+"conformal_label_set": [
+"yea"
+]
+},
+"evidence_anchors": [
+{
+"label": "us_house_clerk:sr-3ls4ji3vz74gswi7",
+"source_url": "https://clerk.house.gov/evs/2023/roll021.xml",
+"content_sha256": "279e374a220735201ac148623bf6b2a2a5f598d0d9843e1866ebbf6108074d36",
+"retrieved_at": "2026-06-08T00:00:00Z",
+"contribution": 0.4418480088603526
+}
+],
+"llm_explanation": "On a party-line bill the model expects this member to vote yea (95% yea), driven by their party-alignment record across prior roll calls.",
+"counterfactual": "Removing 'party_alignment' would drop the yea probability from 95% to 50% -- it is the strongest driver of this prediction."
+},
+{
+"canonical_person_id": "bioguide:B000574",
+"canonical_bill_id": "us_congress:118:party-line-demo",
+"model_name": "per_member_signal_model",
+"known_at": "2026-06-09",
+"probability_yea": 0.9396282563413484,
+"uncertainty": {
+"confidence_level": 0.9,
+"interval_lower": 0.9280092077204761,
+"interval_upper": 0.950821032116916,
+"conformal_label_set": [
+"yea"
+]
+},
+"evidence_anchors": [
+{
+"label": "us_house_clerk:sr-vkh5po4554uf6frj",
+"source_url": "https://clerk.house.gov/evs/2023/roll021.xml",
+"content_sha256": "279e374a220735201ac148623bf6b2a2a5f598d0d9843e1866ebbf6108074d36",
+"retrieved_at": "2026-06-08T00:00:00Z",
+"contribution": 0.4369196863300655
+}
+],
+"llm_explanation": "On a party-line bill the model expects this member to vote yea (94% yea), driven by their party-alignment record across prior roll calls.",
+"counterfactual": "Removing 'party_alignment' would drop the yea probability from 94% to 46% -- it is the strongest driver of this prediction."
+},
+{
+"canonical_person_id": "bioguide:B000668",
+"canonical_bill_id": "us_congress:118:party-line-demo",
+"model_name": "per_member_signal_model",
+"known_at": "2026-06-09",
+"probability_yea": 0.9534844407998275,
+"uncertainty": {
+"confidence_level": 0.9,
+"interval_lower": 0.9478038859235981,
+"interval_upper": 0.9587256199533509,
+"conformal_label_set": [
+"yea"
+]
+},
+"evidence_anchors": [
+{
+"label": "us_house_clerk:sr-y7kftvouwyccjjdy",
+"source_url": "https://clerk.house.gov/evs/2023/roll021.xml",
+"content_sha256": "279e374a220735201ac148623bf6b2a2a5f598d0d9843e1866ebbf6108074d36",
+"retrieved_at": "2026-06-08T00:00:00Z",
+"contribution": 0.4587256199533509
+}
+],
+"llm_explanation": "On a party-line bill the model expects this member to vote yea (95% yea), driven by their party-alignment record across prior roll calls.",
+"counterfactual": "Removing 'party_alignment' would drop the yea probability from 95% to 61% -- it is the strongest driver of this prediction."
+},
+{
+"canonical_person_id": "bioguide:B000740",
+"canonical_bill_id": "us_congress:118:party-line-demo",
+"model_name": "per_member_signal_model",
+"known_at": "2026-06-09",
+"probability_yea": 0.5616731418588212,
+"uncertainty": {
+"confidence_level": 0.9,
+"interval_lower": 0.3965932938462015,
+"interval_upper": 0.7030991068482297,
+"conformal_label_set": [
+"nay",
+"yea"
+]
+},
+"evidence_anchors": [
+{
+"label": "us_house_clerk:sr-i77e7hi6np3csnmx",
+"source_url": "https://clerk.house.gov/evs/2023/roll021.xml",
+"content_sha256": "279e374a220735201ac148623bf6b2a2a5f598d0d9843e1866ebbf6108074d36",
+"retrieved_at": "2026-06-08T00:00:00Z",
+"contribution": -0.067908866690916
+}
+],
+"llm_explanation": "On a party-line bill the model expects this member to vote yea (56% yea), driven by their party-alignment record across prior roll calls.",
+"counterfactual": "Removing 'party_alignment' would drop the yea probability from 56% to 34% -- it is the strongest driver of this prediction."
+},
+{
+"canonical_person_id": "bioguide:B000825",
+"canonical_bill_id": "us_congress:118:party-line-demo",
+"model_name": "per_member_signal_model",
+"known_at": "2026-06-09",
+"probability_yea": 0.9525121792645977,
+"uncertainty": {
+"confidence_level": 0.9,
+"interval_lower": 0.9476261626339191,
+"interval_upper": 0.9587328698435046,
+"conformal_label_set": [
+"yea"
+]
+},
+"evidence_anchors": [
+{
+"label": "us_house_clerk:sr-ai3vqgb445cqcc77",
+"source_url": "https://clerk.house.gov/evs/2023/roll021.xml",
+"content_sha256": "279e374a220735201ac148623bf6b2a2a5f598d0d9843e1866ebbf6108074d36",
+"retrieved_at": "2026-06-08T00:00:00Z",
+"contribution": 0.4587328698435046
+}
+],
+"llm_explanation": "On a party-line bill the model expects this member to vote yea (95% yea), driven by their party-alignment record across prior roll calls.",
+"counterfactual": "Removing 'party_alignment' would drop the yea probability from 95% to 73% -- it is the strongest driver of this prediction."
+},
+{
+"canonical_person_id": "bioguide:B001223",
+"canonical_bill_id": "us_congress:118:party-line-demo",
+"model_name": "per_member_signal_model",
+"known_at": "2026-06-09",
+"probability_yea": 0.9431657023826905,
+"uncertainty": {
+"confidence_level": 0.9,
+"interval_lower": 0.9398261011231631,
+"interval_upper": 0.9492529362939255,
+"conformal_label_set": [
+"yea"
+]
+},
+"evidence_anchors": [
+{
+"label": "us_house_clerk:sr-wdw4q2y7t7bxfmsw",
+"source_url": "https://clerk.house.gov/evs/2023/roll021.xml",
+"content_sha256": "279e374a220735201ac148623bf6b2a2a5f598d0d9843e1866ebbf6108074d36",
+"retrieved_at": "2026-06-08T00:00:00Z",
+"contribution": 0.4492529362939255
+}
+],
+"llm_explanation": "On a party-line bill the model expects this member to vote yea (94% yea), driven by their party-alignment record across prior roll calls.",
+"counterfactual": "Removing 'party_alignment' would drop the yea probability from 94% to 51% -- it is the strongest driver of this prediction."
+},
+{
+"canonical_person_id": "bioguide:B001224",
+"canonical_bill_id": "us_congress:118:party-line-demo",
+"model_name": "per_member_signal_model",
+"known_at": "2026-06-09",
+"probability_yea": 0.9082240428396176,
+"uncertainty": {
+"confidence_level": 0.9,
+"interval_lower": 0.90604589254048,
+"interval_upper": 0.9119208320076225,
+"conformal_label_set": [
+"yea"
+]
+},
+"evidence_anchors": [
+{
+"label": "us_house_clerk:sr-3eton7paymk5pzob",
+"source_url": "https://clerk.house.gov/evs/2023/roll021.xml",
+"content_sha256": "279e374a220735201ac148623bf6b2a2a5f598d0d9843e1866ebbf6108074d36",
+"retrieved_at": "2026-06-08T00:00:00Z",
+"contribution": 0.4104106119445353
+}
+],
+"llm_explanation": "On a party-line bill the model expects this member to vote yea (91% yea), driven by their party-alignment record across prior roll calls.",
+"counterfactual": "Removing 'party_alignment' would drop the yea probability from 91% to 48% -- it is the strongest driver of this prediction."
+},
+{
+"canonical_person_id": "bioguide:B001248",
+"canonical_bill_id": "us_congress:118:party-line-demo",
+"model_name": "per_member_signal_model",
+"known_at": "2026-06-09",
+"probability_yea": 0.9566251181462795,
+"uncertainty": {
+"confidence_level": 0.9,
+"interval_lower": 0.9506882499926786,
+"interval_upper": 0.9611196401534711,
+"conformal_label_set": [
+"yea"
+]
+},
+"evidence_anchors": [
+{
+"label": "us_house_clerk:sr-6zdzvaqdmpjppy6s",
+"source_url": "https://clerk.house.gov/evs/2023/roll021.xml",
+"content_sha256": "279e374a220735201ac148623bf6b2a2a5f598d0d9843e1866ebbf6108074d36",
+"retrieved_at": "2026-06-08T00:00:00Z",
+"contribution": 0.4546037877840302
+}
+],
+"llm_explanation": "On a party-line bill the model expects this member to vote yea (96% yea), driven by their party-alignment record across prior roll calls.",
+"counterfactual": "Removing 'party_alignment' would drop the yea probability from 96% to 61% -- it is the strongest driver of this prediction."
+},
+{
+"canonical_person_id": "bioguide:B001257",
+"canonical_bill_id": "us_congress:118:party-line-demo",
+"model_name": "per_member_signal_model",
+"known_at": "2026-06-09",
+"probability_yea": 0.9552753753706428,
+"uncertainty": {
+"confidence_level": 0.9,
+"interval_lower": 0.9521266846815813,
+"interval_upper": 0.9625890656525034,
+"conformal_label_set": [
+"yea"
+]
+},
+"evidence_anchors": [
+{
+"label": "us_house_clerk:sr-lk7pn2rq5f6dso2h",
+"source_url": "https://clerk.house.gov/evs/2023/roll021.xml",
+"content_sha256": "279e374a220735201ac148623bf6b2a2a5f598d0d9843e1866ebbf6108074d36",
+"retrieved_at": "2026-06-08T00:00:00Z",
+"contribution": 0.45212668468158135
+}
+],
+"llm_explanation": "On a party-line bill the model expects this member to vote yea (96% yea), driven by their party-alignment record across prior roll calls.",
+"counterfactual": "Removing 'party_alignment' would drop the yea probability from 96% to 54% -- it is the strongest driver of this prediction."
+},
+{
+"canonical_person_id": "bioguide:B001260",
+"canonical_bill_id": "us_congress:118:party-line-demo",
+"model_name": "per_member_signal_model",
+"known_at": "2026-06-09",
+"probability_yea": 0.8235986262925106,
+"uncertainty": {
+"confidence_level": 0.9,
+"interval_lower": 0.7388404049390455,
+"interval_upper": 0.947671753908193,
+"conformal_label_set": [
+"nay",
+"yea"
+]
+},
+"evidence_anchors": [
+{
+"label": "us_house_clerk:sr-tmpift57utlocnxl",
+"source_url": "https://clerk.house.gov/evs/2023/roll021.xml",
+"content_sha256": "279e374a220735201ac148623bf6b2a2a5f598d0d9843e1866ebbf6108074d36",
+"retrieved_at": "2026-06-08T00:00:00Z",
+"contribution": 0.2867516043400089
+}
+],
+"llm_explanation": "On a party-line bill the model expects this member to vote yea (82% yea), driven by their party-alignment record across prior roll calls.",
+"counterfactual": "Removing 'party_alignment' would drop the yea probability from 82% to 41% -- it is the strongest driver of this prediction."
+},
+{
+"canonical_person_id": "bioguide:B001275",
+"canonical_bill_id": "us_congress:118:party-line-demo",
+"model_name": "per_member_signal_model",
+"known_at": "2026-06-09",
+"probability_yea": 0.827531758361452,
+"uncertainty": {
+"confidence_level": 0.9,
+"interval_lower": 0.7558996582541996,
+"interval_upper": 0.9398356507962219,
+"conformal_label_set": [
+"nay",
+"yea"
+]
+},
+"evidence_anchors": [
+{
+"label": "us_house_clerk:sr-rp7ijpmw72ikt2rt",
+"source_url": "https://clerk.house.gov/evs/2023/roll021.xml",
+"content_sha256": "279e374a220735201ac148623bf6b2a2a5f598d0d9843e1866ebbf6108074d36",
+"retrieved_at": "2026-06-08T00:00:00Z",
+"contribution": 0.30602329047074794
+}
+],
+"llm_explanation": "On a party-line bill the model expects this member to vote yea (83% yea), driven by their party-alignment record across prior roll calls.",
+"counterfactual": "Removing 'party_alignment' would drop the yea probability from 83% to 37% -- it is the strongest driver of this prediction."
+},
+{
+"canonical_person_id": "bioguide:B001278",
+"canonical_bill_id": "us_congress:118:party-line-demo",
+"model_name": "per_member_signal_model",
+"known_at": "2026-06-09",
+"probability_yea": 0.6122519791281161,
+"uncertainty": {
+"confidence_level": 0.9,
+"interval_lower": 0.3114324008480111,
+"interval_upper": 0.9065469113001559,
+"conformal_label_set": [
+"nay",
+"yea"
+]
+},
+"evidence_anchors": [
+{
+"label": "us_house_clerk:sr-2dfllpb3nk4qidyv",
+"source_url": "https://clerk.house.gov/evs/2023/roll021.xml",
+"content_sha256": "279e374a220735201ac148623bf6b2a2a5f598d0d9843e1866ebbf6108074d36",
+"retrieved_at": "2026-06-08T00:00:00Z",
+"contribution": -0.1885675991519889
+}
+],
+"llm_explanation": "On a party-line bill the model expects this member to vote yea (61% yea), driven by their party-alignment record across prior roll calls.",
+"counterfactual": "Removing 'party_alignment' would drop the yea probability from 61% to 43% -- it is the strongest driver of this prediction."
+},
+{
+"canonical_person_id": "bioguide:B001281",
+"canonical_bill_id": "us_congress:118:party-line-demo",
+"model_name": "per_member_signal_model",
+"known_at": "2026-06-09",
+"probability_yea": 0.935801893619244,
+"uncertainty": {
+"confidence_level": 0.9,
+"interval_lower": 0.9190858106897529,
+"interval_upper": 0.9498603951767335,
+"conformal_label_set": [
+"yea"
+]
+},
+"evidence_anchors": [
+{
+"label": "us_house_clerk:sr-usj5rgzyzxetjbeg",
+"source_url": "https://clerk.house.gov/evs/2023/roll021.xml",
+"content_sha256": "279e374a220735201ac148623bf6b2a2a5f598d0d9843e1866ebbf6108074d36",
+"retrieved_at": "2026-06-08T00:00:00Z",
+"contribution": 0.4223186702415881
+}
+],
+"llm_explanation": "On a party-line bill the model expects this member to vote yea (94% yea), driven by their party-alignment record across prior roll calls.",
+"counterfactual": "Removing 'party_alignment' would drop the yea probability from 94% to 47% -- it is the strongest driver of this prediction."
+},
+{
+"canonical_person_id": "bioguide:B001282",
+"canonical_bill_id": "us_congress:118:party-line-demo",
+"model_name": "per_member_signal_model",
+"known_at": "2026-06-09",
+"probability_yea": 0.9481037842598923,
+"uncertainty": {
+"confidence_level": 0.9,
+"interval_lower": 0.9441258644843284,
+"interval_upper": 0.9550936871178328,
+"conformal_label_set": [
+"yea"
+]
+},
+"evidence_anchors": [
+{
+"label": "us_house_clerk:sr-zhyic4endwcsziru",
+"source_url": "https://clerk.house.gov/evs/2023/roll021.xml",
+"content_sha256": "279e374a220735201ac148623bf6b2a2a5f598d0d9843e1866ebbf6108074d36",
+"retrieved_at": "2026-06-08T00:00:00Z",
+"contribution": 0.44586569908963314
+}
+],
+"llm_explanation": "On a party-line bill the model expects this member to vote yea (95% yea), driven by their party-alignment record across prior roll calls.",
+"counterfactual": "Removing 'party_alignment' would drop the yea probability from 95% to 55% -- it is the strongest driver of this prediction."
+},
+{
+"canonical_person_id": "bioguide:B001285",
+"canonical_bill_id": "us_congress:118:party-line-demo",
+"model_name": "per_member_signal_model",
+"known_at": "2026-06-09",
+"probability_yea": 0.9358360303779409,
+"uncertainty": {
+"confidence_level": 0.9,
+"interval_lower": 0.9279196560760926,
+"interval_upper": 0.9465325167942822,
+"conformal_label_set": [
+"yea"
+]
+},
+"evidence_anchors": [
+{
+"label": "us_house_clerk:sr-pmdrnu7iulsflklk",
+"source_url": "https://clerk.house.gov/evs/2023/roll021.xml",
+"content_sha256": "279e374a220735201ac148623bf6b2a2a5f598d0d9843e1866ebbf6108074d36",
+"retrieved_at": "2026-06-08T00:00:00Z",
+"contribution": 0.44187045312219186
+}
+],
+"llm_explanation": "On a party-line bill the model expects this member to vote yea (94% yea), driven by their party-alignment record across prior roll calls.",
+"counterfactual": "Removing 'party_alignment' would drop the yea probability from 94% to 46% -- it is the strongest driver of this prediction."
+},
+{
+"canonical_person_id": "bioguide:B001287",
+"canonical_bill_id": "us_congress:118:party-line-demo",
+"model_name": "per_member_signal_model",
+"known_at": "2026-06-09",
+"probability_yea": 0.9455387178848834,
+"uncertainty": {
+"confidence_level": 0.9,
+"interval_lower": 0.9418352900758422,
+"interval_upper": 0.9498103836413502,
+"conformal_label_set": [
+"yea"
+]
+},
+"evidence_anchors": [
+{
+"label": "us_house_clerk:sr-auvu4f77dpmxq6i3",
+"source_url": "https://clerk.house.gov/evs/2023/roll021.xml",
+"content_sha256": "279e374a220735201ac148623bf6b2a2a5f598d0d9843e1866ebbf6108074d36",
+"retrieved_at": "2026-06-08T00:00:00Z",
+"contribution": 0.4418352900758422
+}
+],
+"llm_explanation": "On a party-line bill the model expects this member to vote yea (95% yea), driven by their party-alignment record across prior roll calls.",
+"counterfactual": "Removing 'party_alignment' would drop the yea probability from 95% to 53% -- it is the strongest driver of this prediction."
+},
+{
+"canonical_person_id": "bioguide:B001291",
+"canonical_bill_id": "us_congress:118:party-line-demo",
+"model_name": "per_member_signal_model",
+"known_at": "2026-06-09",
+"probability_yea": 0.9592762713270895,
+"uncertainty": {
+"confidence_level": 0.9,
+"interval_lower": 0.952638539999825,
+"interval_upper": 0.9651382983783355,
+"conformal_label_set": [
+"yea"
+]
+},
+"evidence_anchors": [
+{
+"label": "us_house_clerk:sr-bc6h5gqyfpy7l5iq",
+"source_url": "https://clerk.house.gov/evs/2023/roll021.xml",
+"content_sha256": "279e374a220735201ac148623bf6b2a2a5f598d0d9843e1866ebbf6108074d36",
+"retrieved_at": "2026-06-08T00:00:00Z",
+"contribution": 0.4620319429809606
+}
+],
+"llm_explanation": "On a party-line bill the model expects this member to vote yea (96% yea), driven by their party-alignment record across prior roll calls.",
+"counterfactual": "Removing 'party_alignment' would drop the yea probability from 96% to 57% -- it is the strongest driver of this prediction."
+},
+{
+"canonical_person_id": "bioguide:B001292",
+"canonical_bill_id": "us_congress:118:party-line-demo",
+"model_name": "per_member_signal_model",
+"known_at": "2026-06-09",
+"probability_yea": 0.9414184561896299,
+"uncertainty": {
+"confidence_level": 0.9,
+"interval_lower": 0.9377043946442831,
+"interval_upper": 0.9476191726094733,
+"conformal_label_set": [
+"yea"
+]
+},
+"evidence_anchors": [
+{
+"label": "us_house_clerk:sr-mt6jjrbdi42upsnu",
+"source_url": "https://clerk.house.gov/evs/2023/roll021.xml",
+"content_sha256": "279e374a220735201ac148623bf6b2a2a5f598d0d9843e1866ebbf6108074d36",
+"retrieved_at": "2026-06-08T00:00:00Z",
+"contribution": 0.44183921670088355
+}
+],
+"llm_explanation": "On a party-line bill the model expects this member to vote yea (94% yea), driven by their party-alignment record across prior roll calls.",
+"counterfactual": "Removing 'party_alignment' would drop the yea probability from 94% to 51% -- it is the strongest driver of this prediction."
+},
+{
+"canonical_person_id": "bioguide:B001295",
+"canonical_bill_id": "us_congress:118:party-line-demo",
+"model_name": "per_member_signal_model",
+"known_at": "2026-06-09",
+"probability_yea": 0.9685609942776973,
+"uncertainty": {
+"confidence_level": 0.9,
+"interval_lower": 0.9610002808264098,
+"interval_upper": 0.973428923438612,
+"conformal_label_set": [
+"yea"
+]
+},
+"evidence_anchors": [
+{
+"label": "us_house_clerk:sr-rlczgilzr6gvkqlg",
+"source_url": "https://clerk.house.gov/evs/2023/roll021.xml",
+"content_sha256": "279e374a220735201ac148623bf6b2a2a5f598d0d9843e1866ebbf6108074d36",
+"retrieved_at": "2026-06-08T00:00:00Z",
+"contribution": 0.473428923438612
+}
+],
+"llm_explanation": "On a party-line bill the model expects this member to vote yea (97% yea), driven by their party-alignment record across prior roll calls.",
+"counterfactual": "Removing 'party_alignment' would drop the yea probability from 97% to 71% -- it is the strongest driver of this prediction."
+},
+{
+"canonical_person_id": "bioguide:B001296",
+"canonical_bill_id": "us_congress:118:party-line-demo",
+"model_name": "per_member_signal_model",
+"known_at": "2026-06-09",
+"probability_yea": 0.9449581375515713,
+"uncertainty": {
+"confidence_level": 0.9,
+"interval_lower": 0.9306300636455205,
+"interval_upper": 0.9550936871178328,
+"conformal_label_set": [
+"yea"
+]
+},
+"evidence_anchors": [
+{
+"label": "us_house_clerk:sr-qogswrndiwkwztk4",
+"source_url": "https://clerk.house.gov/evs/2023/roll021.xml",
+"content_sha256": "279e374a220735201ac148623bf6b2a2a5f598d0d9843e1866ebbf6108074d36",
+"retrieved_at": "2026-06-08T00:00:00Z",
+"contribution": 0.4306300636455205
+}
+],
+"llm_explanation": "On a party-line bill the model expects this member to vote yea (94% yea), driven by their party-alignment record across prior roll calls.",
+"counterfactual": "Removing 'party_alignment' would drop the yea probability from 94% to 52% -- it is the strongest driver of this prediction."
+},
+{
+"canonical_person_id": "bioguide:B001297",
+"canonical_bill_id": "us_congress:118:party-line-demo",
+"model_name": "per_member_signal_model",
+"known_at": "2026-06-09",
+"probability_yea": 0.5690721680568391,
+"uncertainty": {
+"confidence_level": 0.9,
+"interval_lower": 0.36118586949228737,
+"interval_upper": 0.6914473865498416,
+"conformal_label_set": [
+"nay",
+"yea"
+]
+},
+"evidence_anchors": [
+{
+"label": "us_house_clerk:sr-7uajyinvnveu4ltu",
+"source_url": "https://clerk.house.gov/evs/2023/roll021.xml",
+"content_sha256": "279e374a220735201ac148623bf6b2a2a5f598d0d9843e1866ebbf6108074d36",
+"retrieved_at": "2026-06-08T00:00:00Z",
+"contribution": -0.13881413050771263
+}
+],
+"llm_explanation": "On a party-line bill the model expects this member to vote yea (57% yea), driven by their party-alignment record across prior roll calls.",
+"counterfactual": "Removing 'party_alignment' would drop the yea probability from 57% to 41% -- it is the strongest driver of this prediction."
+},
+{
+"canonical_person_id": "bioguide:B001298",
+"canonical_bill_id": "us_congress:118:party-line-demo",
+"model_name": "per_member_signal_model",
+"known_at": "2026-06-09",
+"probability_yea": 0.8414289941056754,
+"uncertainty": {
+"confidence_level": 0.9,
+"interval_lower": 0.7282971134100159,
+"interval_upper": 0.9498341031089605,
+"conformal_label_set": [
+"nay",
+"yea"
+]
+},
+"evidence_anchors": [
+{
+"label": "us_house_clerk:sr-24zxroua64uuwja6",
+"source_url": "https://clerk.house.gov/evs/2023/roll021.xml",
+"content_sha256": "279e374a220735201ac148623bf6b2a2a5f598d0d9843e1866ebbf6108074d36",
+"retrieved_at": "2026-06-08T00:00:00Z",
+"contribution": 0.44925767048039267
+}
+],
+"llm_explanation": "On a party-line bill the model expects this member to vote yea (84% yea), driven by their party-alignment record across prior roll calls.",
+"counterfactual": "Removing 'party_alignment' would drop the yea probability from 84% to 40% -- it is the strongest driver of this prediction."
+},
+{
+"canonical_person_id": "bioguide:B001299",
+"canonical_bill_id": "us_congress:118:party-line-demo",
+"model_name": "per_member_signal_model",
+"known_at": "2026-06-09",
+"probability_yea": 0.891068885700293,
+"uncertainty": {
+"confidence_level": 0.9,
+"interval_lower": 0.8199051752500707,
+"interval_upper": 0.9624081790078014,
+"conformal_label_set": [
+"yea"
+]
+},
+"evidence_anchors": [
+{
+"label": "us_house_clerk:sr-kkvg7wldjaludonj",
+"source_url": "https://clerk.house.gov/evs/2023/roll021.xml",
+"content_sha256": "279e374a220735201ac148623bf6b2a2a5f598d0d9843e1866ebbf6108074d36",
+"retrieved_at": "2026-06-08T00:00:00Z",
+"contribution": 0.3558499786049041
+}
+],
+"llm_explanation": "On a party-line bill the model expects this member to vote yea (89% yea), driven by their party-alignment record across prior roll calls.",
+"counterfactual": "Removing 'party_alignment' would drop the yea probability from 89% to 42% -- it is the strongest driver of this prediction."
+},
+{
+"canonical_person_id": "bioguide:B001300",
+"canonical_bill_id": "us_congress:118:party-line-demo",
+"model_name": "per_member_signal_model",
+"known_at": "2026-06-09",
+"probability_yea": 0.9420909885251044,
+"uncertainty": {
+"confidence_level": 0.9,
+"interval_lower": 0.9279043836611655,
+"interval_upper": 0.9507195542089675,
+"conformal_label_set": [
+"yea"
+]
+},
+"evidence_anchors": [
+{
+"label": "us_house_clerk:sr-g3bwzqkurzdt4nts",
+"source_url": "https://clerk.house.gov/evs/2023/roll021.xml",
+"content_sha256": "279e374a220735201ac148623bf6b2a2a5f598d0d9843e1866ebbf6108074d36",
+"retrieved_at": "2026-06-08T00:00:00Z",
+"contribution": 0.44923697641274885
+}
+],
+"llm_explanation": "On a party-line bill the model expects this member to vote yea (94% yea), driven by their party-alignment record across prior roll calls.",
+"counterfactual": "Removing 'party_alignment' would drop the yea probability from 94% to 57% -- it is the strongest driver of this prediction."
+},
+{
+"canonical_person_id": "bioguide:B001301",
+"canonical_bill_id": "us_congress:118:party-line-demo",
+"model_name": "per_member_signal_model",
+"known_at": "2026-06-09",
+"probability_yea": 0.8718867392729,
+"uncertainty": {
+"confidence_level": 0.9,
+"interval_lower": 0.7535127728336192,
+"interval_upper": 0.9387007910056623,
+"conformal_label_set": [
+"yea"
+]
+},
+"evidence_anchors": [
+{
+"label": "us_house_clerk:sr-3ii3hreu3mo3ejsz",
+"source_url": "https://clerk.house.gov/evs/2023/roll021.xml",
+"content_sha256": "279e374a220735201ac148623bf6b2a2a5f598d0d9843e1866ebbf6108074d36",
+"retrieved_at": "2026-06-08T00:00:00Z",
+"contribution": 0.3120808670416262
+}
+],
+"llm_explanation": "On a party-line bill the model expects this member to vote yea (87% yea), driven by their party-alignment record across prior roll calls.",
+"counterfactual": "Removing 'party_alignment' would drop the yea probability from 87% to 45% -- it is the strongest driver of this prediction."
+},
+{
+"canonical_person_id": "bioguide:B001302",
+"canonical_bill_id": "us_congress:118:party-line-demo",
+"model_name": "per_member_signal_model",
+"known_at": "2026-06-09",
+"probability_yea": 0.8422497571958868,
+"uncertainty": {
+"confidence_level": 0.9,
+"interval_lower": 0.7600396164509917,
+"interval_upper": 0.8903074440498057,
+"conformal_label_set": [
+"nay",
+"yea"
+]
+},
+"evidence_anchors": [
+{
+"label": "us_house_clerk:sr-c6wk45tj2rkqv4h7",
+"source_url": "https://clerk.house.gov/evs/2023/roll021.xml",
+"content_sha256": "279e374a220735201ac148623bf6b2a2a5f598d0d9843e1866ebbf6108074d36",
+"retrieved_at": "2026-06-08T00:00:00Z",
+"contribution": 0.3803295175651573
+}
+],
+"llm_explanation": "On a party-line bill the model expects this member to vote yea (84% yea), driven by their party-alignment record across prior roll calls.",
+"counterfactual": "Removing 'party_alignment' would drop the yea probability from 84% to 54% -- it is the strongest driver of this prediction."
+},
+{
+"canonical_person_id": "bioguide:B001303",
+"canonical_bill_id": "us_congress:118:party-line-demo",
+"model_name": "per_member_signal_model",
+"known_at": "2026-06-09",
+"probability_yea": 0.936799725782999,
+"uncertainty": {
+"confidence_level": 0.9,
+"interval_lower": 0.9191065391926554,
+"interval_upper": 0.9476537696820326,
+"conformal_label_set": [
+"yea"
+]
+},
+"evidence_anchors": [
+{
+"label": "us_house_clerk:sr-epkpokd3fqjccecp",
+"source_url": "https://clerk.house.gov/evs/2023/roll021.xml",
+"content_sha256": "279e374a220735201ac148623bf6b2a2a5f598d0d9843e1866ebbf6108074d36",
+"retrieved_at": "2026-06-08T00:00:00Z",
+"contribution": 0.4306496488456866
+}
+],
+"llm_explanation": "On a party-line bill the model expects this member to vote yea (94% yea), driven by their party-alignment record across prior roll calls.",
+"counterfactual": "Removing 'party_alignment' would drop the yea probability from 94% to 46% -- it is the strongest driver of this prediction."
+},
+{
+"canonical_person_id": "bioguide:B001306",
+"canonical_bill_id": "us_congress:118:party-line-demo",
+"model_name": "per_member_signal_model",
+"known_at": "2026-06-09",
+"probability_yea": 0.9539024565962626,
+"uncertainty": {
+"confidence_level": 0.9,
+"interval_lower": 0.9526624596527398,
+"interval_upper": 0.955537556903141,
+"conformal_label_set": [
+"yea"
+]
+},
+"evidence_anchors": [
+{
+"label": "us_house_clerk:sr-kkdijtsxqlapvfh6",
+"source_url": "https://clerk.house.gov/evs/2023/roll021.xml",
+"content_sha256": "279e374a220735201ac148623bf6b2a2a5f598d0d9843e1866ebbf6108074d36",
+"retrieved_at": "2026-06-08T00:00:00Z",
+"contribution": 0.4546037877840302
+}
+],
+"llm_explanation": "On a party-line bill the model expects this member to vote yea (95% yea), driven by their party-alignment record across prior roll calls.",
+"counterfactual": "Removing 'party_alignment' would drop the yea probability from 95% to 61% -- it is the strongest driver of this prediction."
+},
+{
+"canonical_person_id": "bioguide:B001307",
+"canonical_bill_id": "us_congress:118:party-line-demo",
+"model_name": "per_member_signal_model",
+"known_at": "2026-06-09",
+"probability_yea": 0.9325246161742575,
+"uncertainty": {
+"confidence_level": 0.9,
+"interval_lower": 0.9190858106897529,
+"interval_upper": 0.9425374154794135,
+"conformal_label_set": [
+"yea"
+]
+},
+"evidence_anchors": [
+{
+"label": "us_house_clerk:sr-qhv2csq3a7ao5eyh",
+"source_url": "https://clerk.house.gov/evs/2023/roll021.xml",
+"content_sha256": "279e374a220735201ac148623bf6b2a2a5f598d0d9843e1866ebbf6108074d36",
+"retrieved_at": "2026-06-08T00:00:00Z",
+"contribution": 0.4418352900758422
+}
+],
+"llm_explanation": "On a party-line bill the model expects this member to vote yea (93% yea), driven by their party-alignment record across prior roll calls.",
+"counterfactual": "Removing 'party_alignment' would drop the yea probability from 93% to 51% -- it is the strongest driver of this prediction."
+},
+{
+"canonical_person_id": "bioguide:B001309",
+"canonical_bill_id": "us_congress:118:party-line-demo",
+"model_name": "per_member_signal_model",
+"known_at": "2026-06-09",
+"probability_yea": 0.7390913825023178,
+"uncertainty": {
+"confidence_level": 0.9,
+"interval_lower": 0.6752833653861582,
+"interval_upper": 0.7844337275794814,
+"conformal_label_set": [
+"nay",
+"yea"
+]
+},
+"evidence_anchors": [
+{
+"label": "us_house_clerk:sr-eqppmtm7terrbnbo",
+"source_url": "https://clerk.house.gov/evs/2023/roll021.xml",
+"content_sha256": "279e374a220735201ac148623bf6b2a2a5f598d0d9843e1866ebbf6108074d36",
+"retrieved_at": "2026-06-08T00:00:00Z",
+"contribution": 0.24112684110518667
+}
+],
+"llm_explanation": "On a party-line bill the model expects this member to vote yea (74% yea), driven by their party-alignment record across prior roll calls.",
+"counterfactual": "Removing 'party_alignment' would drop the yea probability from 74% to 36% -- it is the strongest driver of this prediction."
+},
+{
+"canonical_person_id": "bioguide:B001311",
+"canonical_bill_id": "us_congress:118:party-line-demo",
+"model_name": "per_member_signal_model",
+"known_at": "2026-06-09",
+"probability_yea": 0.9522386776138265,
+"uncertainty": {
+"confidence_level": 0.9,
+"interval_lower": 0.9441133716445232,
+"interval_upper": 0.9638141163943833,
+"conformal_label_set": [
+"yea"
+]
+},
+"evidence_anchors": [
+{
+"label": "us_house_clerk:sr-hcdpufzenwjhmwhp",
+"source_url": "https://clerk.house.gov/evs/2023/roll021.xml",
+"content_sha256": "279e374a220735201ac148623bf6b2a2a5f598d0d9843e1866ebbf6108074d36",
+"retrieved_at": "2026-06-08T00:00:00Z",
+"contribution": 0.45212668468158135
+}
+],
+"llm_explanation": "On a party-line bill the model expects this member to vote yea (95% yea), driven by their party-alignment record across prior roll calls.",
+"counterfactual": "Removing 'party_alignment' would drop the yea probability from 95% to 67% -- it is the strongest driver of this prediction."
+},
+{
+"canonical_person_id": "bioguide:B001313",
+"canonical_bill_id": "us_congress:118:party-line-demo",
+"model_name": "per_member_signal_model",
+"known_at": "2026-06-09",
+"probability_yea": 0.9352575262592546,
+"uncertainty": {
+"confidence_level": 0.9,
+"interval_lower": 0.9190858106897529,
+"interval_upper": 0.9464970813336272,
+"conformal_label_set": [
+"yea"
+]
+},
+"evidence_anchors": [
+{
+"label": "us_house_clerk:sr-5ehkrsz6of6v4vv7",
+"source_url": "https://clerk.house.gov/evs/2023/roll021.xml",
+"content_sha256": "279e374a220735201ac148623bf6b2a2a5f598d0d9843e1866ebbf6108074d36",
+"retrieved_at": "2026-06-08T00:00:00Z",
+"contribution": 0.4223217735049355
+}
+],
+"llm_explanation": "On a party-line bill the model expects this member to vote yea (94% yea), driven by their party-alignment record across prior roll calls.",
+"counterfactual": "Removing 'party_alignment' would drop the yea probability from 94% to 46% -- it is the strongest driver of this prediction."
+},
+{
+"canonical_person_id": "bioguide:B001314",
+"canonical_bill_id": "us_congress:118:party-line-demo",
+"model_name": "per_member_signal_model",
+"known_at": "2026-06-09",
+"probability_yea": 0.9458213640998346,
+"uncertainty": {
+"confidence_level": 0.9,
+"interval_lower": 0.9279928612419147,
+"interval_upper": 0.9623935224920612,
+"conformal_label_set": [
+"yea"
+]
+},
+"evidence_anchors": [
+{
+"label": "us_house_clerk:sr-oxjhyh3lhuatc5wp",
+"source_url": "https://clerk.house.gov/evs/2023/roll021.xml",
+"content_sha256": "279e374a220735201ac148623bf6b2a2a5f598d0d9843e1866ebbf6108074d36",
+"retrieved_at": "2026-06-08T00:00:00Z",
+"contribution": 0.4546235040498148
+}
+],
+"llm_explanation": "On a party-line bill the model expects this member to vote yea (95% yea), driven by their party-alignment record across prior roll calls.",
+"counterfactual": "Removing 'party_alignment' would drop the yea probability from 95% to 65% -- it is the strongest driver of this prediction."
+},
+{
+"canonical_person_id": "bioguide:B001315",
+"canonical_bill_id": "us_congress:118:party-line-demo",
+"model_name": "per_member_signal_model",
+"known_at": "2026-06-09",
+"probability_yea": 0.9420902214348217,
+"uncertainty": {
+"confidence_level": 0.9,
+"interval_lower": 0.928001789706799,
+"interval_upper": 0.9492444162507471,
+"conformal_label_set": [
+"yea"
+]
+},
+"evidence_anchors": [
+{
+"label": "us_house_clerk:sr-i7tcujlsmfe6zm4u",
+"source_url": "https://clerk.house.gov/evs/2023/roll021.xml",
+"content_sha256": "279e374a220735201ac148623bf6b2a2a5f598d0d9843e1866ebbf6108074d36",
+"retrieved_at": "2026-06-08T00:00:00Z",
+"contribution": 0.44924441625074707
+}
+],
+"llm_explanation": "On a party-line bill the model expects this member to vote yea (94% yea), driven by their party-alignment record across prior roll calls.",
+"counterfactual": "Removing 'party_alignment' would drop the yea probability from 94% to 53% -- it is the strongest driver of this prediction."
+},
+{
+"canonical_person_id": "bioguide:B001316",
+"canonical_bill_id": "us_congress:118:party-line-demo",
+"model_name": "per_member_signal_model",
+"known_at": "2026-06-09",
+"probability_yea": 0.6437922021657467,
+"uncertainty": {
+"confidence_level": 0.9,
+"interval_lower": 0.5160041950277766,
+"interval_upper": 0.8065448140479411,
+"conformal_label_set": [
+"nay",
+"yea"
+]
+},
+"evidence_anchors": [
+{
+"label": "us_house_clerk:sr-ql5jquvjbqgzvfxo",
+"source_url": "https://clerk.house.gov/evs/2023/roll021.xml",
+"content_sha256": "279e374a220735201ac148623bf6b2a2a5f598d0d9843e1866ebbf6108074d36",
+"retrieved_at": "2026-06-08T00:00:00Z",
+"contribution": 0.016004195027776613
+}
+],
+"llm_explanation": "On a party-line bill the model expects this member to vote yea (64% yea), driven by their party-alignment record across prior roll calls.",
+"counterfactual": "Removing 'party_alignment' would drop the yea probability from 64% to 39% -- it is the strongest driver of this prediction."
+},
+{
+"canonical_person_id": "bioguide:B001317",
+"canonical_bill_id": "us_congress:118:party-line-demo",
+"model_name": "per_member_signal_model",
+"known_at": "2026-06-09",
+"probability_yea": 0.7507560586536508,
+"uncertainty": {
+"confidence_level": 0.9,
+"interval_lower": 0.6252921758577927,
+"interval_upper": 0.9233242421769323,
+"conformal_label_set": [
+"nay",
+"yea"
+]
+},
+"evidence_anchors": [
+{
+"label": "us_house_clerk:sr-p74fxfnrup46vy4l",
+"source_url": "https://clerk.house.gov/evs/2023/roll021.xml",
+"content_sha256": "279e374a220735201ac148623bf6b2a2a5f598d0d9843e1866ebbf6108074d36",
+"retrieved_at": "2026-06-08T00:00:00Z",
+"contribution": 0.28255636906197534
+}
+],
+"llm_explanation": "On a party-line bill the model expects this member to vote yea (75% yea), driven by their party-alignment record across prior roll calls.",
+"counterfactual": "Removing 'party_alignment' would drop the yea probability from 75% to 31% -- it is the strongest driver of this prediction."
+},
+{
+"canonical_person_id": "bioguide:B001318",
+"canonical_bill_id": "us_congress:118:party-line-demo",
+"model_name": "per_member_signal_model",
+"known_at": "2026-06-09",
+"probability_yea": 0.9441489389617524,
+"uncertainty": {
+"confidence_level": 0.9,
+"interval_lower": 0.9280053277964607,
+"interval_upper": 0.9534383326347423,
+"conformal_label_set": [
+"yea"
+]
+},
+"evidence_anchors": [
+{
+"label": "us_house_clerk:sr-jh3vdkalkdaadw4w",
+"source_url": "https://clerk.house.gov/evs/2023/roll021.xml",
+"content_sha256": "279e374a220735201ac148623bf6b2a2a5f598d0d9843e1866ebbf6108074d36",
+"retrieved_at": "2026-06-08T00:00:00Z",
+"contribution": 0.4418480088603526
+}
+],
+"llm_explanation": "On a party-line bill the model expects this member to vote yea (94% yea), driven by their party-alignment record across prior roll calls.",
+"counterfactual": "Removing 'party_alignment' would drop the yea probability from 94% to 50% -- it is the strongest driver of this prediction."
+},
+{
+"canonical_person_id": "bioguide:C000059",
+"canonical_bill_id": "us_congress:118:party-line-demo",
+"model_name": "per_member_signal_model",
+"known_at": "2026-06-09",
+"probability_yea": 0.736663695187706,
+"uncertainty": {
+"confidence_level": 0.9,
+"interval_lower": 0.6542838407608955,
+"interval_upper": 0.8542575321113519,
+"conformal_label_set": [
+"nay",
+"yea"
+]
+},
+"evidence_anchors": [
+{
+"label": "us_house_clerk:sr-bpznacsypiieultd",
+"source_url": "https://clerk.house.gov/evs/2023/roll021.xml",
+"content_sha256": "279e374a220735201ac148623bf6b2a2a5f598d0d9843e1866ebbf6108074d36",
+"retrieved_at": "2026-06-08T00:00:00Z",
+"contribution": 0.17866325063835786
+}
+],
+"llm_explanation": "On a party-line bill the model expects this member to vote yea (74% yea), driven by their party-alignment record across prior roll calls.",
+"counterfactual": "Removing 'party_alignment' would drop the yea probability from 74% to 51% -- it is the strongest driver of this prediction."
+},
+{
+"canonical_person_id": "bioguide:C000537",
+"canonical_bill_id": "us_congress:118:party-line-demo",
+"model_name": "per_member_signal_model",
+"known_at": "2026-06-09",
+"probability_yea": 0.9515437389505529,
+"uncertainty": {
+"confidence_level": 0.9,
+"interval_lower": 0.9465101010590715,
+"interval_upper": 0.9577198099025941,
+"conformal_label_set": [
+"yea"
+]
+},
+"evidence_anchors": [
+{
+"label": "us_house_clerk:sr-krdp3fyknixnxtqn",
+"source_url": "https://clerk.house.gov/evs/2023/roll021.xml",
+"content_sha256": "279e374a220735201ac148623bf6b2a2a5f598d0d9843e1866ebbf6108074d36",
+"retrieved_at": "2026-06-08T00:00:00Z",
+"contribution": 0.45213113128134985
+}
+],
+"llm_explanation": "On a party-line bill the model expects this member to vote yea (95% yea), driven by their party-alignment record across prior roll calls.",
+"counterfactual": "Removing 'party_alignment' would drop the yea probability from 95% to 53% -- it is the strongest driver of this prediction."
+},
+{
+"canonical_person_id": "bioguide:C001039",
+"canonical_bill_id": "us_congress:118:party-line-demo",
+"model_name": "per_member_signal_model",
+"known_at": "2026-06-09",
+"probability_yea": 0.8679307639219613,
+"uncertainty": {
+"confidence_level": 0.9,
+"interval_lower": 0.7626910356199084,
+"interval_upper": 0.9550818117322115,
+"conformal_label_set": [
+"yea"
+]
+},
+"evidence_anchors": [
+{
+"label": "us_house_clerk:sr-bwpu7f4wggr67awd",
+"source_url": "https://clerk.house.gov/evs/2023/roll021.xml",
+"content_sha256": "279e374a220735201ac148623bf6b2a2a5f598d0d9843e1866ebbf6108074d36",
+"retrieved_at": "2026-06-08T00:00:00Z",
+"contribution": 0.26269103561990836
+}
+],
+"llm_explanation": "On a party-line bill the model expects this member to vote yea (87% yea), driven by their party-alignment record across prior roll calls.",
+"counterfactual": "Removing 'party_alignment' would drop the yea probability from 87% to 46% -- it is the strongest driver of this prediction."
+},
+{
+"canonical_person_id": "bioguide:C001051",
+"canonical_bill_id": "us_congress:118:party-line-demo",
+"model_name": "per_member_signal_model",
+"known_at": "2026-06-09",
+"probability_yea": 0.962350450594041,
+"uncertainty": {
+"confidence_level": 0.9,
+"interval_lower": 0.9577056353139342,
+"interval_upper": 0.9700794306618913,
+"conformal_label_set": [
+"yea"
+]
+},
+"evidence_anchors": [
+{
+"label": "us_house_clerk:sr-uxaqk62tdiedg5m6",
+"source_url": "https://clerk.house.gov/evs/2023/roll021.xml",
+"content_sha256": "279e374a220735201ac148623bf6b2a2a5f598d0d9843e1866ebbf6108074d36",
+"retrieved_at": "2026-06-08T00:00:00Z",
+"contribution": 0.46046809317554294
+}
+],
+"llm_explanation": "On a party-line bill the model expects this member to vote yea (96% yea), driven by their party-alignment record across prior roll calls.",
+"counterfactual": "Removing 'party_alignment' would drop the yea probability from 96% to 58% -- it is the strongest driver of this prediction."
+},
+{
+"canonical_person_id": "bioguide:C001053",
+"canonical_bill_id": "us_congress:118:party-line-demo",
+"model_name": "per_member_signal_model",
+"known_at": "2026-06-09",
+"probability_yea": 0.9548633151635991,
+"uncertainty": {
+"confidence_level": 0.9,
+"interval_lower": 0.9492485282752661,
+"interval_upper": 0.9593802001547306,
+"conformal_label_set": [
+"yea"
+]
+},
+"evidence_anchors": [
+{
+"label": "us_house_clerk:sr-xpj64lp5bo7mlb3l",
+"source_url": "https://clerk.house.gov/evs/2023/roll021.xml",
+"content_sha256": "279e374a220735201ac148623bf6b2a2a5f598d0d9843e1866ebbf6108074d36",
+"retrieved_at": "2026-06-08T00:00:00Z",
+"contribution": 0.44924852827526607
+}
+],
+"llm_explanation": "On a party-line bill the model expects this member to vote yea (95% yea), driven by their party-alignment record across prior roll calls.",
+"counterfactual": "Removing 'party_alignment' would drop the yea probability from 95% to 54% -- it is the strongest driver of this prediction."
+},
+{
+"canonical_person_id": "bioguide:C001054",
+"canonical_bill_id": "us_congress:118:party-line-demo",
+"model_name": "per_member_signal_model",
+"known_at": "2026-06-09",
+"probability_yea": 0.9560197046765968,
+"uncertainty": {
+"confidence_level": 0.9,
+"interval_lower": 0.9534188317356955,
+"interval_upper": 0.9594083278668863,
+"conformal_label_set": [
+"yea"
+]
+},
+"evidence_anchors": [
+{
+"label": "us_house_clerk:sr-h3ecjgjtcixhcyfy",
+"source_url": "https://clerk.house.gov/evs/2023/roll021.xml",
+"content_sha256": "279e374a220735201ac148623bf6b2a2a5f598d0d9843e1866ebbf6108074d36",
+"retrieved_at": "2026-06-08T00:00:00Z",
+"contribution": 0.4546109252121955
+}
+],
+"llm_explanation": "On a party-line bill the model expects this member to vote yea (96% yea), driven by their party-alignment record across prior roll calls.",
+"counterfactual": "Removing 'party_alignment' would drop the yea probability from 96% to 57% -- it is the strongest driver of this prediction."
+},
+{
+"canonical_person_id": "bioguide:C001055",
+"canonical_bill_id": "us_congress:118:party-line-demo",
+"model_name": "per_member_signal_model",
+"known_at": "2026-06-09",
+"probability_yea": 0.9371243736202196,
+"uncertainty": {
+"confidence_level": 0.9,
+"interval_lower": 0.9315774499762739,
+"interval_upper": 0.9476483101121571,
+"conformal_label_set": [
+"yea"
+]
+},
+"evidence_anchors": [
+{
+"label": "us_house_clerk:sr-pow6sor3jpzq3gb3",
+"source_url": "https://clerk.house.gov/evs/2023/roll021.xml",
+"content_sha256": "279e374a220735201ac148623bf6b2a2a5f598d0d9843e1866ebbf6108074d36",
+"retrieved_at": "2026-06-08T00:00:00Z",
+"contribution": 0.4368921741877332
+}
+],
+"llm_explanation": "On a party-line bill the model expects this member to vote yea (94% yea), driven by their party-alignment record across prior roll calls.",
+"counterfactual": "Removing 'party_alignment' would drop the yea probability from 94% to 51% -- it is the strongest driver of this prediction."
+},
+{
+"canonical_person_id": "bioguide:C001059",
+"canonical_bill_id": "us_congress:118:party-line-demo",
+"model_name": "per_member_signal_model",
+"known_at": "2026-06-09",
+"probability_yea": 0.8739735895027838,
+"uncertainty": {
+"confidence_level": 0.9,
+"interval_lower": 0.8349968492261565,
+"interval_upper": 0.9526624596527398,
+"conformal_label_set": [
+"yea"
+]
+},
+"evidence_anchors": [
+{
+"label": "us_house_clerk:sr-4as3augmjhryf4x2",
+"source_url": "https://clerk.house.gov/evs/2023/roll021.xml",
+"content_sha256": "279e374a220735201ac148623bf6b2a2a5f598d0d9843e1866ebbf6108074d36",
+"retrieved_at": "2026-06-08T00:00:00Z",
+"contribution": 0.33499684922615647
+}
+],
+"llm_explanation": "On a party-line bill the model expects this member to vote yea (87% yea), driven by their party-alignment record across prior roll calls.",
+"counterfactual": "Removing 'party_alignment' would drop the yea probability from 87% to 40% -- it is the strongest driver of this prediction."
+},
+{
+"canonical_person_id": "bioguide:C001061",
+"canonical_bill_id": "us_congress:118:party-line-demo",
+"model_name": "per_member_signal_model",
+"known_at": "2026-06-09",
+"probability_yea": 0.9246319465825561,
+"uncertainty": {
+"confidence_level": 0.9,
+"interval_lower": 0.9061959664052948,
+"interval_upper": 0.934618522461197,
+"conformal_label_set": [
+"yea"
+]
+},
+"evidence_anchors": [
+{
+"label": "us_house_clerk:sr-jq5yuh7aelmd4azq",
+"source_url": "https://clerk.house.gov/evs/2023/roll021.xml",
+"content_sha256": "279e374a220735201ac148623bf6b2a2a5f598d0d9843e1866ebbf6108074d36",
+"retrieved_at": "2026-06-08T00:00:00Z",
+"contribution": 0.4306450116653554
+}
+],
+"llm_explanation": "On a party-line bill the model expects this member to vote yea (92% yea), driven by their party-alignment record across prior roll calls.",
+"counterfactual": "Removing 'party_alignment' would drop the yea probability from 92% to 46% -- it is the strongest driver of this prediction."
+},
+{
+"canonical_person_id": "bioguide:C001063",
+"canonical_bill_id": "us_congress:118:party-line-demo",
+"model_name": "per_member_signal_model",
+"known_at": "2026-06-09",
+"probability_yea": 0.9503963685401228,
+"uncertainty": {
+"confidence_level": 0.9,
+"interval_lower": 0.9441565225629026,
+"interval_upper": 0.9557073013048416,
+"conformal_label_set": [
+"yea"
+]
+},
+"evidence_anchors": [
+{
+"label": "us_house_clerk:sr-vra4rkaw22unchx5",
+"source_url": "https://clerk.house.gov/evs/2023/roll021.xml",
+"content_sha256": "279e374a220735201ac148623bf6b2a2a5f598d0d9843e1866ebbf6108074d36",
+"retrieved_at": "2026-06-08T00:00:00Z",
+"contribution": 0.454623504049815
+}
+],
+"llm_explanation": "On a party-line bill the model expects this member to vote yea (95% yea), driven by their party-alignment record across prior roll calls.",
+"counterfactual": "Removing 'party_alignment' would drop the yea probability from 95% to 53% -- it is the strongest driver of this prediction."
+},
+{
+"canonical_person_id": "bioguide:C001066",
+"canonical_bill_id": "us_congress:118:party-line-demo",
+"model_name": "per_member_signal_model",
+"known_at": "2026-06-09",
+"probability_yea": 0.9291670058383596,
+"uncertainty": {
+"confidence_level": 0.9,
+"interval_lower": 0.90604589254048,
+"interval_upper": 0.9458735157450764,
+"conformal_label_set": [
+"yea"
+]
+},
+"evidence_anchors": [
+{
+"label": "us_house_clerk:sr-gtkocbx7aq6sjr25",
+"source_url": "https://clerk.house.gov/evs/2023/roll021.xml",
+"content_sha256": "279e374a220735201ac148623bf6b2a2a5f598d0d9843e1866ebbf6108074d36",
+"retrieved_at": "2026-06-08T00:00:00Z",
+"contribution": 0.4458735157450764
+}
+],
+"llm_explanation": "On a party-line bill the model expects this member to vote yea (93% yea), driven by their party-alignment record across prior roll calls.",
+"counterfactual": "Removing 'party_alignment' would drop the yea probability from 93% to 51% -- it is the strongest driver of this prediction."
+},
+{
+"canonical_person_id": "bioguide:C001067",
+"canonical_bill_id": "us_congress:118:party-line-demo",
+"model_name": "per_member_signal_model",
+"known_at": "2026-06-09",
+"probability_yea": 0.9496150489750141,
+"uncertainty": {
+"confidence_level": 0.9,
+"interval_lower": 0.9400532600408948,
+"interval_upper": 0.9555945957877843,
+"conformal_label_set": [
+"yea"
+]
+},
+"evidence_anchors": [
+{
+"label": "us_house_clerk:sr-zsfyrfx6mzyiwmeq",
+"source_url": "https://clerk.house.gov/evs/2023/roll021.xml",
+"content_sha256": "279e374a220735201ac148623bf6b2a2a5f598d0d9843e1866ebbf6108074d36",
+"retrieved_at": "2026-06-08T00:00:00Z",
+"contribution": 0.45211864214279673
+}
+],
+"llm_explanation": "On a party-line bill the model expects this member to vote yea (95% yea), driven by their party-alignment record across prior roll calls.",
+"counterfactual": "Removing 'party_alignment' would drop the yea probability from 95% to 56% -- it is the strongest driver of this prediction."
+},
+{
+"canonical_person_id": "bioguide:C001068",
+"canonical_bill_id": "us_congress:118:party-line-demo",
+"model_name": "per_member_signal_model",
+"known_at": "2026-06-09",
+"probability_yea": 0.9381024568915637,
+"uncertainty": {
+"confidence_level": 0.9,
+"interval_lower": 0.93063690228869,
+"interval_upper": 0.9443023440197744,
+"conformal_label_set": [
+"yea"
+]
+},
+"evidence_anchors": [
+{
+"label": "us_house_clerk:sr-bin6cvz4dw64kftv",
+"source_url": "https://clerk.house.gov/evs/2023/roll021.xml",
+"content_sha256": "279e374a220735201ac148623bf6b2a2a5f598d0d9843e1866ebbf6108074d36",
+"retrieved_at": "2026-06-08T00:00:00Z",
+"contribution": 0.43063690228869
+}
+],
+"llm_explanation": "On a party-line bill the model expects this member to vote yea (94% yea), driven by their party-alignment record across prior roll calls.",
+"counterfactual": "Removing 'party_alignment' would drop the yea probability from 94% to 49% -- it is the strongest driver of this prediction."
+},
+{
+"canonical_person_id": "bioguide:C001069",
+"canonical_bill_id": "us_congress:118:party-line-demo",
+"model_name": "per_member_signal_model",
+"known_at": "2026-06-09",
+"probability_yea": 0.9357428362640569,
+"uncertainty": {
+"confidence_level": 0.9,
+"interval_lower": 0.9345815206442316,
+"interval_upper": 0.9377277169986132,
+"conformal_label_set": [
+"yea"
+]
+},
+"evidence_anchors": [
+{
+"label": "us_house_clerk:sr-mapm4h553wihmri5",
+"source_url": "https://clerk.house.gov/evs/2023/roll021.xml",
+"content_sha256": "279e374a220735201ac148623bf6b2a2a5f598d0d9843e1866ebbf6108074d36",
+"retrieved_at": "2026-06-08T00:00:00Z",
+"contribution": 0.43688873458553856
+}
+],
+"llm_explanation": "On a party-line bill the model expects this member to vote yea (94% yea), driven by their party-alignment record across prior roll calls.",
+"counterfactual": "Removing 'party_alignment' would drop the yea probability from 94% to 53% -- it is the strongest driver of this prediction."
+},
+{
+"canonical_person_id": "bioguide:C001072",
+"canonical_bill_id": "us_congress:118:party-line-demo",
+"model_name": "per_member_signal_model",
+"known_at": "2026-06-09",
+"probability_yea": 0.9439802559203754,
+"uncertainty": {
+"confidence_level": 0.9,
+"interval_lower": 0.934618522461197,
+"interval_upper": 0.9526624596527398,
+"conformal_label_set": [
+"yea"
+]
+},
+"evidence_anchors": [
+{
+"label": "us_house_clerk:sr-fqifdnd4c5e7t2l2",
+"source_url": "https://clerk.house.gov/evs/2023/roll021.xml",
+"content_sha256": "279e374a220735201ac148623bf6b2a2a5f598d0d9843e1866ebbf6108074d36",
+"retrieved_at": "2026-06-08T00:00:00Z",
+"contribution": 0.44183921670088355
+}
+],
+"llm_explanation": "On a party-line bill the model expects this member to vote yea (94% yea), driven by their party-alignment record across prior roll calls.",
+"counterfactual": "Removing 'party_alignment' would drop the yea probability from 94% to 51% -- it is the strongest driver of this prediction."
+},
+{
+"canonical_person_id": "bioguide:C001078",
+"canonical_bill_id": "us_congress:118:party-line-demo",
+"model_name": "per_member_signal_model",
+"known_at": "2026-06-09",
+"probability_yea": 0.9517979144239457,
+"uncertainty": {
+"confidence_level": 0.9,
+"interval_lower": 0.9418641154648407,
+"interval_upper": 0.9593999778115793,
+"conformal_label_set": [
+"yea"
+]
+},
+"evidence_anchors": [
+{
+"label": "us_house_clerk:sr-qzwfbe6qqhi6oobu",
+"source_url": "https://clerk.house.gov/evs/2023/roll021.xml",
+"content_sha256": "279e374a220735201ac148623bf6b2a2a5f598d0d9843e1866ebbf6108074d36",
+"retrieved_at": "2026-06-08T00:00:00Z",
+"contribution": 0.4418641154648407
+}
+],
+"llm_explanation": "On a party-line bill the model expects this member to vote yea (95% yea), driven by their party-alignment record across prior roll calls.",
+"counterfactual": "Removing 'party_alignment' would drop the yea probability from 95% to 48% -- it is the strongest driver of this prediction."
+},
+{
+"canonical_person_id": "bioguide:C001080",
+"canonical_bill_id": "us_congress:118:party-line-demo",
+"model_name": "per_member_signal_model",
+"known_at": "2026-06-09",
+"probability_yea": 0.918916940832967,
+"uncertainty": {
+"confidence_level": 0.9,
+"interval_lower": 0.90604589254048,
+"interval_upper": 0.93063690228869,
+"conformal_label_set": [
+"yea"
+]
+},
+"evidence_anchors": [
+{
+"label": "us_house_clerk:sr-sdaycfxvrej3hkjm",
+"source_url": "https://clerk.house.gov/evs/2023/roll021.xml",
+"content_sha256": "279e374a220735201ac148623bf6b2a2a5f598d0d9843e1866ebbf6108074d36",
+"retrieved_at": "2026-06-08T00:00:00Z",
+"contribution": 0.43063690228869
+}
+],
+"llm_explanation": "On a party-line bill the model expects this member to vote yea (92% yea), driven by their party-alignment record across prior roll calls.",
+"counterfactual": "Removing 'party_alignment' would drop the yea probability from 92% to 47% -- it is the strongest driver of this prediction."
+},
+{
+"canonical_person_id": "bioguide:C001084",
+"canonical_bill_id": "us_congress:118:party-line-demo",
+"model_name": "per_member_signal_model",
+"known_at": "2026-06-09",
+"probability_yea": 0.9154737099767457,
+"uncertainty": {
+"confidence_level": 0.9,
+"interval_lower": 0.90604589254048,
+"interval_upper": 0.9234695128198246,
+"conformal_label_set": [
+"yea"
+]
+},
+"evidence_anchors": [
+{
+"label": "us_house_clerk:sr-3vsveykaxrgh523l",
+"source_url": "https://clerk.house.gov/evs/2023/roll021.xml",
+"content_sha256": "279e374a220735201ac148623bf6b2a2a5f598d0d9843e1866ebbf6108074d36",
+"retrieved_at": "2026-06-08T00:00:00Z",
+"contribution": 0.4223068025874075
+}
+],
+"llm_explanation": "On a party-line bill the model expects this member to vote yea (92% yea), driven by their party-alignment record across prior roll calls.",
+"counterfactual": "Removing 'party_alignment' would drop the yea probability from 92% to 51% -- it is the strongest driver of this prediction."
+},
+{
+"canonical_person_id": "bioguide:C001087",
+"canonical_bill_id": "us_congress:118:party-line-demo",
+"model_name": "per_member_signal_model",
+"known_at": "2026-06-09",
+"probability_yea": 0.9519955682073226,
+"uncertainty": {
+"confidence_level": 0.9,
+"interval_lower": 0.9398837236926019,
+"interval_upper": 0.9624758475560486,
+"conformal_label_set": [
+"yea"
+]
+},
+"evidence_anchors": [
+{
+"label": "us_house_clerk:sr-z7bfmhasvkmoyise",
+"source_url": "https://clerk.house.gov/evs/2023/roll021.xml",
+"content_sha256": "279e374a220735201ac148623bf6b2a2a5f598d0d9843e1866ebbf6108074d36",
+"retrieved_at": "2026-06-08T00:00:00Z",
+"contribution": 0.45212668468158135
+}
+],
+"llm_explanation": "On a party-line bill the model expects this member to vote yea (95% yea), driven by their party-alignment record across prior roll calls.",
+"counterfactual": "Removing 'party_alignment' would drop the yea probability from 95% to 54% -- it is the strongest driver of this prediction."
+},
+{
+"canonical_person_id": "bioguide:C001090",
+"canonical_bill_id": "us_congress:118:party-line-demo",
+"model_name": "per_member_signal_model",
+"known_at": "2026-06-09",
+"probability_yea": 0.9277513943351486,
+"uncertainty": {
+"confidence_level": 0.9,
+"interval_lower": 0.9104106119445353,
+"interval_upper": 0.9464970813336272,
+"conformal_label_set": [
+"yea"
+]
+},
+"evidence_anchors": [
+{
+"label": "us_house_clerk:sr-j3nukynn4hbnkbve",
+"source_url": "https://clerk.house.gov/evs/2023/roll021.xml",
+"content_sha256": "279e374a220735201ac148623bf6b2a2a5f598d0d9843e1866ebbf6108074d36",
+"retrieved_at": "2026-06-08T00:00:00Z",
+"contribution": 0.4104106119445353
+}
+],
+"llm_explanation": "On a party-line bill the model expects this member to vote yea (93% yea), driven by their party-alignment record across prior roll calls.",
+"counterfactual": "Removing 'party_alignment' would drop the yea probability from 93% to 47% -- it is the strongest driver of this prediction."
+},
+{
+"canonical_person_id": "bioguide:C001091",
+"canonical_bill_id": "us_congress:118:party-line-demo",
+"model_name": "per_member_signal_model",
+"known_at": "2026-06-09",
+"probability_yea": 0.805179836304203,
+"uncertainty": {
+"confidence_level": 0.9,
+"interval_lower": 0.5212261087343276,
+"interval_upper": 0.9458778597996192,
+"conformal_label_set": [
+"nay",
+"yea"
+]
+},
+"evidence_anchors": [
+{
+"label": "us_house_clerk:sr-p32xheolitge4yh6",
+"source_url": "https://clerk.house.gov/evs/2023/roll021.xml",
+"content_sha256": "279e374a220735201ac148623bf6b2a2a5f598d0d9843e1866ebbf6108074d36",
+"retrieved_at": "2026-06-08T00:00:00Z",
+"contribution": 0.44587785979961925
+}
+],
+"llm_explanation": "On a party-line bill the model expects this member to vote yea (81% yea), driven by their party-alignment record across prior roll calls.",
+"counterfactual": "Removing 'party_alignment' would drop the yea probability from 81% to 37% -- it is the strongest driver of this prediction."
+},
+{
+"canonical_person_id": "bioguide:C001097",
+"canonical_bill_id": "us_congress:118:party-line-demo",
+"model_name": "per_member_signal_model",
+"known_at": "2026-06-09",
+"probability_yea": 0.9459892971954037,
+"uncertainty": {
+"confidence_level": 0.9,
+"interval_lower": 0.939830692054162,
+"interval_upper": 0.9533439728724867,
+"conformal_label_set": [
+"yea"
+]
+},
+"evidence_anchors": [
+{
+"label": "us_house_clerk:sr-iognocka5l5wwwbh",
+"source_url": "https://clerk.house.gov/evs/2023/roll021.xml",
+"content_sha256": "279e374a220735201ac148623bf6b2a2a5f598d0d9843e1866ebbf6108074d36",
+"retrieved_at": "2026-06-08T00:00:00Z",
+"contribution": 0.4459370742986818
+}
+],
+"llm_explanation": "On a party-line bill the model expects this member to vote yea (95% yea), driven by their party-alignment record across prior roll calls.",
+"counterfactual": "Removing 'party_alignment' would drop the yea probability from 95% to 45% -- it is the strongest driver of this prediction."
+},
+{
+"canonical_person_id": "bioguide:C001101",
+"canonical_bill_id": "us_congress:118:party-line-demo",
+"model_name": "per_member_signal_model",
+"known_at": "2026-06-09",
+"probability_yea": 0.8435656430452226,
+"uncertainty": {
+"confidence_level": 0.9,
+"interval_lower": 0.6863594525092227,
+"interval_upper": 0.9551135358937988,
+"conformal_label_set": [
+"nay",
+"yea"
+]
+},
+"evidence_anchors": [
+{
+"label": "us_house_clerk:sr-qb2upqzxz6ayw26i",
+"source_url": "https://clerk.house.gov/evs/2023/roll021.xml",
+"content_sha256": "279e374a220735201ac148623bf6b2a2a5f598d0d9843e1866ebbf6108074d36",
+"retrieved_at": "2026-06-08T00:00:00Z",
+"contribution": 0.3350130904829789
+}
+],
+"llm_explanation": "On a party-line bill the model expects this member to vote yea (84% yea), driven by their party-alignment record across prior roll calls.",
+"counterfactual": "Removing 'party_alignment' would drop the yea probability from 84% to 35% -- it is the strongest driver of this prediction."
+},
+{
+"canonical_person_id": "bioguide:C001103",
+"canonical_bill_id": "us_congress:118:party-line-demo",
+"model_name": "per_member_signal_model",
+"known_at": "2026-06-09",
+"probability_yea": 0.9488264560024267,
+"uncertainty": {
+"confidence_level": 0.9,
+"interval_lower": 0.9398261011231631,
+"interval_upper": 0.9608522275422998,
+"conformal_label_set": [
+"yea"
+]
+},
+"evidence_anchors": [
+{
+"label": "us_house_clerk:sr-wdfqbfjjg5f2jzuu",
+"source_url": "https://clerk.house.gov/evs/2023/roll021.xml",
+"content_sha256": "279e374a220735201ac148623bf6b2a2a5f598d0d9843e1866ebbf6108074d36",
+"retrieved_at": "2026-06-08T00:00:00Z",
+"contribution": 0.4458694714311001
+}
+],
+"llm_explanation": "On a party-line bill the model expects this member to vote yea (95% yea), driven by their party-alignment record across prior roll calls.",
+"counterfactual": "Removing 'party_alignment' would drop the yea probability from 95% to 54% -- it is the strongest driver of this prediction."
+},
+{
+"canonical_person_id": "bioguide:C001108",
+"canonical_bill_id": "us_congress:118:party-line-demo",
+"model_name": "per_member_signal_model",
+"known_at": "2026-06-09",
+"probability_yea": 0.9515276359026382,
+"uncertainty": {
+"confidence_level": 0.9,
+"interval_lower": 0.9425449894533823,
+"interval_upper": 0.9620276547137113,
+"conformal_label_set": [
+"yea"
+]
+},
+"evidence_anchors": [
+{
+"label": "us_house_clerk:sr-yq5b7346cc2kxj7x",
+"source_url": "https://clerk.house.gov/evs/2023/roll021.xml",
+"content_sha256": "279e374a220735201ac148623bf6b2a2a5f598d0d9843e1866ebbf6108074d36",
+"retrieved_at": "2026-06-08T00:00:00Z",
+"contribution": 0.4620276547137113
+}
+],
+"llm_explanation": "On a party-line bill the model expects this member to vote yea (95% yea), driven by their party-alignment record across prior roll calls.",
+"counterfactual": "Removing 'party_alignment' would drop the yea probability from 95% to 57% -- it is the strongest driver of this prediction."
+},
+{
+"canonical_person_id": "bioguide:C001110",
+"canonical_bill_id": "us_congress:118:party-line-demo",
+"model_name": "per_member_signal_model",
+"known_at": "2026-06-09",
+"probability_yea": 0.9478803777106044,
+"uncertainty": {
+"confidence_level": 0.9,
+"interval_lower": 0.9280181848241092,
+"interval_upper": 0.9551257110721914,
+"conformal_label_set": [
+"yea"
+]
+},
+"evidence_anchors": [
+{
+"label": "us_house_clerk:sr-bxvq6ejoeyxnwvak",
+"source_url": "https://clerk.house.gov/evs/2023/roll021.xml",
+"content_sha256": "279e374a220735201ac148623bf6b2a2a5f598d0d9843e1866ebbf6108074d36",
+"retrieved_at": "2026-06-08T00:00:00Z",
+"contribution": 0.45467362048580706
+}
+],
+"llm_explanation": "On a party-line bill the model expects this member to vote yea (95% yea), driven by their party-alignment record across prior roll calls.",
+"counterfactual": "Removing 'party_alignment' would drop the yea probability from 95% to 47% -- it is the strongest driver of this prediction."
+},
+{
+"canonical_person_id": "bioguide:C001112",
+"canonical_bill_id": "us_congress:118:party-line-demo",
+"model_name": "per_member_signal_model",
+"known_at": "2026-06-09",
+"probability_yea": 0.9200181675814415,
+"uncertainty": {
+"confidence_level": 0.9,
+"interval_lower": 0.9119208320076225,
+"interval_upper": 0.9306665802697011,
+"conformal_label_set": [
+"yea"
+]
+},
+"evidence_anchors": [
+{
+"label": "us_house_clerk:sr-3okgl2gpu4cxqlvs",
+"source_url": "https://clerk.house.gov/evs/2023/roll021.xml",
+"content_sha256": "279e374a220735201ac148623bf6b2a2a5f598d0d9843e1866ebbf6108074d36",
+"retrieved_at": "2026-06-08T00:00:00Z",
+"contribution": 0.43066658026970106
+}
+],
+"llm_explanation": "On a party-line bill the model expects this member to vote yea (92% yea), driven by their party-alignment record across prior roll calls.",
+"counterfactual": "Removing 'party_alignment' would drop the yea probability from 92% to 43% -- it is the strongest driver of this prediction."
+},
+{
+"canonical_person_id": "bioguide:C001114",
+"canonical_bill_id": "us_congress:118:party-line-demo",
+"model_name": "per_member_signal_model",
+"known_at": "2026-06-09",
+"probability_yea": 0.9567027415729037,
+"uncertainty": {
+"confidence_level": 0.9,
+"interval_lower": 0.9478154591763792,
+"interval_upper": 0.9638462450204448,
+"conformal_label_set": [
+"yea"
+]
+},
+"evidence_anchors": [
+{
+"label": "us_house_clerk:sr-qqnmh3vegebgcces",
+"source_url": "https://clerk.house.gov/evs/2023/roll021.xml",
+"content_sha256": "279e374a220735201ac148623bf6b2a2a5f598d0d9843e1866ebbf6108074d36",
+"retrieved_at": "2026-06-08T00:00:00Z",
+"contribution": 0.45212253023117277
+}
+],
+"llm_explanation": "On a party-line bill the model expects this member to vote yea (96% yea), driven by their party-alignment record across prior roll calls.",
+"counterfactual": "Removing 'party_alignment' would drop the yea probability from 96% to 70% -- it is the strongest driver of this prediction."
+},
+{
+"canonical_person_id": "bioguide:C001115",
+"canonical_bill_id": "us_congress:118:party-line-demo",
+"model_name": "per_member_signal_model",
+"known_at": "2026-06-09",
+"probability_yea": 0.733039046787338,
+"uncertainty": {
+"confidence_level": 0.9,
+"interval_lower": 0.5086238028970012,
+"interval_upper": 0.9023321429736163,
+"conformal_label_set": [
+"nay",
+"yea"
+]
+},
+"evidence_anchors": [
+{
+"label": "us_house_clerk:sr-tzyfi2tgcc2rp5w6",
+"source_url": "https://clerk.house.gov/evs/2023/roll021.xml",
+"content_sha256": "279e374a220735201ac148623bf6b2a2a5f598d0d9843e1866ebbf6108074d36",
+"retrieved_at": "2026-06-08T00:00:00Z",
+"contribution": 0.23805379679901395
+}
+],
+"llm_explanation": "On a party-line bill the model expects this member to vote yea (73% yea), driven by their party-alignment record across prior roll calls.",
+"counterfactual": "Removing 'party_alignment' would drop the yea probability from 73% to 31% -- it is the strongest driver of this prediction."
+},
+{
+"canonical_person_id": "bioguide:C001116",
+"canonical_bill_id": "us_congress:118:party-line-demo",
+"model_name": "per_member_signal_model",
+"known_at": "2026-06-09",
+"probability_yea": 0.9469912007622193,
+"uncertainty": {
+"confidence_level": 0.9,
+"interval_lower": 0.9440737493293159,
+"interval_upper": 0.9506912792277656,
+"conformal_label_set": [
+"yea"
+]
+},
+"evidence_anchors": [
+{
+"label": "us_house_clerk:sr-vsl2z4qeoetz7u76",
+"source_url": "https://clerk.house.gov/evs/2023/roll021.xml",
+"content_sha256": "279e374a220735201ac148623bf6b2a2a5f598d0d9843e1866ebbf6108074d36",
+"retrieved_at": "2026-06-08T00:00:00Z",
+"contribution": 0.44588253512616716
+}
+],
+"llm_explanation": "On a party-line bill the model expects this member to vote yea (95% yea), driven by their party-alignment record across prior roll calls.",
+"counterfactual": "Removing 'party_alignment' would drop the yea probability from 95% to 50% -- it is the strongest driver of this prediction."
+},
+{
+"canonical_person_id": "bioguide:C001117",
+"canonical_bill_id": "us_congress:118:party-line-demo",
+"model_name": "per_member_signal_model",
+"known_at": "2026-06-09",
+"probability_yea": 0.9348595290144956,
+"uncertainty": {
+"confidence_level": 0.9,
+"interval_lower": 0.9234739239618815,
+"interval_upper": 0.9506479448663253,
+"conformal_label_set": [
+"yea"
+]
+},
+"evidence_anchors": [
+{
+"label": "us_house_clerk:sr-rhsufcl44un2iv5f",
+"source_url": "https://clerk.house.gov/evs/2023/roll021.xml",
+"content_sha256": "279e374a220735201ac148623bf6b2a2a5f598d0d9843e1866ebbf6108074d36",
+"retrieved_at": "2026-06-08T00:00:00Z",
+"contribution": 0.4306407786326506
+}
+],
+"llm_explanation": "On a party-line bill the model expects this member to vote yea (93% yea), driven by their party-alignment record across prior roll calls.",
+"counterfactual": "Removing 'party_alignment' would drop the yea probability from 93% to 47% -- it is the strongest driver of this prediction."
+},
+{
+"canonical_person_id": "bioguide:C001118",
+"canonical_bill_id": "us_congress:118:party-line-demo",
+"model_name": "per_member_signal_model",
+"known_at": "2026-06-09",
+"probability_yea": 0.9661211692502787,
+"uncertainty": {
+"confidence_level": 0.9,
+"interval_lower": 0.9625845826960556,
+"interval_upper": 0.9721712723891671,
+"conformal_label_set": [
+"yea"
+]
+},
+"evidence_anchors": [
+{
+"label": "us_house_clerk:sr-z5kmtd6fye5unskx",
+"source_url": "https://clerk.house.gov/evs/2023/roll021.xml",
+"content_sha256": "279e374a220735201ac148623bf6b2a2a5f598d0d9843e1866ebbf6108074d36",
+"retrieved_at": "2026-06-08T00:00:00Z",
+"contribution": 0.4647361594156232
+}
+],
+"llm_explanation": "On a party-line bill the model expects this member to vote yea (97% yea), driven by their party-alignment record across prior roll calls.",
+"counterfactual": "Removing 'party_alignment' would drop the yea probability from 97% to 88% -- it is the strongest driver of this prediction."
+},
+{
+"canonical_person_id": "bioguide:C001119",
+"canonical_bill_id": "us_congress:118:party-line-demo",
+"model_name": "per_member_signal_model",
+"known_at": "2026-06-09",
+"probability_yea": 0.926597625179691,
+"uncertainty": {
+"confidence_level": 0.9,
+"interval_lower": 0.90604589254048,
+"interval_upper": 0.9418480088603526,
+"conformal_label_set": [
+"yea"
+]
+},
+"evidence_anchors": [
+{
+"label": "us_house_clerk:sr-xqygf342ftfduj6f",
+"source_url": "https://clerk.house.gov/evs/2023/roll021.xml",
+"content_sha256": "279e374a220735201ac148623bf6b2a2a5f598d0d9843e1866ebbf6108074d36",
+"retrieved_at": "2026-06-08T00:00:00Z",
+"contribution": 0.4418480088603526
+}
+],
+"llm_explanation": "On a party-line bill the model expects this member to vote yea (93% yea), driven by their party-alignment record across prior roll calls.",
+"counterfactual": "Removing 'party_alignment' would drop the yea probability from 93% to 60% -- it is the strongest driver of this prediction."
+}
+]
+}
