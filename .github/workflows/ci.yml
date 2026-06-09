@@ -111,3 +111,13 @@ jobs:
             --from-synthetic 20260608 \
             --baseline benchmarks/prediction_baseline.json \
             --tolerance 0.01
+      - name: Real-data no-regression gate (committed House sample)
+        # Recomputes per-slice Brier/log-loss on a committed real House vote
+        # sample (clerk.house.gov roll-calls) and fails on any regression > 0.005
+        # vs the pinned real baseline. Re-pin with --update-baseline to accept.
+        run: |
+          python -m src.runtime.prediction_benchmark_gate \
+            --from-real-corpus benchmarks/real_house_sample.jsonl \
+            --window 118th-h2 \
+            --baseline benchmarks/prediction_real_baseline.json \
+            --tolerance 0.005

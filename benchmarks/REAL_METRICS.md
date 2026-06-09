@@ -31,5 +31,12 @@ report at `data/real/house_118_report.json`, baseline at `prediction_real_baseli
 4. Calibration improves from 118th-h1 to 118th-h2 (ECE 0.056 → 0.013) as the
    per-member history accumulates — real evidence of the partial-pooling payoff.
 
-The pinned baseline encodes these real numbers; the CI gate blocks Brier
-regression > 0.005 per slice without explicit re-pinning.
+## Artifacts
+- `house_118_full_report.json` — the full 508K-vote per-window per-slice report
+  (the headline numbers above).
+- `real_house_sample.jsonl` — a deterministic 1-in-100 real sample (5,084 votes,
+  449 members, 2023–2024) committed so CI can recompute without the 127MB corpus.
+- `prediction_real_baseline.json` — the gate baseline, pinned from the sample's
+  118th-h2 window. The `benchmark-gate` CI job recomputes the sample metrics and
+  **fails on any Brier/log-loss regression > 0.005** per slice; re-pin with
+  `--update-baseline` to accept a deliberate change.

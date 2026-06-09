@@ -1,0 +1,889 @@
+{
+  "windows": {
+    "118th-h1": {
+      "all": {
+        "slice_name": "all",
+        "brier_score": 0.0842423157479801,
+        "log_loss": 0.3203228777398141,
+        "accuracy": 0.9097952407304926,
+        "ece": 0.037559553357483635,
+        "sample_count": 1807
+      },
+      "party:R": {
+        "slice_name": "party:R",
+        "brier_score": 0.14387798609460145,
+        "log_loss": 0.5093485962277399,
+        "accuracy": 0.8417030567685589,
+        "ece": 0.10527909853749745,
+        "sample_count": 916
+      },
+      "state:NE": {
+        "slice_name": "state:NE",
+        "brier_score": 0.0026701124172690805,
+        "log_loss": 0.05283785747184255,
+        "accuracy": 1.0,
+        "ece": 0.05145423960664497,
+        "sample_count": 13
+      },
+      "state:TX": {
+        "slice_name": "state:TX",
+        "brier_score": 0.11680851539423352,
+        "log_loss": 0.42573694357472314,
+        "accuracy": 0.8742138364779874,
+        "ece": 0.08274683478385586,
+        "sample_count": 159
+      },
+      "state:CO": {
+        "slice_name": "state:CO",
+        "brier_score": 0.08945733589672811,
+        "log_loss": 0.33119962868689323,
+        "accuracy": 0.9024390243902439,
+        "ece": 0.04087551476244684,
+        "sample_count": 41
+      },
+      "state:PA": {
+        "slice_name": "state:PA",
+        "brier_score": 0.07073750581299583,
+        "log_loss": 0.2805176781722761,
+        "accuracy": 0.9272727272727272,
+        "ece": 0.0576714203435057,
+        "sample_count": 55
+      },
+      "party:D": {
+        "slice_name": "party:D",
+        "brier_score": 0.022933366210937268,
+        "log_loss": 0.12599340733022937,
+        "accuracy": 0.9797979797979798,
+        "ece": 0.04700033110974556,
+        "sample_count": 891
+      },
+      "state:CA": {
+        "slice_name": "state:CA",
+        "brier_score": 0.06023270944099341,
+        "log_loss": 0.24676340271251332,
+        "accuracy": 0.9371980676328503,
+        "ece": 0.05642681330533442,
+        "sample_count": 207
+      },
+      "state:FL": {
+        "slice_name": "state:FL",
+        "brier_score": 0.1050616789113354,
+        "log_loss": 0.3801771412314967,
+        "accuracy": 0.8833333333333333,
+        "ece": 0.06319723927529167,
+        "sample_count": 120
+      },
+      "state:WA": {
+        "slice_name": "state:WA",
+        "brier_score": 0.042343781566788245,
+        "log_loss": 0.1923329621903248,
+        "accuracy": 0.9583333333333334,
+        "ece": 0.07295370886422681,
+        "sample_count": 48
+      },
+      "state:MN": {
+        "slice_name": "state:MN",
+        "brier_score": 0.028851775801423837,
+        "log_loss": 0.14127940461251692,
+        "accuracy": 0.9714285714285714,
+        "ece": 0.026019083179774544,
+        "sample_count": 35
+      },
+      "state:GA": {
+        "slice_name": "state:GA",
+        "brier_score": 0.07910892471365481,
+        "log_loss": 0.30437818624283736,
+        "accuracy": 0.9152542372881356,
+        "ece": 0.051514293171603824,
+        "sample_count": 59
+      },
+      "state:LA": {
+        "slice_name": "state:LA",
+        "brier_score": 0.044450177368488414,
+        "log_loss": 0.19578447585080255,
+        "accuracy": 0.9565217391304348,
+        "ece": 0.0672931125230351,
+        "sample_count": 23
+      },
+      "state:WI": {
+        "slice_name": "state:WI",
+        "brier_score": 0.056692592347492715,
+        "log_loss": 0.2269683057676596,
+        "accuracy": 0.9393939393939394,
+        "ece": 0.005310438892506539,
+        "sample_count": 33
+      },
+      "state:KY": {
+        "slice_name": "state:KY",
+        "brier_score": 0.17342283986571236,
+        "log_loss": 0.5926664636682142,
+        "accuracy": 0.8064516129032258,
+        "ece": 0.1370185888344771,
+        "sample_count": 31
+      },
+      "state:IN": {
+        "slice_name": "state:IN",
+        "brier_score": 0.09462153349605777,
+        "log_loss": 0.35146580098505786,
+        "accuracy": 0.8974358974358975,
+        "ece": 0.050359006204404706,
+        "sample_count": 39
+      },
+      "state:AL": {
+        "slice_name": "state:AL",
+        "brier_score": 0.09133946790505476,
+        "log_loss": 0.33486072343595574,
+        "accuracy": 0.9,
+        "ece": 0.058911748542214745,
+        "sample_count": 40
+      },
+      "state:AZ": {
+        "slice_name": "state:AZ",
+        "brier_score": 0.15256864517507376,
+        "log_loss": 0.5263623139708375,
+        "accuracy": 0.8333333333333334,
+        "ece": 0.1301836687761314,
+        "sample_count": 42
+      },
+      "state:NV": {
+        "slice_name": "state:NV",
+        "brier_score": 0.002860222707511564,
+        "log_loss": 0.054632807697444885,
+        "accuracy": 1.0,
+        "ece": 0.05314855763983188,
+        "sample_count": 20
+      },
+      "state:MA": {
+        "slice_name": "state:MA",
+        "brier_score": 0.0558562240781098,
+        "log_loss": 0.24364612863046903,
+        "accuracy": 0.9473684210526315,
+        "ece": 0.097992500548179,
+        "sample_count": 38
+      },
+      "state:NJ": {
+        "slice_name": "state:NJ",
+        "brier_score": 0.09599412492744452,
+        "log_loss": 0.35483508970642924,
+        "accuracy": 0.896551724137931,
+        "ece": 0.059492430094480596,
+        "sample_count": 58
+      },
+      "state:MI": {
+        "slice_name": "state:MI",
+        "brier_score": 0.07650360557190071,
+        "log_loss": 0.3057321330796959,
+        "accuracy": 0.9215686274509803,
+        "ece": 0.09606450465332189,
+        "sample_count": 51
+      },
+      "state:IL": {
+        "slice_name": "state:IL",
+        "brier_score": 0.054905068256671886,
+        "log_loss": 0.22346997958024173,
+        "accuracy": 0.9420289855072463,
+        "ece": 0.025122105113171145,
+        "sample_count": 69
+      },
+      "state:SC": {
+        "slice_name": "state:SC",
+        "brier_score": 0.28925028195985725,
+        "log_loss": 0.9763674246638079,
+        "accuracy": 0.6785714285714286,
+        "ece": 0.2689768071940132,
+        "sample_count": 28
+      },
+      "state:ND": {
+        "slice_name": "state:ND",
+        "brier_score": 0.0026220755367407553,
+        "log_loss": 0.05081611942853634,
+        "accuracy": 1.0,
+        "ece": 0.049452716199864404,
+        "sample_count": 8
+      },
+      "state:NY": {
+        "slice_name": "state:NY",
+        "brier_score": 0.1309602709887017,
+        "log_loss": 0.4805516763184379,
+        "accuracy": 0.8585858585858586,
+        "ece": 0.09883607571340196,
+        "sample_count": 99
+      },
+      "state:IA": {
+        "slice_name": "state:IA",
+        "brier_score": 0.0027023190009520907,
+        "log_loss": 0.05292360064227147,
+        "accuracy": 1.0,
+        "ece": 0.051522187502891,
+        "sample_count": 9
+      },
+      "cross_pressured": {
+        "slice_name": "cross_pressured",
+        "brier_score": 0.8900030463316629,
+        "log_loss": 2.918486357655387,
+        "accuracy": 0.0,
+        "ece": 0.943076739705345,
+        "sample_count": 163
+      },
+      "state:OK": {
+        "slice_name": "state:OK",
+        "brier_score": 0.08006053263885685,
+        "log_loss": 0.28674738469386346,
+        "accuracy": 0.9090909090909091,
+        "ece": 0.07506775176322777,
+        "sample_count": 22
+      },
+      "state:XX": {
+        "slice_name": "state:XX",
+        "brier_score": 0.10905432159842221,
+        "log_loss": 0.4028707812961708,
+        "accuracy": 0.8823529411764706,
+        "ece": 0.1362937216409267,
+        "sample_count": 17
+      },
+      "state:MD": {
+        "slice_name": "state:MD",
+        "brier_score": 0.004293741694165514,
+        "log_loss": 0.06596432556396871,
+        "accuracy": 1.0,
+        "ece": 0.06370782704505962,
+        "sample_count": 39
+      },
+      "state:VA": {
+        "slice_name": "state:VA",
+        "brier_score": 0.06676271021971396,
+        "log_loss": 0.26171557864492856,
+        "accuracy": 0.9285714285714286,
+        "ece": 0.015079976224466118,
+        "sample_count": 42
+      },
+      "state:NC": {
+        "slice_name": "state:NC",
+        "brier_score": 0.08476261437057386,
+        "log_loss": 0.3212882307443316,
+        "accuracy": 0.9090909090909091,
+        "ece": 0.041439938451243635,
+        "sample_count": 44
+      },
+      "state:ID": {
+        "slice_name": "state:ID",
+        "brier_score": 0.31506852053416173,
+        "log_loss": 1.1172368694765775,
+        "accuracy": 0.6666666666666666,
+        "ece": 0.37905416994873814,
+        "sample_count": 6
+      },
+      "state:MO": {
+        "slice_name": "state:MO",
+        "brier_score": 0.0030052058131062234,
+        "log_loss": 0.05528690328268139,
+        "accuracy": 1.0,
+        "ece": 0.053723148370581814,
+        "sample_count": 25
+      },
+      "state:UT": {
+        "slice_name": "state:UT",
+        "brier_score": 0.24335463151672404,
+        "log_loss": 0.845827160064905,
+        "accuracy": 0.7333333333333333,
+        "ece": 0.21452635092749084,
+        "sample_count": 15
+      },
+      "state:KS": {
+        "slice_name": "state:KS",
+        "brier_score": 0.0035730098058188967,
+        "log_loss": 0.060353395019796176,
+        "accuracy": 1.0,
+        "ece": 0.05848730960995473,
+        "sample_count": 12
+      },
+      "state:HI": {
+        "slice_name": "state:HI",
+        "brier_score": 0.007196363550343169,
+        "log_loss": 0.08433911565981089,
+        "accuracy": 1.0,
+        "ece": 0.08048112891169376,
+        "sample_count": 9
+      },
+      "state:OH": {
+        "slice_name": "state:OH",
+        "brier_score": 0.09648939742839079,
+        "log_loss": 0.3645741701829983,
+        "accuracy": 0.8970588235294118,
+        "ece": 0.09408582690181123,
+        "sample_count": 68
+      },
+      "state:TN": {
+        "slice_name": "state:TN",
+        "brier_score": 0.18378236666913075,
+        "log_loss": 0.6290284894899814,
+        "accuracy": 0.7941176470588235,
+        "ece": 0.13478393004160316,
+        "sample_count": 34
+      },
+      "state:AR": {
+        "slice_name": "state:AR",
+        "brier_score": 0.10868657596805342,
+        "log_loss": 0.4003857851785448,
+        "accuracy": 0.8823529411764706,
+        "ece": 0.09118867101424485,
+        "sample_count": 17
+      },
+      "state:MS": {
+        "slice_name": "state:MS",
+        "brier_score": 0.06617666885343546,
+        "log_loss": 0.2551357338578986,
+        "accuracy": 0.9285714285714286,
+        "ece": 0.05274128219168872,
+        "sample_count": 14
+      },
+      "state:DE": {
+        "slice_name": "state:DE",
+        "brier_score": 0.0028724950792911514,
+        "log_loss": 0.05508538357023689,
+        "accuracy": 1.0,
+        "ece": 0.0535956628776168,
+        "sample_count": 5
+      },
+      "state:SD": {
+        "slice_name": "state:SD",
+        "brier_score": 0.013836020521773195,
+        "log_loss": 0.10033799230157665,
+        "accuracy": 1.0,
+        "ece": 0.09240038191099761,
+        "sample_count": 10
+      },
+      "state:CT": {
+        "slice_name": "state:CT",
+        "brier_score": 0.0035431635830430416,
+        "log_loss": 0.06103637589729035,
+        "accuracy": 1.0,
+        "ece": 0.05918990614789677,
+        "sample_count": 17
+      },
+      "state:NM": {
+        "slice_name": "state:NM",
+        "brier_score": 0.003673921311258583,
+        "log_loss": 0.06178892844576144,
+        "accuracy": 1.0,
+        "ece": 0.05987122109730371,
+        "sample_count": 17
+      },
+      "state:NH": {
+        "slice_name": "state:NH",
+        "brier_score": 0.016796959297649856,
+        "log_loss": 0.12737224710125106,
+        "accuracy": 1.0,
+        "ece": 0.11796189918691527,
+        "sample_count": 10
+      },
+      "state:OR": {
+        "slice_name": "state:OR",
+        "brier_score": 0.07879614393426455,
+        "log_loss": 0.27775580914266673,
+        "accuracy": 0.9,
+        "ece": 0.08367866410674805,
+        "sample_count": 20
+      },
+      "state:ME": {
+        "slice_name": "state:ME",
+        "brier_score": 0.004691570769969955,
+        "log_loss": 0.07083213751016515,
+        "accuracy": 1.0,
+        "ece": 0.06837275440179033,
+        "sample_count": 8
+      },
+      "state:WV": {
+        "slice_name": "state:WV",
+        "brier_score": 0.08514337369674747,
+        "log_loss": 0.32658578750817924,
+        "accuracy": 0.9090909090909091,
+        "ece": 0.07472962355882373,
+        "sample_count": 11
+      },
+      "state:VT": {
+        "slice_name": "state:VT",
+        "brier_score": 0.0037061105760308986,
+        "log_loss": 0.062308110986793785,
+        "accuracy": 1.0,
+        "ece": 0.060374444400548816,
+        "sample_count": 5
+      },
+      "state:MT": {
+        "slice_name": "state:MT",
+        "brier_score": 0.00243192608972124,
+        "log_loss": 0.049072006911348554,
+        "accuracy": 1.0,
+        "ece": 0.047809880956390625,
+        "sample_count": 8
+      },
+      "state:WY": {
+        "slice_name": "state:WY",
+        "brier_score": 0.0023423535982726304,
+        "log_loss": 0.04960825980740061,
+        "accuracy": 1.0,
+        "ece": 0.048397867703780406,
+        "sample_count": 2
+      },
+      "state:RI": {
+        "slice_name": "state:RI",
+        "brier_score": 0.004374700133158681,
+        "log_loss": 0.06708772707800376,
+        "accuracy": 1.0,
+        "ece": 0.06479348528951237,
+        "sample_count": 4
+      },
+      "state:AK": {
+        "slice_name": "state:AK",
+        "brier_score": 0.029634223819702155,
+        "log_loss": 0.18891839322759488,
+        "accuracy": 1.0,
+        "ece": 0.17214593756374896,
+        "sample_count": 1
+      }
+    },
+    "118th-h2": {
+      "all": {
+        "slice_name": "all",
+        "brier_score": 0.07122340745826432,
+        "log_loss": 0.2708747177506176,
+        "accuracy": 0.9241706161137441,
+        "ece": 0.01956257702709797,
+        "sample_count": 1688
+      },
+      "party:D": {
+        "slice_name": "party:D",
+        "brier_score": 0.05271869127482932,
+        "log_loss": 0.21712794155920773,
+        "accuracy": 0.9449101796407186,
+        "ece": 0.019217753607954267,
+        "sample_count": 835
+      },
+      "state:CA": {
+        "slice_name": "state:CA",
+        "brier_score": 0.04057639671408598,
+        "log_loss": 0.17942667323271538,
+        "accuracy": 0.9607843137254902,
+        "ece": 0.04166439388009958,
+        "sample_count": 204
+      },
+      "party:R": {
+        "slice_name": "party:R",
+        "brier_score": 0.0893376372509586,
+        "log_loss": 0.32348732984889106,
+        "accuracy": 0.9038686987104337,
+        "ece": 0.03659409487839472,
+        "sample_count": 853
+      },
+      "state:MS": {
+        "slice_name": "state:MS",
+        "brier_score": 0.021741926586533282,
+        "log_loss": 0.13665382122100483,
+        "accuracy": 1.0,
+        "ece": 0.12398024031341698,
+        "sample_count": 10
+      },
+      "state:MN": {
+        "slice_name": "state:MN",
+        "brier_score": 0.05491263926922535,
+        "log_loss": 0.22625910376286784,
+        "accuracy": 0.9428571428571428,
+        "ece": 0.02311028006175398,
+        "sample_count": 35
+      },
+      "state:TX": {
+        "slice_name": "state:TX",
+        "brier_score": 0.0811838387861057,
+        "log_loss": 0.29578933112572187,
+        "accuracy": 0.910828025477707,
+        "ece": 0.027983633189438722,
+        "sample_count": 157
+      },
+      "state:CO": {
+        "slice_name": "state:CO",
+        "brier_score": 0.06515482759909172,
+        "log_loss": 0.25837269953741127,
+        "accuracy": 0.9310344827586207,
+        "ece": 0.0824300936148994,
+        "sample_count": 29
+      },
+      "state:OH": {
+        "slice_name": "state:OH",
+        "brier_score": 0.08000157790498251,
+        "log_loss": 0.3126678256287925,
+        "accuracy": 0.9137931034482759,
+        "ece": 0.110838921342208,
+        "sample_count": 58
+      },
+      "state:AK": {
+        "slice_name": "state:AK",
+        "brier_score": 0.14140640657019185,
+        "log_loss": 0.4910216162673843,
+        "accuracy": 0.8571428571428571,
+        "ece": 0.21345382192337947,
+        "sample_count": 7
+      },
+      "state:NJ": {
+        "slice_name": "state:NJ",
+        "brier_score": 0.07243914915658685,
+        "log_loss": 0.27328030075034604,
+        "accuracy": 0.925,
+        "ece": 0.0683302519607384,
+        "sample_count": 40
+      },
+      "state:MA": {
+        "slice_name": "state:MA",
+        "brier_score": 0.06140194024621666,
+        "log_loss": 0.2379107559002924,
+        "accuracy": 0.9333333333333333,
+        "ece": 0.04934001101184875,
+        "sample_count": 45
+      },
+      "state:NY": {
+        "slice_name": "state:NY",
+        "brier_score": 0.09057635956142929,
+        "log_loss": 0.3174459341664904,
+        "accuracy": 0.898989898989899,
+        "ece": 0.05362401932278784,
+        "sample_count": 99
+      },
+      "state:CT": {
+        "slice_name": "state:CT",
+        "brier_score": 0.0057165689006958564,
+        "log_loss": 0.07539340510014607,
+        "accuracy": 1.0,
+        "ece": 0.07235079698223373,
+        "sample_count": 15
+      },
+      "cross_pressured": {
+        "slice_name": "cross_pressured",
+        "brier_score": 0.8103868695641434,
+        "log_loss": 2.460471394618914,
+        "accuracy": 0.0,
+        "ece": 0.8971866144061209,
+        "sample_count": 128
+      },
+      "state:FL": {
+        "slice_name": "state:FL",
+        "brier_score": 0.08177267650244024,
+        "log_loss": 0.29612420063882955,
+        "accuracy": 0.9052631578947369,
+        "ece": 0.05128619171243742,
+        "sample_count": 95
+      },
+      "state:GA": {
+        "slice_name": "state:GA",
+        "brier_score": 0.0478277399926994,
+        "log_loss": 0.19619955472631798,
+        "accuracy": 0.9473684210526315,
+        "ece": 0.052821451681020475,
+        "sample_count": 57
+      },
+      "state:ID": {
+        "slice_name": "state:ID",
+        "brier_score": 0.10777425429416616,
+        "log_loss": 0.37259499266240204,
+        "accuracy": 0.875,
+        "ece": 0.0934620067181095,
+        "sample_count": 8
+      },
+      "state:LA": {
+        "slice_name": "state:LA",
+        "brier_score": 0.006681374314252908,
+        "log_loss": 0.07537165911544849,
+        "accuracy": 1.0,
+        "ece": 0.071743776956968,
+        "sample_count": 20
+      },
+      "state:IN": {
+        "slice_name": "state:IN",
+        "brier_score": 0.12404947049585659,
+        "log_loss": 0.4080578861698173,
+        "accuracy": 0.8529411764705882,
+        "ece": 0.09494017346235148,
+        "sample_count": 34
+      },
+      "state:KY": {
+        "slice_name": "state:KY",
+        "brier_score": 0.06684102677323804,
+        "log_loss": 0.2784399169730388,
+        "accuracy": 0.9375,
+        "ece": 0.09315624417452086,
+        "sample_count": 16
+      },
+      "state:AL": {
+        "slice_name": "state:AL",
+        "brier_score": 0.008417918373351024,
+        "log_loss": 0.08551332969224495,
+        "accuracy": 1.0,
+        "ece": 0.08090043388440854,
+        "sample_count": 29
+      },
+      "state:MI": {
+        "slice_name": "state:MI",
+        "brier_score": 0.09465374857168708,
+        "log_loss": 0.34962726410827594,
+        "accuracy": 0.9,
+        "ece": 0.08464490988326953,
+        "sample_count": 50
+      },
+      "state:VA": {
+        "slice_name": "state:VA",
+        "brier_score": 0.09302755366780685,
+        "log_loss": 0.33917547390756747,
+        "accuracy": 0.8979591836734694,
+        "ece": 0.09814186566907396,
+        "sample_count": 49
+      },
+      "state:PA": {
+        "slice_name": "state:PA",
+        "brier_score": 0.05784779567707339,
+        "log_loss": 0.23619431047271847,
+        "accuracy": 0.9516129032258065,
+        "ece": 0.0576384160141425,
+        "sample_count": 62
+      },
+      "state:KS": {
+        "slice_name": "state:KS",
+        "brier_score": 0.004195541602160508,
+        "log_loss": 0.06553244489346648,
+        "accuracy": 1.0,
+        "ece": 0.06333159895678847,
+        "sample_count": 15
+      },
+      "state:WA": {
+        "slice_name": "state:WA",
+        "brier_score": 0.12644870923535667,
+        "log_loss": 0.4670073354890339,
+        "accuracy": 0.8648648648648649,
+        "ece": 0.09367623739002733,
+        "sample_count": 37
+      },
+      "state:IL": {
+        "slice_name": "state:IL",
+        "brier_score": 0.054264271206838986,
+        "log_loss": 0.21715049184504603,
+        "accuracy": 0.9420289855072463,
+        "ece": 0.032264614938206995,
+        "sample_count": 69
+      },
+      "state:OK": {
+        "slice_name": "state:OK",
+        "brier_score": 0.11875333151182538,
+        "log_loss": 0.35570276935675543,
+        "accuracy": 0.8333333333333334,
+        "ece": 0.12344744343830615,
+        "sample_count": 18
+      },
+      "state:WI": {
+        "slice_name": "state:WI",
+        "brier_score": 0.12352133719663304,
+        "log_loss": 0.4561420924089988,
+        "accuracy": 0.8695652173913043,
+        "ece": 0.1375557006930347,
+        "sample_count": 23
+      },
+      "state:MT": {
+        "slice_name": "state:MT",
+        "brier_score": 0.33107504467469295,
+        "log_loss": 1.0759972330449705,
+        "accuracy": 0.625,
+        "ece": 0.31655257952799726,
+        "sample_count": 8
+      },
+      "state:AR": {
+        "slice_name": "state:AR",
+        "brier_score": 0.013006830394054009,
+        "log_loss": 0.09778445985510993,
+        "accuracy": 1.0,
+        "ece": 0.09023135151121409,
+        "sample_count": 17
+      },
+      "state:NM": {
+        "slice_name": "state:NM",
+        "brier_score": 0.0031432835462709315,
+        "log_loss": 0.057325439439500844,
+        "accuracy": 1.0,
+        "ece": 0.05569118405617096,
+        "sample_count": 10
+      },
+      "state:TN": {
+        "slice_name": "state:TN",
+        "brier_score": 0.06404187004720378,
+        "log_loss": 0.24652107826606265,
+        "accuracy": 0.9444444444444444,
+        "ece": 0.11905990936370969,
+        "sample_count": 36
+      },
+      "state:WV": {
+        "slice_name": "state:WV",
+        "brier_score": 0.008341493183747016,
+        "log_loss": 0.0927131867647418,
+        "accuracy": 1.0,
+        "ece": 0.08824066998833602,
+        "sample_count": 10
+      },
+      "state:OR": {
+        "slice_name": "state:OR",
+        "brier_score": 0.00859890702743544,
+        "log_loss": 0.08555816755677363,
+        "accuracy": 1.0,
+        "ece": 0.08082483953631857,
+        "sample_count": 23
+      },
+      "state:MO": {
+        "slice_name": "state:MO",
+        "brier_score": 0.0834964391249268,
+        "log_loss": 0.299948119812334,
+        "accuracy": 0.9090909090909091,
+        "ece": 0.12702608944229582,
+        "sample_count": 22
+      },
+      "state:NV": {
+        "slice_name": "state:NV",
+        "brier_score": 0.06275750619007753,
+        "log_loss": 0.24935830408978443,
+        "accuracy": 0.9333333333333333,
+        "ece": 0.056097515301492984,
+        "sample_count": 15
+      },
+      "state:NE": {
+        "slice_name": "state:NE",
+        "brier_score": 0.12941860289727822,
+        "log_loss": 0.4559049709681774,
+        "accuracy": 0.8571428571428571,
+        "ece": 0.1171706046674664,
+        "sample_count": 21
+      },
+      "state:NC": {
+        "slice_name": "state:NC",
+        "brier_score": 0.0862758286384132,
+        "log_loss": 0.31468450726938263,
+        "accuracy": 0.9032258064516129,
+        "ece": 0.07329731860302391,
+        "sample_count": 62
+      },
+      "state:AZ": {
+        "slice_name": "state:AZ",
+        "brier_score": 0.11567719190843326,
+        "log_loss": 0.4122966509518166,
+        "accuracy": 0.875,
+        "ece": 0.1205566305153874,
+        "sample_count": 32
+      },
+      "state:SC": {
+        "slice_name": "state:SC",
+        "brier_score": 0.1557829597269035,
+        "log_loss": 0.5354814175171085,
+        "accuracy": 0.8387096774193549,
+        "ece": 0.16857074089595014,
+        "sample_count": 31
+      },
+      "state:MD": {
+        "slice_name": "state:MD",
+        "brier_score": 0.08202207034363522,
+        "log_loss": 0.3192479764632106,
+        "accuracy": 0.9130434782608695,
+        "ece": 0.02779365418550197,
+        "sample_count": 23
+      },
+      "state:IA": {
+        "slice_name": "state:IA",
+        "brier_score": 0.0502880188283745,
+        "log_loss": 0.20929730295444282,
+        "accuracy": 0.9473684210526315,
+        "ece": 0.016012010896100333,
+        "sample_count": 19
+      },
+      "state:UT": {
+        "slice_name": "state:UT",
+        "brier_score": 0.10764545359691899,
+        "log_loss": 0.3667335617420533,
+        "accuracy": 0.875,
+        "ece": 0.04650410943309456,
+        "sample_count": 16
+      },
+      "state:HI": {
+        "slice_name": "state:HI",
+        "brier_score": 0.13384723506501303,
+        "log_loss": 0.4168478028150297,
+        "accuracy": 0.8333333333333334,
+        "ece": 0.16847874464058005,
+        "sample_count": 6
+      },
+      "state:NH": {
+        "slice_name": "state:NH",
+        "brier_score": 0.009497507547210637,
+        "log_loss": 0.09297398932636002,
+        "accuracy": 1.0,
+        "ece": 0.08774180641977816,
+        "sample_count": 17
+      },
+      "state:ME": {
+        "slice_name": "state:ME",
+        "brier_score": 0.021800223768994247,
+        "log_loss": 0.12634238214381363,
+        "accuracy": 1.0,
+        "ece": 0.11301152246174308,
+        "sample_count": 14
+      },
+      "state:RI": {
+        "slice_name": "state:RI",
+        "brier_score": 0.005863142637842231,
+        "log_loss": 0.07911718912534291,
+        "accuracy": 1.0,
+        "ece": 0.07602382136705968,
+        "sample_count": 8
+      },
+      "state:ND": {
+        "slice_name": "state:ND",
+        "brier_score": 0.0017705078834311166,
+        "log_loss": 0.04298830122518222,
+        "accuracy": 1.0,
+        "ece": 0.04207740347777078,
+        "sample_count": 4
+      },
+      "state:DE": {
+        "slice_name": "state:DE",
+        "brier_score": 0.0029626196248488815,
+        "log_loss": 0.05475182493380565,
+        "accuracy": 1.0,
+        "ece": 0.053210612994396736,
+        "sample_count": 2
+      },
+      "state:WY": {
+        "slice_name": "state:WY",
+        "brier_score": 0.0035452156093768936,
+        "log_loss": 0.06138798336512062,
+        "accuracy": 1.0,
+        "ece": 0.05954171318812462,
+        "sample_count": 2
+      },
+      "state:XX": {
+        "slice_name": "state:XX",
+        "brier_score": 0.13404670032585547,
+        "log_loss": 0.3840794548343999,
+        "accuracy": 0.8,
+        "ece": 0.2138993462355922,
+        "sample_count": 5
+      },
+      "state:VT": {
+        "slice_name": "state:VT",
+        "brier_score": 0.00359825686351158,
+        "log_loss": 0.06166100237218519,
+        "accuracy": 1.0,
+        "ece": 0.059785717991714254,
+        "sample_count": 2
+      },
+      "state:SD": {
+        "slice_name": "state:SD",
+        "brier_score": 0.011689584683511684,
+        "log_loss": 0.10168811647353554,
+        "accuracy": 1.0,
+        "ece": 0.09524033482443552,
+        "sample_count": 2
+      }
+    }
+  },
+  "window_count": 2
+}

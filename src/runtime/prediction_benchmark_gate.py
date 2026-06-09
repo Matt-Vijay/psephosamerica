@@ -43,6 +43,32 @@ def load_baseline(path: Path) -> BenchmarkBaseline:
     return BenchmarkBaseline.model_validate_json(path.read_text(encoding="utf-8"))
 
 
+def _slices_from_real_corpus(
+    corpus_path: Path, *, window: str
+) -> list[BenchmarkSliceMetrics] | None:
+    """Recompute one window's per-slice metrics from a committed real vote corpus."""
+    if not corpus_path.exists():
+        return None
+    from src.prediction.real_data_eval import evaluate_windows, load_vote_rows
+    from src.runtime.real_benchmark import default_congress_windows
+
+    rows = load_vote_rows(corpus_path)
+    windows = [item for item in default_congress_windows() if item.name == window]
+    result = evaluate_windows(rows, windows=windows)
+    slices = result.get(window, {})
+    if not slices:
+        return None
+    return [
+        BenchmarkSliceMetrics(
+            slice_name=metrics.slice_name,
+            brier_score=metrics.brier_score,
+            log_loss=metrics.log_loss,
+            sample_count=metrics.sample_count,
+        )
+        for metrics in slices.values()
+    ]
+
+
 def _write_baseline(path: Path, slices: list[BenchmarkSliceMetrics], *, model_name: str) -> None:
     baseline = BenchmarkBaseline(model_name=model_name, slices=slices)
     path.write_text(baseline.model_dump_json(indent=2) + "\n", encoding="utf-8")
@@ -76,6 +102,16 @@ def main(argv: list[str]) -> int:
         metavar="SEED",
         help="build benchmark slices from the deterministic synthetic House at SEED",
     )
+    parser.add_argument(
+        "--from-real-corpus",
+        metavar="JSONL",
+        help="recompute slices from a committed real vote corpus (deterministic)",
+    )
+    parser.add_argument(
+        "--window",
+        default="118th-h2",
+        help="window name to gate when using --from-real-corpus",
+    )
     parser.add_argument("--baseline", required=True, help="path to the pinned baseline JSON")
     parser.add_argument("--tolerance", type=float, default=_DEFAULT_TOLERANCE)
     parser.add_argument(
@@ -96,8 +132,11 @@ def main(argv: list[str]) -> int:
     )
     args = parser.parse_args(argv)
 
-    if (args.report is None) == (args.from_synthetic is None):
-        print("benchmark-gate: provide exactly one of --report or --from-synthetic")
+    sources = [args.report, args.from_synthetic, args.from_real_corpus]
+    if sum(source is not None for source in sources) != 1:
+        print(
+            "benchmark-gate: provide exactly one of --report / --from-synthetic / --from-real-corpus"
+        )
         return 2
 
     baseline_path = Path(args.baseline)
@@ -105,6 +144,12 @@ def main(argv: list[str]) -> int:
         from src.runtime.synthetic_benchmark import build_synthetic_benchmark
 
         current = build_synthetic_benchmark(seed=args.from_synthetic)
+    elif args.from_real_corpus is not None:
+        real_slices = _slices_from_real_corpus(Path(args.from_real_corpus), window=args.window)
+        if real_slices is None:
+            print(f"benchmark-gate: corpus/window produced no slices: {args.from_real_corpus}")
+            return 2
+        current = real_slices
     else:
         report_path = Path(args.report)
         if not report_path.exists():
