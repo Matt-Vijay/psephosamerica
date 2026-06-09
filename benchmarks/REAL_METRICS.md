@@ -91,3 +91,24 @@ Honest read: declared sector attention carries a **weak but real** signal for vo
 stance above baseline, on very limited data and against a party-dominated chamber.
 The head works end-to-end on real statement data; its value grows with more
 declared-position coverage and bill-level issue matching.
+
+## Per-member multi-window calibration drift across 4 congresses (#7)
+Per-member model over rolling strict-cutoff windows, real House votes
+(2017/2019/2021/2023/2024, 51K-vote combined sample, 698 members). Overall slice:
+| window | Brier | log-loss | accuracy | ECE | n |
+|---|---|---|---|---|---|
+| 115th (cold-start) | 0.250 | 0.693 | 0.600 | 0.100 | 11,631 |
+| 116th | 0.049 | 0.208 | 0.951 | 0.031 | 11,712 |
+| 117th | 0.040 | 0.172 | 0.960 | 0.038 | 7,555 |
+| 118th-h1 | 0.087 | 0.329 | 0.908 | 0.045 | 7,227 |
+| 118th-h2 | 0.065 | 0.246 | 0.928 | 0.010 | 6,755 |
+
+**The thin-record story on real data:** the 115th window has no prior history, so
+every member is cold-started from the global fallback → ~0.60 accuracy / Brier 0.25
+(predicting the base rate). Once member histories exist (116th–117th) accuracy
+jumps to 0.95–0.96. Congress turnover at the 118th re-introduces unseen members
+(dip to 0.91) and accuracy then recovers within the 118th (0.93) as history
+re-accumulates — exactly the partial-pooling payoff the architecture is built for.
+ECE is lowest (0.010) when member coverage is highest. The cross-pressured slice
+stays ≈0% accuracy in every warm window — a party-only model cannot predict
+defections, the standing case for richer signals.
