@@ -8,12 +8,15 @@ from src.graph.bills import BillRef
 from src.graph.ingest.govinfo_billstatus import (
     BillStatus,
     bill_ref,
+    billstatus_bill_row,
     billstatus_dossier_text,
+    billstatus_external_ids,
     billstatus_provenance,
     bulk_billstatus_url,
     canonical_bill_id,
     govinfo_record_id,
     parse_billstatus_xml,
+    vote_link_report,
 )
 from src.graph.ingest.house_clerk import bill_canonical_id_for, parse_house_rollcall_xml
 
@@ -226,6 +229,101 @@ def test_dossier_text_title_only_when_sparse() -> None:
         summary_text=None,
     )
     assert billstatus_dossier_text(status) == "Bare Title Act"
+
+
+def test_external_ids_are_sorted_unique_citation_and_govinfo() -> None:
+    status = parse_billstatus_xml(_BILLSTATUS)
+    assert billstatus_external_ids(status) == [
+        "congress:118-hr-1",
+        "govinfo:billstatus-118hr1",
+    ]
+
+
+def test_bill_row_is_vote_linkable_pending_row() -> None:
+    status = parse_billstatus_xml(_BILLSTATUS)
+    row = billstatus_bill_row(
+        status,
+        source_url=bulk_billstatus_url(118, "hr"),
+        content_sha256="a" * 64,
+        first_observed_at=datetime(2023, 4, 1, tzinfo=UTC),
+    )
+    assert row.entity_type == "bill"
+    assert row.canonical_id == bill_canonical_id_for(
+        parse_house_rollcall_xml(
+            "<rollcall-vote><vote-metadata><congress>118</congress><session>1</session>"
+            "<rollcall-num>5</rollcall-num><legis-num>H R 1</legis-num>"
+            "<vote-question>q</vote-question><vote-result>Passed</vote-result>"
+            "<action-date>14-Mar-2023</action-date></vote-metadata></rollcall-vote>"
+        )
+    )
+    assert row.display_name == "Lower Energy Costs Act"
+    assert row.enrichment_status == "pending"  # enriched later by regenerate_corpus
+    assert row.source_anchors[0].source_system == "govinfo"
+    assert row.known_at == datetime(2023, 3, 14, tzinfo=UTC)
+
+
+def test_bill_row_enriches_to_a_dense_vote_linked_embedding() -> None:
+    # End-to-end proof of the unlock: a govinfo bill row + its roll-call vote edge
+    # -> regenerate_corpus -> the bill row is 'ready' with a non-trivial dossier
+    # embedding, and the vote's dst_id resolves to that embedded bill.
+    from datetime import datetime as _dt
+
+    from src.graph.ingest.votes import vote_edge, vote_provenance
+    from src.graph.regenerate import regenerate_corpus
+
+    status = parse_billstatus_xml(_BILLSTATUS)
+    bill_id = canonical_bill_id(status)
+    row = billstatus_bill_row(
+        status,
+        source_url=bulk_billstatus_url(118, "hr"),
+        content_sha256="a" * 64,
+        first_observed_at=_dt(2023, 4, 1, tzinfo=UTC),
+    )
+    edge = vote_edge(
+        member_canonical_id="cp-member-1",
+        bill_canonical_id=bill_id,
+        choice="yea",
+        provenance=vote_provenance(
+            source_url="https://clerk.house.gov/evs/2023/roll005.xml",
+            content_sha256="b" * 64,
+            vote_date=date(2023, 3, 30),
+            first_observed_at=_dt(2023, 3, 31, tzinfo=UTC),
+        ),
+    )
+    result = regenerate_corpus(
+        person_records=[],
+        bill_outputs=[row],
+        edges=[edge],
+        as_of=_dt(2024, 1, 1, tzinfo=UTC),
+    )
+    bill_rows = [r for r in result.rows if r.entity_type == "bill"]
+    assert len(bill_rows) == 1
+    enriched = bill_rows[0]
+    assert enriched.canonical_id == bill_id == edge.dst_id  # vote resolves to the bill
+    assert enriched.enrichment_status == "ready"
+    assert enriched.dossier_embedding is not None and len(enriched.dossier_embedding) == 256
+    assert any(abs(v) > 0 for v in enriched.dossier_embedding)
+
+
+def test_vote_link_report_counts_substantive_and_procedural() -> None:
+    embedded = {"cb-aaa", "cb-bbb"}
+    # 5 votes: 2 link, 1 substantive-but-unlinked, 2 procedural (None).
+    report = vote_link_report(
+        vote_bill_ids=["cb-aaa", "cb-bbb", "cb-missing", None, None],
+        embedded_bill_ids=embedded,
+    )
+    assert report["votes"] == 5.0
+    assert report["votes_with_bill_ref"] == 3.0
+    assert report["votes_linked_embedded"] == 2.0
+    assert report["pct_of_all_votes_linked"] == 40.0
+    assert report["pct_of_substantive_votes_linked"] == pytest.approx(66.67, abs=0.01)
+
+
+def test_vote_link_report_empty() -> None:
+    report = vote_link_report(vote_bill_ids=[], embedded_bill_ids=[])
+    assert report["votes"] == 0.0
+    assert report["pct_of_all_votes_linked"] == 0.0
+    assert report["pct_of_substantive_votes_linked"] == 0.0
 
 
 def test_provenance_honors_explicit_known_at() -> None:

@@ -25,12 +25,14 @@ defensively over the minor schema drift between congresses 113-119.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
 
 from defusedxml import ElementTree as ET
 
 from src.graph.bills import BillRef, congress_bill_identifier
+from src.graph.contracts import ContractSourceAnchor, EntityResolutionOutput, build_bill_output
 from src.graph.provenance import ProvenanceEnvelope
 
 
@@ -236,3 +238,87 @@ def billstatus_provenance(
         valid_from=introduced or default_known.date(),
         known_at=default_known,
     )
+
+
+def billstatus_external_ids(status: BillStatus) -> list[str]:
+    """Sorted, unique external ids for the bill row (citation + govinfo record)."""
+    identifier = congress_bill_identifier(status.bill_type, status.number)
+    return sorted(
+        {
+            f"congress:{status.congress}-{identifier}",
+            f"govinfo:{govinfo_record_id(status).lower()}",
+        }
+    )
+
+
+def billstatus_bill_row(
+    status: BillStatus,
+    *,
+    source_url: str,
+    content_sha256: str,
+    first_observed_at: datetime,
+    known_at: datetime | None = None,
+) -> EntityResolutionOutput:
+    """Build the pending bill contract row for a parsed BILLSTATUS record.
+
+    The row's ``canonical_id`` is the same ``cb-<digest>`` the bill's roll-call
+    ``vote`` edges point at, so once the regeneration driver enriches it the
+    votes resolve to an embedded bill. The title is the ``display_name`` (every
+    title is distinct, so embeddings do not collapse same-sector bills);
+    enrichment to a dense ``dossier_embedding`` happens in ``regenerate_corpus``.
+    """
+    prov = billstatus_provenance(
+        status=status,
+        source_url=source_url,
+        content_sha256=content_sha256,
+        first_observed_at=first_observed_at,
+        known_at=known_at,
+    )
+    anchor = ContractSourceAnchor(
+        source_system="govinfo",
+        record_id=govinfo_record_id(status),
+        source_url=prov.source_url,
+        content_sha256=prov.content_sha256,
+        content_address=prov.content_address(),
+        known_at=prov.known_at,
+        valid_from=prov.valid_from,
+        valid_to=prov.valid_to,
+    )
+    return build_bill_output(
+        canonical_bill_id=canonical_bill_id(status),
+        display_name=status.title,
+        source_anchors=[anchor],
+        external_ids=billstatus_external_ids(status),
+    )
+
+
+def vote_link_report(
+    *, vote_bill_ids: Iterable[str | None], embedded_bill_ids: Iterable[str]
+) -> dict[str, float]:
+    """Coverage of votes by an ingested+embedded bill (the #1 success metric).
+
+    ``vote_bill_ids`` is one entry per roll-call member vote -- the bill's
+    canonical id, or ``None`` for a procedural vote with no parseable bill.
+    Reports the share of *all* votes, and of *substantive* (bill-bearing) votes,
+    whose bill is present in ``embedded_bill_ids`` (the linked, embedded target).
+    """
+    embedded = set(embedded_bill_ids)
+    total = 0
+    with_bill = 0
+    linked = 0
+    for bill_id in vote_bill_ids:
+        total += 1
+        if bill_id is None:
+            continue
+        with_bill += 1
+        if bill_id in embedded:
+            linked += 1
+    return {
+        "votes": float(total),
+        "votes_with_bill_ref": float(with_bill),
+        "votes_linked_embedded": float(linked),
+        "pct_of_all_votes_linked": round(100.0 * linked / total, 2) if total else 0.0,
+        "pct_of_substantive_votes_linked": round(100.0 * linked / with_bill, 2)
+        if with_bill
+        else 0.0,
+    }
