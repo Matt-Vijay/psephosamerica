@@ -150,3 +150,47 @@ def test_path_style_prediction_unknown_is_404() -> None:
     path = f"/v1/prediction/{quote('person:x', safe='')}/{quote('bill:1', safe='')}"
     status, _headers, _body = _call(_app(), path)
     assert status.startswith("404")
+
+
+def test_top_flip_factors_ranked_by_influence() -> None:
+    from src.api.explorer import top_flip_factors
+    from datetime import date as _date, datetime as _dt, timezone as _tz
+    from src.prediction.served_prediction import (
+        PredictionEvidenceAnchor as PEA,
+        PredictionUncertainty as PU,
+        ServedPrediction as SP,
+    )
+
+    anchors = [
+        PEA(
+            label=f"e{i}",
+            source_url=f"https://example.gov/{i}",
+            content_sha256="a" * 64,
+            retrieved_at=_dt(2025, 1, 1, tzinfo=_tz.utc),
+            contribution=c,
+        )
+        for i, c in enumerate([-0.6, 0.3, 0.1, 0.05])  # contract requires |c| descending
+    ]
+    served = SP(
+        canonical_person_id="p",
+        canonical_bill_id="b",
+        model_name="m",
+        known_at=_date(2025, 2, 1),
+        probability_yea=0.6,
+        uncertainty=PU(
+            confidence_level=0.9,
+            interval_lower=0.5,
+            interval_upper=0.7,
+            conformal_label_set=["yea"],
+        ),
+        evidence_anchors=anchors,
+        llm_explanation="x",
+        counterfactual="y",
+    )
+    top = top_flip_factors(served, top_n=3)
+    assert [round(abs(a.contribution), 2) for a in top] == [0.6, 0.3, 0.1]
+
+
+def test_explorer_renders_flip_factors() -> None:
+    html = render_explorer_html([_served("person:a", "bill:1")])
+    assert "Top factors (flip to change)" in html

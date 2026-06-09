@@ -17,7 +17,7 @@ from __future__ import annotations
 from html import escape
 
 from src.prediction.calibration_dashboard import CalibrationDashboard, DashboardSlice
-from src.prediction.served_prediction import ServedPrediction
+from src.prediction.served_prediction import PredictionEvidenceAnchor, ServedPrediction
 
 _STYLE = (
     "body{font:14px system-ui,sans-serif;margin:2rem;color:#111}"
@@ -46,6 +46,31 @@ def _evidence_list(prediction: ServedPrediction) -> str:
     return "<ul>" + "".join(items) + "</ul>"
 
 
+def top_flip_factors(
+    prediction: ServedPrediction, *, top_n: int = 3
+) -> list[PredictionEvidenceAnchor]:
+    """The top-N evidence anchors that, if flipped, would most change the prediction.
+
+    Ranked by absolute contribution -- the model's signed influence of each cited
+    source on the yea probability.
+    """
+    return sorted(
+        prediction.evidence_anchors, key=lambda anchor: abs(anchor.contribution), reverse=True
+    )[:top_n]
+
+
+def _flip_factors_list(prediction: ServedPrediction) -> str:
+    items = []
+    for anchor in top_flip_factors(prediction, top_n=3):
+        direction = "lowers" if anchor.contribution < 0 else "raises"
+        items.append(
+            f'<li><a href="{escape(anchor.source_url)}" rel="nofollow noopener">'
+            f"{escape(anchor.label)}</a> — {direction} yea by "
+            f"{abs(anchor.contribution):.3f}</li>"
+        )
+    return "<ul>" + "".join(items) + "</ul>"
+
+
 def _prediction_card(prediction: ServedPrediction) -> str:
     uncertainty = prediction.uncertainty
     label_set = ", ".join(escape(option) for option in uncertainty.conformal_label_set)
@@ -61,6 +86,8 @@ def _prediction_card(prediction: ServedPrediction) -> str:
         f"conformal set: {{{label_set}}}</div>"
         f"<p>{escape(prediction.llm_explanation)}</p>"
         f"<p><em>What would change this:</em> {escape(prediction.counterfactual)}</p>"
+        "<div><strong>Top factors (flip to change)</strong>"
+        f"{_flip_factors_list(prediction)}</div>"
         "<div><strong>Evidence</strong>"
         f"{_evidence_list(prediction)}</div>"
         "</div>"
