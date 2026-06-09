@@ -33,6 +33,9 @@ file that matches what you need.
   pipeline (records → scoring → linker → canonical → persistent IDs),
   the heterogeneous knowledge graph + ingestion adapters, and the
   `EntityResolutionOutput` contract + CDC delta feed.
+- [`ingestion-credentials.md`](ingestion-credentials.md) — exact env-var
+  names for every credential-gated source (OpenStates, LegiScan,
+  OpenSecrets, CourtListener, Vote Smart, X, …) and what each unblocks.
 - Architecture decision records ([`adr/`](adr/)):
   - [`0001`](adr/0001-cutoff-safe-no-leakage-prediction.md) — cutoff-safe,
     no-leakage legislative prediction.
