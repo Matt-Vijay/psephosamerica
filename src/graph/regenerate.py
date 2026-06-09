@@ -30,7 +30,7 @@ from src.graph.enrichment.deterministic_dossier import build_deterministic_dossi
 from src.graph.enrichment.dossier_context import build_dossier_context
 from src.graph.enrichment.enrich import DossierEmbedder, enrich_output
 from src.graph.enrichment.local_embedder import default_text_embedder
-from src.graph.enrichment.structural_features import structural_feature_vector
+from src.graph.enrichment.rgcn_lite import rgcn_lite_embeddings
 from src.graph.entity_resolution.assignment import CanonicalAssignment
 from src.graph.entity_resolution.records import SourceRecord
 from src.graph.knowledge_graph import KnowledgeGraph
@@ -62,16 +62,22 @@ def regenerate_corpus(
     nodes = [*person_nodes, *bill_outputs]
     graph = KnowledgeGraph(nodes=nodes, edges=list(edges))
     snapshot = graph.as_of(as_of)
+    # One graph-global RGCN-lite pass: relational message-passing structural
+    # embeddings (non-zero even for isolated nodes; no zero-vector fallback).
+    structural_by_id = rgcn_lite_embeddings(graph, as_of=as_of)
 
     ready: list[EntityResolutionOutput] = []
     for node in snapshot.nodes:
         context = build_dossier_context(graph, node.canonical_id, as_of=as_of)
         assert context is not None  # node is in the as_of snapshot
-        structural = structural_feature_vector(graph, node.canonical_id, as_of=as_of)
-        assert structural is not None
         dossier = build_deterministic_dossier(context)
         ready.append(
-            enrich_output(node, dossier=dossier, structural_embedding=structural, embedder=embed)
+            enrich_output(
+                node,
+                dossier=dossier,
+                structural_embedding=structural_by_id[node.canonical_id],
+                embedder=embed,
+            )
         )
 
     ready.sort(key=lambda row: row.canonical_id)
