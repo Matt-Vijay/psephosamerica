@@ -24,8 +24,9 @@ import json
 import time
 from collections.abc import Callable
 from http import HTTPStatus
-from urllib.parse import parse_qs
+from urllib.parse import parse_qs, unquote
 
+from src.api.explorer import render_dashboard_html, render_explorer_html
 from src.api.http import JsonHttpResponse
 from src.api.prediction_http import (
     PredictionApiError,
@@ -37,6 +38,15 @@ from src.prediction.read_api import PredictionReadService
 
 StartResponse = Callable[[str, list[tuple[str, str]]], object]
 _JSON_CONTENT_TYPE = "application/json; charset=utf-8"
+_HTML_CONTENT_TYPE = "text/html; charset=utf-8"
+
+
+def _html_response(html: str) -> JsonHttpResponse:
+    return JsonHttpResponse(
+        status_code=200,
+        headers={"Content-Type": _HTML_CONTENT_TYPE, "Cache-Control": "public, max-age=300"},
+        body=html.encode("utf-8"),
+    )
 
 
 def _error_response(status_code: int, error: str, detail: str) -> JsonHttpResponse:
@@ -76,28 +86,41 @@ class PredictionWsgiApp:
         method = str(environ.get("REQUEST_METHOD", "GET"))
         path = str(environ.get("PATH_INFO", ""))
 
+        if method != "GET":
+            return _error_response(405, "method_not_allowed", "use GET")
+
         if path == "/healthz":
-            if method != "GET":
-                return _error_response(405, "method_not_allowed", "use GET")
             return JsonHttpResponse(
                 status_code=200,
                 headers={"Content-Type": _JSON_CONTENT_TYPE, "Cache-Control": "no-store"},
                 body=b'{"status":"ok"}',
             )
-
         if path == "/v1/dashboard":
-            if method != "GET":
-                return _error_response(405, "method_not_allowed", "use GET")
             return serve_calibration_dashboard(self._dashboard)
-
+        if path == "/v1/dashboard.html":
+            return _html_response(render_dashboard_html(self._dashboard))
+        if path == "/v1/explorer":
+            return _html_response(render_explorer_html(self._read_service.all_predictions()))
         if path == "/v1/prediction":
-            if method != "GET":
-                return _error_response(405, "method_not_allowed", "use GET")
-            return self._serve_prediction(environ)
+            return self._serve_prediction_query(environ)
+        if path.startswith("/v1/prediction/"):
+            return self._serve_prediction_path(path, environ)
 
         return _error_response(404, "not_found", f"no route for {path}")
 
-    def _serve_prediction(self, environ: dict[str, object]) -> JsonHttpResponse:
+    def _serve_prediction_path(self, path: str, environ: dict[str, object]) -> JsonHttpResponse:
+        # /v1/prediction/<person>/<bill> with url-encoded segments (ids contain ':' and '/').
+        remainder = path[len("/v1/prediction/") :]
+        segments = remainder.split("/")
+        if len(segments) != 2 or not segments[0] or not segments[1]:
+            return _error_response(
+                400, "bad_request", "path must be /v1/prediction/<person_id>/<bill_id>"
+            )
+        person = unquote(segments[0])
+        bill = unquote(segments[1])
+        return self._dispatch_prediction(person, bill, environ)
+
+    def _serve_prediction_query(self, environ: dict[str, object]) -> JsonHttpResponse:
         query = parse_qs(str(environ.get("QUERY_STRING", "")))
         person = query.get("person_id", [""])[0]
         bill = query.get("bill_id", [""])[0]
@@ -105,6 +128,11 @@ class PredictionWsgiApp:
             return _error_response(
                 400, "bad_request", "person_id and bill_id query parameters are required"
             )
+        return self._dispatch_prediction(person, bill, environ)
+
+    def _dispatch_prediction(
+        self, person: str, bill: str, environ: dict[str, object]
+    ) -> JsonHttpResponse:
         client_id = str(environ.get("REMOTE_ADDR", "anonymous"))
         return serve_prediction(
             self._read_service,

@@ -148,6 +148,10 @@ class PredictionReadService:
         self._snapshot = snapshot
         self._rate_limiter = rate_limiter
 
+    def all_predictions(self) -> list[ServedPrediction]:
+        """Every prediction in the served snapshot (for the explorer page)."""
+        return list(self._snapshot.predictions)
+
     def get_prediction(
         self,
         *,
