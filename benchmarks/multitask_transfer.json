@@ -1,0 +1,8 @@
+{
+  "cutoff": "2024-04-20",
+  "base_auc": 0.7064244594723444,
+  "multitask_auc": 0.7064244594723444,
+  "delta_auc": 0.0,
+  "aux_coverage": 0.0,
+  "eval_pairs": 148846
+}

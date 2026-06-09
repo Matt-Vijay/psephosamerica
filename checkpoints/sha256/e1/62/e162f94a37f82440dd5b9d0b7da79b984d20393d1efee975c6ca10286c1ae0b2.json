@@ -1,0 +1,76 @@
+{
+  "heads": [
+    {
+      "coefficients": {
+        "loyalty_gap": 0.27156305683027226,
+        "sector_divergence": 0.3551081856513387
+      },
+      "intercept": -2.3671309381741437
+    },
+    {
+      "coefficients": {
+        "loyalty_gap": 0.26861336368611366,
+        "sector_divergence": 0.34904059903503326
+      },
+      "intercept": -2.3737154169939165
+    },
+    {
+      "coefficients": {
+        "loyalty_gap": 0.2687169448188826,
+        "sector_divergence": 0.3502174903438424
+      },
+      "intercept": -2.3746085595722195
+    },
+    {
+      "coefficients": {
+        "loyalty_gap": 0.2702694994766655,
+        "sector_divergence": 0.35286957665517493
+      },
+      "intercept": -2.3664216906094184
+    },
+    {
+      "coefficients": {
+        "loyalty_gap": 0.2634725339950462,
+        "sector_divergence": 0.3439697588482786
+      },
+      "intercept": -2.3851660410598647
+    },
+    {
+      "coefficients": {
+        "loyalty_gap": 0.2688051032436997,
+        "sector_divergence": 0.35133991056345243
+      },
+      "intercept": -2.357569950497742
+    },
+    {
+      "coefficients": {
+        "loyalty_gap": 0.2646835948586714,
+        "sector_divergence": 0.34580030541197837
+      },
+      "intercept": -2.373020513147185
+    },
+    {
+      "coefficients": {
+        "loyalty_gap": 0.2633467895963755,
+        "sector_divergence": 0.34386568013579477
+      },
+      "intercept": -2.3797895089273453
+    },
+    {
+      "coefficients": {
+        "loyalty_gap": 0.271428731208849,
+        "sector_divergence": 0.35195916476689526
+      },
+      "intercept": -2.366120377232688
+    },
+    {
+      "coefficients": {
+        "loyalty_gap": 0.26663252418188954,
+        "sector_divergence": 0.34857947006238643
+      },
+      "intercept": -2.36477714643282
+    }
+  ],
+  "model_name": "defection_head_bayes",
+  "n_seeds": 10
+}

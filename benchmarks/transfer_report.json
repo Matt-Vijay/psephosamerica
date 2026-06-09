@@ -1,0 +1,13 @@
+{
+  "transfer": {
+    "source": "house_115_117",
+    "target": "house_118",
+    "zero_shot_auc": 0.5641702452780508,
+    "target_only_auc": 0.5641702452780508,
+    "joint_auc": 0.5601966774634481,
+    "gap": 0.0,
+    "target_eval_pairs": 190975,
+    "target_positives": 34933
+  },
+  "note": "Cross-congress loyalty-signal transfer (flat corpora, no sectors). Senate / sector-aware transfer awaits multi-congress sector ingest."
+}

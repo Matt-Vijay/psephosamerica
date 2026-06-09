@@ -1,0 +1,11 @@
+{
+  "cutoff": "2024-04-20",
+  "anthropic_key_present": false,
+  "head_auc": 0.5876023180535941,
+  "llm_auc": 0.5863987694463604,
+  "stacked_auc": 0.5865863449418479,
+  "llm_weight": 1.0071455755662784,
+  "head_weight": 0.4301185859830581,
+  "eval_pairs": 4347,
+  "used_real_llm": false
+}
