@@ -13,10 +13,10 @@ strict no-leakage cutoff `2024-04-20`.
 
 | metric | value |
 |---|---|
-| honest slice enrichment (τ=0.25) | **3.06×** (17.6% in-slice defection vs 5.76% base) |
-| honest slice τ-sweep (0.15 / 0.25 / 0.35) | 2.39× / 4.31× / 4.16× |
-| **defection ranking AUC** (overall / 118th) | **0.706 / 0.725** |
-| precision@10 / @50 / @100 | 0.10 / 0.34 / 0.41 (≈7× base at the top) |
+| honest slice enrichment (τ=0.25) | **3.49×** (20.1% in-slice defection vs 5.76% base) |
+| honest slice τ-sweep (0.15 / 0.25 / 0.35) | 3.14× / 3.49× / 5.97× |
+| **defection ranking AUC** (10-seed mean / single-head 118th) | **0.706 / 0.725** |
+| precision@10 / @50 / @100 (single-head) | 0.20 / 0.08 / 0.32 (@100 ≈5.6× base; top-k noisy) |
 | RAG ΔAUC (sector-bag bill embedding, k∈{4,8,16,32}) | **0.0** (honest ceiling — needs dense bills) |
 | 10-seed Bayesian AUC | 0.7064 ± 1.2e-5 |
 | conformal coverage (marginal, overall) | 0.909 @ nominal 0.90 |
@@ -27,9 +27,9 @@ strict no-leakage cutoff `2024-04-20`.
 
 | # | Requirement | Result | Artifact |
 |---|---|---|---|
-| 1 | Honest ex-ante slice, published | **done** — label-free (unit-tested), 3.06× enrichment | `defection.py`, `SLICE_DEFINITION.md` |
+| 1 | Honest ex-ante slice, published | **done** — label-free (unit-tested), 3.49× enrichment (directional loyalty-gap) | `defection.py`, `SLICE_DEFINITION.md` |
 | 2 | Experiment v2: bill encoder + RAG, k-ablation, before/after | **done** — ΔAUC=0.0 (sector-bag collapses same-sector bills); dense-embedding hot-swap wired | `defection_rag.py`, `defection_experiment.json` |
-| 3 | Defection head + AUC + precision@k + pinned gate | **done** — AUC 0.706/0.725; gate passes (+0.029 over pin 0.6775) | `defection_head.py`, `defection_gate.py`, `defection_auc_baseline.json` |
+| 3 | Defection head + AUC + precision@k + pinned gate | **done** — single-head AUC 0.7247 pinned (cutoff 2024-04-20), gated at ≤0.005 with a real-corpus reproduction test | `defection_head.py`, `defection_gate.py`, `defection_auc_baseline.json` |
 | 4 | Multi-task v2: dense auxiliaries → defection-AUC transfer | **done (gated)** — Δ=0.0, aux_coverage=0.0 (no dense bills yet); pluggable harness ready | `defection_multitask.py`, `multitask_transfer.json` |
 | 5 | House→Senate transfer (zero-shot/target-only/joint, gap) | **done (proxy)** — cross-congress 115-117→118, gap 0.0 on loyalty; Senate/sectors pending ingest | `chamber_transfer.py`, `transfer_experiment.py`, `flat_corpus.py`, `transfer_report.json` |
 | 6 | State-leg zero-shot | **gated** — same transfer harness applies the moment Track A lands state votes (not yet) | (transfer harness) |
@@ -42,7 +42,7 @@ strict no-leakage cutoff `2024-04-20`.
 
 ## The two honest findings
 
-1. **The metric had to be fixed first, and it was.** An ex-ante slice with 3.06×
+1. **The metric had to be fixed first, and it was.** An ex-ante slice with 3.49×
    enrichment and an AUC product metric (0.706) that predict-opposite-of-party
    cannot game. Ranking who defects is now a real, servable signal.
 2. **The remaining lift needs dense, vote-linkable bill content.** Sector-bag RAG
@@ -61,7 +61,7 @@ party_R 0.852→0.899, party_D 0.969→0.907.
 
 ## Verification
 
-`ruff` clean, `mypy --strict` clean, **48 defection tests pass**. The defection-AUC
+`ruff` clean, `mypy --strict` clean, **56 defection tests pass**. The defection-AUC
 gate passes at ≤0.005 tolerance. Mid-session the shared working tree went
 sandbox-`EPERM` for ~32 min (Track A holding `data/exports/` + the shared tree —
 the shared-index contention the goal flagged); all run/commit work resumed on

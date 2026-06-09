@@ -2,109 +2,45 @@
   "corpus": "data/real/house_118_rich.jsonl",
   "cutoff": "2024-04-20",
   "eval_end": "2024-12-20",
-  "train_pairs": 200000,
+  "train_pairs": 359536,
   "eval_pairs": 148846,
-  "slice_definition": {
-    "name": "ex_ante_policy_divergence",
-    "tau": 0.25,
-    "description": "A (member, bill) pair is defection-prone when the member's pre-cutoff yea-rate on the bill's policy area(s) diverges from their party's pre-cutoff yea-rate by at least tau. Features and slice membership use only pre-cutoff votes -- never the scored bill's realized outcome."
-  },
-  "slice_prevalence": {
-    "tau": 0.25,
-    "eval_pairs": 148846.0,
-    "defection_prone_pairs": 4347.0,
-    "prevalence": 0.029204681348507854,
-    "defection_rate_in_slice": 0.17598343685300208,
-    "defection_rate_overall": 0.05755613184096314,
-    "enrichment": 3.057596666490247
-  },
-  "defection_ranking_overall": {
-    "auc": 0.7064244594723444,
-    "precision_at_10": 0.1,
-    "precision_at_50": 0.34,
-    "precision_at_100": 0.41,
-    "positives": 8567,
+  "tau": 0.25,
+  "ranking": {
+    "auc": 0.7247304967897469,
+    "precision_at_10": 0.2,
+    "precision_at_50": 0.08,
+    "precision_at_100": 0.32,
     "sample_count": 148846,
+    "positives": 8567,
     "base_rate": 0.05755613184096314
   },
-  "defection_ranking_per_congress": {
-    "118": {
-      "auc": 0.7247304967897469,
-      "precision_at_10": 0.2,
-      "precision_at_50": 0.08,
-      "precision_at_100": 0.32,
-      "positives": 8567,
-      "sample_count": 148846,
-      "base_rate": 0.05755613184096314
-    }
-  },
-  "rag_before_after": {
-    "embedding": "sector_bag",
-    "honest_slice_eval_pairs": 4347,
-    "before": {
-      "brier": 0.1504363299517988,
-      "accuracy": 0.8240165631469979,
-      "ece": 0.07553641390439955,
-      "auc": 0.5876023180535941,
-      "precision_at_50": 0.34,
-      "sample_count": 4347,
-      "positives": 765
+  "slice_tau_sweep": {
+    "0.15": {
+      "tau": 0.15,
+      "eval_pairs": 148846.0,
+      "defection_prone_pairs": 9716.0,
+      "prevalence": 0.06527551966461981,
+      "defection_rate_in_slice": 0.18062988884314532,
+      "defection_rate_overall": 0.05755613184096314,
+      "enrichment": 3.1383257190086153
     },
-    "after_best": {
-      "brier": 0.1504414655902115,
-      "accuracy": 0.8240165631469979,
-      "ece": 0.07556954825825396,
-      "auc": 0.5876023180535941,
-      "precision_at_50": 0.34,
-      "sample_count": 4347,
-      "positives": 765
+    "0.25": {
+      "tau": 0.25,
+      "eval_pairs": 148846.0,
+      "defection_prone_pairs": 1126.0,
+      "prevalence": 0.007564865700119587,
+      "defection_rate_in_slice": 0.20071047957371227,
+      "defection_rate_overall": 0.05755613184096314,
+      "enrichment": 3.4872127982524543
     },
-    "best_k": 4,
-    "k_ablation": {
-      "k=4": {
-        "brier": 0.1504414655902115,
-        "accuracy": 0.8240165631469979,
-        "ece": 0.07556954825825396,
-        "auc": 0.5876023180535941,
-        "precision_at_50": 0.34,
-        "sample_count": 4347,
-        "positives": 765
-      },
-      "k=8": {
-        "brier": 0.15044075665551573,
-        "accuracy": 0.8240165631469979,
-        "ece": 0.07556497759930869,
-        "auc": 0.5876023180535941,
-        "precision_at_50": 0.34,
-        "sample_count": 4347,
-        "positives": 765
-      },
-      "k=16": {
-        "brier": 0.15044041325908716,
-        "accuracy": 0.8240165631469979,
-        "ece": 0.0755627641399167,
-        "auc": 0.5876023180535941,
-        "precision_at_50": 0.34,
-        "sample_count": 4347,
-        "positives": 765
-      },
-      "k=32": {
-        "brier": 0.1504392488120082,
-        "accuracy": 0.8240165631469979,
-        "ece": 0.07555524955070611,
-        "auc": 0.5876023180535941,
-        "precision_at_50": 0.34,
-        "sample_count": 4347,
-        "positives": 765
-      }
-    },
-    "delta_auc": 0.0
-  },
-  "head": {
-    "intercept": -2.3669199919627024,
-    "coefficients": {
-      "loyalty_gap": 0.2683652491600739,
-      "sector_divergence": 0.3507753581416167
+    "0.35": {
+      "tau": 0.35,
+      "eval_pairs": 148846.0,
+      "defection_prone_pairs": 166.0,
+      "prevalence": 0.0011152466307458716,
+      "defection_rate_in_slice": 0.3433734939759036,
+      "defection_rate_overall": 0.05755613184096314,
+      "enrichment": 5.965889002490644
     }
   }
 }

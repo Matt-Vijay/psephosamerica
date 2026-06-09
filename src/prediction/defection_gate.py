@@ -38,6 +38,9 @@ class DefectionBaseline(BaseModel):
     """The pinned per-slice defection AUC a run must not regress against."""
 
     model_name: str = Field(min_length=1)
+    cutoff: str | None = Field(
+        default=None
+    )  # strict no-leakage feature cutoff the pin was measured at
     slices: list[DefectionSliceMetrics] = Field(default_factory=list)
 
     @model_validator(mode="after")

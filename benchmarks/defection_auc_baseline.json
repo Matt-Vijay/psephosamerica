@@ -1,11 +1,12 @@
 {
   "model_name": "defection_head_logreg",
+  "cutoff": "2024-04-20",
   "slices": [
     {
       "slice_name": "congress-118",
-      "auc": 0.6775,
-      "sample_count": 211718,
-      "positives": 13419
+      "auc": 0.7247,
+      "sample_count": 148846,
+      "positives": 8567
     }
   ]
 }

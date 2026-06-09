@@ -20,22 +20,29 @@ _RICH_CORPUS = Path("data/real/house_118_rich.jsonl")
 _TOLERANCE = 0.005
 
 
+_CUTOFF = date(2024, 4, 20)
+_PINNED_AUC = 0.7247
+
+
 def _baseline() -> DefectionBaseline:
     return DefectionBaseline(
         model_name="defection_head_logreg",
-        slices=[DefectionSliceMetrics(slice_name="congress-118", auc=0.6775, sample_count=100)],
+        cutoff="2024-04-20",
+        slices=[
+            DefectionSliceMetrics(slice_name="congress-118", auc=_PINNED_AUC, sample_count=100)
+        ],
     )
 
 
 def test_gate_passes_when_auc_holds_or_improves() -> None:
-    current = [DefectionSliceMetrics(slice_name="congress-118", auc=0.70, sample_count=100)]
+    current = [DefectionSliceMetrics(slice_name="congress-118", auc=0.75, sample_count=100)]
     result = evaluate_defection_gate(_baseline(), current, tolerance=_TOLERANCE)
     assert result.passed
     assert result.improvements and result.improvements[0].slice_name == "congress-118"
 
 
 def test_gate_tolerates_tiny_drop_within_tolerance() -> None:
-    current = [DefectionSliceMetrics(slice_name="congress-118", auc=0.6775 - 0.004)]
+    current = [DefectionSliceMetrics(slice_name="congress-118", auc=_PINNED_AUC - 0.004)]
     assert evaluate_defection_gate(_baseline(), current, tolerance=_TOLERANCE).passed
 
 
@@ -64,7 +71,7 @@ def test_gate_allows_approved_regression() -> None:
 
 def test_gate_reports_new_slices_without_blocking() -> None:
     current = [
-        DefectionSliceMetrics(slice_name="congress-118", auc=0.6775),
+        DefectionSliceMetrics(slice_name="congress-118", auc=_PINNED_AUC),
         DefectionSliceMetrics(slice_name="congress-119", auc=0.66),
     ]
     result = evaluate_defection_gate(_baseline(), current, tolerance=_TOLERANCE)
@@ -86,7 +93,9 @@ def test_baseline_rejects_duplicate_slice_names() -> None:
 def test_baseline_roundtrips_through_disk(tmp_path: Path) -> None:
     path = tmp_path / "b.json"
     _baseline().dump(path)
-    assert DefectionBaseline.load(path).slices[0].auc == 0.6775
+    loaded = DefectionBaseline.load(path)
+    assert loaded.slices[0].auc == _PINNED_AUC
+    assert loaded.cutoff == "2024-04-20"
 
 
 def test_pinned_baseline_file_is_valid_and_has_congress_118() -> None:
@@ -101,9 +110,7 @@ def test_real_corpus_meets_pinned_floor() -> None:
     # The gate is real: recompute AUC on Track A's corpus and require it clears
     # the pinned floor (baseline - tolerance). Skipped when the 16M corpus is absent.
     records = build_vote_records(load_rich_rollcalls(_RICH_CORPUS))
-    metrics = defection_ranking_over_window(
-        records, cutoff=date(2023, 12, 31), eval_end=date(2024, 12, 31)
-    )
+    metrics = defection_ranking_over_window(records, cutoff=_CUTOFF, eval_end=date(2024, 12, 31))
     pinned = next(
         s for s in DefectionBaseline.load(_BASELINE_PATH).slices if s.slice_name == "congress-118"
     )
