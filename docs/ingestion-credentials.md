@@ -65,3 +65,20 @@ below are **credential-gated** — provide the env var and the matching adapter
 > The municipal-vote tier (`ingest/legistar_votes`), House/Senate votes,
 > FEC, 990s, GDELT, Bluesky public, OpenStates people, and Wayback are all
 > ingested **without any key**. The table above is the remaining surface.
+
+## Probed 2026-06 and found gated (documented, not fabricated)
+
+These were attempted keyless and are blocked by anti-bot, JS-rendering, or
+a required key — skipped rather than fabricated:
+
+| Source | Status | Path to unblock |
+|---|---|---|
+| State-legislature votes (CA/NY/TX/FL/IL/PA/OH/GA/NC/MI) | per-state; LegiScan behind Cloudflare (403), OpenStates v3 + bulk S3 require `OPENSTATES_API_KEY`, state portals (leginfo etc.) are JS-rendered 302s | `OPENSTATES_API_KEY` / `LEGISCAN_API_KEY`, or per-state headless-browser scrapers |
+| State campaign finance (top-25 states) | per-state portals are JS/session-gated (CA Cal-Access, NY BOE, TX Ethics, …); no unified keyless API | `FOLLOWTHEMONEY_API_KEY` (50-state) or per-state scrapers |
+| C-SPAN transcripts | `c-span.org` search is server-rendered HTML with no public JSON API; transcript pages are JS | HTML scraping with JS rendering (Playwright); no key |
+| Court-filing dockets | CourtListener `/search` + `/courts` are keyless, but `/opinions`/`/dockets` detail need `COURTLISTENER_API_TOKEN` | `COURTLISTENER_API_TOKEN` |
+| Image-only scanned municipal minutes | text-layer PDFs handled by `ingest/pdf_minutes`; scanned image PDFs have no text layer | a raster OCR engine (Tesseract) — out of the pure-Python path |
+
+**Floor speeches are NOT gated:** the Congressional Record CREC MODS metadata
+(`ingest/congressional_record`) is keyless and bioguide-linked — already ingested
+(2,762 edges / 537 members).
