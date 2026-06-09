@@ -30,7 +30,7 @@ from src.prediction.defection import (
     ranking_metrics,
 )
 from src.prediction.defection_head import DefectionHead, train_defection_head
-from src.runtime.cross_pressured_experiment import VoteRecord
+from src.prediction.vote_record import VoteRecord
 
 
 def bootstrap_seed_ensemble(
@@ -67,9 +67,7 @@ class EnsemblePrediction:
     std: float
 
 
-def ensemble_predict(
-    heads: list[DefectionHead], features: dict[str, float]
-) -> EnsemblePrediction:
+def ensemble_predict(heads: list[DefectionHead], features: dict[str, float]) -> EnsemblePrediction:
     """Mean + std of defection probability across the seed ensemble."""
     probs = [head.probability(features) for head in heads]
     arr = np.asarray(probs, dtype=np.float64)

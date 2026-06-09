@@ -27,7 +27,6 @@ from src.prediction.defection import (
 )
 from src.prediction.defection_head import (
     evaluate_defection_head,
-    rank_defections,
     train_defection_head,
 )
 from src.runtime.cross_pressured_experiment import (
@@ -92,13 +91,9 @@ def run(
             continue
         c_profiles = build_party_profiles(c_train) if c_train else profiles
         c_head = train_defection_head(c_train, c_profiles) if c_train else head
-        per_congress[str(congress)] = asdict(
-            evaluate_defection_head(c_head, c_eval, c_profiles)
-        )
+        per_congress[str(congress)] = asdict(evaluate_defection_head(c_head, c_eval, c_profiles))
 
-    rag = run_rag_before_after(
-        train, eval_records, profiles, tau=tau, k_values=k_values
-    )
+    rag = run_rag_before_after(train, eval_records, profiles, tau=tau, k_values=k_values)
 
     return {
         "corpus": str(corpus),

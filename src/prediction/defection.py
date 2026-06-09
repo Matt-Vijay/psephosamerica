@@ -6,13 +6,16 @@ that predicts the *opposite* of the party scores ~100% on that slice yet is
 useless in production. v4 fixes both halves of the problem.
 
 **Honest slice (ex ante).** A ``(member, bill)`` pair is *defection-prone* when,
-using ONLY information available at the cutoff, the member's own historical
-position on the bill's policy area diverges from their party's. Concretely we
-compare the member's pre-cutoff yea-rate on the bill's sector(s) against the
-party's pre-cutoff yea-rate on the same sector(s); the divergence is the max
-absolute gap over the bill's sectors. A pair is in the slice when that gap is at
-least ``tau``. This is computable the morning before the vote and never reads the
-realized outcome of the bill being scored -- so a lift on it is real.
+using ONLY information available at the cutoff, the member's own record breaks
+with their party on the bill's policy area. Loyalty is *directional*: the
+fraction of the member's pre-cutoff votes cast WITH the party's majority lean,
+within each of the bill's sectors. Defection-proneness is ``1 - loyalty``, taken
+as the max over the bill's sectors (the member's least-loyal relevant sector); a
+pair is in the slice when that proneness is at least ``tau``. Because the metric
+is directional, a super-loyalist (loyalty 1.0) scores 0 and is never flagged --
+only a member whose history actually points against the party enters the slice.
+This is computable the morning before the vote and never reads the realized
+outcome of the bill being scored -- so a lift on it is real.
 
 **Honest product (ranking).** Rather than "accuracy on the slice" we score
 ``P(member defects from their party's majority)`` as a *ranking* task: rank all
@@ -31,7 +34,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 from datetime import date
 
-from src.runtime.cross_pressured_experiment import VoteRecord
+from src.prediction.vote_record import VoteRecord
 
 # A member needs at least this many pre-cutoff votes in a sector before we trust
 # their sector yea-rate; below it we fall back to their overall rate.
@@ -73,9 +76,7 @@ def build_party_profiles(train: list[VoteRecord]) -> PartyProfiles:
             member_sector_loyalty[(record.member, sector)][1] += 1
     return PartyProfiles(
         member_loyalty_rate={k: y / n for k, (y, n) in member_loyalty.items() if n},
-        member_sector_loyalty_rate={
-            k: y / n for k, (y, n) in member_sector_loyalty.items() if n
-        },
+        member_sector_loyalty_rate={k: y / n for k, (y, n) in member_sector_loyalty.items() if n},
         member_sector_counts={k: n for k, (_y, n) in member_sector_loyalty.items() if n},
     )
 

@@ -37,10 +37,22 @@ def _chamber(prefix: str, *, defector_breaks: bool) -> list[VoteRecord]:
             )
         )
         out.append(
-            _record(f"{prefix}_L1", is_yea=False, party_lean_yea=False, sectors=("energy_utilities",), day=day)
+            _record(
+                f"{prefix}_L1",
+                is_yea=False,
+                party_lean_yea=False,
+                sectors=("energy_utilities",),
+                day=day,
+            )
         )
         out.append(
-            _record(f"{prefix}_L2", is_yea=False, party_lean_yea=False, sectors=("energy_utilities",), day=day)
+            _record(
+                f"{prefix}_L2",
+                is_yea=False,
+                party_lean_yea=False,
+                sectors=("energy_utilities",),
+                day=day,
+            )
         )
     return out
 

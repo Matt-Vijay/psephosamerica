@@ -28,7 +28,7 @@ from src.prediction.defection import (
     defection_features,
     ranking_metrics,
 )
-from src.runtime.cross_pressured_experiment import VoteRecord
+from src.prediction.vote_record import VoteRecord
 
 # name -> value, empty when the dense auxiliary is unavailable for this pair.
 AuxiliaryProvider = Callable[[VoteRecord], dict[str, float]]

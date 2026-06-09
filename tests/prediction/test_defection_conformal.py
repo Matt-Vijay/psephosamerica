@@ -26,9 +26,29 @@ def _record(member: str, *, is_yea: bool, party_lean_yea: bool, sectors, day: in
 def _corpus() -> list[VoteRecord]:
     out: list[VoteRecord] = []
     for day in range(1, 41):
-        out.append(_record("D", is_yea=True, party_lean_yea=False, sectors=("energy_utilities",), day=(day % 28) + 1))
-        out.append(_record("L1", is_yea=False, party_lean_yea=False, sectors=("energy_utilities",), day=(day % 28) + 1))
-        out.append(_record("L2", is_yea=False, party_lean_yea=False, sectors=("health",), day=(day % 28) + 1))
+        out.append(
+            _record(
+                "D",
+                is_yea=True,
+                party_lean_yea=False,
+                sectors=("energy_utilities",),
+                day=(day % 28) + 1,
+            )
+        )
+        out.append(
+            _record(
+                "L1",
+                is_yea=False,
+                party_lean_yea=False,
+                sectors=("energy_utilities",),
+                day=(day % 28) + 1,
+            )
+        )
+        out.append(
+            _record(
+                "L2", is_yea=False, party_lean_yea=False, sectors=("health",), day=(day % 28) + 1
+            )
+        )
     return out
 
 
@@ -74,10 +94,15 @@ def test_mondrian_recalibration_improves_minority_slice() -> None:
     calibration = corpus[: len(corpus) // 2]
     test = corpus[len(corpus) // 2 :]
     slicers = {"defection_prone": lambda r: is_defection_prone(r, profiles, tau=0.25)}
-    marginal = {c.slice_name: c for c in conformal_coverage(head, calibration, test, profiles, slicers=slicers)}
+    marginal = {
+        c.slice_name: c
+        for c in conformal_coverage(head, calibration, test, profiles, slicers=slicers)
+    }
     mondrian = {
         c.slice_name: c
-        for c in conformal_coverage(head, calibration, test, profiles, slicers=slicers, mondrian=True)
+        for c in conformal_coverage(
+            head, calibration, test, profiles, slicers=slicers, mondrian=True
+        )
     }
     if "defection_prone" in marginal and "defection_prone" in mondrian:
         # Mondrian coverage is at least as close to nominal as marginal on the slice.

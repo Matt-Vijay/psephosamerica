@@ -14,7 +14,13 @@ from src.runtime.cross_pressured_experiment import VoteRecord
 
 
 def _record(
-    member: str, party: str, *, is_yea: bool, party_lean_yea: bool, sectors: tuple[str, ...], day: int
+    member: str,
+    party: str,
+    *,
+    is_yea: bool,
+    party_lean_yea: bool,
+    sectors: tuple[str, ...],
+    day: int,
 ) -> VoteRecord:
     return VoteRecord(
         member=member,

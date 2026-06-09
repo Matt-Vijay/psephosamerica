@@ -33,12 +33,10 @@ from src.prediction.defection import (
     ranking_metrics,
 )
 from src.prediction.defection_head import DefectionHead, train_defection_head
-from src.runtime.cross_pressured_experiment import VoteRecord
+from src.prediction.vote_record import VoteRecord
 
 
-def _auc_on(
-    head: DefectionHead, eval_records: list[VoteRecord], profiles: PartyProfiles
-) -> float:
+def _auc_on(head: DefectionHead, eval_records: list[VoteRecord], profiles: PartyProfiles) -> float:
     scores = [head.probability(defection_features(r, profiles)) for r in eval_records]
     labels = [defected(r) for r in eval_records]
     return ranking_metrics(scores, labels).auc

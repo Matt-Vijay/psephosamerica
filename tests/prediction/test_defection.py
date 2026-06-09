@@ -95,18 +95,22 @@ def test_sector_divergence_is_ex_ante_and_label_free() -> None:
 def test_slice_enriches_for_defections() -> None:
     # A defects on energy, loyal elsewhere; the honest slice should concentrate
     # A's energy defections relative to the overall defection rate.
-    train = [
-        _record("A", "D", is_yea=False, party_lean_yea=True, sectors=("energy",), day=d)
-        for d in range(1, 6)
-    ] + [
-        _record("A", "D", is_yea=True, party_lean_yea=True, sectors=("health",), day=d)
-        for d in range(1, 6)
-    ] + [
-        # a loyal majority so the party's energy lean is genuinely yea
-        _record(m, "D", is_yea=True, party_lean_yea=True, sectors=("energy",), day=d)
-        for m in ("B", "C", "D2", "E", "F")
-        for d in range(1, 6)
-    ]
+    train = (
+        [
+            _record("A", "D", is_yea=False, party_lean_yea=True, sectors=("energy",), day=d)
+            for d in range(1, 6)
+        ]
+        + [
+            _record("A", "D", is_yea=True, party_lean_yea=True, sectors=("health",), day=d)
+            for d in range(1, 6)
+        ]
+        + [
+            # a loyal majority so the party's energy lean is genuinely yea
+            _record(m, "D", is_yea=True, party_lean_yea=True, sectors=("energy",), day=d)
+            for m in ("B", "C", "D2", "E", "F")
+            for d in range(1, 6)
+        ]
+    )
     profiles = build_party_profiles(train)
     eval_records = [
         _record("A", "D", is_yea=False, party_lean_yea=True, sectors=("energy",), day=10),
@@ -130,5 +134,7 @@ def test_split_by_cutoff_is_strict() -> None:
         _record("A", "D", is_yea=True, party_lean_yea=True, day=1),
         _record("A", "D", is_yea=True, party_lean_yea=True, day=15),
     ]
-    train, eval_records = split_by_cutoff(records, cutoff=date(2023, 1, 10), eval_end=date(2023, 1, 31))
+    train, eval_records = split_by_cutoff(
+        records, cutoff=date(2023, 1, 10), eval_end=date(2023, 1, 31)
+    )
     assert len(train) == 1 and len(eval_records) == 1

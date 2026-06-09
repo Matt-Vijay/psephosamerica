@@ -27,7 +27,7 @@ from src.prediction.defection import (
     ranking_metrics,
     split_by_cutoff,
 )
-from src.runtime.cross_pressured_experiment import VoteRecord
+from src.prediction.vote_record import VoteRecord
 
 _LOGIT_CLAMP = 40.0
 _FEATURES = ("loyalty_gap", "sector_divergence")
@@ -145,7 +145,5 @@ def defection_ranking_over_window(
     """
     train, eval_records = split_by_cutoff(records, cutoff=cutoff, eval_end=eval_end)
     profiles = build_party_profiles(train)
-    head = train_defection_head(
-        train, profiles, learning_rate=learning_rate, epochs=epochs, l2=l2
-    )
+    head = train_defection_head(train, profiles, learning_rate=learning_rate, epochs=epochs, l2=l2)
     return evaluate_defection_head(head, eval_records, profiles)

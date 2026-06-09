@@ -70,9 +70,7 @@ def test_run_rag_before_after_reports_ablation_and_is_label_safe() -> None:
         _record("D", is_yea=True, party_lean_yea=False, sectors=("energy_utilities",), day=20),
         _record("L", is_yea=False, party_lean_yea=False, sectors=("energy_utilities",), day=20),
     ]
-    report = run_rag_before_after(
-        train, eval_records, profiles, tau=0.25, k_values=(4, 8)
-    )
+    report = run_rag_before_after(train, eval_records, profiles, tau=0.25, k_values=(4, 8))
     assert report["embedding"] == "sector_bag"
     assert set(report["k_ablation"]) == {"k=4", "k=8"}
     assert "before" in report and "after_best" in report

@@ -3,6 +3,7 @@
 skips:
   - B101  # assert used in test and validation code; harmless
   - B404  # import subprocess — not used in prod paths
+  - B311  # random.Random — seeded, deterministic RNG for ensembles/benchmarks, not crypto
 
 exclude_dirs:
   - tests

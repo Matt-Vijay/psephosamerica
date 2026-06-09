@@ -28,7 +28,7 @@ from dataclasses import dataclass
 
 from src.prediction.defection import PartyProfiles, defected, defection_features
 from src.prediction.defection_head import DefectionHead
-from src.runtime.cross_pressured_experiment import VoteRecord
+from src.prediction.vote_record import VoteRecord
 
 
 def _quantile_threshold(scores: list[float], alpha: float) -> float:
@@ -63,7 +63,9 @@ class SliceCoverage:
         }
 
 
-def _label_probs(head: DefectionHead, record: VoteRecord, profiles: PartyProfiles) -> dict[bool, float]:
+def _label_probs(
+    head: DefectionHead, record: VoteRecord, profiles: PartyProfiles
+) -> dict[bool, float]:
     p_defect = head.probability(defection_features(record, profiles))
     return {True: p_defect, False: 1.0 - p_defect}
 

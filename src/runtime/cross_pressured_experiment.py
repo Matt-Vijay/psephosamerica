@@ -27,20 +27,11 @@ from pathlib import Path
 
 from src.prediction.calibration import expected_calibration_error
 from src.prediction.per_member_model import MemberVoteExample, train_per_member_model
+from src.prediction.vote_record import VoteRecord
+
+__all__ = ["VoteRecord"]  # re-exported for runtime consumers; defined in the domain layer
 
 _BINARY = {"yea", "nay"}
-
-
-@dataclass(frozen=True)
-class VoteRecord:
-    member: str
-    party: str
-    state: str
-    vote_date: date
-    is_yea: bool
-    party_alignment: float
-    sectors: tuple[str, ...]
-    is_cross_pressured: bool
 
 
 @dataclass(frozen=True)

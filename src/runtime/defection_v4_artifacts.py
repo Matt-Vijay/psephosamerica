@@ -95,7 +95,12 @@ def main(argv: list[str] | None = None) -> int:
     digest, path = pin_checkpoint(Path("checkpoints"), payload)
     _write(
         bench / "defection_bayesian.json",
-        {"cutoff": args.cutoff, **auc.as_dict(), "checkpoint_sha256": digest, "checkpoint_path": str(path)},
+        {
+            "cutoff": args.cutoff,
+            **auc.as_dict(),
+            "checkpoint_sha256": digest,
+            "checkpoint_path": str(path),
+        },
     )
 
     # #4 multi-task transfer (no dense auxiliaries yet -> coverage 0, delta ~0).
@@ -107,7 +112,11 @@ def main(argv: list[str] | None = None) -> int:
     stack = evaluate_llm_stack(head, calibration, honest_eval or eval_records, profiles)
     _write(
         bench / "llm_defection_stack.json",
-        {"cutoff": args.cutoff, "anthropic_key_present": anthropic_key_present(), **stack.as_dict()},
+        {
+            "cutoff": args.cutoff,
+            "anthropic_key_present": anthropic_key_present(),
+            **stack.as_dict(),
+        },
     )
 
     # #5 cross-congress transfer (flat corpora, loyalty-signal transfer).
@@ -138,7 +147,9 @@ def main(argv: list[str] | None = None) -> int:
     print("wrote benchmarks/defection_watch.html")
     tiles = [
         DefectionAucTile(
-            key="118", auc=auc.mean_auc, sample_count=len(eval_records),
+            key="118",
+            auc=auc.mean_auc,
+            sample_count=len(eval_records),
             positives=sum(1 for r in eval_records if r.is_cross_pressured),
         )
     ]
@@ -149,7 +160,7 @@ def main(argv: list[str] | None = None) -> int:
 
     prevalence = slice_prevalence(eval_records, profiles, tau=0.25)
     print(
-        f"conformal overall coverage={[c.empirical_coverage for c in coverage if c.slice_name=='overall']} "
+        f"conformal overall coverage={[c.empirical_coverage for c in coverage if c.slice_name == 'overall']} "
         f"| bayes AUC={auc.mean_auc:.3f}±{auc.std_auc:.3f} "
         f"| transfer gap={transfer.gap:.3f} | slice enrichment={prevalence['enrichment']:.2f}x"
     )

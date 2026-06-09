@@ -42,7 +42,9 @@ def stub_llm_forecaster(features: dict[str, float]) -> float:
     over the same ex-ante signals but with a different emphasis than the head
     (divergence-led), so stacking has something non-redundant to learn.
     """
-    raw = -2.2 + 2.5 * features.get("sector_divergence", 0.0) + 1.0 * features.get("loyalty_gap", 0.0)
+    raw = (
+        -2.2 + 2.5 * features.get("sector_divergence", 0.0) + 1.0 * features.get("loyalty_gap", 0.0)
+    )
     return 1.0 / (1.0 + math.exp(-max(-_LOGIT_CLAMP, min(_LOGIT_CLAMP, raw))))
 
 

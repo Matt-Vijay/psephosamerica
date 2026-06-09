@@ -25,8 +25,14 @@ def _record(member: str, *, is_yea: bool, party_lean_yea: bool, sectors, day: in
 def _corpus() -> list[VoteRecord]:
     out: list[VoteRecord] = []
     for day in range(1, 21):
-        out.append(_record("D", is_yea=True, party_lean_yea=False, sectors=("energy_utilities",), day=day))
-        out.append(_record("L1", is_yea=False, party_lean_yea=False, sectors=("energy_utilities",), day=day))
+        out.append(
+            _record("D", is_yea=True, party_lean_yea=False, sectors=("energy_utilities",), day=day)
+        )
+        out.append(
+            _record(
+                "L1", is_yea=False, party_lean_yea=False, sectors=("energy_utilities",), day=day
+            )
+        )
         out.append(_record("L2", is_yea=False, party_lean_yea=False, sectors=("health",), day=day))
     return out
 

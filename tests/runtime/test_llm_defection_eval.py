@@ -30,8 +30,14 @@ def _record(member: str, *, is_yea: bool, party_lean_yea: bool, sectors, day: in
 def _corpus() -> list[VoteRecord]:
     out: list[VoteRecord] = []
     for day in range(1, 21):
-        out.append(_record("D", is_yea=True, party_lean_yea=False, sectors=("energy_utilities",), day=day))
-        out.append(_record("L1", is_yea=False, party_lean_yea=False, sectors=("energy_utilities",), day=day))
+        out.append(
+            _record("D", is_yea=True, party_lean_yea=False, sectors=("energy_utilities",), day=day)
+        )
+        out.append(
+            _record(
+                "L1", is_yea=False, party_lean_yea=False, sectors=("energy_utilities",), day=day
+            )
+        )
         out.append(_record("L2", is_yea=False, party_lean_yea=False, sectors=("health",), day=day))
     return out
 
@@ -58,8 +64,6 @@ def test_real_llm_flag_tracks_forecaster_arg() -> None:
     corpus = _corpus()
     profiles = build_party_profiles(corpus)
     head = train_defection_head(corpus, profiles)
-    result = evaluate_llm_stack(
-        head, corpus, corpus, profiles, forecaster=lambda f: 0.5
-    )
+    result = evaluate_llm_stack(head, corpus, corpus, profiles, forecaster=lambda f: 0.5)
     assert result.used_real_llm is True
     assert isinstance(anthropic_key_present(), bool)

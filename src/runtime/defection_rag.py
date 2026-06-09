@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import math
 from collections import defaultdict
-from dataclasses import asdict
+from collections.abc import Callable
 
 import numpy as np
 import numpy.typing as npt
@@ -38,6 +38,7 @@ from src.prediction.defection_head import DefectionHead
 from src.runtime.cross_pressured_experiment import VoteRecord
 
 Array = npt.NDArray[np.float64]
+Embedder = Callable[[tuple[str, ...]], Array]
 
 _SECTOR_VOCAB = sorted(sector_keywords())
 _SECTOR_INDEX = {sector: i for i, sector in enumerate(_SECTOR_VOCAB)}
@@ -90,7 +91,7 @@ class _MemberStore:
 
 def build_member_stores(
     train: list[VoteRecord],
-    embedder=sector_bag_embedding,
+    embedder: Embedder = sector_bag_embedding,
 ) -> dict[str, _MemberStore]:
     """Index each member's own pre-cutoff votes for RAG retrieval."""
     stores: dict[str, _MemberStore] = defaultdict(_MemberStore)
@@ -103,7 +104,7 @@ def _rag_feature(
     record: VoteRecord,
     stores: dict[str, _MemberStore],
     k: int,
-    embedder,
+    embedder: Embedder,
     cache: dict[tuple[str, tuple[str, ...], int], float] | None = None,
 ) -> float:
     store = stores.get(record.member)
@@ -178,7 +179,7 @@ def run_rag_before_after(
     *,
     tau: float = 0.25,
     k_values: tuple[int, ...] = (4, 8, 16, 32),
-    embedder=sector_bag_embedding,
+    embedder: Embedder = sector_bag_embedding,
 ) -> dict[str, object]:
     """BEFORE (ex-ante features) vs AFTER (+RAG interaction) on the honest slice."""
     honest_eval = [r for r in eval_records if is_defection_prone(r, profiles, tau=tau)]
