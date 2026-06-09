@@ -45,3 +45,13 @@ which carries defection direction. That needs dense bill embeddings (sparse in
 the corpus today: 19 enriched bills). This experiment quantifies, on real data,
 exactly why the party-only model fails and what is actually required — the
 strongest possible motivation for the bill-encoder slice.
+
+## Bill encoder exercised on real bill embeddings (#5)
+Track A's corpus has 19 bill entities with real 256-d dossier + 64-d structural
+embeddings. The four-stream bill stream consumes them end to end (projected to
+tokens; a four-stream forward over a real (member, bill) pair runs). **But 0/19
+bills carry an external_id linking to a bill number**, so they cannot be joined
+to the vote feed (`us_congress:118:h-res-N`) — the cross-pressured impact is
+therefore unmeasurable until Track A links bills (and enriches more than 19).
+This is exactly the blocker experiment #1 identified: the bill encoder + RAG is
+the path to cross-pressured accuracy, gated on dense, *linkable* bill embeddings.

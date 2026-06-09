@@ -92,6 +92,13 @@ def _external_value(external_id: str, prefix: str) -> str | None:
     return None
 
 
+def bill_embedding_index(entities: list[ContractEntity]) -> dict[str, ContractEntity]:
+    """Index bill entities by canonical id (the bill dossier/structural embeddings)."""
+    return {
+        entity.canonical_id: entity for entity in entities if entity.entity_type == "bill"
+    }
+
+
 def bioguide_embedding_index(entities: list[ContractEntity]) -> dict[str, ContractEntity]:
     """Index person entities by uppercased bioguide id (the House feed's key)."""
     index: dict[str, ContractEntity] = {}
