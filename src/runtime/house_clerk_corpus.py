@@ -44,6 +44,7 @@ class RollCall:
     vote_date: date
     congress: int
     votes: tuple[MemberVote, ...]
+    description: str = ""
 
 
 def _slug_bill(legis_num: str, congress: int) -> str:
@@ -67,6 +68,7 @@ def parse_rollcall_xml(xml: str) -> RollCall | None:
     congress_text = _text("congress")
     legis_num = _text("legis-num")
     question = _text("vote-question")
+    description = _text("vote-desc")
     action = _text("action-date")
     try:
         vote_date = datetime.strptime(action, "%d-%b-%Y").date()
@@ -100,6 +102,7 @@ def parse_rollcall_xml(xml: str) -> RollCall | None:
         vote_date=vote_date,
         congress=congress,
         votes=tuple(votes),
+        description=description,
     )
 
 
