@@ -16,6 +16,7 @@ dependencies = [
 [project.optional-dependencies]
 pdf = [
     "pypdf>=4,<6",
+    "pdfplumber>=0.11,<1",
 ]
 dev = [
     "pytest>=8,<9",
@@ -23,6 +24,8 @@ dev = [
     "mypy>=1.10,<2",
     "types-defusedxml>=0.7,<1",
     "pypdf>=4,<6",
+    "pdfplumber>=0.11,<1",
+    "fpdf2>=2.7,<3",
     "bandit[toml]>=1.7,<2",
     "coverage>=7,<8",
 ]
