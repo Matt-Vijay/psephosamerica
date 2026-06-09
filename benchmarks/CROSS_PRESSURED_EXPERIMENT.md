@@ -55,3 +55,12 @@ to the vote feed (`us_congress:118:h-res-N`) — the cross-pressured impact is
 therefore unmeasurable until Track A links bills (and enriches more than 19).
 This is exactly the blocker experiment #1 identified: the bill encoder + RAG is
 the path to cross-pressured accuracy, gated on dense, *linkable* bill embeddings.
+
+## Hyperparameter sweep on real validation (#2)
+Coarse grid (d_model=16 × heads{2,4,8} × lr{0.01,0.05,0.1}) on real four-stream
+118th data (1,000 train / 1,655 eval). **Every config scored accuracy 0.9239**;
+Brier varied only 0.0704–0.0730. Best: heads=8, lr=0.01 (Brier 0.0704).
+Finding: the task is **config-insensitive** — the party-alignment context token
+saturates accuracy regardless of capacity/lr, so the bottleneck is the feature
+set (per-(member,bill) defection signals), not model size or optimization. Full
+results: `hpo_results.json`. (Depth/L2 not wired into the single-block trainer.)
