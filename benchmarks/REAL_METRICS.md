@@ -74,3 +74,20 @@ are party-dominated. The embeddings' expected payoff is on the **cross-pressured
 slice (where party fails) and with *trained* projections / per-member sector slopes;
 that is the next experiment. The result proves the four-stream architecture runs end
 to end on Track A's real `dossier_embedding`/`structural_embedding`.
+
+## Stated-position → vote-stance transfer on REAL statements (#6)
+Declared positions = per-member sector attention from real public statements
+(`public-statement-sector-rows.jsonl`, 354 rows / 44 members). The transfer head
+is trained on members' (declared-profile, vote) pairs and evaluated on **held-out
+members** — predicting their votes from declared positions alone.
+
+- members with declared positions AND votes (sample): 36
+- **transfer accuracy on held-out members: 0.553** (n=114, 11 members)
+- majority-class baseline: 0.535 → **+0.018 real lift**
+- learned coefficients (sensible): education/environment attention → nay-leaning;
+  transportation/legal → yea-leaning.
+
+Honest read: declared sector attention carries a **weak but real** signal for vote
+stance above baseline, on very limited data and against a party-dominated chamber.
+The head works end-to-end on real statement data; its value grows with more
+declared-position coverage and bill-level issue matching.
