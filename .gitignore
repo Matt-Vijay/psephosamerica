@@ -31,3 +31,7 @@ data/crosswalks/member_fec.csv
 .DS_Store
 *.swp
 data/real/
+
+# Track A contract-corpus exports (large regenerable artifacts)
+data/exports/contract_records/records.jsonl
+data/exports/contract_records/deltas.jsonl
