@@ -1,0 +1,7 @@
+{"tick": 0, "as_of": "2025-02-01", "kind": "full", "example_count": 10458, "cdc_delta_count": 7918, "last_full_retrain": "2025-02-01"}
+{"tick": 1, "as_of": "2025-03-18", "kind": "incremental", "example_count": 18373, "cdc_delta_count": 7918, "last_full_retrain": "2025-02-01"}
+{"tick": 2, "as_of": "2025-05-02", "kind": "full", "example_count": 46788, "cdc_delta_count": 7918, "last_full_retrain": "2025-05-02"}
+{"tick": 3, "as_of": "2025-06-16", "kind": "incremental", "example_count": 23660, "cdc_delta_count": 7918, "last_full_retrain": "2025-05-02"}
+{"tick": 4, "as_of": "2025-07-31", "kind": "full", "example_count": 90098, "cdc_delta_count": 7918, "last_full_retrain": "2025-07-31"}
+{"tick": 5, "as_of": "2025-09-14", "kind": "incremental", "example_count": 19556, "cdc_delta_count": 7918, "last_full_retrain": "2025-07-31"}
+{"tick": 6, "as_of": "2025-10-29", "kind": "full", "example_count": 117177, "cdc_delta_count": 7918, "last_full_retrain": "2025-10-29"}

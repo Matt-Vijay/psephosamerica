@@ -16,7 +16,7 @@ numbers or a tested path.
 | 8 | dashboard side-by-side | Done: cross_pressured_dashboard.html — overall vs cross-pressured by congress. |
 | 9 | counterfactual rendering | Done: top-3 flip factors (signed contribution) in the explorer + /v1/prediction JSON. |
 | 10 | content-addressed checkpoints | Done: checkpoint.py + pinned real per-member model under checkpoints/sha256/... |
-| 11 | continuous-learning LIVE ≥30 min | Ran 7 ticks at 5-min cadence against Track A's delta-CDC; cutoff advances, full/incremental retrains logged. (continuous_learning_live.jsonl) |
+| 11 | continuous-learning LIVE ≥30 min | **Done: 7 ticks / 30 min** (5-min cadence) against Track A's delta-CDC (7,918 deltas observed/tick). Cutoff advanced 2025-02-01→2025-10-29; **4 full + 3 incremental** retrains on a 90-day cadence; idempotent, no-leakage. (continuous_learning_live.jsonl) |
 
 ## The headline (real)
 Across HPO, multi-task, and the sector experiment, **nothing moves the
