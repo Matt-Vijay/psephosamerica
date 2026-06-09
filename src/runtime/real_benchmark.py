@@ -34,6 +34,7 @@ def default_congress_windows() -> list[EvalWindow]:
         EvalWindow("117th", date(2021, 1, 2), date(2021, 1, 3), date(2022, 12, 31)),
         EvalWindow("118th-h1", date(2023, 6, 30), date(2023, 7, 1), date(2023, 12, 31)),
         EvalWindow("118th-h2", date(2024, 3, 31), date(2024, 4, 1), date(2025, 1, 2)),
+        EvalWindow("119th", date(2025, 6, 30), date(2025, 7, 1), date(2026, 12, 31)),
     ]
 
 

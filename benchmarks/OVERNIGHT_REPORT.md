@@ -2,7 +2,7 @@
 
 First real metrics on real federal data, end to end, all numpy (no torch).
 Data: **1.28M real House votes** from the House Clerk public roll-call feed
-(115th–118th congresses) + Track A's contract corpus (**7,918 ready records,
+(115th–119th congresses) + Track A's contract corpus (**7,918 ready records,
 440 federal members with real 256-d dossier + 64-d structural embeddings**).
 ~16 incrementally-committed-and-pushed slices; full prediction/runtime/api suite
 green (4,647 tests), mypy-strict clean.
@@ -59,6 +59,6 @@ richer four-stream signals and per-member sector slopes the architecture provide
 - The four-stream embedding streams use *untrained random projections*; their payoff
   on the cross-pressured slice needs trained projections + per-member sector slopes
   (next experiment).
-- "5 congresses": 4 real (115th–118th); the 119th (current) extends trivially.
+- 5 congresses: 115th–119th all real (the 119th = 2025, acc 0.949).
 - Bill embeddings are sparse in the corpus today (19 bills), so the bill streams are
   placeholders until bill enrichment is dense.

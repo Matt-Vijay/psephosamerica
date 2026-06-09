@@ -102,6 +102,7 @@ Per-member model over rolling strict-cutoff windows, real House votes
 | 117th | 0.040 | 0.172 | 0.960 | 0.038 | 7,555 |
 | 118th-h1 | 0.087 | 0.329 | 0.908 | 0.045 | 7,227 |
 | 118th-h2 | 0.065 | 0.246 | 0.928 | 0.010 | 6,755 |
+| 119th (current) | 0.049 | 0.208 | 0.949 | 0.033 | 2,973 |
 
 **The thin-record story on real data:** the 115th window has no prior history, so
 every member is cold-started from the global fallback → ~0.60 accuracy / Brier 0.25
