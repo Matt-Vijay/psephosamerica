@@ -1,0 +1,9 @@
+{
+  "overall_noncp_acc": 1.0,
+  "cross_pressured_acc": 0.0,
+  "n_cross_pressured": 126,
+  "tasks": [
+    "votes",
+    "statement_stance"
+  ]
+}

@@ -64,3 +64,14 @@ Finding: the task is **config-insensitive** — the party-alignment context toke
 saturates accuracy regardless of capacity/lr, so the bottleneck is the feature
 set (per-(member,bill) defection signals), not model size or optimization. Full
 results: `hpo_results.json`. (Depth/L2 not wired into the single-block trainer.)
+
+## Multi-task pretraining on real data (#3)
+Shared-trunk multi-task model (votes + statement-stance heads) trained on real
+four-stream 118th data (1,000 examples; 36 members carry real declared-statement
+data). Joint loss fell 0.575→0.534; the votes head scored **1.000 on the
+non-cross-pressured majority and 0.000 on the cross-pressured slice** (n=126).
+Multi-task with the available auxiliary (statement-stance) does not move the
+cross-pressured slice — the auxiliary is sparse and not bill-specific, and the
+richer feeds (cosponsorship / donor-receipt / committee / endorsements) are not
+in the corpus. Same conclusion as experiment #1: the gap is a per-(member,bill)
+signal, not an auxiliary-task or capacity problem. Results: `multitask_real.json`.
