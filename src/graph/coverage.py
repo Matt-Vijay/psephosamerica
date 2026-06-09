@@ -64,6 +64,13 @@ COVERAGE: tuple[CoverageEntry, ...] = (
     CoverageEntry(
         "Senate LDA federal lobbying", "federal", "Org IDs + lobbying edges", "keyless", "248 orgs"
     ),
+    CoverageEntry(
+        "Congressional Record (CREC) floor speeches",
+        "federal",
+        "floor_speech edges (bioguide-linked)",
+        "keyless",
+        "2,762 edges / 537 members",
+    ),
     # ── state ──
     CoverageEntry(
         "OpenStates people (all 50 states)", "state", "Person IDs", "keyless", "7,359 legislators"
@@ -89,6 +96,20 @@ COVERAGE: tuple[CoverageEntry, ...] = (
     ),
     CoverageEntry(
         "Legistar event-item votes", "city", "vote edges", "keyless", "1,161 municipal vote edges"
+    ),
+    CoverageEntry(
+        "Legistar registry (cities + counties)",
+        "city",
+        "Person IDs across governments",
+        "keyless",
+        "124 governments (24,368 officials)",
+    ),
+    CoverageEntry(
+        "Text-PDF municipal minutes (pdfplumber)",
+        "city",
+        "minutes text + official links",
+        "keyless",
+        "text-layer PDFs (image-only = OCR gap)",
     ),
     # ── cross-cutting ──
     CoverageEntry(

@@ -8,6 +8,7 @@ or derived (computed from ingested data). Credential-gated sources are in
 
 | Tier | Source | Produces | Access | Demonstrated |
 |---|---|---|---|---|
+| federal | Congressional Record (CREC) floor speeches | floor_speech edges (bioguide-linked) | keyless | 2,762 edges / 537 members |
 | federal | FEC candidate-committee linkage (ccl.txt) | Person<->Org edges | local-bulk | 624 affiliation edges |
 | federal | FEC committee master (cm.txt) | Org IDs | local-bulk | 20,941 committees |
 | federal | FEC contributions (itcont.txt) | donation edges | local-bulk | 162,723 edges ($14M) |
@@ -20,6 +21,8 @@ or derived (computed from ingested data). Credential-gated sources are in
 | city | Legistar city clients (officials) | Person IDs | keyless | in 24,368 municipal officials |
 | city | Legistar event-item votes | vote edges | keyless | 1,161 municipal vote edges |
 | city | Legistar matters (municipal bills) | Bill IDs | keyless | 2,000 bills |
+| city | Legistar registry (cities + counties) | Person IDs across governments | keyless | 124 governments (24,368 officials) |
+| city | Text-PDF municipal minutes (pdfplumber) | minutes text + official links | keyless | text-layer PDFs (image-only = OCR gap) |
 | cross-cutting | Bluesky public posts | social-post edges | keyless | 78 posts |
 | cross-cutting | GDELT news | news-mention edges | keyless | 75 edges / 56 outlets |
 | cross-cutting | ProPublica 990s | Org IDs | keyless | 175 nonprofits |
@@ -28,4 +31,4 @@ or derived (computed from ingested data). Credential-gated sources are in
 | enrichment | entity-linker (NER -> canonical_person_id) | text->Person links | derived | P 1.00 / R 0.75 on real sample |
 | enrichment | regenerate driver (contract corpus) | ready rows w/ embeddings | derived | 7,918 rows, 100% enriched |
 
-**19 sources** across 6 tiers.
+**22 sources** across 6 tiers.
