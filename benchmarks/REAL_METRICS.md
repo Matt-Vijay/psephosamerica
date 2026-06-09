@@ -53,3 +53,24 @@ Bootstrap bag of the per-member model; interval width = ensemble prediction spre
 The ensemble is **wider (less certain) exactly where it is more often wrong** —
 on the cross-pressured slice and on the more-dispersed Republican caucus — real
 evidence that the uncertainty is informative, not cosmetic.
+
+## Six-stream ablation on REAL data + Track A's real embeddings (118th-h2 sample)
+Four-stream transformer trained on 1,200 real votes joined to Track A's contract
+embeddings (real 256-d dossier + 64-d structural, projected to tokens); evaluated
+on 1,655 real votes. Full accuracy 0.924.
+| ablation | accuracy | Brier | Δacc vs full |
+|---|---|---|---|
+| full | 0.924 | 0.071 | — |
+| minus context (party_alignment) | 0.399 | 0.416 | **−0.525** |
+| minus politician_structural | 0.924 | 0.071 | 0.000 |
+| minus politician_dossier | 0.924 | 0.072 | 0.000 |
+| minus bill_structural / bill_dossier | 0.924 | 0.071 | 0.000 |
+| minus retrieved_past_votes | 0.924 | 0.071 | 0.000 |
+
+**Finding (honest):** on the overall slice the party-alignment context token carries
+essentially all the signal; the real dossier/structural embeddings — with untrained
+random projections — add ≈0 on top. This matches the per-member result: House votes
+are party-dominated. The embeddings' expected payoff is on the **cross-pressured**
+slice (where party fails) and with *trained* projections / per-member sector slopes;
+that is the next experiment. The result proves the four-stream architecture runs end
+to end on Track A's real `dossier_embedding`/`structural_embedding`.
