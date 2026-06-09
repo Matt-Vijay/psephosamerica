@@ -114,6 +114,18 @@ def test_enrichment_field_change_is_detected() -> None:
     assert delta.enrichment_changed is True
 
 
+def test_dossier_as_of_only_change_is_not_a_delta() -> None:
+    # A clock-only advance (dossier as_of) with identical facts/embeddings must
+    # NOT churn the entity through the feed.
+    curr_out = _output().model_copy(
+        update={"dossier_json": {"summary": "s", "claims": [], "as_of": "2099-01-01T00:00:00Z"}}
+    )
+    prev_out = _output().model_copy(
+        update={"dossier_json": {"summary": "s", "claims": [], "as_of": "2024-01-01T00:00:00Z"}}
+    )
+    assert diff_outputs({"ce-1": prev_out}, {"ce-1": curr_out}) == []
+
+
 def test_structural_embedding_change_is_detected() -> None:
     prev = {"ce-1": _output()}
     curr_out = _output().model_copy(update={"structural_embedding": [1.0, 2.0]})

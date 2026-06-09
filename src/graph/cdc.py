@@ -17,7 +17,7 @@ audit what moved.
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import Literal, Self
+from typing import Any, Literal, Self
 
 from pydantic import Field, model_validator
 
@@ -60,6 +60,18 @@ class EntityDelta(ExportContractModel):
         return self
 
 
+def _dossier_substance(dossier: dict[str, Any] | None) -> dict[str, Any] | None:
+    """The dossier with the ``as_of`` snapshot timestamp dropped.
+
+    ``as_of`` advances every regeneration tick; it is snapshot metadata, not a
+    fact. Excluding it means a clock-only advance (no new facts) does not churn
+    every entity through the CDC feed — only real content changes do.
+    """
+    if dossier is None:
+        return None
+    return {key: value for key, value in dossier.items() if key != "as_of"}
+
+
 def _record_ids(output: EntityResolutionOutput) -> list[str]:
     return [anchor.record_id for anchor in output.source_anchors]
 
@@ -100,7 +112,7 @@ def _updated(
     name_changed = prev.display_name != curr.display_name
     status_changed = prev.enrichment_status != curr.enrichment_status
     enrichment_changed = (
-        prev.dossier_json != curr.dossier_json
+        _dossier_substance(prev.dossier_json) != _dossier_substance(curr.dossier_json)
         or prev.dossier_embedding != curr.dossier_embedding
         or prev.structural_embedding != curr.structural_embedding
     )
