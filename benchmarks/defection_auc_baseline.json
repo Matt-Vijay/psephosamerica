@@ -1,0 +1,11 @@
+{
+  "model_name": "defection_head_logreg",
+  "slices": [
+    {
+      "slice_name": "congress-118",
+      "auc": 0.6775,
+      "sample_count": 211718,
+      "positives": 13419
+    }
+  ]
+}
