@@ -3,8 +3,8 @@ from __future__ import annotations
 from src.graph.ingest.legistar_registry import LEGISTAR_CLIENTS, LegistarClient
 
 
-def test_at_least_50_clients() -> None:
-    assert len(LEGISTAR_CLIENTS) >= 50
+def test_at_least_120_clients() -> None:
+    assert len(LEGISTAR_CLIENTS) >= 120
 
 
 def test_client_codes_unique() -> None:
