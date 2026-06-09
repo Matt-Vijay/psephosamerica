@@ -25,6 +25,7 @@ defensively over the minor schema drift between congresses 113-119.
 
 from __future__ import annotations
 
+import re
 from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
@@ -101,6 +102,18 @@ def _date(raw: str | None) -> date | None:
         return None
 
 
+_TAG_RE = re.compile(r"<[^>]+>")
+_WS_RE = re.compile(r"\s+")
+
+
+def _strip_html(text: str | None) -> str | None:
+    """Strip the HTML markup govinfo wraps CRS summaries in; collapse whitespace."""
+    if text is None:
+        return None
+    cleaned = _WS_RE.sub(" ", _TAG_RE.sub(" ", text)).strip()
+    return cleaned or None
+
+
 def _sponsors(container: object) -> tuple[BillSponsor, ...]:
     out: list[BillSponsor] = []
     seen: set[str] = set()
@@ -154,11 +167,14 @@ def parse_billstatus_xml(xml: str) -> BillStatus:
         for item in _iter(bill.find("committees"), "item", "billCommittees/item")
         if (name := _text(item, "name"))
     )
-    summary = _text(
-        bill.find("summaries"),
-        "summary/text",
-        "billSummaries/item/text",
-        "summary/item/text",
+    summary = _strip_html(
+        _text(
+            bill.find("summaries"),
+            "summary/cdata/text",
+            "summary/text",
+            "billSummaries/item/text",
+            "summary/item/text",
+        )
     )
 
     return BillStatus(

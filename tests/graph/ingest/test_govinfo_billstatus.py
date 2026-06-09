@@ -159,6 +159,18 @@ def test_provenance_falls_back_to_observed_when_no_introduced_date() -> None:
     assert prov.valid_from == date(2021, 5, 1)
 
 
+def test_summary_parsed_from_real_cdata_nesting_and_html_stripped() -> None:
+    # govinfo's real schema: summaries/summary/cdata/text with HTML-escaped body.
+    xml = """<billStatus><bill>
+      <congress>118</congress><type>HR</type><number>9</number><title>Real Schema Act</title>
+      <summaries><summary><actionDesc>Introduced in House</actionDesc>
+        <cdata><text>&lt;p&gt;&lt;b&gt;Real Schema Act&lt;/b&gt;&lt;/p&gt; &lt;p&gt;This bill does things.&lt;/p&gt;</text></cdata>
+      </summary></summaries>
+    </bill></billStatus>"""
+    status = parse_billstatus_xml(xml)
+    assert status.summary_text == "Real Schema Act This bill does things."
+
+
 def test_schema_drift_alternate_tags() -> None:
     xml = """<billStatus><bill>
       <congress>115</congress><billType>S</billType><billNumber>50</billNumber>
