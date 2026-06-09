@@ -102,7 +102,7 @@ COVERAGE: tuple[CoverageEntry, ...] = (
         "city",
         "Person IDs across governments",
         "keyless",
-        "124 governments (24,368 officials)",
+        "124 governments (44,600 officials)",
     ),
     CoverageEntry(
         "Text-PDF municipal minutes (pdfplumber)",

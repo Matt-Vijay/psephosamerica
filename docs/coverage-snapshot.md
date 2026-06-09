@@ -21,7 +21,7 @@ or derived (computed from ingested data). Credential-gated sources are in
 | city | Legistar city clients (officials) | Person IDs | keyless | in 24,368 municipal officials |
 | city | Legistar event-item votes | vote edges | keyless | 1,161 municipal vote edges |
 | city | Legistar matters (municipal bills) | Bill IDs | keyless | 2,000 bills |
-| city | Legistar registry (cities + counties) | Person IDs across governments | keyless | 124 governments (24,368 officials) |
+| city | Legistar registry (cities + counties) | Person IDs across governments | keyless | 124 governments (44,600 officials) |
 | city | Text-PDF municipal minutes (pdfplumber) | minutes text + official links | keyless | text-layer PDFs (image-only = OCR gap) |
 | cross-cutting | Bluesky public posts | social-post edges | keyless | 78 posts |
 | cross-cutting | GDELT news | news-mention edges | keyless | 75 edges / 56 outlets |
