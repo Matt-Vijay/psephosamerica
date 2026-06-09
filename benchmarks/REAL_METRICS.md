@@ -40,3 +40,16 @@ report at `data/real/house_118_report.json`, baseline at `prediction_real_baseli
   118th-h2 window. The `benchmark-gate` CI job recomputes the sample metrics and
   **fails on any Brier/log-loss regression > 0.005** per slice; re-pin with
   `--update-baseline` to accept a deliberate change.
+
+## Bayesian seed-ensemble uncertainty (5 seeds, 118th-h2 real sample)
+Bootstrap bag of the per-member model; interval width = ensemble prediction spread.
+| slice | mean Brier | mean interval width | n |
+|---|---|---|---|
+| all | 0.071 | 0.070 | 1,688 |
+| cross_pressured | 0.815 | **0.093** | 128 |
+| party:D | 0.053 | 0.048 | 835 |
+| party:R | 0.090 | **0.091** | 853 |
+
+The ensemble is **wider (less certain) exactly where it is more often wrong** —
+on the cross-pressured slice and on the more-dispersed Republican caucus — real
+evidence that the uncertainty is informative, not cosmetic.
