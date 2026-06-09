@@ -1,0 +1,11 @@
+{
+  "model_name": "per_member_signal_model",
+  "slices": [
+    {
+      "slice_name": "cross_pressured",
+      "brier_score": 0.8103868695641434,
+      "log_loss": 2.460471394618914,
+      "sample_count": 128
+    }
+  ]
+}

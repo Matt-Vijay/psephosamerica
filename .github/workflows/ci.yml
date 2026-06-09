@@ -121,3 +121,12 @@ jobs:
             --window 118th-h2 \
             --baseline benchmarks/prediction_real_baseline.json \
             --tolerance 0.005
+      - name: Cross-pressured slice must not regress (the votes worth predicting)
+        # Dedicated gate on the cross-pressured slice (real House sample): fails on
+        # Brier/log-loss regression > 0.005 vs the pinned cross-pressured baseline.
+        run: |
+          python -m src.runtime.prediction_benchmark_gate \
+            --from-real-corpus benchmarks/real_house_sample.jsonl \
+            --window 118th-h2 \
+            --baseline benchmarks/prediction_cross_pressured_baseline.json \
+            --tolerance 0.005
