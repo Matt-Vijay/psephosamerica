@@ -33,7 +33,7 @@ from src.export.contracts import ExportContractModel
 from src.graph.entity_resolution.canonical import CanonicalEntity
 
 EnrichmentStatus = Literal["pending", "ready"]
-EntityType = Literal["person", "org"]
+EntityType = Literal["person", "org", "bill"]
 
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 
@@ -104,6 +104,11 @@ class EntityResolutionOutput(ExportContractModel):
         """The canonical ID when this row is a person, else ``None``."""
         return self.canonical_id if self.entity_type == "person" else None
 
+    @property
+    def canonical_bill_id(self) -> str | None:
+        """The canonical ID when this row is a bill, else ``None``."""
+        return self.canonical_id if self.entity_type == "bill" else None
+
     @model_validator(mode="after")
     def _check(self) -> Self:
         if not self.source_anchors:
@@ -154,4 +159,29 @@ def build_entity_resolution_output(
         external_ids=[ext.canonical_key for ext in entity.external_ids],
         known_at=entity.known_at,
         source_anchors=anchors,
+    )
+
+
+def build_bill_output(
+    *,
+    canonical_bill_id: str,
+    display_name: str,
+    source_anchors: list[ContractSourceAnchor],
+    external_ids: list[str] | None = None,
+) -> EntityResolutionOutput:
+    """Emit a bill as a contract row (``entity_type='bill'``).
+
+    Bills resolve deterministically (no clustering), so a bill row is built
+    straight from its canonical ID and the source anchor(s) of its text/record.
+    ``known_at`` is the earliest anchor's, matching the per-entity invariant.
+    """
+    if not source_anchors:
+        raise ValueError("a bill output needs at least one source anchor")
+    return EntityResolutionOutput(
+        canonical_id=canonical_bill_id,
+        entity_type="bill",
+        display_name=display_name,
+        external_ids=external_ids or [],
+        known_at=min(anchor.known_at for anchor in source_anchors),
+        source_anchors=source_anchors,
     )

@@ -110,6 +110,29 @@ def test_build_output_with_persistent_id_override() -> None:
     assert out.canonical_id != entity.canonical_id
 
 
+def test_build_bill_output() -> None:
+    from src.graph.contracts import build_bill_output
+
+    out = build_bill_output(
+        canonical_bill_id="cb-hr1-118",
+        display_name="H.R. 1",
+        source_anchors=[_anchor(known_at=datetime(2024, 1, 5, tzinfo=UTC))],
+        external_ids=["congress:118-hr-1"],
+    )
+    assert out.entity_type == "bill"
+    assert out.canonical_bill_id == "cb-hr1-118"
+    assert out.canonical_person_id is None
+    assert out.known_at == datetime(2024, 1, 5, tzinfo=UTC)
+    assert out.enrichment_status == "pending"
+
+
+def test_build_bill_output_requires_anchor() -> None:
+    from src.graph.contracts import build_bill_output
+
+    with pytest.raises(ValueError, match="source anchor"):
+        build_bill_output(canonical_bill_id="cb-x", display_name="X", source_anchors=[])
+
+
 def test_canonical_person_id_none_for_org() -> None:
     out = EntityResolutionOutput(
         canonical_id="ce-x",
