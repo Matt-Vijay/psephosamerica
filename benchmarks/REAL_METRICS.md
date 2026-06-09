@@ -113,3 +113,14 @@ re-accumulates — exactly the partial-pooling payoff the architecture is built 
 ECE is lowest (0.010) when member coverage is highest. The cross-pressured slice
 stays ≈0% accuracy in every warm window — a party-only model cannot predict
 defections, the standing case for richer signals.
+
+## 10-seed Bayesian ensemble uncertainty on cross-pressured (#7)
+Bumped from 5 to 10 seeds (real 118th-h2 sample): cross-pressured interval width
+**0.123** vs overall 0.090 (vs 0.093/0.070 at 5 seeds) — more seeds, sharper
+"knows-what-it-doesn't-know" signal on the slice it is wrong about.
+| slice | mean Brier | mean interval width | n |
+|---|---|---|---|
+| all | 0.071 | 0.090 | 1,688 |
+| cross_pressured | 0.809 | **0.123** | 128 |
+| party:D | 0.053 | 0.061 | 835 |
+| party:R | 0.090 | 0.119 | 853 |

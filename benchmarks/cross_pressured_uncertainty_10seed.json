@@ -1,0 +1,22 @@
+{
+  "all": {
+    "mean_brier": 0.0712507295657023,
+    "mean_interval_width": 0.09025198521229257,
+    "n": 1688
+  },
+  "party:D": {
+    "mean_brier": 0.052545233431909526,
+    "mean_interval_width": 0.06129997898742174,
+    "n": 835
+  },
+  "party:R": {
+    "mean_brier": 0.08956150245165422,
+    "mean_interval_width": 0.11859304640545451,
+    "n": 853
+  },
+  "cross_pressured": {
+    "mean_brier": 0.8091396621351112,
+    "mean_interval_width": 0.12319608535155553,
+    "n": 128
+  }
+}
