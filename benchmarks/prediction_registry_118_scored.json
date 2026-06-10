@@ -1,0 +1,5617 @@
+{
+  "frozen_at_cutoff": "2024-04-20",
+  "target_window_end": "2024-12-31",
+  "model_name": "defection_head_logreg",
+  "content_sha256": "2c8e1effad2aa94cc0880148363de26b58e7ae43edb19b04bc1fc450aab40c66",
+  "scored": true,
+  "metrics": {
+    "resolved": 200.0,
+    "pending": 0.0,
+    "brier": 0.13351485309863317,
+    "accuracy": 0.85,
+    "auc": 0.6337254901960784,
+    "base_rate": 0.15
+  },
+  "predictions": [
+    {
+      "member": "A000371",
+      "party": "D",
+      "state": "CA",
+      "bill_id": "us_congress:118:h-r-4755",
+      "target_vote_date": "2024-04-29",
+      "p_defect": 0.07120172857769833,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4755",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "A000371",
+          "detail": "pre-cutoff loyalty_gap=0.017, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "A000371",
+      "party": "D",
+      "state": "CA",
+      "bill_id": "us_congress:118:h-r-4763",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07120172857769833,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4763",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "A000371",
+          "detail": "pre-cutoff loyalty_gap=0.017, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": true
+    },
+    {
+      "member": "A000371",
+      "party": "D",
+      "state": "CA",
+      "bill_id": "us_congress:118:h-res-1243",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07120172857769833,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-1243",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "A000371",
+          "detail": "pre-cutoff loyalty_gap=0.017, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "A000371",
+      "party": "D",
+      "state": "CA",
+      "bill_id": "us_congress:118:h-res-1243",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07120172857769833,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-1243",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "A000371",
+          "detail": "pre-cutoff loyalty_gap=0.017, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "A000376",
+      "party": "D",
+      "state": "TX",
+      "bill_id": "us_congress:118:h-r-4755",
+      "target_vote_date": "2024-04-29",
+      "p_defect": 0.07163630492615072,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4755",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "A000376",
+          "detail": "pre-cutoff loyalty_gap=0.067, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "A000376",
+      "party": "D",
+      "state": "TX",
+      "bill_id": "us_congress:118:h-r-4763",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07163630492615072,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4763",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "A000376",
+          "detail": "pre-cutoff loyalty_gap=0.067, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": true
+    },
+    {
+      "member": "A000376",
+      "party": "D",
+      "state": "TX",
+      "bill_id": "us_congress:118:h-res-1243",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07163630492615072,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-1243",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "A000376",
+          "detail": "pre-cutoff loyalty_gap=0.067, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "A000376",
+      "party": "D",
+      "state": "TX",
+      "bill_id": "us_congress:118:h-res-1243",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07163630492615072,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-1243",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "A000376",
+          "detail": "pre-cutoff loyalty_gap=0.067, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "B000490",
+      "party": "D",
+      "state": "GA",
+      "bill_id": "us_congress:118:h-r-4755",
+      "target_vote_date": "2024-04-29",
+      "p_defect": 0.07129530072294563,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4755",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "B000490",
+          "detail": "pre-cutoff loyalty_gap=0.027, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "B000490",
+      "party": "D",
+      "state": "GA",
+      "bill_id": "us_congress:118:h-r-4763",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07129530072294563,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4763",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "B000490",
+          "detail": "pre-cutoff loyalty_gap=0.027, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "B000490",
+      "party": "D",
+      "state": "GA",
+      "bill_id": "us_congress:118:h-res-1243",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07129530072294563,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-1243",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "B000490",
+          "detail": "pre-cutoff loyalty_gap=0.027, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "B000490",
+      "party": "D",
+      "state": "GA",
+      "bill_id": "us_congress:118:h-res-1243",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07129530072294563,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-1243",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "B000490",
+          "detail": "pre-cutoff loyalty_gap=0.027, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "B000740",
+      "party": "R",
+      "state": "OK",
+      "bill_id": "us_congress:118:h-r-4755",
+      "target_vote_date": "2024-04-29",
+      "p_defect": 0.07180616533508215,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4755",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "B000740",
+          "detail": "pre-cutoff loyalty_gap=0.086, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "B000740",
+      "party": "R",
+      "state": "OK",
+      "bill_id": "us_congress:118:h-r-4763",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07180616533508215,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4763",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "B000740",
+          "detail": "pre-cutoff loyalty_gap=0.086, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "B000740",
+      "party": "R",
+      "state": "OK",
+      "bill_id": "us_congress:118:h-res-1243",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07180616533508215,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-1243",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "B000740",
+          "detail": "pre-cutoff loyalty_gap=0.086, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "B000740",
+      "party": "R",
+      "state": "OK",
+      "bill_id": "us_congress:118:h-res-1243",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07180616533508215,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-1243",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "B000740",
+          "detail": "pre-cutoff loyalty_gap=0.086, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "B001223",
+      "party": "D",
+      "state": "NY",
+      "bill_id": "us_congress:118:h-r-4755",
+      "target_vote_date": "2024-04-29",
+      "p_defect": 0.07597642033460135,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4755",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "B001223",
+          "detail": "pre-cutoff loyalty_gap=0.093, sector_divergence=0.667"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "B001223",
+      "party": "D",
+      "state": "NY",
+      "bill_id": "us_congress:118:h-r-4763",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07597642033460135,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4763",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "B001223",
+          "detail": "pre-cutoff loyalty_gap=0.093, sector_divergence=0.667"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "B001223",
+      "party": "D",
+      "state": "NY",
+      "bill_id": "us_congress:118:h-res-1243",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07597642033460135,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-1243",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "B001223",
+          "detail": "pre-cutoff loyalty_gap=0.093, sector_divergence=0.667"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "B001223",
+      "party": "D",
+      "state": "NY",
+      "bill_id": "us_congress:118:h-res-1243",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07597642033460135,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-1243",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "B001223",
+          "detail": "pre-cutoff loyalty_gap=0.093, sector_divergence=0.667"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "B001224",
+      "party": "D",
+      "state": "MO",
+      "bill_id": "us_congress:118:h-r-1103",
+      "target_vote_date": "2024-09-10",
+      "p_defect": 0.07140571553928214,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-1103",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "B001224",
+          "detail": "pre-cutoff loyalty_gap=0.106, sector_divergence=0.286"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "trade_international",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "B001224",
+      "party": "D",
+      "state": "MO",
+      "bill_id": "us_congress:118:h-r-529",
+      "target_vote_date": "2024-04-30",
+      "p_defect": 0.07140571553928214,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-529",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "B001224",
+          "detail": "pre-cutoff loyalty_gap=0.106, sector_divergence=0.286"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "natural_resources_environment,trade_international",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": true
+    },
+    {
+      "member": "B001224",
+      "party": "D",
+      "state": "MO",
+      "bill_id": "us_congress:118:h-r-9456",
+      "target_vote_date": "2024-09-11",
+      "p_defect": 0.07140571553928214,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-9456",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "B001224",
+          "detail": "pre-cutoff loyalty_gap=0.106, sector_divergence=0.286"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "agriculture_food,trade_international",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "B001224",
+      "party": "D",
+      "state": "MO",
+      "bill_id": "us_congress:118:h-r-9456",
+      "target_vote_date": "2024-09-11",
+      "p_defect": 0.07140571553928214,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-9456",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "B001224",
+          "detail": "pre-cutoff loyalty_gap=0.106, sector_divergence=0.286"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "agriculture_food,trade_international",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "B001224",
+      "party": "D",
+      "state": "MO",
+      "bill_id": "us_congress:118:h-res-915",
+      "target_vote_date": "2024-11-21",
+      "p_defect": 0.07140571553928214,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-915",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "B001224",
+          "detail": "pre-cutoff loyalty_gap=0.106, sector_divergence=0.286"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "trade_international",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "B001281",
+      "party": "D",
+      "state": "OH",
+      "bill_id": "us_congress:118:h-r-4755",
+      "target_vote_date": "2024-04-29",
+      "p_defect": 0.07118488759674653,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4755",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "B001281",
+          "detail": "pre-cutoff loyalty_gap=0.015, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "B001281",
+      "party": "D",
+      "state": "OH",
+      "bill_id": "us_congress:118:h-r-4763",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07118488759674653,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4763",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "B001281",
+          "detail": "pre-cutoff loyalty_gap=0.015, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "B001281",
+      "party": "D",
+      "state": "OH",
+      "bill_id": "us_congress:118:h-res-1243",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07118488759674653,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-1243",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "B001281",
+          "detail": "pre-cutoff loyalty_gap=0.015, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "B001281",
+      "party": "D",
+      "state": "OH",
+      "bill_id": "us_congress:118:h-res-1243",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07118488759674653,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-1243",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "B001281",
+          "detail": "pre-cutoff loyalty_gap=0.015, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "B001291",
+      "party": "R",
+      "state": "TX",
+      "bill_id": "us_congress:118:h-r-4755",
+      "target_vote_date": "2024-04-29",
+      "p_defect": 0.07161590075857212,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4755",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "B001291",
+          "detail": "pre-cutoff loyalty_gap=0.064, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "B001291",
+      "party": "R",
+      "state": "TX",
+      "bill_id": "us_congress:118:h-r-4763",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07161590075857212,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4763",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "B001291",
+          "detail": "pre-cutoff loyalty_gap=0.064, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "B001291",
+      "party": "R",
+      "state": "TX",
+      "bill_id": "us_congress:118:h-res-1243",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07161590075857212,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-1243",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "B001291",
+          "detail": "pre-cutoff loyalty_gap=0.064, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "B001291",
+      "party": "R",
+      "state": "TX",
+      "bill_id": "us_congress:118:h-res-1243",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07161590075857212,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-1243",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "B001291",
+          "detail": "pre-cutoff loyalty_gap=0.064, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "B001296",
+      "party": "D",
+      "state": "PA",
+      "bill_id": "us_congress:118:h-r-4755",
+      "target_vote_date": "2024-04-29",
+      "p_defect": 0.0713592085723956,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4755",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "B001296",
+          "detail": "pre-cutoff loyalty_gap=0.035, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "B001296",
+      "party": "D",
+      "state": "PA",
+      "bill_id": "us_congress:118:h-r-4763",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.0713592085723956,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4763",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "B001296",
+          "detail": "pre-cutoff loyalty_gap=0.035, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": true
+    },
+    {
+      "member": "B001296",
+      "party": "D",
+      "state": "PA",
+      "bill_id": "us_congress:118:h-res-1243",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.0713592085723956,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-1243",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "B001296",
+          "detail": "pre-cutoff loyalty_gap=0.035, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "B001296",
+      "party": "D",
+      "state": "PA",
+      "bill_id": "us_congress:118:h-res-1243",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.0713592085723956,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-1243",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "B001296",
+          "detail": "pre-cutoff loyalty_gap=0.035, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "B001300",
+      "party": "D",
+      "state": "CA",
+      "bill_id": "us_congress:118:h-r-4755",
+      "target_vote_date": "2024-04-29",
+      "p_defect": 0.07134918465601273,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4755",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "B001300",
+          "detail": "pre-cutoff loyalty_gap=0.034, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "B001300",
+      "party": "D",
+      "state": "CA",
+      "bill_id": "us_congress:118:h-r-4763",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07134918465601273,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4763",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "B001300",
+          "detail": "pre-cutoff loyalty_gap=0.034, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "B001300",
+      "party": "D",
+      "state": "CA",
+      "bill_id": "us_congress:118:h-res-1243",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07134918465601273,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-1243",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "B001300",
+          "detail": "pre-cutoff loyalty_gap=0.034, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "B001300",
+      "party": "D",
+      "state": "CA",
+      "bill_id": "us_congress:118:h-res-1243",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07134918465601273,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-1243",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "B001300",
+          "detail": "pre-cutoff loyalty_gap=0.034, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "B001302",
+      "party": "R",
+      "state": "AZ",
+      "bill_id": "us_congress:118:h-r-3738",
+      "target_vote_date": "2024-04-30",
+      "p_defect": 0.07321733562798849,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-3738",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "B001302",
+          "detail": "pre-cutoff loyalty_gap=0.189, sector_divergence=0.375"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "defense_national_security,transportation_infrastructure",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": true
+    },
+    {
+      "member": "B001302",
+      "party": "R",
+      "state": "AZ",
+      "bill_id": "us_congress:118:h-r-3935",
+      "target_vote_date": "2024-05-15",
+      "p_defect": 0.07321733562798849,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-3935",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "B001302",
+          "detail": "pre-cutoff loyalty_gap=0.189, sector_divergence=0.375"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "transportation_infrastructure",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": true
+    },
+    {
+      "member": "B001302",
+      "party": "R",
+      "state": "AZ",
+      "bill_id": "us_congress:118:h-r-4755",
+      "target_vote_date": "2024-04-29",
+      "p_defect": 0.07271002907307661,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4755",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "B001302",
+          "detail": "pre-cutoff loyalty_gap=0.189, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": true
+    },
+    {
+      "member": "B001302",
+      "party": "R",
+      "state": "AZ",
+      "bill_id": "us_congress:118:h-r-4763",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07271002907307661,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4763",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "B001302",
+          "detail": "pre-cutoff loyalty_gap=0.189, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": true
+    },
+    {
+      "member": "B001302",
+      "party": "R",
+      "state": "AZ",
+      "bill_id": "us_congress:118:h-r-4790",
+      "target_vote_date": "2024-09-19",
+      "p_defect": 0.07321733562798849,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4790",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "B001302",
+          "detail": "pre-cutoff loyalty_gap=0.189, sector_divergence=0.375"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "transportation_infrastructure",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "B001302",
+      "party": "R",
+      "state": "AZ",
+      "bill_id": "us_congress:118:h-r-4790",
+      "target_vote_date": "2024-09-19",
+      "p_defect": 0.07321733562798849,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4790",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "B001302",
+          "detail": "pre-cutoff loyalty_gap=0.189, sector_divergence=0.375"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "transportation_infrastructure",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "B001302",
+      "party": "R",
+      "state": "AZ",
+      "bill_id": "us_congress:118:h-r-8289",
+      "target_vote_date": "2024-05-08",
+      "p_defect": 0.07321733562798849,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-8289",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "B001302",
+          "detail": "pre-cutoff loyalty_gap=0.189, sector_divergence=0.375"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "transportation_infrastructure",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": true
+    },
+    {
+      "member": "B001302",
+      "party": "R",
+      "state": "AZ",
+      "bill_id": "us_congress:118:h-res-1243",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07271002907307661,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-1243",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "B001302",
+          "detail": "pre-cutoff loyalty_gap=0.189, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "B001302",
+      "party": "R",
+      "state": "AZ",
+      "bill_id": "us_congress:118:h-res-1243",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07271002907307661,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-1243",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "B001302",
+          "detail": "pre-cutoff loyalty_gap=0.189, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "B001303",
+      "party": "D",
+      "state": "DE",
+      "bill_id": "us_congress:118:h-r-4755",
+      "target_vote_date": "2024-04-29",
+      "p_defect": 0.07118367610239906,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4755",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "B001303",
+          "detail": "pre-cutoff loyalty_gap=0.014, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "B001303",
+      "party": "D",
+      "state": "DE",
+      "bill_id": "us_congress:118:h-r-4763",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07118367610239906,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4763",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "B001303",
+          "detail": "pre-cutoff loyalty_gap=0.014, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "B001303",
+      "party": "D",
+      "state": "DE",
+      "bill_id": "us_congress:118:h-res-1243",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07118367610239906,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-1243",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "B001303",
+          "detail": "pre-cutoff loyalty_gap=0.014, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "B001303",
+      "party": "D",
+      "state": "DE",
+      "bill_id": "us_congress:118:h-res-1243",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07118367610239906,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-1243",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "B001303",
+          "detail": "pre-cutoff loyalty_gap=0.014, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "B001307",
+      "party": "R",
+      "state": "IN",
+      "bill_id": "us_congress:118:h-r-4755",
+      "target_vote_date": "2024-04-29",
+      "p_defect": 0.07213725274876517,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4755",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "B001307",
+          "detail": "pre-cutoff loyalty_gap=0.124, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "B001307",
+      "party": "R",
+      "state": "IN",
+      "bill_id": "us_congress:118:h-r-4763",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07213725274876517,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4763",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "B001307",
+          "detail": "pre-cutoff loyalty_gap=0.124, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "B001307",
+      "party": "R",
+      "state": "IN",
+      "bill_id": "us_congress:118:h-res-1243",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07213725274876517,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-1243",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "B001307",
+          "detail": "pre-cutoff loyalty_gap=0.124, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "B001307",
+      "party": "R",
+      "state": "IN",
+      "bill_id": "us_congress:118:h-res-1243",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07213725274876517,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-1243",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "B001307",
+          "detail": "pre-cutoff loyalty_gap=0.124, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "B001309",
+      "party": "R",
+      "state": "TN",
+      "bill_id": "us_congress:118:h-r-3738",
+      "target_vote_date": "2024-04-30",
+      "p_defect": 0.07129879698174948,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-3738",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "B001309",
+          "detail": "pre-cutoff loyalty_gap=0.142, sector_divergence=0.250"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "defense_national_security,transportation_infrastructure",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "B001309",
+      "party": "R",
+      "state": "TN",
+      "bill_id": "us_congress:118:h-r-3935",
+      "target_vote_date": "2024-05-15",
+      "p_defect": 0.07129879698174948,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-3935",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "B001309",
+          "detail": "pre-cutoff loyalty_gap=0.142, sector_divergence=0.250"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "transportation_infrastructure",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": true
+    },
+    {
+      "member": "B001309",
+      "party": "R",
+      "state": "TN",
+      "bill_id": "us_congress:118:h-r-4790",
+      "target_vote_date": "2024-09-19",
+      "p_defect": 0.07129879698174948,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4790",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "B001309",
+          "detail": "pre-cutoff loyalty_gap=0.142, sector_divergence=0.250"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "transportation_infrastructure",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "B001309",
+      "party": "R",
+      "state": "TN",
+      "bill_id": "us_congress:118:h-r-4790",
+      "target_vote_date": "2024-09-19",
+      "p_defect": 0.07129879698174948,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4790",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "B001309",
+          "detail": "pre-cutoff loyalty_gap=0.142, sector_divergence=0.250"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "transportation_infrastructure",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "B001309",
+      "party": "R",
+      "state": "TN",
+      "bill_id": "us_congress:118:h-r-8289",
+      "target_vote_date": "2024-05-08",
+      "p_defect": 0.07129879698174948,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-8289",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "B001309",
+          "detail": "pre-cutoff loyalty_gap=0.142, sector_divergence=0.250"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "transportation_infrastructure",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": true
+    },
+    {
+      "member": "B001311",
+      "party": "R",
+      "state": "NC",
+      "bill_id": "us_congress:118:h-r-4755",
+      "target_vote_date": "2024-04-29",
+      "p_defect": 0.07231524745513696,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4755",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "B001311",
+          "detail": "pre-cutoff loyalty_gap=0.144, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": true
+    },
+    {
+      "member": "B001311",
+      "party": "R",
+      "state": "NC",
+      "bill_id": "us_congress:118:h-r-4763",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07231524745513696,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4763",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "B001311",
+          "detail": "pre-cutoff loyalty_gap=0.144, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "B001311",
+      "party": "R",
+      "state": "NC",
+      "bill_id": "us_congress:118:h-res-1243",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07231524745513696,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-1243",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "B001311",
+          "detail": "pre-cutoff loyalty_gap=0.144, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "B001311",
+      "party": "R",
+      "state": "NC",
+      "bill_id": "us_congress:118:h-res-1243",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07231524745513696,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-1243",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "B001311",
+          "detail": "pre-cutoff loyalty_gap=0.144, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "B001313",
+      "party": "D",
+      "state": "OH",
+      "bill_id": "us_congress:118:h-r-4755",
+      "target_vote_date": "2024-04-29",
+      "p_defect": 0.07118146628276148,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4755",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "B001313",
+          "detail": "pre-cutoff loyalty_gap=0.014, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "B001313",
+      "party": "D",
+      "state": "OH",
+      "bill_id": "us_congress:118:h-r-4763",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07118146628276148,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4763",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "B001313",
+          "detail": "pre-cutoff loyalty_gap=0.014, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "B001313",
+      "party": "D",
+      "state": "OH",
+      "bill_id": "us_congress:118:h-res-1243",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07118146628276148,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-1243",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "B001313",
+          "detail": "pre-cutoff loyalty_gap=0.014, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "B001313",
+      "party": "D",
+      "state": "OH",
+      "bill_id": "us_congress:118:h-res-1243",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07118146628276148,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-1243",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "B001313",
+          "detail": "pre-cutoff loyalty_gap=0.014, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "B001316",
+      "party": "R",
+      "state": "MO",
+      "bill_id": "us_congress:118:h-r-4755",
+      "target_vote_date": "2024-04-29",
+      "p_defect": 0.07228800546438877,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4755",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "B001316",
+          "detail": "pre-cutoff loyalty_gap=0.141, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": true
+    },
+    {
+      "member": "B001316",
+      "party": "R",
+      "state": "MO",
+      "bill_id": "us_congress:118:h-r-4763",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07228800546438877,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4763",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "B001316",
+          "detail": "pre-cutoff loyalty_gap=0.141, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "B001316",
+      "party": "R",
+      "state": "MO",
+      "bill_id": "us_congress:118:h-res-1243",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07228800546438877,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-1243",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "B001316",
+          "detail": "pre-cutoff loyalty_gap=0.141, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "B001316",
+      "party": "R",
+      "state": "MO",
+      "bill_id": "us_congress:118:h-res-1243",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07228800546438877,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-1243",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "B001316",
+          "detail": "pre-cutoff loyalty_gap=0.141, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "B001317",
+      "party": "R",
+      "state": "OK",
+      "bill_id": "us_congress:118:h-r-3738",
+      "target_vote_date": "2024-04-30",
+      "p_defect": 0.07136919366614615,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-3738",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "B001317",
+          "detail": "pre-cutoff loyalty_gap=0.150, sector_divergence=0.250"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "defense_national_security,transportation_infrastructure",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": true
+    },
+    {
+      "member": "B001317",
+      "party": "R",
+      "state": "OK",
+      "bill_id": "us_congress:118:h-r-3935",
+      "target_vote_date": "2024-05-15",
+      "p_defect": 0.07136919366614615,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-3935",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "B001317",
+          "detail": "pre-cutoff loyalty_gap=0.150, sector_divergence=0.250"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "transportation_infrastructure",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": true
+    },
+    {
+      "member": "B001317",
+      "party": "R",
+      "state": "OK",
+      "bill_id": "us_congress:118:h-r-4755",
+      "target_vote_date": "2024-04-29",
+      "p_defect": 0.07650257101318708,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4755",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "B001317",
+          "detail": "pre-cutoff loyalty_gap=0.150, sector_divergence=0.667"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": true
+    },
+    {
+      "member": "B001317",
+      "party": "R",
+      "state": "OK",
+      "bill_id": "us_congress:118:h-r-4763",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07650257101318708,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4763",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "B001317",
+          "detail": "pre-cutoff loyalty_gap=0.150, sector_divergence=0.667"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "B001317",
+      "party": "R",
+      "state": "OK",
+      "bill_id": "us_congress:118:h-r-4790",
+      "target_vote_date": "2024-09-19",
+      "p_defect": 0.07136919366614615,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4790",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "B001317",
+          "detail": "pre-cutoff loyalty_gap=0.150, sector_divergence=0.250"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "transportation_infrastructure",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "B001317",
+      "party": "R",
+      "state": "OK",
+      "bill_id": "us_congress:118:h-r-4790",
+      "target_vote_date": "2024-09-19",
+      "p_defect": 0.07136919366614615,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4790",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "B001317",
+          "detail": "pre-cutoff loyalty_gap=0.150, sector_divergence=0.250"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "transportation_infrastructure",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "B001317",
+      "party": "R",
+      "state": "OK",
+      "bill_id": "us_congress:118:h-r-8289",
+      "target_vote_date": "2024-05-08",
+      "p_defect": 0.07136919366614615,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-8289",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "B001317",
+          "detail": "pre-cutoff loyalty_gap=0.150, sector_divergence=0.250"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "transportation_infrastructure",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": true
+    },
+    {
+      "member": "B001317",
+      "party": "R",
+      "state": "OK",
+      "bill_id": "us_congress:118:h-res-1243",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07650257101318708,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-1243",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "B001317",
+          "detail": "pre-cutoff loyalty_gap=0.150, sector_divergence=0.667"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "B001317",
+      "party": "R",
+      "state": "OK",
+      "bill_id": "us_congress:118:h-res-1243",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07650257101318708,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-1243",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "B001317",
+          "detail": "pre-cutoff loyalty_gap=0.150, sector_divergence=0.667"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "C000059",
+      "party": "R",
+      "state": "CA",
+      "bill_id": "us_congress:118:h-r-4755",
+      "target_vote_date": "2024-04-29",
+      "p_defect": 0.07225716203456717,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4755",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "C000059",
+          "detail": "pre-cutoff loyalty_gap=0.138, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "C000059",
+      "party": "R",
+      "state": "CA",
+      "bill_id": "us_congress:118:h-r-4763",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07225716203456717,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4763",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "C000059",
+          "detail": "pre-cutoff loyalty_gap=0.138, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "C000059",
+      "party": "R",
+      "state": "CA",
+      "bill_id": "us_congress:118:h-res-1243",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07225716203456717,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-1243",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "C000059",
+          "detail": "pre-cutoff loyalty_gap=0.138, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "C000059",
+      "party": "R",
+      "state": "CA",
+      "bill_id": "us_congress:118:h-res-1243",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07225716203456717,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-1243",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "C000059",
+          "detail": "pre-cutoff loyalty_gap=0.138, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "C001053",
+      "party": "R",
+      "state": "OK",
+      "bill_id": "us_congress:118:h-r-4763",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07230584568145776,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4763",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "C001053",
+          "detail": "pre-cutoff loyalty_gap=0.143, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "C001053",
+      "party": "R",
+      "state": "OK",
+      "bill_id": "us_congress:118:h-res-1243",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07230584568145776,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-1243",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "C001053",
+          "detail": "pre-cutoff loyalty_gap=0.143, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "C001053",
+      "party": "R",
+      "state": "OK",
+      "bill_id": "us_congress:118:h-res-1243",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07230584568145776,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-1243",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "C001053",
+          "detail": "pre-cutoff loyalty_gap=0.143, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "C001061",
+      "party": "D",
+      "state": "MO",
+      "bill_id": "us_congress:118:h-r-4755",
+      "target_vote_date": "2024-04-29",
+      "p_defect": 0.07124985378864625,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4755",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "C001061",
+          "detail": "pre-cutoff loyalty_gap=0.022, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "C001061",
+      "party": "D",
+      "state": "MO",
+      "bill_id": "us_congress:118:h-r-4763",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07124985378864625,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4763",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "C001061",
+          "detail": "pre-cutoff loyalty_gap=0.022, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "C001061",
+      "party": "D",
+      "state": "MO",
+      "bill_id": "us_congress:118:h-res-1243",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07124985378864625,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-1243",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "C001061",
+          "detail": "pre-cutoff loyalty_gap=0.022, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "C001061",
+      "party": "D",
+      "state": "MO",
+      "bill_id": "us_congress:118:h-res-1243",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07124985378864625,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-1243",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "C001061",
+          "detail": "pre-cutoff loyalty_gap=0.022, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "C001063",
+      "party": "D",
+      "state": "TX",
+      "bill_id": "us_congress:118:h-r-4755",
+      "target_vote_date": "2024-04-29",
+      "p_defect": 0.07222426717203712,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4755",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "C001063",
+          "detail": "pre-cutoff loyalty_gap=0.134, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "C001063",
+      "party": "D",
+      "state": "TX",
+      "bill_id": "us_congress:118:h-r-4763",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07222426717203712,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4763",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "C001063",
+          "detail": "pre-cutoff loyalty_gap=0.134, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": true
+    },
+    {
+      "member": "C001063",
+      "party": "D",
+      "state": "TX",
+      "bill_id": "us_congress:118:h-res-1243",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07222426717203712,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-1243",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "C001063",
+          "detail": "pre-cutoff loyalty_gap=0.134, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "C001063",
+      "party": "D",
+      "state": "TX",
+      "bill_id": "us_congress:118:h-res-1243",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07222426717203712,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-1243",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "C001063",
+          "detail": "pre-cutoff loyalty_gap=0.134, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "C001066",
+      "party": "D",
+      "state": "FL",
+      "bill_id": "us_congress:118:h-r-4755",
+      "target_vote_date": "2024-04-29",
+      "p_defect": 0.07120377932380317,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4755",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "C001066",
+          "detail": "pre-cutoff loyalty_gap=0.017, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "C001066",
+      "party": "D",
+      "state": "FL",
+      "bill_id": "us_congress:118:h-r-4763",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07120377932380317,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4763",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "C001066",
+          "detail": "pre-cutoff loyalty_gap=0.017, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "C001066",
+      "party": "D",
+      "state": "FL",
+      "bill_id": "us_congress:118:h-res-1243",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07120377932380317,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-1243",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "C001066",
+          "detail": "pre-cutoff loyalty_gap=0.017, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "C001066",
+      "party": "D",
+      "state": "FL",
+      "bill_id": "us_congress:118:h-res-1243",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07120377932380317,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-1243",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "C001066",
+          "detail": "pre-cutoff loyalty_gap=0.017, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "C001067",
+      "party": "D",
+      "state": "NY",
+      "bill_id": "us_congress:118:h-r-4755",
+      "target_vote_date": "2024-04-29",
+      "p_defect": 0.07141674955480218,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4755",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "C001067",
+          "detail": "pre-cutoff loyalty_gap=0.041, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "C001067",
+      "party": "D",
+      "state": "NY",
+      "bill_id": "us_congress:118:h-r-4763",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07141674955480218,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4763",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "C001067",
+          "detail": "pre-cutoff loyalty_gap=0.041, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "C001067",
+      "party": "D",
+      "state": "NY",
+      "bill_id": "us_congress:118:h-res-1243",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07141674955480218,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-1243",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "C001067",
+          "detail": "pre-cutoff loyalty_gap=0.041, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "C001067",
+      "party": "D",
+      "state": "NY",
+      "bill_id": "us_congress:118:h-res-1243",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07141674955480218,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-1243",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "C001067",
+          "detail": "pre-cutoff loyalty_gap=0.041, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "C001087",
+      "party": "R",
+      "state": "AR",
+      "bill_id": "us_congress:118:h-r-4763",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07158584101150374,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4763",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "C001087",
+          "detail": "pre-cutoff loyalty_gap=0.061, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "C001087",
+      "party": "R",
+      "state": "AR",
+      "bill_id": "us_congress:118:h-res-1243",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07158584101150374,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-1243",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "C001087",
+          "detail": "pre-cutoff loyalty_gap=0.061, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "C001087",
+      "party": "R",
+      "state": "AR",
+      "bill_id": "us_congress:118:h-res-1243",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07158584101150374,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-1243",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "C001087",
+          "detail": "pre-cutoff loyalty_gap=0.061, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "C001091",
+      "party": "D",
+      "state": "TX",
+      "bill_id": "us_congress:118:h-r-4755",
+      "target_vote_date": "2024-04-29",
+      "p_defect": 0.07135389341873506,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4755",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "C001091",
+          "detail": "pre-cutoff loyalty_gap=0.034, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "C001091",
+      "party": "D",
+      "state": "TX",
+      "bill_id": "us_congress:118:h-r-4763",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07135389341873506,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4763",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "C001091",
+          "detail": "pre-cutoff loyalty_gap=0.034, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "C001091",
+      "party": "D",
+      "state": "TX",
+      "bill_id": "us_congress:118:h-res-1243",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07135389341873506,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-1243",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "C001091",
+          "detail": "pre-cutoff loyalty_gap=0.034, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "C001091",
+      "party": "D",
+      "state": "TX",
+      "bill_id": "us_congress:118:h-res-1243",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07135389341873506,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-1243",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "C001091",
+          "detail": "pre-cutoff loyalty_gap=0.034, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "C001097",
+      "party": "D",
+      "state": "CA",
+      "bill_id": "us_congress:118:h-r-4755",
+      "target_vote_date": "2024-04-29",
+      "p_defect": 0.0713330230579877,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4755",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "C001097",
+          "detail": "pre-cutoff loyalty_gap=0.032, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "C001097",
+      "party": "D",
+      "state": "CA",
+      "bill_id": "us_congress:118:h-r-4763",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.0713330230579877,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4763",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "C001097",
+          "detail": "pre-cutoff loyalty_gap=0.032, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "C001097",
+      "party": "D",
+      "state": "CA",
+      "bill_id": "us_congress:118:h-res-1243",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.0713330230579877,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-1243",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "C001097",
+          "detail": "pre-cutoff loyalty_gap=0.032, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "C001097",
+      "party": "D",
+      "state": "CA",
+      "bill_id": "us_congress:118:h-res-1243",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.0713330230579877,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-1243",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "C001097",
+          "detail": "pre-cutoff loyalty_gap=0.032, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "C001101",
+      "party": "D",
+      "state": "MA",
+      "bill_id": "us_congress:118:h-r-4755",
+      "target_vote_date": "2024-04-29",
+      "p_defect": 0.07120139242138249,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4755",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "C001101",
+          "detail": "pre-cutoff loyalty_gap=0.016, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "C001101",
+      "party": "D",
+      "state": "MA",
+      "bill_id": "us_congress:118:h-r-4763",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07120139242138249,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4763",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "C001101",
+          "detail": "pre-cutoff loyalty_gap=0.016, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": true
+    },
+    {
+      "member": "C001101",
+      "party": "D",
+      "state": "MA",
+      "bill_id": "us_congress:118:h-res-1243",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07120139242138249,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-1243",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "C001101",
+          "detail": "pre-cutoff loyalty_gap=0.016, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "C001101",
+      "party": "D",
+      "state": "MA",
+      "bill_id": "us_congress:118:h-res-1243",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07120139242138249,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-1243",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "C001101",
+          "detail": "pre-cutoff loyalty_gap=0.016, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "C001116",
+      "party": "R",
+      "state": "GA",
+      "bill_id": "us_congress:118:h-r-3738",
+      "target_vote_date": "2024-04-30",
+      "p_defect": 0.07261217225298894,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-3738",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "C001116",
+          "detail": "pre-cutoff loyalty_gap=0.121, sector_divergence=0.375"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "defense_national_security,transportation_infrastructure",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": true
+    },
+    {
+      "member": "C001116",
+      "party": "R",
+      "state": "GA",
+      "bill_id": "us_congress:118:h-r-3935",
+      "target_vote_date": "2024-05-15",
+      "p_defect": 0.07261217225298894,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-3935",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "C001116",
+          "detail": "pre-cutoff loyalty_gap=0.121, sector_divergence=0.375"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "transportation_infrastructure",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "C001116",
+      "party": "R",
+      "state": "GA",
+      "bill_id": "us_congress:118:h-r-4755",
+      "target_vote_date": "2024-04-29",
+      "p_defect": 0.07210873249839386,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4755",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "C001116",
+          "detail": "pre-cutoff loyalty_gap=0.121, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "C001116",
+      "party": "R",
+      "state": "GA",
+      "bill_id": "us_congress:118:h-r-4763",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07210873249839386,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4763",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "C001116",
+          "detail": "pre-cutoff loyalty_gap=0.121, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "C001116",
+      "party": "R",
+      "state": "GA",
+      "bill_id": "us_congress:118:h-r-4790",
+      "target_vote_date": "2024-09-19",
+      "p_defect": 0.07261217225298894,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4790",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "C001116",
+          "detail": "pre-cutoff loyalty_gap=0.121, sector_divergence=0.375"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "transportation_infrastructure",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "C001116",
+      "party": "R",
+      "state": "GA",
+      "bill_id": "us_congress:118:h-r-4790",
+      "target_vote_date": "2024-09-19",
+      "p_defect": 0.07261217225298894,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4790",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "C001116",
+          "detail": "pre-cutoff loyalty_gap=0.121, sector_divergence=0.375"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "transportation_infrastructure",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "C001116",
+      "party": "R",
+      "state": "GA",
+      "bill_id": "us_congress:118:h-r-8289",
+      "target_vote_date": "2024-05-08",
+      "p_defect": 0.07261217225298894,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-8289",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "C001116",
+          "detail": "pre-cutoff loyalty_gap=0.121, sector_divergence=0.375"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "transportation_infrastructure",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": true
+    },
+    {
+      "member": "C001116",
+      "party": "R",
+      "state": "GA",
+      "bill_id": "us_congress:118:h-res-1243",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07210873249839386,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-1243",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "C001116",
+          "detail": "pre-cutoff loyalty_gap=0.121, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "C001116",
+      "party": "R",
+      "state": "GA",
+      "bill_id": "us_congress:118:h-res-1243",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07210873249839386,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-1243",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "C001116",
+          "detail": "pre-cutoff loyalty_gap=0.121, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "C001119",
+      "party": "D",
+      "state": "MN",
+      "bill_id": "us_congress:118:h-r-4755",
+      "target_vote_date": "2024-04-29",
+      "p_defect": 0.07193398016756916,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4755",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "C001119",
+          "detail": "pre-cutoff loyalty_gap=0.101, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "C001119",
+      "party": "D",
+      "state": "MN",
+      "bill_id": "us_congress:118:h-r-4763",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07193398016756916,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4763",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "C001119",
+          "detail": "pre-cutoff loyalty_gap=0.101, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": true
+    },
+    {
+      "member": "C001119",
+      "party": "D",
+      "state": "MN",
+      "bill_id": "us_congress:118:h-res-1243",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07193398016756916,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-1243",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "C001119",
+          "detail": "pre-cutoff loyalty_gap=0.101, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "C001119",
+      "party": "D",
+      "state": "MN",
+      "bill_id": "us_congress:118:h-res-1243",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07193398016756916,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-1243",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "C001119",
+          "detail": "pre-cutoff loyalty_gap=0.101, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "C001125",
+      "party": "D",
+      "state": "LA",
+      "bill_id": "us_congress:118:h-r-4763",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07118307905716405,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4763",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "C001125",
+          "detail": "pre-cutoff loyalty_gap=0.014, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "C001125",
+      "party": "D",
+      "state": "LA",
+      "bill_id": "us_congress:118:h-res-1243",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07118307905716405,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-1243",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "C001125",
+          "detail": "pre-cutoff loyalty_gap=0.014, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "C001125",
+      "party": "D",
+      "state": "LA",
+      "bill_id": "us_congress:118:h-res-1243",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07118307905716405,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-1243",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "C001125",
+          "detail": "pre-cutoff loyalty_gap=0.014, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "C001127",
+      "party": "D",
+      "state": "FL",
+      "bill_id": "us_congress:118:h-r-4755",
+      "target_vote_date": "2024-04-29",
+      "p_defect": 0.07124586794299051,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4755",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "C001127",
+          "detail": "pre-cutoff loyalty_gap=0.022, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "C001127",
+      "party": "D",
+      "state": "FL",
+      "bill_id": "us_congress:118:h-r-4763",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07124586794299051,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4763",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "C001127",
+          "detail": "pre-cutoff loyalty_gap=0.022, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "C001127",
+      "party": "D",
+      "state": "FL",
+      "bill_id": "us_congress:118:h-res-1243",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07124586794299051,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-1243",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "C001127",
+          "detail": "pre-cutoff loyalty_gap=0.022, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "C001127",
+      "party": "D",
+      "state": "FL",
+      "bill_id": "us_congress:118:h-res-1243",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07124586794299051,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-1243",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "C001127",
+          "detail": "pre-cutoff loyalty_gap=0.022, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "C001129",
+      "party": "R",
+      "state": "GA",
+      "bill_id": "us_congress:118:h-r-4755",
+      "target_vote_date": "2024-04-29",
+      "p_defect": 0.07200294003263867,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4755",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "C001129",
+          "detail": "pre-cutoff loyalty_gap=0.109, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "C001129",
+      "party": "R",
+      "state": "GA",
+      "bill_id": "us_congress:118:h-r-4763",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07200294003263867,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4763",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "C001129",
+          "detail": "pre-cutoff loyalty_gap=0.109, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "C001129",
+      "party": "R",
+      "state": "GA",
+      "bill_id": "us_congress:118:h-res-1243",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07200294003263867,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-1243",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "C001129",
+          "detail": "pre-cutoff loyalty_gap=0.109, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "C001129",
+      "party": "R",
+      "state": "GA",
+      "bill_id": "us_congress:118:h-res-1243",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07200294003263867,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-1243",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "C001129",
+          "detail": "pre-cutoff loyalty_gap=0.109, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "C001130",
+      "party": "D",
+      "state": "TX",
+      "bill_id": "us_congress:118:h-r-4755",
+      "target_vote_date": "2024-04-29",
+      "p_defect": 0.0712541518689942,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4755",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "C001130",
+          "detail": "pre-cutoff loyalty_gap=0.023, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "C001130",
+      "party": "D",
+      "state": "TX",
+      "bill_id": "us_congress:118:h-r-4763",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.0712541518689942,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4763",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "C001130",
+          "detail": "pre-cutoff loyalty_gap=0.023, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": true
+    },
+    {
+      "member": "C001130",
+      "party": "D",
+      "state": "TX",
+      "bill_id": "us_congress:118:h-res-1243",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.0712541518689942,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-1243",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "C001130",
+          "detail": "pre-cutoff loyalty_gap=0.023, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "C001130",
+      "party": "D",
+      "state": "TX",
+      "bill_id": "us_congress:118:h-res-1243",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.0712541518689942,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-1243",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "C001130",
+          "detail": "pre-cutoff loyalty_gap=0.023, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "C001131",
+      "party": "D",
+      "state": "TX",
+      "bill_id": "us_congress:118:h-r-4755",
+      "target_vote_date": "2024-04-29",
+      "p_defect": 0.0716791874259562,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4755",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "C001131",
+          "detail": "pre-cutoff loyalty_gap=0.072, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "C001131",
+      "party": "D",
+      "state": "TX",
+      "bill_id": "us_congress:118:h-r-4763",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.0716791874259562,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4763",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "C001131",
+          "detail": "pre-cutoff loyalty_gap=0.072, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "C001131",
+      "party": "D",
+      "state": "TX",
+      "bill_id": "us_congress:118:h-res-1243",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.0716791874259562,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-1243",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "C001131",
+          "detail": "pre-cutoff loyalty_gap=0.072, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "C001131",
+      "party": "D",
+      "state": "TX",
+      "bill_id": "us_congress:118:h-res-1243",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.0716791874259562,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-1243",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "C001131",
+          "detail": "pre-cutoff loyalty_gap=0.072, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "C001132",
+      "party": "R",
+      "state": "AZ",
+      "bill_id": "us_congress:118:h-r-3738",
+      "target_vote_date": "2024-04-30",
+      "p_defect": 0.07301466233447208,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-3738",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "C001132",
+          "detail": "pre-cutoff loyalty_gap=0.166, sector_divergence=0.375"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "defense_national_security,transportation_infrastructure",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "C001132",
+      "party": "R",
+      "state": "AZ",
+      "bill_id": "us_congress:118:h-r-3935",
+      "target_vote_date": "2024-05-15",
+      "p_defect": 0.07301466233447208,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-3935",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "C001132",
+          "detail": "pre-cutoff loyalty_gap=0.166, sector_divergence=0.375"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "transportation_infrastructure",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": true
+    },
+    {
+      "member": "C001132",
+      "party": "R",
+      "state": "AZ",
+      "bill_id": "us_congress:118:h-r-4755",
+      "target_vote_date": "2024-04-29",
+      "p_defect": 0.0725086501910887,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4755",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "C001132",
+          "detail": "pre-cutoff loyalty_gap=0.166, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": true
+    },
+    {
+      "member": "C001132",
+      "party": "R",
+      "state": "AZ",
+      "bill_id": "us_congress:118:h-r-4763",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.0725086501910887,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4763",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "C001132",
+          "detail": "pre-cutoff loyalty_gap=0.166, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "C001132",
+      "party": "R",
+      "state": "AZ",
+      "bill_id": "us_congress:118:h-r-4790",
+      "target_vote_date": "2024-09-19",
+      "p_defect": 0.07301466233447208,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4790",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "C001132",
+          "detail": "pre-cutoff loyalty_gap=0.166, sector_divergence=0.375"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "transportation_infrastructure",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "C001132",
+      "party": "R",
+      "state": "AZ",
+      "bill_id": "us_congress:118:h-r-4790",
+      "target_vote_date": "2024-09-19",
+      "p_defect": 0.07301466233447208,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4790",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "C001132",
+          "detail": "pre-cutoff loyalty_gap=0.166, sector_divergence=0.375"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "transportation_infrastructure",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "C001132",
+      "party": "R",
+      "state": "AZ",
+      "bill_id": "us_congress:118:h-r-8289",
+      "target_vote_date": "2024-05-08",
+      "p_defect": 0.07301466233447208,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-8289",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "C001132",
+          "detail": "pre-cutoff loyalty_gap=0.166, sector_divergence=0.375"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "transportation_infrastructure",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": true
+    },
+    {
+      "member": "C001132",
+      "party": "R",
+      "state": "AZ",
+      "bill_id": "us_congress:118:h-res-1243",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.0725086501910887,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-1243",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "C001132",
+          "detail": "pre-cutoff loyalty_gap=0.166, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "C001132",
+      "party": "R",
+      "state": "AZ",
+      "bill_id": "us_congress:118:h-res-1243",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.0725086501910887,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-1243",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "C001132",
+          "detail": "pre-cutoff loyalty_gap=0.166, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "D000032",
+      "party": "R",
+      "state": "FL",
+      "bill_id": "us_congress:118:h-r-4755",
+      "target_vote_date": "2024-04-29",
+      "p_defect": 0.07199790888005361,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4755",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "D000032",
+          "detail": "pre-cutoff loyalty_gap=0.108, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": true
+    },
+    {
+      "member": "D000032",
+      "party": "R",
+      "state": "FL",
+      "bill_id": "us_congress:118:h-r-4763",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07199790888005361,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4763",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "D000032",
+          "detail": "pre-cutoff loyalty_gap=0.108, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "D000032",
+      "party": "R",
+      "state": "FL",
+      "bill_id": "us_congress:118:h-res-1243",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07199790888005361,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-1243",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "D000032",
+          "detail": "pre-cutoff loyalty_gap=0.108, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "D000032",
+      "party": "R",
+      "state": "FL",
+      "bill_id": "us_congress:118:h-res-1243",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07199790888005361,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-1243",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "D000032",
+          "detail": "pre-cutoff loyalty_gap=0.108, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "D000197",
+      "party": "D",
+      "state": "CO",
+      "bill_id": "us_congress:118:h-r-4755",
+      "target_vote_date": "2024-04-29",
+      "p_defect": 0.07126541897458455,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4755",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "D000197",
+          "detail": "pre-cutoff loyalty_gap=0.024, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "D000197",
+      "party": "D",
+      "state": "CO",
+      "bill_id": "us_congress:118:h-r-4763",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07126541897458455,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4763",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "D000197",
+          "detail": "pre-cutoff loyalty_gap=0.024, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "D000197",
+      "party": "D",
+      "state": "CO",
+      "bill_id": "us_congress:118:h-res-1243",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07126541897458455,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-1243",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "D000197",
+          "detail": "pre-cutoff loyalty_gap=0.024, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "D000197",
+      "party": "D",
+      "state": "CO",
+      "bill_id": "us_congress:118:h-res-1243",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07126541897458455,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-1243",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "D000197",
+          "detail": "pre-cutoff loyalty_gap=0.024, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "D000230",
+      "party": "D",
+      "state": "NC",
+      "bill_id": "us_congress:118:h-r-4755",
+      "target_vote_date": "2024-04-29",
+      "p_defect": 0.07220850786165389,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4755",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "D000230",
+          "detail": "pre-cutoff loyalty_gap=0.132, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "D000230",
+      "party": "D",
+      "state": "NC",
+      "bill_id": "us_congress:118:h-r-4763",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07220850786165389,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4763",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "D000230",
+          "detail": "pre-cutoff loyalty_gap=0.132, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": true
+    },
+    {
+      "member": "D000230",
+      "party": "D",
+      "state": "NC",
+      "bill_id": "us_congress:118:h-res-1243",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07220850786165389,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-1243",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "D000230",
+          "detail": "pre-cutoff loyalty_gap=0.132, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "D000230",
+      "party": "D",
+      "state": "NC",
+      "bill_id": "us_congress:118:h-res-1243",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07220850786165389,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-1243",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "D000230",
+          "detail": "pre-cutoff loyalty_gap=0.132, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "D000530",
+      "party": "D",
+      "state": "PA",
+      "bill_id": "us_congress:118:h-r-4755",
+      "target_vote_date": "2024-04-29",
+      "p_defect": 0.0714802405263164,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4755",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "D000530",
+          "detail": "pre-cutoff loyalty_gap=0.049, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "D000530",
+      "party": "D",
+      "state": "PA",
+      "bill_id": "us_congress:118:h-r-4763",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.0714802405263164,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4763",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "D000530",
+          "detail": "pre-cutoff loyalty_gap=0.049, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "D000530",
+      "party": "D",
+      "state": "PA",
+      "bill_id": "us_congress:118:h-res-1243",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.0714802405263164,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-1243",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "D000530",
+          "detail": "pre-cutoff loyalty_gap=0.049, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "D000530",
+      "party": "D",
+      "state": "PA",
+      "bill_id": "us_congress:118:h-res-1243",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.0714802405263164,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-1243",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "D000530",
+          "detail": "pre-cutoff loyalty_gap=0.049, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "D000623",
+      "party": "D",
+      "state": "CA",
+      "bill_id": "us_congress:118:h-r-4755",
+      "target_vote_date": "2024-04-29",
+      "p_defect": 0.07137220955187927,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4755",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "D000623",
+          "detail": "pre-cutoff loyalty_gap=0.036, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "D000623",
+      "party": "D",
+      "state": "CA",
+      "bill_id": "us_congress:118:h-r-4763",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07137220955187927,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4763",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "D000623",
+          "detail": "pre-cutoff loyalty_gap=0.036, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "D000623",
+      "party": "D",
+      "state": "CA",
+      "bill_id": "us_congress:118:h-res-1243",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07137220955187927,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-1243",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "D000623",
+          "detail": "pre-cutoff loyalty_gap=0.036, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "D000623",
+      "party": "D",
+      "state": "CA",
+      "bill_id": "us_congress:118:h-res-1243",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07137220955187927,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-1243",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "D000623",
+          "detail": "pre-cutoff loyalty_gap=0.036, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "D000624",
+      "party": "D",
+      "state": "MI",
+      "bill_id": "us_congress:118:h-r-4763",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07127971107647231,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4763",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "D000624",
+          "detail": "pre-cutoff loyalty_gap=0.026, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "D000624",
+      "party": "D",
+      "state": "MI",
+      "bill_id": "us_congress:118:h-res-1243",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07127971107647231,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-1243",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "D000624",
+          "detail": "pre-cutoff loyalty_gap=0.026, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "D000624",
+      "party": "D",
+      "state": "MI",
+      "bill_id": "us_congress:118:h-res-1243",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07127971107647231,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-1243",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "D000624",
+          "detail": "pre-cutoff loyalty_gap=0.026, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "D000626",
+      "party": "R",
+      "state": "OH",
+      "bill_id": "us_congress:118:h-r-3738",
+      "target_vote_date": "2024-04-30",
+      "p_defect": 0.07118445768217127,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-3738",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "D000626",
+          "detail": "pre-cutoff loyalty_gap=0.129, sector_divergence=0.250"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "defense_national_security,transportation_infrastructure",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "D000626",
+      "party": "R",
+      "state": "OH",
+      "bill_id": "us_congress:118:h-r-3935",
+      "target_vote_date": "2024-05-15",
+      "p_defect": 0.07118445768217127,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-3935",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "D000626",
+          "detail": "pre-cutoff loyalty_gap=0.129, sector_divergence=0.250"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "transportation_infrastructure",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": true
+    },
+    {
+      "member": "D000626",
+      "party": "R",
+      "state": "OH",
+      "bill_id": "us_congress:118:h-r-4790",
+      "target_vote_date": "2024-09-19",
+      "p_defect": 0.07118445768217127,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4790",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "D000626",
+          "detail": "pre-cutoff loyalty_gap=0.129, sector_divergence=0.250"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "transportation_infrastructure",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "D000626",
+      "party": "R",
+      "state": "OH",
+      "bill_id": "us_congress:118:h-r-4790",
+      "target_vote_date": "2024-09-19",
+      "p_defect": 0.07118445768217127,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4790",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "D000626",
+          "detail": "pre-cutoff loyalty_gap=0.129, sector_divergence=0.250"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "transportation_infrastructure",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "D000626",
+      "party": "R",
+      "state": "OH",
+      "bill_id": "us_congress:118:h-r-8289",
+      "target_vote_date": "2024-05-08",
+      "p_defect": 0.07118445768217127,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-8289",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "D000626",
+          "detail": "pre-cutoff loyalty_gap=0.129, sector_divergence=0.250"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "transportation_infrastructure",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "D000629",
+      "party": "D",
+      "state": "KS",
+      "bill_id": "us_congress:118:h-r-4755",
+      "target_vote_date": "2024-04-29",
+      "p_defect": 0.07145774159779117,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4755",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "D000629",
+          "detail": "pre-cutoff loyalty_gap=0.046, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "D000629",
+      "party": "D",
+      "state": "KS",
+      "bill_id": "us_congress:118:h-r-4763",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07145774159779117,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4763",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "D000629",
+          "detail": "pre-cutoff loyalty_gap=0.046, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "D000629",
+      "party": "D",
+      "state": "KS",
+      "bill_id": "us_congress:118:h-res-1243",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07145774159779117,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-1243",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "D000629",
+          "detail": "pre-cutoff loyalty_gap=0.046, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "D000629",
+      "party": "D",
+      "state": "KS",
+      "bill_id": "us_congress:118:h-res-1243",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.07145774159779117,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-1243",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "D000629",
+          "detail": "pre-cutoff loyalty_gap=0.046, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "E000215",
+      "party": "D",
+      "state": "CA",
+      "bill_id": "us_congress:118:h-r-4755",
+      "target_vote_date": "2024-04-29",
+      "p_defect": 0.0711626324524922,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4755",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "E000215",
+          "detail": "pre-cutoff loyalty_gap=0.012, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "E000215",
+      "party": "D",
+      "state": "CA",
+      "bill_id": "us_congress:118:h-r-4763",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.0711626324524922,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4763",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "E000215",
+          "detail": "pre-cutoff loyalty_gap=0.012, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": true
+    },
+    {
+      "member": "E000215",
+      "party": "D",
+      "state": "CA",
+      "bill_id": "us_congress:118:h-res-1243",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.0711626324524922,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-1243",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "E000215",
+          "detail": "pre-cutoff loyalty_gap=0.012, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "E000215",
+      "party": "D",
+      "state": "CA",
+      "bill_id": "us_congress:118:h-res-1243",
+      "target_vote_date": "2024-05-22",
+      "p_defect": 0.0711626324524922,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-res-1243",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "E000215",
+          "detail": "pre-cutoff loyalty_gap=0.012, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology,financial_services",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    },
+    {
+      "member": "F000446",
+      "party": "R",
+      "state": "IA",
+      "bill_id": "us_congress:118:h-r-4755",
+      "target_vote_date": "2024-04-29",
+      "p_defect": 0.0714265605318599,
+      "predicted_defect": false,
+      "counterfactual": "if the member breaks with party on this policy area were neutralised, P(defect) drops most",
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:118:h-r-4755",
+          "detail": "bill under vote"
+        },
+        {
+          "kind": "member_history",
+          "ref": "F000446",
+          "detail": "pre-cutoff loyalty_gap=0.042, sector_divergence=0.333"
+        },
+        {
+          "kind": "policy_sectors",
+          "ref": "communications_technology",
+          "detail": "bill policy areas"
+        }
+      ],
+      "actual_defect": false
+    }
+  ]
+}

@@ -21,7 +21,21 @@ from src.prediction.prediction_registry import (
     freeze_registry,
     score_registry,
 )
+from src.prediction.vote_record import VoteRecord
 from src.runtime.flat_corpus import build_linked_flat_votes
+
+
+def _load_votes(corpus: Path, *, rich: bool) -> list[tuple[VoteRecord, str]]:
+    """Load (record, bill_id) pairs. Rich corpora carry real sectors (stronger head)."""
+    if not rich:
+        return build_linked_flat_votes(corpus)
+    from src.runtime.bill_content_experiment import build_linked_votes
+    from src.runtime.cross_pressured_experiment import load_rich_rollcalls
+
+    return [
+        (lv.record, lv.bill_id)
+        for lv in build_linked_votes(load_rich_rollcalls(corpus), None)
+    ]
 
 
 def _load(path: Path) -> RegistryFile:
@@ -52,21 +66,25 @@ def main(argv: list[str] | None = None) -> int:
     sub = parser.add_subparsers(dest="cmd", required=True)
 
     f = sub.add_parser("freeze")
-    f.add_argument("--corpus", default="data/real/house_119.jsonl")
+    f.add_argument("--corpus", default="data/real/house_119_rich.jsonl")
+    f.add_argument("--rich", action="store_true", default=True)
+    f.add_argument("--flat", dest="rich", action="store_false")
     f.add_argument("--cutoff", default="2025-09-30")
     f.add_argument("--target-end", default="2025-12-18")
     f.add_argument("--max", type=int, default=200)
     f.add_argument("--out", default="benchmarks/prediction_registry.json")
 
     s = sub.add_parser("score")
-    s.add_argument("--corpus", default="data/real/house_119.jsonl")
+    s.add_argument("--corpus", default="data/real/house_119_rich.jsonl")
+    s.add_argument("--rich", action="store_true", default=True)
+    s.add_argument("--flat", dest="rich", action="store_false")
     s.add_argument("--registry", default="benchmarks/prediction_registry.json")
     s.add_argument("--out", default="benchmarks/prediction_registry_scored.json")
 
     args = parser.parse_args(argv)
 
     if args.cmd == "freeze":
-        votes = build_linked_flat_votes(Path(args.corpus))
+        votes = _load_votes(Path(args.corpus), rich=args.rich)
         reg = freeze_registry(
             votes, cutoff=date.fromisoformat(args.cutoff),
             target_end=date.fromisoformat(args.target_end), max_predictions=args.max,
@@ -78,7 +96,7 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 0
 
-    votes = build_linked_flat_votes(Path(args.corpus))
+    votes = _load_votes(Path(args.corpus), rich=args.rich)
     reg = _load(Path(args.registry))
     scored = score_registry(reg, votes)
     Path(args.out).write_text(json.dumps(scored.to_dict(), indent=2), encoding="utf-8")
