@@ -1,0 +1,65 @@
+{
+  "cutoff": "2024-04-20",
+  "pin": 0.7247,
+  "base_auc": 0.7064244594723444,
+  "signals": [
+    {
+      "signal_name": "hierarchical_prior",
+      "base_auc": 0.7064244594723444,
+      "augmented_auc": 0.7021211234184771,
+      "delta_auc": -0.004303336053867346,
+      "coefficients": {
+        "loyalty_gap": 0.2633374910047871,
+        "sector_divergence": 0.346640383391534,
+        "defection_prior": 0.25667674281485986
+      },
+      "eval_pairs": 148846
+    },
+    {
+      "signal_name": "statement_engagement",
+      "base_auc": 0.7064244594723444,
+      "augmented_auc": 0.706409128338233,
+      "delta_auc": -1.5331134111451483e-05,
+      "coefficients": {
+        "loyalty_gap": 0.26836569495759577,
+        "sector_divergence": 0.3507744766363911,
+        "statement_engagement": -0.006103905879886002
+      },
+      "eval_pairs": 148846
+    },
+    {
+      "signal_name": "donor_independence",
+      "base_auc": 0.7064244594723444,
+      "augmented_auc": 0.7064244594723444,
+      "delta_auc": 0.0,
+      "coefficients": {
+        "loyalty_gap": 0.2683652491600739,
+        "sector_divergence": 0.3507753581416167,
+        "donor_independence": 0.0
+      },
+      "eval_pairs": 148846
+    },
+    {
+      "signal_name": "all_non_bill",
+      "base_auc": 0.7064244594723444,
+      "augmented_auc": 0.7021148872012338,
+      "delta_auc": -0.004309572271110618,
+      "coefficients": {
+        "loyalty_gap": 0.2633379313893485,
+        "sector_divergence": 0.3466394714184954,
+        "defection_prior": 0.2566771518243621,
+        "statement_engagement": -0.006121574751507898,
+        "donor_independence": 0.0
+      },
+      "eval_pairs": 148846
+    }
+  ],
+  "best_augmented_auc": 0.7064244594723444,
+  "beats_pin": false,
+  "gates": {
+    "statement_corpus_members": 44,
+    "donor_profile_present": false,
+    "donor_note": "Donor independence gated on a prepared data/prepared/donor_profile.json (raw FEC itcont is 1.6GB); absent -> neutral 0, reported honestly.",
+    "cosponsor_note": "Cosponsor-profile signal gated on Track A dense bill rows."
+  }
+}

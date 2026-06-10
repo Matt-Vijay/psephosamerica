@@ -1,7 +1,7 @@
 {
   "cutoff": "2024-04-20",
   "alpha": 0.1,
-  "marginal": [
+  "slices": [
     {
       "slice_name": "overall",
       "nominal": 0.9,
@@ -28,36 +28,6 @@
       "nominal": 0.9,
       "empirical_coverage": 0.8518450281623414,
       "average_set_size": 0.9181712902037164,
-      "sample_count": 37994
-    }
-  ],
-  "mondrian_recalibrated": [
-    {
-      "slice_name": "overall",
-      "nominal": 0.9,
-      "empirical_coverage": 0.9090334977090415,
-      "average_set_size": 0.9580909127554654,
-      "sample_count": 74423
-    },
-    {
-      "slice_name": "defection_prone",
-      "nominal": 0.9,
-      "empirical_coverage": 0.868421052631579,
-      "average_set_size": 1.2387914230019492,
-      "sample_count": 2052
-    },
-    {
-      "slice_name": "party_D",
-      "nominal": 0.9,
-      "empirical_coverage": 0.9069971725822833,
-      "average_set_size": 0.9324988333470586,
-      "sample_count": 36429
-    },
-    {
-      "slice_name": "party_R",
-      "nominal": 0.9,
-      "empirical_coverage": 0.8989577301679212,
-      "average_set_size": 0.9754434910775386,
       "sample_count": 37994
     }
   ]
