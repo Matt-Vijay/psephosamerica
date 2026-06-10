@@ -66,6 +66,23 @@ signal than the ~10%-coverage keyword sectors: a member who breaks on Immigratio
 bills breaks on new ones. Strict cutoff. `crs_multitask.json`. (118th reruns once
 `bill_content.jsonl` — still mid-write at congress 113-115 — reaches the 118th.)
 
+## Next-gap: combined bill-RAG + CRS = new SOTA 0.7998 (118th)
+
+With the contract settled (full CRS coverage on the 118th), tested whether the two
+independent wins stack. They do:
+
+| 118th model | defection AUC |
+|---|---|
+| base (loyalty + sector) | 0.7064 |
+| + bill-RAG + projection (old SOTA) | 0.7707 |
+| + CRS policy-area alone | 0.7764 |
+| **+ bill-RAG + projection + CRS policy-area** | **0.7998** |
+
+Combined **+0.029 over the old SOTA, +0.094 over base** — the two signals are
+complementary (bill-RAG ≈ a member-rate prior from near-random retrieval; CRS
+policy-area ≈ the member's defection rate per coarse policy area). **Re-pinned:
+`congress-118-combined` 0.7998** in `bill_content_baseline.json`. `combined_sota.json`.
+
 ## Robustness shipped this session
 
 - Contract readers skip malformed JSONL lines (Track A re-exports in place; reading

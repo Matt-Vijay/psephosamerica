@@ -1,0 +1,19 @@
+{
+  "cutoff": "2024-04-20",
+  "eval_pairs": 148846,
+  "k": 32,
+  "aucs": {
+    "base": 0.7064244594723444,
+    "bill_rag": 0.770670883580485,
+    "bill_rag_crs": 0.7998324310245228,
+    "crs_only": 0.776440177527352
+  },
+  "bill_rag_vs_base": 0.06424642410814052,
+  "crs_only_vs_base": 0.0700157180550075,
+  "combined_vs_bill_rag": 0.029161547444037872,
+  "best_arm": "bill_rag_crs",
+  "best_auc": 0.7998324310245228,
+  "stacks": true,
+  "pin": 0.7707,
+  "beats_pin": true
+}

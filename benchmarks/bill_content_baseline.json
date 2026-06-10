@@ -25,6 +25,12 @@
       "auc": 0.7707,
       "sample_count": 148846,
       "positives": 8567
+    },
+    {
+      "slice_name": "congress-118-combined",
+      "auc": 0.7998,
+      "sample_count": 148846,
+      "positives": 8567
     }
   ]
 }
