@@ -1,0 +1,19 @@
+{
+  "cutoff": "2014-01-01",
+  "eval_pairs": 232341,
+  "k": 32,
+  "aucs": {
+    "base": 0.6696093722516311,
+    "bill_rag": 0.7179418094872259,
+    "bill_rag_crs": 0.743339548154516,
+    "crs_only": 0.7498756519878069
+  },
+  "bill_rag_vs_base": 0.04833243723559477,
+  "crs_only_vs_base": 0.08026627973617584,
+  "combined_vs_bill_rag": 0.025397738667290115,
+  "best_arm": "crs_only",
+  "best_auc": 0.7498756519878069,
+  "stacks": false,
+  "pin": 0.7707,
+  "beats_pin": false
+}

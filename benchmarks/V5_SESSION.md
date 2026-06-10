@@ -79,10 +79,16 @@ independent wins stack. They do:
 | + CRS policy-area alone | 0.7764 |
 | **+ bill-RAG + projection + CRS policy-area** | **0.7998** |
 
-Combined **+0.029 over the old SOTA, +0.094 over base** — the two signals are
-complementary (bill-RAG ≈ a member-rate prior from near-random retrieval; CRS
-policy-area ≈ the member's defection rate per coarse policy area). **Re-pinned:
+Combined **+0.029 over the old SOTA, +0.094 over base**. **Re-pinned:
 `congress-118-combined` 0.7998** in `bill_content_baseline.json`. `combined_sota.json`.
+
+**Generalization check (honest caveat):** the combined SOTA does **not** generalize —
+on the 113th, CRS-only (0.7499) beats the combination (0.7433); bill-RAG *helps* on
+the 118th but *hurts* on the 113th. **CRS policy-area is the robust, generalizable
+signal** (+0.070/+0.080 over base on 118th/113th); bill-RAG's marginal value is
+congress-dependent. 0.7998 is the *118th* SOTA, not universal. The deployable
+recommendation is CRS policy-area as the primary bill-content signal.
+`COMBINED_GENERALIZATION.md`, `combined_sota_113.json`.
 
 ## Robustness shipped this session
 
