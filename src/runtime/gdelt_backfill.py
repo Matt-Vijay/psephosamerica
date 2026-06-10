@@ -69,6 +69,32 @@ def fetch_member_articles(
     return list(articles) if isinstance(articles, list) else []
 
 
+def _fetch_with_retry(
+    name: str,
+    *,
+    client: httpx.Client,
+    sleep: Callable[[float], None],
+    delay_seconds: float,
+    max_retries: int,
+) -> list[dict[str, object]]:
+    """Fetch a member's articles, backing off and retrying on GDELT 429s.
+
+    GDELT throttles to one request every 5 seconds and answers a too-fast caller
+    with HTTP 429. Treating that as a permanent skip drops the member for the
+    whole pass; instead we sleep an escalating multiple of the base delay and
+    retry. Non-429 errors propagate to the caller's skip handling unchanged.
+    """
+    for attempt in range(max_retries + 1):
+        try:
+            return fetch_member_articles(name, client=client)
+        except httpx.HTTPStatusError as exc:
+            if exc.response.status_code == 429 and attempt < max_retries:
+                sleep(delay_seconds * (attempt + 2))
+                continue
+            raise
+    raise AssertionError("unreachable")  # pragma: no cover - loop always returns or raises
+
+
 @dataclass(frozen=True)
 class GdeltBackfillProgress:
     """Counts from one GDELT backfill pass."""
@@ -99,6 +125,7 @@ def backfill_gdelt_mentions(
     sleep: Callable[[float], None] = time.sleep,
     delay_seconds: float = 5.0,
     max_members: int | None = None,
+    max_retries: int = 3,
 ) -> GdeltBackfillProgress:
     """Append news-mention edges for federal members not yet in the feed."""
     out = Path(out_path)
@@ -123,7 +150,13 @@ def backfill_gdelt_mentions(
                     sleep(delay_seconds)
                 queried += 1
                 try:
-                    articles = fetch_member_articles(member.name, client=http)
+                    articles = _fetch_with_retry(
+                        member.name,
+                        client=http,
+                        sleep=sleep,
+                        delay_seconds=delay_seconds,
+                        max_retries=max_retries,
+                    )
                 except (httpx.HTTPError, ValueError):
                     skipped += 1
                     continue

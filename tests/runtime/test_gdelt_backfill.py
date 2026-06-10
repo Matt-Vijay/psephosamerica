@@ -213,6 +213,45 @@ def test_backfill_sleeps_between_members(tmp_path: Path) -> None:
     assert delays == [5.0]  # slept once (between the 1st and 2nd member)
 
 
+def test_backfill_retries_on_429_then_succeeds(tmp_path: Path) -> None:
+    calls = {"n": 0}
+    delays: list[float] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls["n"] += 1
+        if calls["n"] == 1:
+            return httpx.Response(429, text="slow down")  # first member's first try throttled
+        return httpx.Response(200, text=_articles(1))
+
+    progress = backfill_gdelt_mentions(
+        corpus_directory=_corpus(tmp_path),
+        out_path=tmp_path / "e.jsonl",
+        client=httpx.Client(transport=httpx.MockTransport(handler)),
+        first_observed_at=_OBS,
+        sleep=delays.append,
+        delay_seconds=5.0,
+    )
+    assert progress.members_skipped == 0  # 429 retried, not skipped
+    assert progress.edges_written == 2  # both members produced an edge
+    assert 10.0 in delays  # backoff = delay * (attempt + 2) = 5.0 * 2 on first retry
+
+
+def test_backfill_skips_after_429_retries_exhausted(tmp_path: Path) -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(429, text="slow down")  # always throttled
+
+    progress = backfill_gdelt_mentions(
+        corpus_directory=_corpus(tmp_path),
+        out_path=tmp_path / "e.jsonl",
+        client=httpx.Client(transport=httpx.MockTransport(handler)),
+        first_observed_at=_OBS,
+        sleep=_noop_sleep,
+        max_retries=2,
+    )
+    assert progress.members_queried == 2 and progress.members_skipped == 2
+    assert progress.edges_written == 0  # every query exhausted its retries
+
+
 def test_backfill_default_client(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     import src.runtime.gdelt_backfill as mod
 
