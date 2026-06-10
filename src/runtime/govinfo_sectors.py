@@ -22,18 +22,29 @@ from pathlib import Path
 
 import httpx
 
-from src.graph.ingest.govinfo_billstatus import canonical_bill_id, parse_billstatus_xml
+from src.graph.ingest.govinfo_billstatus import (
+    billstatus_dossier_text,
+    canonical_bill_id,
+    parse_billstatus_xml,
+)
 from src.runtime.govinfo_bills_materialize import BILLSTATUS_BILL_TYPES, _client
 from src.runtime.govinfo_bills_run import Candidate, collect_candidates
 
 
 def bill_sector_record(xml: str) -> dict[str, object]:
-    """Parse a BILLSTATUS doc into a sidecar sector record."""
+    """Parse a BILLSTATUS doc into a content record: sector + dense embed text.
+
+    Carries the CRS ``policy_area`` + ``subjects`` (Track B's sectors, #4) AND the
+    full ``text`` = title + policy area + subjects + CRS summary (#1's semantic
+    embed input), so a single parse-only pass serves both. Keyed by the same
+    ``cb-<digest>`` the votes resolve to.
+    """
     status = parse_billstatus_xml(xml)
     return {
         "canonical_id": canonical_bill_id(status),
         "policy_area": status.policy_area,
         "subjects": list(status.subjects),
+        "text": billstatus_dossier_text(status),
     }
 
 
@@ -114,7 +125,7 @@ def _main(argv: list[str] | None = None) -> int:  # pragma: no cover - CLI glue
 
     parser = argparse.ArgumentParser(description="Resumable govinfo bill sector sidecar")
     parser.add_argument("--congresses", default="113-119")
-    parser.add_argument("--path", default="data/exports/govinfo_bills/bill_sectors.jsonl")
+    parser.add_argument("--path", default="data/exports/govinfo_bills/bill_content.jsonl")
     parser.add_argument("--bill-types", default=",".join(BILLSTATUS_BILL_TYPES))
     parser.add_argument("--max-fetch", type=int, default=1000)
     parser.add_argument("--max-batches", type=int, default=100000)

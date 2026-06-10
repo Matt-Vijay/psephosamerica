@@ -54,6 +54,10 @@ def test_bill_sector_record_shape() -> None:
     assert rec["policy_area"] == "Health"
     assert rec["subjects"] == ["Medicare", "Hospitals"]
     assert rec["canonical_id"] == canonical_bill_id(parse_billstatus_xml(_xml(1)))
+    # the dense embed text carries title + policy area + subjects
+    text = rec["text"]
+    assert isinstance(text, str)
+    assert "Act 1" in text and "Health" in text and "Medicare" in text
 
 
 def test_sidecar_keyed_by_vote_linkage_id(tmp_path: Path) -> None:
