@@ -12,8 +12,8 @@ never blocking. numpy only (torch lives in Track A's enrichment; we consume vect
 | 3 | Senate joint + transfer | blocked — no Senate backfill in the contract yet. |
 | 4 | State zero-shot | blocked — no state votes yet. |
 | 5 | **Productize: weekly marginal-votes brief** | **DONE** — top-20 flippable with evidence + venue P(pass). (HTTP serving: next.) |
-| 6 | Recalibrate on SOTA + re-pin gates | deferred while the contract is mid-export (bill-content SOTA inputs churning). |
-| 7 | Multi-task on cosponsor/committee/sector edges | blocked — CRS sidecar landed but `dossier_json` still only carries summary/claims (no cosponsor/committee). |
+| 6 | Recalibrate per slice + re-pin gates | **DONE (vote-only)** — temperature ECE 0.0356→0.0001; Mondrian conformal 0.868 ≥0.85 on defection-prone. Bill-content recalibration reruns once the contract settles. |
+| 7 | Multi-task on real CRS policy-area edges | **DONE — ΔAUC +0.071** on the 113th (base 0.674 → +CRS 0.745, 98% coverage). Was 0 in v4; the govinfo `bill_content.jsonl` sidecar (CRS policy_area + subjects, joined via the contract) made it real. |
 | 8 | LLM-forecaster live/stub | stub + stacking already shipped (v4); no ANTHROPIC_API_KEY. |
 | 9 | 10-seed Bayesian on SOTA + checkpoints | deferred with #6 (contract churning). |
 | 10 | **Continuous-learning LIVE ≥60 min + semantic hot-swap** | **running** — launched against the actively-churning manifest so it captures the semantic hot-swap mid-run. |
@@ -45,6 +45,26 @@ Composes defection-watch (who) + venue-score (where): the top-20 flippable
 (member, bill) pairs by P(defect), each with cited ex-ante factors + signed
 contribution, the counterfactual flip, and the bill's venue P(pass). Strict
 cutoff. `marginal_votes_report.{json,html}`.
+
+## #6 — Recalibration (vote-only defection head, 118th)
+
+Temperature scaling cuts ECE **0.0356 → 0.0001** (isotonic 0.0079); best calibrator
+= temperature. Mondrian split-conformal coverage on the defection-prone slice =
+**0.868** (target ≥0.85). `defection_recalibration.json`. Also shipped the served
+defection object (`served_defection.py`): calibrated P + Bayesian uncertainty band +
+cited evidence + explanation + counterfactual — the Definition-of-Done served object.
+
+## #7 — Multi-task on real CRS policy-area edges (113th)
+
+| model (113th, train 2013 → eval 2014, 98% CRS coverage) | defection AUC |
+|---|---|
+| base (loyalty + keyword-sector) | 0.6739 |
+| + CRS-policy-area defection signal | **0.7446** (ΔAUC **+0.0707**, coef +0.309) |
+
+The CRS taxonomy (98% coverage, 31 policy areas) is a far stronger per-member
+signal than the ~10%-coverage keyword sectors: a member who breaks on Immigration
+bills breaks on new ones. Strict cutoff. `crs_multitask.json`. (118th reruns once
+`bill_content.jsonl` — still mid-write at congress 113-115 — reaches the 118th.)
 
 ## Robustness shipped this session
 
