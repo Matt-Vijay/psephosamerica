@@ -28,7 +28,8 @@ outcomes land, frozen sha256 preserved through scoring.
 | registry | cutoff → window | n | Brier | acc | AUC | sha |
 |---|---|---|---|---|---|---|
 | 118th (rich, validation) | 2024-04-20 → 2024-12-31 | 200 | 0.134 | 0.850 | **0.634** | 2c8e1eff |
-| 119th (flat, live forward) | 2025-09-30 → 2025-12-18 | 200 | 0.266 | 0.665 | 0.547 | a60eecde |
+| 119th (rich, sector-aware) | 2025-09-30 → 2025-12-31 | 200 | 0.208 | 0.775 | **0.905** | 00336c58 |
+| 119th (flat, superseded) | 2025-09-30 → 2025-12-18 | 200 | 0.266 | 0.665 | 0.547 | a60eecde |
 
 400 pre-registered predictions total (target ≥50). The 119th flat AUC is weak
 because the flat corpus has no sectors (loyalty-only head); the **rich 119th
