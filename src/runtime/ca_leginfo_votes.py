@@ -153,10 +153,13 @@ class CaRollCall:
 def parse_detail_rollcalls(text: str, *, floor_only: bool = False) -> list[CaRollCall]:
     """Group ``BILL_DETAIL_VOTE_TBL`` member rows into roll-calls (insertion order).
 
-    Key = ``(bill_id, location_code, motion_id)``. Rows with fewer than seven
-    columns, an unparseable bill id, or an unknown vote code are skipped.
+    Key = ``(bill_id, location_code, motion_id, vote_datetime)``. The full vote
+    timestamp is part of the key because CA *reuses* a ``motion_id`` across
+    separate vote events (e.g. a reconsideration weeks later) -- grouping on the
+    id alone merges two roll-calls and overflows the chamber size. Rows with fewer
+    than seven columns, an unparseable bill id, or an unknown vote code are skipped.
     """
-    groups: OrderedDict[tuple[str, str, str], list[tuple[str, str, str]]] = OrderedDict()
+    groups: OrderedDict[tuple[str, str, str, str], list[tuple[str, str, str]]] = OrderedDict()
     for line in text.splitlines():
         if not line.strip():
             continue
@@ -170,12 +173,12 @@ def parse_detail_rollcalls(text: str, *, floor_only: bool = False) -> list[CaRol
             continue
         if floor_only and location_code.upper() not in _CHAMBER_BY_PREFIX:
             continue
-        groups.setdefault((raw_bill_id, location_code, motion_id), []).append(
+        groups.setdefault((raw_bill_id, location_code, motion_id, vote_date), []).append(
             (member, choice, vote_date)
         )
 
     rollcalls: list[CaRollCall] = []
-    for (raw_bill_id, location_code, motion_id), members in groups.items():
+    for (raw_bill_id, location_code, motion_id, _vote_dt), members in groups.items():
         try:
             session, measure = parse_ca_bill_id(raw_bill_id)
         except ValueError:

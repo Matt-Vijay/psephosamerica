@@ -65,6 +65,23 @@ def test_parse_detail_rollcalls_groups_and_tallies() -> None:
     assert sb9.chamber == "committee" and sb9.noes == 2 and sb9.result == "fail"
 
 
+def test_reused_motion_id_splits_by_timestamp() -> None:
+    # CA reuses a motion_id (300) for two separate AFLOOR votes on AB7 at different
+    # times -> they must become two roll-calls, not one double-counted member list.
+    detail = "\n".join(
+        [
+            "`202520260AB7`\t`AFLOOR`\t`Lee`\t2025-08-29 09:39:51\t1\t`AYE`\t`300`\tx\tts\t1\td\tN",
+            "`202520260AB7`\t`AFLOOR`\t`Bonta`\t2025-08-29 09:39:51\t1\t`AYE`\t`300`\tx\tts\t2\td\tN",
+            "`202520260AB7`\t`AFLOOR`\t`Lee`\t2025-09-12 20:19:01\t1\t`NOE`\t`300`\tx\tts\t1\td\tN",
+            "`202520260AB7`\t`AFLOOR`\t`Bonta`\t2025-09-12 20:19:01\t1\t`NOE`\t`300`\tx\tts\t2\td\tN",
+        ]
+    )
+    rollcalls = parse_detail_rollcalls(detail)
+    assert len(rollcalls) == 2  # split by vote timestamp despite the shared motion id
+    assert {r.date for r in rollcalls} == {"2025-08-29", "2025-09-12"}
+    assert all(len(r.votes) == 2 for r in rollcalls)  # neither overflows
+
+
 def test_floor_only_excludes_committee() -> None:
     rollcalls = parse_detail_rollcalls(_DETAIL, floor_only=True)
     assert {r.measure for r in rollcalls} == {"AB1"}  # SB9 committee vote excluded
