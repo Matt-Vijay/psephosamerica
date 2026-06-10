@@ -35,3 +35,5 @@ data/real/
 # Track A contract-corpus exports (large regenerable artifacts)
 data/exports/contract_records/records.jsonl
 data/exports/contract_records/deltas.jsonl
+# govinfo BILLSTATUS bill corpus (~106K bills for 113-119, regenerable)
+data/exports/govinfo_bills/
