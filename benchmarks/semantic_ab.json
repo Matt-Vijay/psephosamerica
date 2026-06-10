@@ -1,0 +1,34 @@
+{
+  "pin": 0.7707,
+  "semantic_available": true,
+  "semantic_bill_count": 106536,
+  "arms": {
+    "hash": {
+      "best_auc": 0.770670883580485,
+      "best_k": 32,
+      "best_variant": "rag_proj",
+      "delta_vs_base": 0.06424642410814052,
+      "delta_vs_pin": -2.9116419515085035e-05,
+      "vote_linked_bills": 505897
+    },
+    "semantic": {
+      "best_auc": 0.7613190777481698,
+      "best_k": 8,
+      "best_variant": "rag_proj",
+      "delta_vs_base": 0.05489461827582531,
+      "delta_vs_pin": -0.009380922251830293,
+      "vote_linked_bills": 505897
+    },
+    "concat": {
+      "best_auc": 0.7680067040903884,
+      "best_k": 8,
+      "best_variant": "rag_proj",
+      "delta_vs_base": 0.06158224461804396,
+      "delta_vs_pin": -0.0026932959096116482,
+      "vote_linked_bills": 505897
+    }
+  },
+  "best_arm": "hash",
+  "beats_pin": false,
+  "decision": "best arm 'hash' does not beat the 0.7707 pin"
+}
