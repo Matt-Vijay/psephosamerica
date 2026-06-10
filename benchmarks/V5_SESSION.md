@@ -7,7 +7,7 @@ never blocking. numpy only (torch lives in Track A's enrichment; we consume vect
 
 | # | Item | State |
 |---|---|---|
-| 1 | **Semantic A/B** (semantic vs hash vs concat on the 118th pin) | **harness built + watcher auto-armed**; Track A's semantic export was mid-write this session (churning 16k→… of 106k bills). Watcher gates on the semantic count *settling* then auto-fires; result re-pins if it beats 0.7707. |
+| 1 | **Semantic A/B** (semantic vs hash vs concat on the 118th pin) | **harness built + watcher armed; result PENDING Track A.** Track A's semantic export never stabilized this session — it ran repeated truncate-and-rewrite passes (the semantic count bounced 9k↔40k of 106k all session, never reaching full coverage), so the settle-gated watcher correctly never fired. The hash/semantic/concat A/B vs the 0.7707 pin (+ honest pooling/truncation/leakage diagnosis if semantic ≤ hash) runs the instant the export completes; `semantic_ab_experiment.py` + `corpus_watch --semantic-ab` are committed and armed. **Documented-blocked on the upstream data, not on Track B code.** |
 | 2 | **Forward track record** | **DONE** — 400 content-hashed predictions frozen + scored, pages rendered (see below). |
 | 3 | Senate joint + transfer | blocked — no Senate backfill in the contract yet. |
 | 4 | State zero-shot | blocked — no state votes yet. |
