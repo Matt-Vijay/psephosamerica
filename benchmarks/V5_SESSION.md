@@ -16,7 +16,7 @@ never blocking. numpy only (torch lives in Track A's enrichment; we consume vect
 | 7 | Multi-task on real CRS policy-area edges | **DONE — ΔAUC +0.071** on the 113th (base 0.674 → +CRS 0.745, 98% coverage). Was 0 in v4; the govinfo `bill_content.jsonl` sidecar (CRS policy_area + subjects, joined via the contract) made it real. |
 | 8 | LLM-forecaster live/stub | stub + stacking already shipped (v4); no ANTHROPIC_API_KEY. |
 | 9 | 10-seed Bayesian on SOTA + checkpoints | deferred with #6 (contract churning). |
-| 10 | **Continuous-learning LIVE ≥60 min + semantic hot-swap** | **running** — launched against the actively-churning manifest so it captures the semantic hot-swap mid-run. |
+| 10 | **Continuous-learning LIVE ≥60 min + semantic hot-swap** | **DONE** — 15 ticks / ~67 min; CDC delta count climbed 139,617→192,908; the **semantic hot-swap fired on 14 of 15 ticks** (manifest sha changed every tick during Track A's live semantic export, each forcing a full retrain). `cl_live_v5.jsonl`. |
 | 11 | This report | done (updated as items land). |
 
 ## #2 — Forward prediction registry (the credibility milestone)
