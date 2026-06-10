@@ -1,0 +1,10 @@
+{
+  "cutoff": "2014-01-01",
+  "eval_pairs": 232341,
+  "crs_policy_coverage": 0.9828786137616693,
+  "base_auc": 0.6738944373538431,
+  "crs_multitask_auc": 0.7446297265617221,
+  "delta_auc": 0.07073528920787897,
+  "crs_coefficient": 0.30923083120141703,
+  "distinct_policy_areas": 31
+}
