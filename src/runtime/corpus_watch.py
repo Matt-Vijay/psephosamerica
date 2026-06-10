@@ -111,6 +111,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--eval-end", default="2024-12-31")
     parser.add_argument("--poll-seconds", type=float, default=270.0)
     parser.add_argument("--max-polls", type=int, default=200)
+    parser.add_argument(
+        "--seen-sha",
+        default="",
+        help="manifest sha already processed; the watcher fires only on a DIFFERENT export",
+    )
     args = parser.parse_args(argv)
 
     records_path = Path(args.records)
@@ -121,7 +126,9 @@ def main(argv: list[str] | None = None) -> int:
         if sha != last_sha:
             print(f"poll {poll}: manifest {sha[:12]} | {status.as_dict()}", flush=True)
             last_sha = sha
-        if should_trigger(status, threshold=args.threshold):
+        # Only fire on a re-export we have not already processed.
+        already_seen = bool(args.seen_sha) and sha == args.seen_sha
+        if not already_seen and should_trigger(status, threshold=args.threshold):
             print(f"TRIGGER: {status.vote_linkable} vote-linkable dense bills >= {args.threshold}", flush=True)
             rolls = load_rich_rollcalls(Path(args.corpus))
             emap = load_bill_embedding_map(records_path)
