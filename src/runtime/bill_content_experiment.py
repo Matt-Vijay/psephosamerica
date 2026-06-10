@@ -241,6 +241,13 @@ def _auc(intercept: float, coef: dict[str, float], names: tuple[str, ...], rows:
     return ranking_metrics(scores, [y for _f, y in rows]).auc
 
 
+def _projection(dim_in: int, dim_out: int) -> Array:
+    """Deterministic Gaussian random projection (fixed seed) for dense embeddings."""
+    rng = np.random.default_rng(20260610)
+    mat: Array = rng.normal(size=(dim_in, dim_out)) / math.sqrt(dim_in)
+    return mat
+
+
 def run_bill_content_experiment(
     rollcalls: list[dict[str, Any]],
     embedding_map: dict[str, Array] | None,
@@ -250,8 +257,14 @@ def run_bill_content_experiment(
     k_values: tuple[int, ...] = (4, 8, 16, 32),
     synthetic: bool = False,
     max_train: int = 200_000,
+    projection_dim: int = 0,
 ) -> dict[str, Any]:
-    """Bill-RAG before/after defection AUC over k, with the re-pin decision."""
+    """Bill-RAG (+ optional direct dense-embedding projection) defection AUC over k.
+
+    ``projection_dim > 0`` adds a fixed random projection of each bill's dense
+    embedding straight to the head -- a bill-LEVEL defection-propensity signal
+    orthogonal to the member-specific bill-RAG -- and reports the combined best.
+    """
     linked = build_linked_votes(rollcalls, embedding_map, synthetic=synthetic)
     train = [lv for lv in linked if lv.record.vote_date <= cutoff]
     eval_lv = [lv for lv in linked if cutoff < lv.record.vote_date <= eval_end]
@@ -271,7 +284,20 @@ def run_bill_content_experiment(
         if lv.bill_embedding is not None:
             stores[lv.record.member].add(lv.bill_embedding, defected(lv.record))
 
-    names = ("loyalty_gap", "sector_divergence", "bill_rag_signal")
+    # Optional fixed projection of the dense embedding -> bill-level features.
+    proj_matrix: Array | None = None
+    proj_names: tuple[str, ...] = ()
+    if projection_dim > 0:
+        sample = next((lv.bill_embedding for lv in train if lv.bill_embedding is not None), None)
+        if sample is not None:
+            proj_matrix = _projection(sample.shape[0], projection_dim)
+            proj_names = tuple(f"bill_proj_{i}" for i in range(projection_dim))
+
+    def proj_feats(lv: LinkedVote) -> dict[str, float]:
+        if proj_matrix is None or lv.bill_embedding is None:
+            return {n: 0.0 for n in proj_names}
+        projected = lv.bill_embedding @ proj_matrix
+        return {n: float(projected[i]) for i, n in enumerate(proj_names)}
 
     def all_k_signals(lv: LinkedVote) -> dict[int, float]:
         store = stores.get(lv.record.member)
@@ -280,29 +306,50 @@ def run_bill_content_experiment(
         return store.signals(lv.bill_embedding, k_values)
 
     # One retrieval pass per record yields the signal for every k at once.
-    train_feats = [(defection_features(lv.record, profiles), all_k_signals(lv), defected(lv.record)) for lv in train]
-    eval_feats = [(defection_features(lv.record, profiles), all_k_signals(lv), defected(lv.record)) for lv in eval_lv]
+    train_feats = [
+        (defection_features(lv.record, profiles), all_k_signals(lv), proj_feats(lv), defected(lv.record))
+        for lv in train
+    ]
+    eval_feats = [
+        (defection_features(lv.record, profiles), all_k_signals(lv), proj_feats(lv), defected(lv.record))
+        for lv in eval_lv
+    ]
 
+    rag_names = ("loyalty_gap", "sector_divergence", "bill_rag_signal")
+    combo_names = (*rag_names, *proj_names)
     ablation: dict[str, Any] = {}
     best_auc = base_auc
     best_k = None
+    best_variant = "base"
     for k in k_values:
-        tr = [({**base, "bill_rag_signal": sig[k]}, y) for base, sig, y in train_feats]
-        ev = [({**base, "bill_rag_signal": sig[k]}, y) for base, sig, y in eval_feats]
-        i, c = _train_logistic(tr, names)
-        auc = _auc(i, c, names, ev)
-        ablation[f"k={k}"] = {"auc": auc, "delta_vs_base": auc - base_auc}
+        tr = [({**b, "bill_rag_signal": sig[k]}, y) for b, sig, _p, y in train_feats]
+        ev = [({**b, "bill_rag_signal": sig[k]}, y) for b, sig, _p, y in eval_feats]
+        i, c = _train_logistic(tr, rag_names)
+        auc = _auc(i, c, rag_names, ev)
+        entry = {"rag_auc": auc, "delta_vs_base": auc - base_auc}
         if auc > best_auc:
-            best_auc, best_k = auc, k
+            best_auc, best_k, best_variant = auc, k, "rag"
+        if proj_names:
+            tr_c = [({**b, "bill_rag_signal": sig[k], **p}, y) for b, sig, p, y in train_feats]
+            ev_c = [({**b, "bill_rag_signal": sig[k], **p}, y) for b, sig, p, y in eval_feats]
+            ci, cc = _train_logistic(tr_c, combo_names)
+            cauc = _auc(ci, cc, combo_names, ev_c)
+            entry["rag_proj_auc"] = cauc
+            entry["delta_proj_vs_base"] = cauc - base_auc
+            if cauc > best_auc:
+                best_auc, best_k, best_variant = cauc, k, "rag_proj"
+        ablation[f"k={k}"] = entry
 
     return {
         "cutoff": cutoff.isoformat(),
         "embedding_source": "synthetic" if synthetic else "contract_dense",
         "vote_linked_bills": linked_count,
         "eval_pairs": len(eval_lv),
+        "projection_dim": projection_dim,
         "base_auc": base_auc,
         "best_auc": best_auc,
         "best_k": best_k,
+        "best_variant": best_variant,
         "delta_vs_base": best_auc - base_auc,
         "pin": _PIN,
         "beats_pin": best_auc > _PIN + 0.005,

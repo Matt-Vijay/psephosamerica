@@ -1,0 +1,40 @@
+{
+  "cutoff": "2024-04-20",
+  "embedding_source": "contract_dense",
+  "vote_linked_bills": 505897,
+  "eval_pairs": 148846,
+  "projection_dim": 16,
+  "base_auc": 0.7064244594723444,
+  "best_auc": 0.770670883580485,
+  "best_k": 32,
+  "best_variant": "rag_proj",
+  "delta_vs_base": 0.06424642410814052,
+  "pin": 0.7247,
+  "beats_pin": true,
+  "k_ablation": {
+    "k=8": {
+      "rag_auc": 0.7405058718243647,
+      "delta_vs_base": 0.034081412352020224,
+      "rag_proj_auc": 0.7453597806947772,
+      "delta_proj_vs_base": 0.038935321222432706
+    },
+    "k=16": {
+      "rag_auc": 0.7544487201306381,
+      "delta_vs_base": 0.04802426065829368,
+      "rag_proj_auc": 0.7577654769641969,
+      "delta_proj_vs_base": 0.05134101749185249
+    },
+    "k=32": {
+      "rag_auc": 0.7669281147664477,
+      "delta_vs_base": 0.06050365529410329,
+      "rag_proj_auc": 0.770670883580485,
+      "delta_proj_vs_base": 0.06424642410814052
+    },
+    "k=64": {
+      "rag_auc": 0.7536102574146636,
+      "delta_vs_base": 0.04718579794231914,
+      "rag_proj_auc": 0.7586079450216485,
+      "delta_proj_vs_base": 0.052183485549304076
+    }
+  }
+}

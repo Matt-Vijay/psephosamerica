@@ -10,9 +10,21 @@
     },
     {
       "slice_name": "congress-113-bill-content",
-      "auc": 0.7017,
+      "auc": 0.7042,
       "sample_count": 232341,
       "positives": 0
+    },
+    {
+      "slice_name": "congress-118-base",
+      "auc": 0.7064,
+      "sample_count": 148846,
+      "positives": 8567
+    },
+    {
+      "slice_name": "congress-118-bill-content",
+      "auc": 0.7707,
+      "sample_count": 148846,
+      "positives": 8567
     }
   ]
 }

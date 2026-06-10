@@ -81,6 +81,22 @@ def test_experiment_runs_and_reports_ablation() -> None:
     assert "beats_pin" in report and isinstance(report["beats_pin"], bool)
 
 
+def test_experiment_with_projection_reports_both_variants() -> None:
+    report = run_bill_content_experiment(
+        _rollcalls(),
+        None,
+        cutoff=date(2023, 8, 1),
+        eval_end=date(2023, 12, 31),
+        k_values=(4, 8),
+        synthetic=True,
+        projection_dim=4,
+    )
+    assert report["projection_dim"] == 4
+    assert report["best_variant"] in {"base", "rag", "rag_proj"}
+    # projection variant is reported alongside rag for each k
+    assert "rag_proj_auc" in report["k_ablation"]["k=4"]
+
+
 def test_load_bill_embedding_map_empty_when_no_dense(tmp_path) -> None:
     records = tmp_path / "records.jsonl"
     records.write_text('{"entity_type":"bill","canonical_id":"us_congress:118:hr1"}\n')

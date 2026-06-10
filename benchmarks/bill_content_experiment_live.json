@@ -1,0 +1,36 @@
+{
+  "cutoff": "2014-01-01",
+  "embedding_source": "contract_dense",
+  "vote_linked_bills": 480377,
+  "eval_pairs": 232341,
+  "base_auc": 0.6696093722516311,
+  "best_auc": 0.7016770213942812,
+  "best_k": 32,
+  "delta_vs_base": 0.032067649142650145,
+  "pin": 0.7247,
+  "beats_pin": false,
+  "k_ablation": {
+    "k=4": {
+      "auc": 0.6838941165524578,
+      "delta_vs_base": 0.014284744300826713
+    },
+    "k=8": {
+      "auc": 0.6845450823526164,
+      "delta_vs_base": 0.014935710100985267
+    },
+    "k=16": {
+      "auc": 0.6943548313394395,
+      "delta_vs_base": 0.024745459087808452
+    },
+    "k=32": {
+      "auc": 0.7016770213942812,
+      "delta_vs_base": 0.032067649142650145
+    }
+  },
+  "linkage": {
+    "total_bills": 106536,
+    "with_embedding": 106536,
+    "with_policy_area": 0,
+    "vote_linkable": 106536
+  }
+}
