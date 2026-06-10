@@ -85,8 +85,16 @@ def normalize_bill_key(raw: str) -> str | None:
     return f"{congress}:{''.join(letters)}:{int(nums[-1])}"
 
 
-def load_bill_embedding_map(records_path: Path) -> dict[str, Array]:
-    """Normalized bill key -> dense embedding, from contract bill rows."""
+def load_bill_embedding_map(
+    records_path: Path, *, field: str = "dossier_embedding", concat_with: str | None = None
+) -> dict[str, Array]:
+    """Normalized bill key -> dense embedding, from contract bill rows.
+
+    ``field`` selects the embedding (``dossier_embedding`` = the title-only hash
+    vector, ``semantic_embedding`` = Track A's MiniLM over full text + CRS summary).
+    ``concat_with`` (if given) concatenates a second field's vector, for the
+    semantic-vs-hash-vs-concat A/B. A row missing the requested field is skipped.
+    """
     out: dict[str, Array] = {}
     if not records_path.exists():
         return out
@@ -97,15 +105,35 @@ def load_bill_embedding_map(records_path: Path) -> dict[str, Array]:
             record = json.loads(line)
             if record.get("entity_type") != "bill":
                 continue
-            embedding = record.get("dossier_embedding")
-            if not embedding:
+            primary = record.get(field)
+            if not primary:
                 continue
-            vec = np.asarray(embedding, dtype=np.float64)
+            vec = np.asarray(primary, dtype=np.float64)
+            if concat_with is not None:
+                second = record.get(concat_with)
+                if not second:
+                    continue
+                vec = np.concatenate([vec, np.asarray(second, dtype=np.float64)])
             for candidate in [record.get("canonical_id", ""), *(record.get("external_ids") or [])]:
                 key = normalize_bill_key(str(candidate))
                 if key is not None:
                     out[key] = vec
     return out
+
+
+def count_embedding_field(records_path: Path, field: str) -> int:
+    """How many bill rows carry a non-empty ``field`` (for the semantic-export gate)."""
+    n = 0
+    if not records_path.exists():
+        return 0
+    with records_path.open(encoding="utf-8") as handle:
+        for line in handle:
+            if not line.strip():
+                continue
+            record = json.loads(line)
+            if record.get("entity_type") == "bill" and record.get(field):
+                n += 1
+    return n
 
 
 def synthetic_bill_embedding(bill_id: str, *, dim: int = 32) -> Array:

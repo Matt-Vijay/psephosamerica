@@ -116,6 +116,11 @@ def main(argv: list[str] | None = None) -> int:
         default="",
         help="manifest sha already processed; the watcher fires only on a DIFFERENT export",
     )
+    parser.add_argument(
+        "--semantic-ab",
+        action="store_true",
+        help="on trigger, run the semantic-vs-hash-vs-concat A/B (v5 #1) instead of the plain experiment",
+    )
     args = parser.parse_args(argv)
 
     records_path = Path(args.records)
@@ -130,6 +135,19 @@ def main(argv: list[str] | None = None) -> int:
         already_seen = bool(args.seen_sha) and sha == args.seen_sha
         if not already_seen and should_trigger(status, threshold=args.threshold):
             print(f"TRIGGER: {status.vote_linkable} vote-linkable dense bills >= {args.threshold}", flush=True)
+            if args.semantic_ab:
+                from src.runtime.semantic_ab_experiment import run as run_semantic_ab
+
+                report = run_semantic_ab(
+                    rich_corpus=Path(args.corpus),
+                    records_path=records_path,
+                    cutoff=date.fromisoformat(args.cutoff),
+                    eval_end=date.fromisoformat(args.eval_end),
+                )
+                report["linkage"] = status.as_dict()
+                Path(args.out).write_text(json.dumps(report, indent=2), encoding="utf-8")
+                print(f"semantic A/B: {report['decision']}; wrote {args.out}", flush=True)
+                return 0
             rolls = load_rich_rollcalls(Path(args.corpus))
             emap = load_bill_embedding_map(records_path)
             report = run_bill_content_experiment(
