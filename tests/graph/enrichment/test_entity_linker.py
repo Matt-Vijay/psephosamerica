@@ -109,3 +109,39 @@ def test_empty_labeled_is_unit_precision_recall() -> None:
     pr = link_precision_recall(_linker(), [])
     assert pr["precision"] == 1.0
     assert pr["recall"] == 1.0
+
+
+# ── title + single surname (recall lift) ───────────────────────────
+
+
+def test_extract_title_prefixed_single_surname() -> None:
+    names = extract_person_names("Senator Schumer and Rep. Pelosi spoke.")
+    assert "Schumer" in names and "Pelosi" in names
+
+
+def test_title_surname_links_unique_family() -> None:
+    linker = _linker()
+    assert linker.link("Schumer") == "ce-schumer"
+    assert linker.link("Pelosi") == "ce-pelosi"
+
+
+def test_title_surname_recall_lift_on_last_name_only_text() -> None:
+    # Before: a title + lone surname produced no mention -> recall 0. Now it links.
+    labeled = [("Senator Schumer voted yes.", {"ce-schumer"})]
+    pr = link_precision_recall(_linker(), labeled)
+    assert pr["recall"] == 1.0
+    assert pr["precision"] == 1.0
+
+
+def test_ambiguous_surname_still_dropped_for_precision() -> None:
+    # Two Smiths in the roster -> "Senator Smith" stays ambiguous (no false link).
+    linker = _linker()
+    assert "Smith" in extract_person_names("Senator Smith objected.")
+    assert linker.link("Smith") is None
+
+
+def test_title_surname_lookahead_skips_first_token_of_full_name() -> None:
+    # "Senator Charles Schumer" -> the full name only; no spurious "Charles".
+    names = extract_person_names("Senator Charles Schumer spoke.")
+    assert "Charles Schumer" in names
+    assert "Charles" not in names

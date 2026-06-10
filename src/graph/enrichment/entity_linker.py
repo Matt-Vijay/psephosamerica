@@ -28,14 +28,27 @@ _TITLES = (
 )
 _NAME = r"[A-Z][a-zA-Z'’-]+(?:\s+[A-Z]\.?)?(?:\s+[A-Z][a-zA-Z'’-]+){1,2}"
 _MENTION_RE = re.compile(rf"(?:\b(?:{_TITLES})\.?\s+)?({_NAME})")
+# A title + a SINGLE surname ("Senator Schumer", "Rep. Pelosi") -- the dominant
+# CREC/news pattern the multi-token _NAME misses. The lookahead keeps it from
+# firing on the first token of a full name ("Senator Chuck Schumer" -> only the
+# multi-token match), so it adds last-name mentions without double-counting.
+_TITLE_SURNAME_RE = re.compile(
+    rf"\b(?:{_TITLES})\.?\s+([A-Z][a-zA-Z'’-]+)\b(?!\s+(?:[A-Z]\.?\s+)?[A-Z][a-zA-Z'’-])"
+)
 
 
 def extract_person_names(text: str) -> list[str]:
-    """Extract candidate person-name mentions from free text (order-preserving, deduped)."""
+    """Extract candidate person-name mentions from free text (order-preserving, deduped).
+
+    Captures both full ``First [M.] Last`` names and title-prefixed single
+    surnames; ambiguity is resolved at link time, so emitting a surname mention
+    only links when that family is unique in the roster (precision preserved).
+    """
     seen: dict[str, None] = {}
     for match in _MENTION_RE.finditer(text):
-        mention = " ".join(match.group(1).split())
-        seen.setdefault(mention, None)
+        seen.setdefault(" ".join(match.group(1).split()), None)
+    for match in _TITLE_SURNAME_RE.finditer(text):
+        seen.setdefault(" ".join(match.group(1).split()), None)
     return list(seen)
 
 
