@@ -20,7 +20,7 @@ so the edges join cleanly to the canonical bill + person nodes.
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from datetime import datetime
 
 from src.graph.committees import CommitteeRef
@@ -39,22 +39,31 @@ def subject_id(name: str) -> str:
     return stable_id(["us-congress-subject", name.strip().lower()], "csub")
 
 
-def classification_edges(status: BillStatus, *, provenance: ProvenanceEnvelope) -> list[GraphEdge]:
-    """``bill -> policy_area`` + ``bill -> legislative_subject`` edges (CRS topics)."""
-    bill = canonical_bill_id(status)
+def classification_edges_from_fields(
+    canonical_id: str,
+    policy_area: str | None,
+    subjects: Iterable[str],
+    *,
+    provenance: ProvenanceEnvelope,
+) -> list[GraphEdge]:
+    """``bill -> policy_area`` + ``bill -> legislative_subject`` edges from plain fields.
+
+    Lets a downstream pass emit sector edges straight from the content sidecar
+    (which carries ``policy_area`` + ``subjects`` without the full BillStatus).
+    """
     edges: list[GraphEdge] = []
-    if status.policy_area:
+    if policy_area:
         edges.append(
             GraphEdge(
                 edge_type="policy_area",
-                src_id=bill,
-                dst_id=subject_id(status.policy_area),
-                attributes={"name": status.policy_area},
+                src_id=canonical_id,
+                dst_id=subject_id(policy_area),
+                attributes={"name": policy_area},
                 provenance=provenance,
             )
         )
     seen: set[str] = set()
-    for subject in status.subjects:
+    for subject in subjects:
         target = subject_id(subject)
         if target in seen:
             continue
@@ -62,13 +71,20 @@ def classification_edges(status: BillStatus, *, provenance: ProvenanceEnvelope) 
         edges.append(
             GraphEdge(
                 edge_type="legislative_subject",
-                src_id=bill,
+                src_id=canonical_id,
                 dst_id=target,
                 attributes={"name": subject},
                 provenance=provenance,
             )
         )
     return edges
+
+
+def classification_edges(status: BillStatus, *, provenance: ProvenanceEnvelope) -> list[GraphEdge]:
+    """``bill -> policy_area`` + ``bill -> legislative_subject`` edges (CRS topics)."""
+    return classification_edges_from_fields(
+        canonical_bill_id(status), status.policy_area, status.subjects, provenance=provenance
+    )
 
 
 def committee_referral_edges(
