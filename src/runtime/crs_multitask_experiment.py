@@ -30,8 +30,7 @@ _LOGIT_CLAMP = 40.0
 _MIN_POLICY_VOTES = 3
 
 
-def load_crs_policy_map(records_path: Path, content_path: Path) -> dict[str, str]:
-    """bill_key -> CRS policy_area, joining bill_content (canonical_id) via the contract."""
+def _canonical_to_key(records_path: Path) -> dict[str, str]:
     canon2key: dict[str, str] = {}
     for r in _iter_records(records_path):
         if r.get("entity_type") != "bill":
@@ -42,6 +41,12 @@ def load_crs_policy_map(records_path: Path, content_path: Path) -> dict[str, str
             if key:
                 canon2key[cid] = key
                 break
+    return canon2key
+
+
+def load_crs_policy_map(records_path: Path, content_path: Path) -> dict[str, str]:
+    """bill_key -> CRS policy_area, joining bill_content (canonical_id) via the contract."""
+    canon2key = _canonical_to_key(records_path)
     out: dict[str, str] = {}
     if content_path.exists():
         with content_path.open(encoding="utf-8") as handle:
@@ -54,6 +59,24 @@ def load_crs_policy_map(records_path: Path, content_path: Path) -> dict[str, str
                 pa = row.get("policy_area")
                 if key and pa:
                     out[key] = str(pa)
+    return out
+
+
+def load_crs_subjects_map(records_path: Path, content_path: Path) -> dict[str, tuple[str, ...]]:
+    """bill_key -> CRS subjects tuple (finer-grained than policy_area)."""
+    canon2key = _canonical_to_key(records_path)
+    out: dict[str, tuple[str, ...]] = {}
+    if content_path.exists():
+        with content_path.open(encoding="utf-8") as handle:
+            for line in handle:
+                try:
+                    row = json.loads(line)
+                except ValueError:
+                    continue
+                key = canon2key.get(str(row.get("canonical_id", "")))
+                subjects = row.get("subjects") or []
+                if key and subjects:
+                    out[key] = tuple(str(s) for s in subjects)
     return out
 
 
@@ -90,60 +113,85 @@ def _auc(intercept: float, coef: dict[str, float], names: tuple[str, ...], rows:
 
 def run(rich_corpus: Path, *, records_path: Path, content_path: Path, cutoff: date) -> dict[str, Any]:
     policy_map = load_crs_policy_map(records_path, content_path)
+    subjects_map = load_crs_subjects_map(records_path, content_path)
     rolls = load_rich_rollcalls(rich_corpus)
 
-    # (record, bill_key) with CRS policy area attached where available
-    linked: list[tuple[VoteRecord, str | None]] = []
     from src.runtime.bill_content_experiment import build_linked_votes
 
+    # (record, policy_area, subjects) with CRS attached where available
+    linked: list[tuple[VoteRecord, str | None, tuple[str, ...]]] = []
     for lv in build_linked_votes(rolls, None):
         key = normalize_bill_key(lv.bill_id)
-        linked.append((lv.record, policy_map.get(key) if key else None))
+        linked.append((lv.record, policy_map.get(key) if key else None, subjects_map.get(key, ()) if key else ()))
 
-    train = [(r, pa) for r, pa in linked if r.vote_date <= cutoff]
-    eval_records = [(r, pa) for r, pa in linked if r.vote_date > cutoff]
-    profiles = build_party_profiles([r for r, _ in train])
+    train = [t for t in linked if t[0].vote_date <= cutoff]
+    eval_records = [t for t in linked if t[0].vote_date > cutoff]
+    profiles = build_party_profiles([t[0] for t in train])
 
-    # per-(member, CRS policy_area) pre-cutoff defection rate + member overall rate
+    # per-(member, policy/subject) pre-cutoff defection rate + member overall rate
     mp: dict[tuple[str, str], list[int]] = defaultdict(lambda: [0, 0])
+    ms: dict[tuple[str, str], list[int]] = defaultdict(lambda: [0, 0])
     mo: dict[str, list[int]] = defaultdict(lambda: [0, 0])
-    for r, pa in train:
+    for r, pa, subs in train:
         d = int(defected(r))
         mo[r.member][0] += d
         mo[r.member][1] += 1
         if pa:
             mp[(r.member, pa)][0] += d
             mp[(r.member, pa)][1] += 1
+        for s in subs:
+            ms[(r.member, s)][0] += d
+            ms[(r.member, s)][1] += 1
 
-    def crs_feature(r: VoteRecord, pa: str | None) -> float:
-        overall = mo[r.member][0] / mo[r.member][1] if mo.get(r.member, [0, 0])[1] else 0.1
+    def _overall(member: str) -> float:
+        return mo[member][0] / mo[member][1] if mo.get(member, [0, 0])[1] else 0.1
+
+    def policy_feat(r: VoteRecord, pa: str | None) -> float:
         if pa and mp.get((r.member, pa), [0, 0])[1] >= _MIN_POLICY_VOTES:
-            rate = mp[(r.member, pa)][0] / mp[(r.member, pa)][1]
-            return rate - overall  # deviation: defects MORE than usual on this CRS area
+            return mp[(r.member, pa)][0] / mp[(r.member, pa)][1] - _overall(r.member)
         return 0.0
 
+    def subject_feat(r: VoteRecord, subs: tuple[str, ...]) -> float:
+        devs = [
+            ms[(r.member, s)][0] / ms[(r.member, s)][1] - _overall(r.member)
+            for s in subs
+            if ms.get((r.member, s), [0, 0])[1] >= _MIN_POLICY_VOTES
+        ]
+        return max(devs) if devs else 0.0  # member's most defection-prone subject on this bill
+
     base_names = ("loyalty_gap", "sector_divergence")
-    crs_names = (*base_names, "crs_policy_divergence")
-    base_train = [(defection_features(r, profiles), defected(r)) for r, _ in train]
-    base_eval = [(defection_features(r, profiles), defected(r)) for r, _ in eval_records]
-    b_int, b_coef = _train(base_train, base_names)
-    base_auc = _auc(b_int, b_coef, base_names, base_eval)
+    arms = {
+        "base": (base_names, lambda r, pa, subs: {}),
+        "policy": ((*base_names, "crs_policy_divergence"),
+                   lambda r, pa, subs: {"crs_policy_divergence": policy_feat(r, pa)}),
+        "policy_subjects": ((*base_names, "crs_policy_divergence", "crs_subject_divergence"),
+                            lambda r, pa, subs: {"crs_policy_divergence": policy_feat(r, pa),
+                                                 "crs_subject_divergence": subject_feat(r, subs)}),
+    }
+    results: dict[str, Any] = {}
+    base_auc = 0.0
+    for name, (names, extra) in arms.items():
+        tr = [({**defection_features(r, profiles), **extra(r, pa, subs)}, defected(r)) for r, pa, subs in train]
+        ev = [({**defection_features(r, profiles), **extra(r, pa, subs)}, defected(r)) for r, pa, subs in eval_records]
+        i, c = _train(tr, names)
+        auc = _auc(i, c, names, ev)
+        if name == "base":
+            base_auc = auc
+        results[name] = {"auc": auc, "delta_vs_base": auc - base_auc, "coef": {k: c.get(k, 0.0) for k in names if k not in base_names}}
 
-    crs_train = [({**defection_features(r, profiles), "crs_policy_divergence": crs_feature(r, pa)}, defected(r)) for r, pa in train]
-    crs_eval = [({**defection_features(r, profiles), "crs_policy_divergence": crs_feature(r, pa)}, defected(r)) for r, pa in eval_records]
-    c_int, c_coef = _train(crs_train, crs_names)
-    crs_auc = _auc(c_int, c_coef, crs_names, crs_eval)
-
-    covered = sum(1 for _r, pa in eval_records if pa)
+    covered = sum(1 for _r, pa, _s in eval_records if pa)
+    best = max(results, key=lambda a: results[a]["auc"])
     return {
         "cutoff": cutoff.isoformat(),
         "eval_pairs": len(eval_records),
         "crs_policy_coverage": covered / len(eval_records) if eval_records else 0.0,
         "base_auc": base_auc,
-        "crs_multitask_auc": crs_auc,
-        "delta_auc": crs_auc - base_auc,
-        "crs_coefficient": c_coef.get("crs_policy_divergence", 0.0),
-        "distinct_policy_areas": len({pa for _r, pa in linked if pa}),
+        "arms": results,
+        "best_arm": best,
+        "best_auc": results[best]["auc"],
+        "delta_auc": results[best]["auc"] - base_auc,
+        "distinct_policy_areas": len({pa for _r, pa, _s in linked if pa}),
+        "distinct_subjects": len({s for _r, _p, subs in linked for s in subs}),
     }
 
 
@@ -160,11 +208,12 @@ def main(argv: list[str] | None = None) -> int:
 
     report = run(Path(args.rich), records_path=Path(args.records), content_path=Path(args.content), cutoff=date.fromisoformat(args.cutoff))
     Path(args.out).write_text(json.dumps(report, indent=2), encoding="utf-8")
+    print(f"CRS coverage={report['crs_policy_coverage']:.2f} base_auc={report['base_auc']:.4f}")
+    for name, arm in report["arms"].items():
+        print(f"  {name:16s} auc={arm['auc']:.4f} Δvs_base={arm['delta_vs_base']:+.4f}")
     print(
-        f"CRS coverage={report['crs_policy_coverage']:.2f} "
-        f"base_auc={report['base_auc']:.4f} +crs={report['crs_multitask_auc']:.4f} "
-        f"ΔAUC={report['delta_auc']:+.4f} (coef={report['crs_coefficient']:+.3f}, "
-        f"{report['distinct_policy_areas']} policy areas)"
+        f"best={report['best_arm']} ΔAUC={report['delta_auc']:+.4f} "
+        f"({report['distinct_policy_areas']} policy areas, {report['distinct_subjects']} subjects)"
     )
     print(f"wrote {args.out}")
     return 0

@@ -49,6 +49,7 @@ def test_crs_multitask_reports_delta(tmp_path: Path) -> None:
     report = run(rich, records_path=records, content_path=content, cutoff=date(2013, 7, 1))
     assert report["crs_policy_coverage"] > 0.5
     assert report["distinct_policy_areas"] == 2
-    # the CRS-area defection signal is real here, so it should not hurt and likely helps
-    assert report["crs_multitask_auc"] >= report["base_auc"] - 1e-6
-    assert "delta_auc" in report
+    assert set(report["arms"]) == {"base", "policy", "policy_subjects"}
+    # the CRS-area defection signal is real here, so the best arm should not hurt
+    assert report["best_auc"] >= report["base_auc"] - 1e-6
+    assert "delta_auc" in report and report["best_arm"] in {"base", "policy", "policy_subjects"}
