@@ -128,21 +128,29 @@ def main(argv: list[str] | None = None) -> int:
 
     records_path = Path(args.records)
     last_sha = ""
-    prev_linkable = -1
+    prev_signal = -1
     for poll in range(args.max_polls):
         status = count_linked_bills(records_path)
         sha = manifest_sha(Path(args.manifest))
+        # In semantic-ab mode the quantity that must be present + settled is the
+        # SEMANTIC embedding count (the hash count settles first and would fire early).
+        if args.semantic_ab:
+            from src.runtime.bill_content_experiment import count_embedding_field
+
+            signal = count_embedding_field(records_path, "semantic_embedding")
+        else:
+            signal = status.vote_linkable
         if sha != last_sha:
-            print(f"poll {poll}: manifest {sha[:12]} | {status.as_dict()}", flush=True)
+            print(f"poll {poll}: manifest {sha[:12]} | {status.as_dict()} | signal={signal}", flush=True)
             last_sha = sha
         # Only fire on a re-export we have not already processed, and only once the
-        # linkage count has SETTLED (unchanged since the previous poll) -- Track A
+        # gating count has SETTLED (unchanged since the previous poll) -- Track A
         # rewrites records.jsonl in place over several passes, so firing on the
         # first sighting would run on a half-written file.
         already_seen = bool(args.seen_sha) and sha == args.seen_sha
-        stable = status.vote_linkable == prev_linkable
-        prev_linkable = status.vote_linkable
-        if not already_seen and stable and should_trigger(status, threshold=args.threshold):
+        stable = signal == prev_signal
+        prev_signal = signal
+        if not already_seen and stable and signal >= args.threshold:
             print(f"TRIGGER: {status.vote_linkable} vote-linkable dense bills >= {args.threshold}", flush=True)
             if args.semantic_ab:
                 from src.runtime.semantic_ab_experiment import run as run_semantic_ab
