@@ -26,10 +26,19 @@ the rest is never downloaded. Grouping member rows by
 directly from the member rows (more reliable than joining the summary table).
 Output is Track B's rich roll-call shape in `data/real/`.
 
-**Delivered (2025 session, floor-only):** 5,299 roll-calls (2,920 assembly +
-2,379 senate), **328,309 member-votes** — the first state in the corpus.
-Multi-year (2013→2025, the full 113-119 window) extracts the same way via
-`--year`; each session-year archive is a single ranged fetch.
+**Delivered (2025 session, floor-only):** 5,317 roll-calls (assembly + senate),
+**~328K member-votes** — the first state in the corpus. Multi-year (2013→2025,
+the full 113-119 window) extracts the same way via `--year`; each session-year
+archive is a single ranged fetch.
+
+**Track-B-ready format:** votes are emitted as the **4-tuple
+`[member, party, "CA", choice]`** matching the Senate/House rich roll-calls, with
+`AYE/NOE → yea/nay` normalization, so Track B's existing `build_vote_records`
+consumes CA unchanged. Party is joined from `LEGISLATOR_TBL.dat` (extracted from
+the *same* zip via one more ranged fetch) by `(surname, house)` — **100% resolved
+on 2025** (DEM 247,166 / REP 81,139, 4 unknown). An internal-consistency audit
+(member count vs chamber size) caught and fixed a grouping bug where CA reuses a
+`motion_id` across separate vote events (split by `motion_seq` + timestamp).
 
 **This technique generalizes** to any large keyless ZIP behind a range-capable
 host (it does *not* help the JS/PDF/key-gated states below — those have no bulk
