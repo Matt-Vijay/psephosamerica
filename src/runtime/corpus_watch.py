@@ -128,15 +128,21 @@ def main(argv: list[str] | None = None) -> int:
 
     records_path = Path(args.records)
     last_sha = ""
+    prev_linkable = -1
     for poll in range(args.max_polls):
         status = count_linked_bills(records_path)
         sha = manifest_sha(Path(args.manifest))
         if sha != last_sha:
             print(f"poll {poll}: manifest {sha[:12]} | {status.as_dict()}", flush=True)
             last_sha = sha
-        # Only fire on a re-export we have not already processed.
+        # Only fire on a re-export we have not already processed, and only once the
+        # linkage count has SETTLED (unchanged since the previous poll) -- Track A
+        # rewrites records.jsonl in place over several passes, so firing on the
+        # first sighting would run on a half-written file.
         already_seen = bool(args.seen_sha) and sha == args.seen_sha
-        if not already_seen and should_trigger(status, threshold=args.threshold):
+        stable = status.vote_linkable == prev_linkable
+        prev_linkable = status.vote_linkable
+        if not already_seen and stable and should_trigger(status, threshold=args.threshold):
             print(f"TRIGGER: {status.vote_linkable} vote-linkable dense bills >= {args.threshold}", flush=True)
             if args.semantic_ab:
                 from src.runtime.semantic_ab_experiment import run as run_semantic_ab
