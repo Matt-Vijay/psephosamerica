@@ -115,6 +115,7 @@ def _updated(
         _dossier_substance(prev.dossier_json) != _dossier_substance(curr.dossier_json)
         or prev.dossier_embedding != curr.dossier_embedding
         or prev.structural_embedding != curr.structural_embedding
+        or prev.semantic_embedding != curr.semantic_embedding
     )
     if not (
         added_ext

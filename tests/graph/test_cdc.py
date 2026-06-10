@@ -133,6 +133,15 @@ def test_structural_embedding_change_is_detected() -> None:
     assert delta.enrichment_changed is True
 
 
+def test_semantic_embedding_change_is_detected() -> None:
+    # Adding the dual-emit semantic vector must fire enrichment_changed so Track
+    # B's hot-swap watcher sees it.
+    prev = {"ce-1": _output()}
+    curr_out = _output().model_copy(update={"semantic_embedding": [0.5] * 384})
+    delta = diff_outputs(prev, {"ce-1": curr_out})[0]
+    assert delta.enrichment_changed is True
+
+
 def test_enrichment_status_change() -> None:
     prev = {"ce-1": _output(enrichment="pending")}
     curr = {
