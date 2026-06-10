@@ -9,9 +9,25 @@ import numpy as np
 from src.runtime.bill_content_experiment import (
     build_linked_votes,
     load_bill_embedding_map,
+    normalize_bill_key,
     run_bill_content_experiment,
     synthetic_bill_embedding,
 )
+
+
+def test_normalize_bill_key_joins_all_formats() -> None:
+    # roll-call slug, contract external id, and govinfo id all name the same bill
+    assert (
+        normalize_bill_key("us_congress:113:h-r-529")
+        == normalize_bill_key("congress:113-hr-529")
+        == normalize_bill_key("govinfo:billstatus-113hr529")
+        == "113:hr:529"
+    )
+    assert normalize_bill_key("us_congress:118:h-res-5") == "118:hres:5"
+    # procedural rows have no real bill
+    assert normalize_bill_key("us_congress:118:quorum") is None
+    assert normalize_bill_key("us_congress:118:adjourn") is None
+    assert normalize_bill_key("") is None
 
 
 def _rollcalls() -> list[dict]:

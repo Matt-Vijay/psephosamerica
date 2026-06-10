@@ -23,6 +23,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+import re
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import date
@@ -49,8 +50,43 @@ class LinkedVote:
     bill_embedding: Array | None
 
 
+def normalize_bill_key(raw: str) -> str | None:
+    """Canonicalise a bill id from any source to ``congress:billtype:number``.
+
+    Joins the three formats that name the same bill across Track A and the vote
+    corpus: the roll-call slug ``us_congress:113:h-r-529``, the contract external
+    id ``congress:113-hr-529``, and the govinfo id ``govinfo:billstatus-113hr529``.
+    Returns None for procedural rows (quorum/adjourn/unknown) with no real bill.
+    """
+    s = raw.strip().lower()
+    if not s:
+        return None
+    if s.startswith("govinfo:billstatus-"):
+        m = re.match(r"govinfo:billstatus-(\d+)([a-z]+)(\d+)", s)
+        return f"{m.group(1)}:{m.group(2)}:{int(m.group(3))}" if m else None
+    if s.startswith("us_congress:"):
+        parts = s.split(":")
+        if len(parts) < 3:
+            return None
+        congress, tail = parts[1], parts[2]
+        toks = tail.split("-")
+    elif s.startswith("congress:"):
+        body = s[len("congress:") :]
+        toks = body.split("-")
+        if not toks:
+            return None
+        congress, toks = toks[0], toks[1:]
+    else:
+        return None
+    nums = [t for t in toks if t.isdigit()]
+    letters = [t for t in toks if t.isalpha()]
+    if not nums or not letters or not congress.isdigit():
+        return None
+    return f"{congress}:{''.join(letters)}:{int(nums[-1])}"
+
+
 def load_bill_embedding_map(records_path: Path) -> dict[str, Array]:
-    """bill_id -> dense embedding, from contract bill rows (canonical/us_congress + external ids)."""
+    """Normalized bill key -> dense embedding, from contract bill rows."""
     out: dict[str, Array] = {}
     if not records_path.exists():
         return out
@@ -65,11 +101,10 @@ def load_bill_embedding_map(records_path: Path) -> dict[str, Array]:
             if not embedding:
                 continue
             vec = np.asarray(embedding, dtype=np.float64)
-            canonical = str(record.get("canonical_id", ""))
-            if canonical:
-                out[canonical] = vec
-            for ext in record.get("external_ids") or []:
-                out[str(ext)] = vec
+            for candidate in [record.get("canonical_id", ""), *(record.get("external_ids") or [])]:
+                key = normalize_bill_key(str(candidate))
+                if key is not None:
+                    out[key] = vec
     return out
 
 
@@ -111,7 +146,8 @@ def build_linked_votes(
         if synthetic:
             embedding: Array | None = synthetic_bill_embedding(bill_id)
         elif embedding_map is not None:
-            embedding = embedding_map.get(bill_id)
+            key = normalize_bill_key(bill_id)
+            embedding = embedding_map.get(key) if key is not None else None
         else:
             embedding = None
         for bio, party, state, choice in votes:

@@ -1,0 +1,18 @@
+{
+  "model_name": "defection_head_bill_content",
+  "cutoff": null,
+  "slices": [
+    {
+      "slice_name": "congress-113-base",
+      "auc": 0.6696,
+      "sample_count": 232341,
+      "positives": 0
+    },
+    {
+      "slice_name": "congress-113-bill-content",
+      "auc": 0.7017,
+      "sample_count": 232341,
+      "positives": 0
+    }
+  ]
+}
