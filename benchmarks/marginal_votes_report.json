@@ -1,0 +1,527 @@
+{
+  "generated_for_window": "2025-09-30..2025-12-18",
+  "model_name": "defection_head_logreg",
+  "top_n": 20,
+  "marginal_votes": [
+    {
+      "rank": 1,
+      "member": "K000404",
+      "party": "R",
+      "state": "XX",
+      "bill_id": "us_congress:119:h-r-3383",
+      "target_vote_date": "2025-12-11",
+      "p_defect": 0.1297352280923181,
+      "factors": [
+        "breaks with party overall (+0.03)",
+        "breaks with party on this policy area (+0.03)"
+      ],
+      "counterfactual": "if the member no longer breaks with party overall, P(defect) drops most",
+      "venue_p_pass": 0.6133968270223679,
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:119:h-r-3383"
+        },
+        {
+          "kind": "member_history",
+          "ref": "K000404",
+          "detail": "loyalty_gap=0.516"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "member": "K000404",
+      "party": "R",
+      "state": "XX",
+      "bill_id": "us_congress:119:h-r-3383",
+      "target_vote_date": "2025-12-11",
+      "p_defect": 0.1297352280923181,
+      "factors": [
+        "breaks with party overall (+0.03)",
+        "breaks with party on this policy area (+0.03)"
+      ],
+      "counterfactual": "if the member no longer breaks with party overall, P(defect) drops most",
+      "venue_p_pass": 0.6133968270223679,
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:119:h-r-3383"
+        },
+        {
+          "kind": "member_history",
+          "ref": "K000404",
+          "detail": "loyalty_gap=0.516"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "member": "K000404",
+      "party": "R",
+      "state": "XX",
+      "bill_id": "us_congress:119:h-r-3383",
+      "target_vote_date": "2025-12-11",
+      "p_defect": 0.1297352280923181,
+      "factors": [
+        "breaks with party overall (+0.03)",
+        "breaks with party on this policy area (+0.03)"
+      ],
+      "counterfactual": "if the member no longer breaks with party overall, P(defect) drops most",
+      "venue_p_pass": 0.6133968270223679,
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:119:h-r-3383"
+        },
+        {
+          "kind": "member_history",
+          "ref": "K000404",
+          "detail": "loyalty_gap=0.516"
+        }
+      ]
+    },
+    {
+      "rank": 4,
+      "member": "K000404",
+      "party": "R",
+      "state": "XX",
+      "bill_id": "us_congress:119:h-r-4776",
+      "target_vote_date": "2025-12-18",
+      "p_defect": 0.1297352280923181,
+      "factors": [
+        "breaks with party overall (+0.03)",
+        "breaks with party on this policy area (+0.03)"
+      ],
+      "counterfactual": "if the member no longer breaks with party overall, P(defect) drops most",
+      "venue_p_pass": 0.6133968270223679,
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:119:h-r-4776"
+        },
+        {
+          "kind": "member_history",
+          "ref": "K000404",
+          "detail": "loyalty_gap=0.516"
+        }
+      ]
+    },
+    {
+      "rank": 5,
+      "member": "K000404",
+      "party": "R",
+      "state": "XX",
+      "bill_id": "us_congress:119:h-r-4776",
+      "target_vote_date": "2025-12-18",
+      "p_defect": 0.1297352280923181,
+      "factors": [
+        "breaks with party overall (+0.03)",
+        "breaks with party on this policy area (+0.03)"
+      ],
+      "counterfactual": "if the member no longer breaks with party overall, P(defect) drops most",
+      "venue_p_pass": 0.6133968270223679,
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:119:h-r-4776"
+        },
+        {
+          "kind": "member_history",
+          "ref": "K000404",
+          "detail": "loyalty_gap=0.516"
+        }
+      ]
+    },
+    {
+      "rank": 6,
+      "member": "K000404",
+      "party": "R",
+      "state": "XX",
+      "bill_id": "us_congress:119:h-r-4776",
+      "target_vote_date": "2025-12-18",
+      "p_defect": 0.1297352280923181,
+      "factors": [
+        "breaks with party overall (+0.03)",
+        "breaks with party on this policy area (+0.03)"
+      ],
+      "counterfactual": "if the member no longer breaks with party overall, P(defect) drops most",
+      "venue_p_pass": 0.6133968270223679,
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:119:h-r-4776"
+        },
+        {
+          "kind": "member_history",
+          "ref": "K000404",
+          "detail": "loyalty_gap=0.516"
+        }
+      ]
+    },
+    {
+      "rank": 7,
+      "member": "M001219",
+      "party": "R",
+      "state": "XX",
+      "bill_id": "us_congress:119:h-r-3383",
+      "target_vote_date": "2025-12-11",
+      "p_defect": 0.12860521562288102,
+      "factors": [
+        "breaks with party overall (+0.02)",
+        "breaks with party on this policy area (+0.02)"
+      ],
+      "counterfactual": "if the member no longer breaks with party overall, P(defect) drops most",
+      "venue_p_pass": 0.6133968270223679,
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:119:h-r-3383"
+        },
+        {
+          "kind": "member_history",
+          "ref": "M001219",
+          "detail": "loyalty_gap=0.424"
+        }
+      ]
+    },
+    {
+      "rank": 8,
+      "member": "M001219",
+      "party": "R",
+      "state": "XX",
+      "bill_id": "us_congress:119:h-r-3383",
+      "target_vote_date": "2025-12-11",
+      "p_defect": 0.12860521562288102,
+      "factors": [
+        "breaks with party overall (+0.02)",
+        "breaks with party on this policy area (+0.02)"
+      ],
+      "counterfactual": "if the member no longer breaks with party overall, P(defect) drops most",
+      "venue_p_pass": 0.6133968270223679,
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:119:h-r-3383"
+        },
+        {
+          "kind": "member_history",
+          "ref": "M001219",
+          "detail": "loyalty_gap=0.424"
+        }
+      ]
+    },
+    {
+      "rank": 9,
+      "member": "M001219",
+      "party": "R",
+      "state": "XX",
+      "bill_id": "us_congress:119:h-r-3383",
+      "target_vote_date": "2025-12-11",
+      "p_defect": 0.12860521562288102,
+      "factors": [
+        "breaks with party overall (+0.02)",
+        "breaks with party on this policy area (+0.02)"
+      ],
+      "counterfactual": "if the member no longer breaks with party overall, P(defect) drops most",
+      "venue_p_pass": 0.6133968270223679,
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:119:h-r-3383"
+        },
+        {
+          "kind": "member_history",
+          "ref": "M001219",
+          "detail": "loyalty_gap=0.424"
+        }
+      ]
+    },
+    {
+      "rank": 10,
+      "member": "M001219",
+      "party": "R",
+      "state": "XX",
+      "bill_id": "us_congress:119:h-r-4776",
+      "target_vote_date": "2025-12-18",
+      "p_defect": 0.12860521562288102,
+      "factors": [
+        "breaks with party overall (+0.02)",
+        "breaks with party on this policy area (+0.02)"
+      ],
+      "counterfactual": "if the member no longer breaks with party overall, P(defect) drops most",
+      "venue_p_pass": 0.6133968270223679,
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:119:h-r-4776"
+        },
+        {
+          "kind": "member_history",
+          "ref": "M001219",
+          "detail": "loyalty_gap=0.424"
+        }
+      ]
+    },
+    {
+      "rank": 11,
+      "member": "M001219",
+      "party": "R",
+      "state": "XX",
+      "bill_id": "us_congress:119:h-r-4776",
+      "target_vote_date": "2025-12-18",
+      "p_defect": 0.12860521562288102,
+      "factors": [
+        "breaks with party overall (+0.02)",
+        "breaks with party on this policy area (+0.02)"
+      ],
+      "counterfactual": "if the member no longer breaks with party overall, P(defect) drops most",
+      "venue_p_pass": 0.6133968270223679,
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:119:h-r-4776"
+        },
+        {
+          "kind": "member_history",
+          "ref": "M001219",
+          "detail": "loyalty_gap=0.424"
+        }
+      ]
+    },
+    {
+      "rank": 12,
+      "member": "M001219",
+      "party": "R",
+      "state": "XX",
+      "bill_id": "us_congress:119:h-r-4776",
+      "target_vote_date": "2025-12-18",
+      "p_defect": 0.12860521562288102,
+      "factors": [
+        "breaks with party overall (+0.02)",
+        "breaks with party on this policy area (+0.02)"
+      ],
+      "counterfactual": "if the member no longer breaks with party overall, P(defect) drops most",
+      "venue_p_pass": 0.6133968270223679,
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:119:h-r-4776"
+        },
+        {
+          "kind": "member_history",
+          "ref": "M001219",
+          "detail": "loyalty_gap=0.424"
+        }
+      ]
+    },
+    {
+      "rank": 13,
+      "member": "M001184",
+      "party": "R",
+      "state": "KY",
+      "bill_id": "us_congress:119:h-res-873",
+      "target_vote_date": "2025-11-12",
+      "p_defect": 0.12653120053276382,
+      "factors": [
+        "breaks with party overall (+0.01)",
+        "breaks with party on this policy area (+0.01)"
+      ],
+      "counterfactual": "if the member no longer breaks with party overall, P(defect) drops most",
+      "venue_p_pass": 0.6133968270223679,
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:119:h-res-873"
+        },
+        {
+          "kind": "member_history",
+          "ref": "M001184",
+          "detail": "loyalty_gap=0.254"
+        }
+      ]
+    },
+    {
+      "rank": 14,
+      "member": "M001184",
+      "party": "R",
+      "state": "KY",
+      "bill_id": "us_congress:119:h-res-873",
+      "target_vote_date": "2025-11-12",
+      "p_defect": 0.12653120053276382,
+      "factors": [
+        "breaks with party overall (+0.01)",
+        "breaks with party on this policy area (+0.01)"
+      ],
+      "counterfactual": "if the member no longer breaks with party overall, P(defect) drops most",
+      "venue_p_pass": 0.6133968270223679,
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:119:h-res-873"
+        },
+        {
+          "kind": "member_history",
+          "ref": "M001184",
+          "detail": "loyalty_gap=0.254"
+        }
+      ]
+    },
+    {
+      "rank": 15,
+      "member": "M001184",
+      "party": "R",
+      "state": "KY",
+      "bill_id": "us_congress:119:h-r-5371",
+      "target_vote_date": "2025-11-12",
+      "p_defect": 0.12653120053276382,
+      "factors": [
+        "breaks with party overall (+0.01)",
+        "breaks with party on this policy area (+0.01)"
+      ],
+      "counterfactual": "if the member no longer breaks with party overall, P(defect) drops most",
+      "venue_p_pass": 0.4982497082847141,
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:119:h-r-5371"
+        },
+        {
+          "kind": "member_history",
+          "ref": "M001184",
+          "detail": "loyalty_gap=0.254"
+        }
+      ]
+    },
+    {
+      "rank": 16,
+      "member": "M001184",
+      "party": "R",
+      "state": "KY",
+      "bill_id": "us_congress:119:h-r-1608",
+      "target_vote_date": "2025-11-17",
+      "p_defect": 0.12653120053276382,
+      "factors": [
+        "breaks with party overall (+0.01)",
+        "breaks with party on this policy area (+0.01)"
+      ],
+      "counterfactual": "if the member no longer breaks with party overall, P(defect) drops most",
+      "venue_p_pass": 0.6133968270223679,
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:119:h-r-1608"
+        },
+        {
+          "kind": "member_history",
+          "ref": "M001184",
+          "detail": "loyalty_gap=0.254"
+        }
+      ]
+    },
+    {
+      "rank": 17,
+      "member": "M001184",
+      "party": "R",
+      "state": "KY",
+      "bill_id": "us_congress:119:h-r-2659",
+      "target_vote_date": "2025-11-17",
+      "p_defect": 0.12653120053276382,
+      "factors": [
+        "breaks with party overall (+0.01)",
+        "breaks with party on this policy area (+0.01)"
+      ],
+      "counterfactual": "if the member no longer breaks with party overall, P(defect) drops most",
+      "venue_p_pass": 0.6133968270223679,
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:119:h-r-2659"
+        },
+        {
+          "kind": "member_history",
+          "ref": "M001184",
+          "detail": "loyalty_gap=0.254"
+        }
+      ]
+    },
+    {
+      "rank": 18,
+      "member": "M001184",
+      "party": "R",
+      "state": "KY",
+      "bill_id": "us_congress:119:h-res-878",
+      "target_vote_date": "2025-11-17",
+      "p_defect": 0.12653120053276382,
+      "factors": [
+        "breaks with party overall (+0.01)",
+        "breaks with party on this policy area (+0.01)"
+      ],
+      "counterfactual": "if the member no longer breaks with party overall, P(defect) drops most",
+      "venue_p_pass": 0.6133968270223679,
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:119:h-res-878"
+        },
+        {
+          "kind": "member_history",
+          "ref": "M001184",
+          "detail": "loyalty_gap=0.254"
+        }
+      ]
+    },
+    {
+      "rank": 19,
+      "member": "M001184",
+      "party": "R",
+      "state": "KY",
+      "bill_id": "us_congress:119:h-r-4405",
+      "target_vote_date": "2025-11-18",
+      "p_defect": 0.12653120053276382,
+      "factors": [
+        "breaks with party overall (+0.01)",
+        "breaks with party on this policy area (+0.01)"
+      ],
+      "counterfactual": "if the member no longer breaks with party overall, P(defect) drops most",
+      "venue_p_pass": 0.6133968270223679,
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:119:h-r-4405"
+        },
+        {
+          "kind": "member_history",
+          "ref": "M001184",
+          "detail": "loyalty_gap=0.254"
+        }
+      ]
+    },
+    {
+      "rank": 20,
+      "member": "M001184",
+      "party": "R",
+      "state": "KY",
+      "bill_id": "us_congress:119:h-res-879",
+      "target_vote_date": "2025-11-18",
+      "p_defect": 0.12653120053276382,
+      "factors": [
+        "breaks with party overall (+0.01)",
+        "breaks with party on this policy area (+0.01)"
+      ],
+      "counterfactual": "if the member no longer breaks with party overall, P(defect) drops most",
+      "venue_p_pass": 0.6133968270223679,
+      "citations": [
+        {
+          "kind": "rollcall_bill",
+          "ref": "us_congress:119:h-res-879"
+        },
+        {
+          "kind": "member_history",
+          "ref": "M001184",
+          "detail": "loyalty_gap=0.254"
+        }
+      ]
+    }
+  ]
+}
