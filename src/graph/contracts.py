@@ -92,6 +92,10 @@ class EntityResolutionOutput(ExportContractModel):
     dossier_json: dict[str, Any] | None = None
     dossier_embedding: list[float] | None = None
     structural_embedding: list[float] | None = None
+    # Optional dense semantic embedding (sentence-transformers, 384-d) emitted
+    # ALONGSIDE the deterministic hash ``dossier_embedding`` so Track B can A/B
+    # the two; additive, so it does not gate ``enrichment_status``.
+    semantic_embedding: list[float] | None = None
     enrichment_status: EnrichmentStatus = "pending"
 
     @field_validator("known_at")
