@@ -1,25 +1,39 @@
 # State-legislature roll-call votes — direct-keyless gate (honest report)
 
 Track A v5 #2 asked for ≥5 states' roll-call votes via **direct-keyless** ingest,
-CA leginfo bulk first. Probed 2026-06-10; each route is gated. No fabrication —
-this documents exactly what blocks each, with the path to unblock.
+CA leginfo bulk first. Probed 2026-06-10. **California is now SHIPPED** (see
+below); the other states remain key/JS/PDF-gated. No fabrication — this documents
+exactly what each route does, with the path to unblock the rest.
 
-## California — `leginfo` bulk (keyless, but ~1 GB/snapshot)
+## California — `leginfo` bulk — ✅ SHIPPED via partial-ZIP range extraction
 
-`https://downloads.leginfo.legislature.ca.gov/` is genuinely keyless and serves
-the full legislative database as `pubinfo_<year>.zip` (and `pubinfo_daily_*.zip`).
-Roll-call votes live in `bill_detail_vote_tbl.dat` / `bill_summary_vote_tbl.dat`
-inside the zip.
+`https://downloads.leginfo.legislature.ca.gov/` is keyless and serves the full
+legislative database as `pubinfo_<year>.zip`. Roll-call votes live in
+`BILL_DETAIL_VOTE_TBL.dat` (one tab-delimited, backtick-quoted row per legislator
+per motion) inside the zip.
 
-**Gate:** every snapshot is a *full* database dump — `pubinfo_2025.zip` is
-**975 MB**, and even the daily `pubinfo_daily_Mon.zip` is **850 MB** (a full
-snapshot, not an incremental). There is no small/keyless per-bill or per-vote
-endpoint. Downloading + extracting ~1 GB per year (≥2 GB for recent coverage) is
-impractical in this sandbox (disk + bandwidth + time).
+**The gate that *was*:** every snapshot is a *full* DB dump — `pubinfo_2025.zip`
+is **975 MB**, and even the daily zip is 850 MB. There is no per-vote endpoint, so
+the prior probe marked CA "keyless but impractical (can't stage a 1 GB download)".
 
-**Path to unblock:** run the (tested-elsewhere) `.dat` vote parser in an
-environment that can stage a 1 GB download, or mirror `bill_detail_vote_tbl.dat`
-once and parse it offline. The schema is stable and tab-delimited.
+**How it was cracked (`src/runtime/ca_leginfo_votes.py`):** the server honours
+**HTTP range requests** (`Accept-Ranges: bytes`, 206 responses) and a ZIP's
+central directory sits at the *end*. Backing `zipfile.ZipFile` with a
+range-request reader (`HttpRangeReader`) lets us pull **only**
+`BILL_DETAIL_VOTE_TBL.dat` (~3.6 MB compressed) out of the 975 MB archive —
+the rest is never downloaded. Grouping member rows by
+`(bill_id, location, motion_id)` reconstructs each roll-call; tallies are counted
+directly from the member rows (more reliable than joining the summary table).
+Output is Track B's rich roll-call shape in `data/real/`.
+
+**Delivered (2025 session, floor-only):** 5,299 roll-calls (2,920 assembly +
+2,379 senate), **328,309 member-votes** — the first state in the corpus.
+Multi-year (2013→2025, the full 113-119 window) extracts the same way via
+`--year`; each session-year archive is a single ranged fetch.
+
+**This technique generalizes** to any large keyless ZIP behind a range-capable
+host (it does *not* help the JS/PDF/key-gated states below — those have no bulk
+zip at all).
 
 ## Other states (NY/TX/FL/IL/PA/OH) — JS / PDF / key-gated
 
@@ -37,13 +51,18 @@ Consistent with the prior probe (`docs/ingestion-credentials.md`):
 
 ## Conclusion
 
-Direct-keyless state roll-call **votes** are not feasibly ingestible at scale in
-this sandbox: CA is keyless but 1 GB/snapshot; every other route is API-key-,
-JS-, or PDF-gated. State *legislators* (rosters) are already ingested keyless
-(OpenStates people, 7,359 across 50 states). The vote tier unblocks with any of:
-`OPENSTATES_API_KEY` (the adapter shape is identical to House/Senate), a staged
-CA `leginfo` bulk download, or per-state headless-browser / OCR scrapers.
+**California is shipped** (5,299 floor roll-calls / 328K member-votes for 2025
+alone, multi-year extracting via the same path) — the partial-ZIP range trick
+turned the "impractical 1 GB download" into a ~3.6 MB ranged fetch. That is the
+first state vote source in the corpus.
 
-**Decision:** documented and moved on (per the v5 directive), prioritizing the
-keyless, tractable items — Senate backfill (shipped), the bill-edge pass, and
-CREC floor-speech backfill.
+The remaining target states (NY/TX/FL/IL/PA/OH) have **no bulk zip at all** — they
+are API-key-, JS-, or PDF-gated, so the range trick does not reach them. State
+*legislators* (rosters) are already ingested keyless (OpenStates people, 7,359
+across 50 states). Those vote tiers unblock with any of: `OPENSTATES_API_KEY` (the
+adapter shape is identical to House/Senate), a LegiScan key, or per-state
+headless-browser / OCR scrapers.
+
+**Decision:** CA delivered keyless; remaining states documented and deferred
+(per the v5 directive), prioritizing the keyless, tractable items — Senate
+backfill, the bill-edge pass, CREC, and now CA state votes (all shipped).
