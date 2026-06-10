@@ -15,7 +15,7 @@ never blocking. numpy only (torch lives in Track A's enrichment; we consume vect
 | 6 | Recalibrate per slice + re-pin gates | **DONE (vote-only)** — temperature ECE 0.0356→0.0001; Mondrian conformal 0.868 ≥0.85 on defection-prone. Bill-content recalibration reruns once the contract settles. |
 | 7 | Multi-task on real CRS policy-area edges | **DONE — ΔAUC +0.071** on the 113th (base 0.674 → +CRS 0.745, 98% coverage). Was 0 in v4; the govinfo `bill_content.jsonl` sidecar (CRS policy_area + subjects, joined via the contract) made it real. |
 | 8 | LLM-forecaster live/stub | stub + stacking already shipped (v4); no ANTHROPIC_API_KEY. |
-| 9 | 10-seed Bayesian on SOTA + checkpoints | deferred with #6 (contract churning). |
+| 9 | 10-seed Bayesian on the bill-content SOTA + checkpoint | **DONE** (unblocked once the contract settled) — AUC **0.7707 ± 0.00006** over 10 bootstrap seeds (per-seed 0.7706–0.7708); the +0.064 bill-content lift is robust to resampling, not a lucky split. Content-addressed checkpoint `sha256/44/eb/44eb0c16…`. |
 | 10 | **Continuous-learning LIVE ≥60 min + semantic hot-swap** | **DONE** — 15 ticks / ~67 min; CDC delta count climbed 139,617→192,908; the **semantic hot-swap fired on 14 of 15 ticks** (manifest sha changed every tick during Track A's live semantic export, each forcing a full retrain). `cl_live_v5.jsonl`. |
 | 11 | This report | done (updated as items land). |
 
