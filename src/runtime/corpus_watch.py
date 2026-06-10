@@ -53,7 +53,10 @@ def count_linked_bills(records_path: Path) -> LinkageStatus:
             for line in handle:
                 if not line.strip():
                     continue
-                record = json.loads(line)
+                try:
+                    record = json.loads(line)
+                except ValueError:
+                    continue  # skip a partially-written line (Track A may be mid-export)
                 if record.get("entity_type") != "bill":
                     continue
                 total += 1

@@ -85,6 +85,24 @@ def normalize_bill_key(raw: str) -> str | None:
     return f"{congress}:{''.join(letters)}:{int(nums[-1])}"
 
 
+def _iter_records(records_path: Path) -> Any:
+    """Yield parsed JSONL records, skipping malformed lines.
+
+    Track A may be mid-write when we read its contract export; a partially-written
+    last line must not crash the consumer (we just skip it and read again later).
+    """
+    if not records_path.exists():
+        return
+    with records_path.open(encoding="utf-8") as handle:
+        for line in handle:
+            if not line.strip():
+                continue
+            try:
+                yield json.loads(line)
+            except ValueError:
+                continue
+
+
 def load_bill_embedding_map(
     records_path: Path, *, field: str = "dossier_embedding", concat_with: str | None = None
 ) -> dict[str, Array]:
@@ -96,44 +114,32 @@ def load_bill_embedding_map(
     semantic-vs-hash-vs-concat A/B. A row missing the requested field is skipped.
     """
     out: dict[str, Array] = {}
-    if not records_path.exists():
-        return out
-    with records_path.open(encoding="utf-8") as handle:
-        for line in handle:
-            if not line.strip():
+    for record in _iter_records(records_path):
+        if record.get("entity_type") != "bill":
+            continue
+        primary = record.get(field)
+        if not primary:
+            continue
+        vec = np.asarray(primary, dtype=np.float64)
+        if concat_with is not None:
+            second = record.get(concat_with)
+            if not second:
                 continue
-            record = json.loads(line)
-            if record.get("entity_type") != "bill":
-                continue
-            primary = record.get(field)
-            if not primary:
-                continue
-            vec = np.asarray(primary, dtype=np.float64)
-            if concat_with is not None:
-                second = record.get(concat_with)
-                if not second:
-                    continue
-                vec = np.concatenate([vec, np.asarray(second, dtype=np.float64)])
-            for candidate in [record.get("canonical_id", ""), *(record.get("external_ids") or [])]:
-                key = normalize_bill_key(str(candidate))
-                if key is not None:
-                    out[key] = vec
+            vec = np.concatenate([vec, np.asarray(second, dtype=np.float64)])
+        for candidate in [record.get("canonical_id", ""), *(record.get("external_ids") or [])]:
+            key = normalize_bill_key(str(candidate))
+            if key is not None:
+                out[key] = vec
     return out
 
 
 def count_embedding_field(records_path: Path, field: str) -> int:
     """How many bill rows carry a non-empty ``field`` (for the semantic-export gate)."""
-    n = 0
-    if not records_path.exists():
-        return 0
-    with records_path.open(encoding="utf-8") as handle:
-        for line in handle:
-            if not line.strip():
-                continue
-            record = json.loads(line)
-            if record.get("entity_type") == "bill" and record.get(field):
-                n += 1
-    return n
+    return sum(
+        1
+        for record in _iter_records(records_path)
+        if record.get("entity_type") == "bill" and record.get(field)
+    )
 
 
 def synthetic_bill_embedding(bill_id: str, *, dim: int = 32) -> Array:
