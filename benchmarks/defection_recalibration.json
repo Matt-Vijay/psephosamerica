@@ -1,0 +1,59 @@
+{
+  "cutoff": "2024-04-20",
+  "temperature": 0.8264354382901451,
+  "calibration": {
+    "raw": {
+      "overall": {
+        "ece": 0.0356063140540385,
+        "brier": 0.05466781650801597,
+        "n": 74423
+      },
+      "defection_prone": {
+        "ece": 0.0940821605847024,
+        "brier": 0.16510925444759683,
+        "n": 2052
+      }
+    },
+    "temperature": {
+      "overall": {
+        "ece": 5.352507574123838e-05,
+        "brier": 0.05366085808710604,
+        "n": 74423
+      },
+      "defection_prone": {
+        "ece": 0.12868224139649742,
+        "brier": 0.17287865169130326,
+        "n": 2052
+      }
+    },
+    "isotonic": {
+      "overall": {
+        "ece": 0.007934955110356351,
+        "brier": 0.051652456525651896,
+        "n": 74423
+      },
+      "defection_prone": {
+        "ece": 0.035395396548916845,
+        "brier": 0.15462418062425348,
+        "n": 2052
+      }
+    }
+  },
+  "conformal": {
+    "marginal": {
+      "overall": 0.9090334977090415,
+      "defection_prone": 0.024366471734892786
+    },
+    "mondrian": {
+      "overall": 0.9090334977090415,
+      "defection_prone": 0.868421052631579
+    }
+  },
+  "defection_prone_coverage_ok": true,
+  "best_calibrator": "temperature",
+  "ece_by_calibrator": {
+    "raw": 0.0356063140540385,
+    "temperature": 5.352507574123838e-05,
+    "isotonic": 0.007934955110356351
+  }
+}
