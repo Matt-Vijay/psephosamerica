@@ -1,6 +1,6 @@
 {
-  "as_of": "2026-06-10T07:28:40.678993+00:00",
-  "content_sha256": "a52797cc7d5537a35cc12623bccd513c30503008dd86c9ad31efb81683326132",
+  "as_of": "2026-06-10T11:19:41.228260+00:00",
+  "content_sha256": "5bb7cff0092e49ad80305937b79461b1d99805b7120487a2ef1a8556eae679b1",
   "record_count": 114435,
   "records_path": "data/exports/contract_records/records.jsonl"
 }
