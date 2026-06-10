@@ -29,6 +29,7 @@ import re
 from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
+from typing import Any
 
 from defusedxml import ElementTree as ET
 
@@ -222,6 +223,75 @@ def canonical_bill_id(status: BillStatus) -> str:
 def govinfo_record_id(status: BillStatus) -> str:
     """A stable govinfo source-record id, e.g. ``BILLSTATUS-118hr1``."""
     return f"BILLSTATUS-{status.congress}{status.bill_type}{status.number}"
+
+
+def _sponsor_record(sponsor: BillSponsor) -> dict[str, object]:
+    return {
+        "bioguide_id": sponsor.bioguide_id,
+        "full_name": sponsor.full_name,
+        "sponsorship_date": (
+            sponsor.sponsorship_date.isoformat() if sponsor.sponsorship_date else None
+        ),
+    }
+
+
+def billstatus_record(status: BillStatus) -> dict[str, object]:
+    """Serialize a :class:`BillStatus` to a JSON-safe dict (the content sidecar).
+
+    Carries everything a downstream pass needs without re-fetching: the canonical
+    id, the dense embed ``text`` (#1), the CRS sectors (#4), and the sponsor /
+    cosponsor / committee data the edges (#2) are built from.
+    """
+    return {
+        "canonical_id": canonical_bill_id(status),
+        "congress": status.congress,
+        "bill_type": status.bill_type,
+        "number": status.number,
+        "title": status.title,
+        "introduced_date": (status.introduced_date.isoformat() if status.introduced_date else None),
+        "policy_area": status.policy_area,
+        "subjects": list(status.subjects),
+        "sponsors": [_sponsor_record(s) for s in status.sponsors],
+        "cosponsors": [_sponsor_record(s) for s in status.cosponsors],
+        "committees": [
+            {"name": c.name, "system_code": c.system_code, "chamber": c.chamber}
+            for c in status.committees
+        ],
+        "summary_text": status.summary_text,
+        "text": billstatus_dossier_text(status),
+    }
+
+
+def _sponsor_from_record(data: dict[str, Any]) -> BillSponsor:
+    raw = data.get("sponsorship_date")
+    return BillSponsor(
+        bioguide_id=str(data["bioguide_id"]),
+        full_name=str(data["full_name"]),
+        sponsorship_date=date.fromisoformat(raw) if raw else None,
+    )
+
+
+def billstatus_from_record(data: dict[str, Any]) -> BillStatus:
+    """Reconstruct a :class:`BillStatus` from :func:`billstatus_record` output."""
+    introduced = data.get("introduced_date")
+    return BillStatus(
+        congress=int(data["congress"]),
+        bill_type=str(data["bill_type"]),
+        number=int(data["number"]),
+        title=str(data["title"]),
+        introduced_date=date.fromisoformat(introduced) if introduced else None,
+        policy_area=data.get("policy_area"),
+        subjects=tuple(data.get("subjects", [])),
+        sponsors=tuple(_sponsor_from_record(s) for s in data.get("sponsors", [])),
+        cosponsors=tuple(_sponsor_from_record(s) for s in data.get("cosponsors", [])),
+        committees=tuple(
+            BillCommittee(
+                name=c["name"], system_code=c.get("system_code"), chamber=c.get("chamber")
+            )
+            for c in data.get("committees", [])
+        ),
+        summary_text=data.get("summary_text"),
+    )
 
 
 _FILENAME_RE = re.compile(r"BILLSTATUS-(\d+)([a-z]+)(\d+)\.xml$", re.IGNORECASE)

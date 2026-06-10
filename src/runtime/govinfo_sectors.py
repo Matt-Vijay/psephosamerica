@@ -22,30 +22,21 @@ from pathlib import Path
 
 import httpx
 
-from src.graph.ingest.govinfo_billstatus import (
-    billstatus_dossier_text,
-    canonical_bill_id,
-    parse_billstatus_xml,
-)
+from src.graph.ingest.govinfo_billstatus import billstatus_record, parse_billstatus_xml
 from src.runtime.govinfo_bills_materialize import BILLSTATUS_BILL_TYPES, _client
 from src.runtime.govinfo_bills_run import Candidate, collect_candidates
 
 
 def bill_sector_record(xml: str) -> dict[str, object]:
-    """Parse a BILLSTATUS doc into a content record: sector + dense embed text.
+    """Parse a BILLSTATUS doc into a full content record (one parse-only pass).
 
-    Carries the CRS ``policy_area`` + ``subjects`` (Track B's sectors, #4) AND the
-    full ``text`` = title + policy area + subjects + CRS summary (#1's semantic
-    embed input), so a single parse-only pass serves both. Keyed by the same
-    ``cb-<digest>`` the votes resolve to.
+    The record carries everything downstream passes need without re-fetching:
+    the dense embed ``text`` (#1's semantic input), the CRS ``policy_area`` +
+    ``subjects`` (Track B's sectors, #4), and the sponsor / cosponsor / committee
+    data the graph edges (#2) are built from -- keyed by the ``cb-<digest>`` the
+    votes resolve to. See :func:`~src.graph.ingest.govinfo_billstatus.billstatus_record`.
     """
-    status = parse_billstatus_xml(xml)
-    return {
-        "canonical_id": canonical_bill_id(status),
-        "policy_area": status.policy_area,
-        "subjects": list(status.subjects),
-        "text": billstatus_dossier_text(status),
-    }
+    return billstatus_record(parse_billstatus_xml(xml))
 
 
 def existing_sector_ids(path: Path) -> set[str]:

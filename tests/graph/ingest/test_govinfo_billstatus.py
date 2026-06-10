@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from datetime import UTC, date, datetime
 
 import pytest
@@ -181,6 +182,31 @@ def test_schema_drift_alternate_tags() -> None:
     status = parse_billstatus_xml(xml)
     assert (status.bill_type, status.number) == ("s", 50)
     assert status.summary_text == "Summary via old schema."
+
+
+def test_billstatus_record_roundtrips() -> None:
+    from src.graph.ingest.govinfo_billstatus import billstatus_from_record, billstatus_record
+
+    status = parse_billstatus_xml(_BILLSTATUS)
+    record = billstatus_record(status)
+    # JSON-safe + carries the unlock fields
+    assert json.loads(json.dumps(record))  # serializable
+    assert record["canonical_id"] == canonical_bill_id(status)
+    assert "Lower Energy Costs Act" in str(record["text"])
+    assert record["policy_area"] == "Energy"
+    assert [s["bioguide_id"] for s in record["sponsors"]] == ["S001176"]  # type: ignore[index,union-attr]
+    # reconstruct an equal BillStatus
+    back = billstatus_from_record(record)
+    assert back == status
+
+
+def test_billstatus_from_record_tolerates_minimal() -> None:
+    from src.graph.ingest.govinfo_billstatus import billstatus_from_record
+
+    minimal = {"congress": 118, "bill_type": "hr", "number": 9, "title": "Bare"}
+    back = billstatus_from_record(minimal)
+    assert (back.congress, back.bill_type, back.number, back.title) == (118, "hr", 9, "Bare")
+    assert back.introduced_date is None and back.subjects == () and back.committees == ()
 
 
 def test_canonical_id_from_filename_matches_parsed() -> None:
