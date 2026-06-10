@@ -153,13 +153,15 @@ class CaRollCall:
 def parse_detail_rollcalls(text: str, *, floor_only: bool = False) -> list[CaRollCall]:
     """Group ``BILL_DETAIL_VOTE_TBL`` member rows into roll-calls (insertion order).
 
-    Key = ``(bill_id, location_code, motion_id, vote_datetime)``. The full vote
-    timestamp is part of the key because CA *reuses* a ``motion_id`` across
-    separate vote events (e.g. a reconsideration weeks later) -- grouping on the
-    id alone merges two roll-calls and overflows the chamber size. Rows with fewer
-    than seven columns, an unparseable bill id, or an unknown vote code are skipped.
+    Key = ``(bill_id, location_code, motion_id, motion_seq, vote_datetime)``. CA
+    *reuses* a ``motion_id`` across separate vote events -- both on different days
+    (a reconsideration) and within the same second (consecutive motions differ
+    only by the ``motion_seq`` in column 5). Grouping on the id alone merges two
+    roll-calls and overflows the chamber size, so the per-motion sequence and the
+    full timestamp both join the key. Rows with fewer than seven columns, an
+    unparseable bill id, or an unknown vote code are skipped.
     """
-    groups: OrderedDict[tuple[str, str, str, str], list[tuple[str, str, str]]] = OrderedDict()
+    groups: OrderedDict[tuple[str, str, str, str, str], list[tuple[str, str, str]]] = OrderedDict()
     for line in text.splitlines():
         if not line.strip():
             continue
@@ -167,18 +169,18 @@ def parse_detail_rollcalls(text: str, *, floor_only: bool = False) -> list[CaRol
         if len(fields) < 7:
             continue
         raw_bill_id, location_code, member, vote_date = fields[0], fields[1], fields[2], fields[3]
-        vote_code, motion_id = fields[5], fields[6]
+        motion_seq, vote_code, motion_id = fields[4], fields[5], fields[6]
         choice = _CHOICES.get(vote_code.upper())
         if choice is None or not member:
             continue
         if floor_only and location_code.upper() not in _CHAMBER_BY_PREFIX:
             continue
-        groups.setdefault((raw_bill_id, location_code, motion_id, vote_date), []).append(
-            (member, choice, vote_date)
-        )
+        groups.setdefault(
+            (raw_bill_id, location_code, motion_id, motion_seq, vote_date), []
+        ).append((member, choice, vote_date))
 
     rollcalls: list[CaRollCall] = []
-    for (raw_bill_id, location_code, motion_id, _vote_dt), members in groups.items():
+    for (raw_bill_id, location_code, motion_id, _seq, _vote_dt), members in groups.items():
         try:
             session, measure = parse_ca_bill_id(raw_bill_id)
         except ValueError:

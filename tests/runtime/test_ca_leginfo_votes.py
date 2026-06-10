@@ -82,6 +82,21 @@ def test_reused_motion_id_splits_by_timestamp() -> None:
     assert all(len(r.votes) == 2 for r in rollcalls)  # neither overflows
 
 
+def test_same_timestamp_different_motion_seq_splits() -> None:
+    # Two motions on AB7 at the SAME second share motion_id 300 but differ in the
+    # motion_seq (column 5: 1055 vs 1056) -> two roll-calls, not one merged 4-member.
+    detail = "\n".join(
+        [
+            "`202520260AB7`\t`AFLOOR`\t`Lee`\t2025-05-23 09:24:35\t1055\t`AYE`\t`300`\tx\tts\t1\td\tN",
+            "`202520260AB7`\t`AFLOOR`\t`Bonta`\t2025-05-23 09:24:35\t1055\t`AYE`\t`300`\tx\tts\t2\td\tN",
+            "`202520260AB7`\t`AFLOOR`\t`Lee`\t2025-05-23 09:24:35\t1056\t`NOE`\t`300`\tx\tts\t1\td\tN",
+            "`202520260AB7`\t`AFLOOR`\t`Bonta`\t2025-05-23 09:24:35\t1056\t`NOE`\t`300`\tx\tts\t2\td\tN",
+        ]
+    )
+    rollcalls = parse_detail_rollcalls(detail)
+    assert len(rollcalls) == 2 and all(len(r.votes) == 2 for r in rollcalls)
+
+
 def test_floor_only_excludes_committee() -> None:
     rollcalls = parse_detail_rollcalls(_DETAIL, floor_only=True)
     assert {r.measure for r in rollcalls} == {"AB1"}  # SB9 committee vote excluded
