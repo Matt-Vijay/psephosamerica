@@ -32,9 +32,16 @@ import httpx
 
 LEGINFO_BASE = "https://downloads.leginfo.legislature.ca.gov"
 DETAIL_VOTE_FILE = "BILL_DETAIL_VOTE_TBL.dat"
+LEGISLATOR_FILE = "LEGISLATOR_TBL.dat"
+STATE = "CA"
 # location_code prefixes -> the chamber a vote was cast in.
 _CHAMBER_BY_PREFIX = {"AFLOOR": "assembly", "SFLOOR": "senate"}
-_CHOICES = {"AYE": "aye", "NOE": "no", "ABS": "abstain", "NVR": "abstain"}
+# Normalize to the universal yea/nay vocab the Senate/House rich roll-calls use,
+# so Track B's existing loader consumes CA votes unchanged (an AYE *is* a yea).
+_CHOICES = {"AYE": "yea", "NOE": "nay", "ABS": "abstain", "NVR": "abstain"}
+# chamber name -> LEGISLATOR_TBL house letter (column 4), for the surname->party join.
+_HOUSE_LETTER = {"assembly": "A", "senate": "S"}
+_UNKNOWN_PARTY = "U"
 
 
 def pubinfo_zip_url(year: int) -> str:
@@ -129,24 +136,29 @@ class CaRollCall:
     measure: str
     location_code: str
     motion_id: str
+    motion_seq: str
     chamber: str
     date: str
     votes: tuple[tuple[str, str], ...]  # (member, normalized choice)
 
     @property
     def ayes(self) -> int:
-        return sum(1 for _, choice in self.votes if choice == "aye")
+        return sum(1 for _, choice in self.votes if choice == "yea")
 
     @property
     def noes(self) -> int:
-        return sum(1 for _, choice in self.votes if choice == "no")
+        return sum(1 for _, choice in self.votes if choice == "nay")
 
     @property
     def other(self) -> int:
-        return sum(1 for _, choice in self.votes if choice not in ("aye", "no"))
+        return sum(1 for _, choice in self.votes if choice not in ("yea", "nay"))
 
     @property
     def result(self) -> str:
+        """Plurality outcome (ayes > noes). Not CA's true passage threshold (a
+        floor measure often needs a majority of *elected* members), so consumers
+        wanting official passage should apply the rule themselves; the per-member
+        tallies are the ground truth."""
         return "pass" if self.ayes > self.noes else "fail"
 
 
@@ -180,7 +192,7 @@ def parse_detail_rollcalls(text: str, *, floor_only: bool = False) -> list[CaRol
         ).append((member, choice, vote_date))
 
     rollcalls: list[CaRollCall] = []
-    for (raw_bill_id, location_code, motion_id, _seq, _vote_dt), members in groups.items():
+    for (raw_bill_id, location_code, motion_id, motion_seq, _vote_dt), members in groups.items():
         try:
             session, measure = parse_ca_bill_id(raw_bill_id)
         except ValueError:
@@ -192,6 +204,7 @@ def parse_detail_rollcalls(text: str, *, floor_only: bool = False) -> list[CaRol
                 measure=measure,
                 location_code=location_code,
                 motion_id=motion_id,
+                motion_seq=motion_seq,
                 chamber=_chamber_for(location_code),
                 date=members[0][2][:10],
                 votes=tuple((member, choice) for member, choice, _ in members),
@@ -200,8 +213,50 @@ def parse_detail_rollcalls(text: str, *, floor_only: bool = False) -> list[CaRol
     return rollcalls
 
 
-def ca_rollcall_record(rollcall: CaRollCall) -> dict[str, object]:
-    """A CA roll-call as Track B's rich-roll-call dict (state-vote model input)."""
+def parse_legislator_party(text: str) -> dict[tuple[str, str], str]:
+    """``LEGISLATOR_TBL`` -> ``{(surname_lower, house_letter): party}``.
+
+    The vote table identifies a member only by surname, so the party join is keyed
+    by ``(last name, house)`` (house from column 4: ``S``/``A``). A surname that
+    maps to more than one party within a house is left out (resolves to unknown).
+    """
+    parties: dict[tuple[str, str], str] = {}
+    conflicts: set[tuple[str, str]] = set()
+    for line in text.splitlines():
+        if not line.strip():
+            continue
+        fields = [_unquote(part) for part in line.split("\t")]
+        if len(fields) < 12:
+            continue
+        house, last_name, party = fields[3].upper(), fields[4].strip().lower(), fields[11].strip()
+        if not last_name or not party or house not in ("A", "S"):
+            continue
+        key = (last_name, house)
+        if key in parties and parties[key] != party:
+            conflicts.add(key)
+        parties[key] = party
+    for key in conflicts:
+        del parties[key]
+    return parties
+
+
+def _party_of(member: str, chamber: str, parties: dict[tuple[str, str], str]) -> str:
+    house = _HOUSE_LETTER.get(chamber)
+    if house is None:
+        return _UNKNOWN_PARTY
+    return parties.get((member.strip().lower(), house), _UNKNOWN_PARTY)
+
+
+def ca_rollcall_record(
+    rollcall: CaRollCall, *, parties: dict[tuple[str, str], str] | None = None
+) -> dict[str, object]:
+    """A CA roll-call in Track B's rich-roll-call shape (state-vote model input).
+
+    ``votes`` are 4-tuples ``[member, party, state, choice]`` matching the
+    Senate/House rich format, so Track B's loader consumes them unchanged. Party
+    is joined from ``LEGISLATOR_TBL`` by ``(surname, house)`` (``U`` if unresolved).
+    """
+    party_index = parties if parties is not None else {}
     return {
         "bill_id": f"ca:{rollcall.session}:{rollcall.measure}",
         "raw_bill_id": rollcall.raw_bill_id,
@@ -209,11 +264,16 @@ def ca_rollcall_record(rollcall: CaRollCall) -> dict[str, object]:
         "chamber": rollcall.chamber,
         "location_code": rollcall.location_code,
         "motion_id": rollcall.motion_id,
+        "motion_seq": rollcall.motion_seq,
+        "sectors": [],  # CA bills are not in the federal CRS corpus
         "result": rollcall.result,
         "ayes": rollcall.ayes,
         "noes": rollcall.noes,
         "other": rollcall.other,
-        "votes": [[member, choice] for member, choice in rollcall.votes],
+        "votes": [
+            [member, _party_of(member, rollcall.chamber, party_index), STATE, choice]
+            for member, choice in rollcall.votes
+        ],
     }
 
 
@@ -235,8 +295,15 @@ def _done_keys(path: Path) -> set[str]:
     for line in path.read_text(encoding="utf-8").splitlines():
         if line.strip():
             record = json.loads(line)
-            keys.add(f"{record['raw_bill_id']}|{record['location_code']}|{record['motion_id']}")
+            keys.add(_rollcall_key(record))
     return keys
+
+
+def _rollcall_key(record: dict[str, object]) -> str:
+    return (
+        f"{record['raw_bill_id']}|{record['location_code']}|"
+        f"{record['motion_id']}|{record['motion_seq']}"
+    )
 
 
 def backfill_ca_votes(
@@ -247,12 +314,15 @@ def backfill_ca_votes(
     floor_only: bool = False,
     max_rollcalls: int | None = None,
     detail_text: str | None = None,
+    legislator_text: str | None = None,
 ) -> CaBackfillProgress:
-    """Range-extract the CA vote table, parse roll-calls, append unseen ones.
+    """Range-extract the CA vote + legislator tables, parse roll-calls, append unseen.
 
-    ``detail_text`` lets a caller pass already-extracted ``.dat`` content (the
-    network path is exercised in integration, not unit, tests). Resumable: a
-    roll-call already in ``out_path`` (by bill+location+motion) is skipped.
+    ``detail_text`` / ``legislator_text`` let a caller pass already-extracted
+    ``.dat`` content (the network path is exercised in integration, not unit,
+    tests). Party is joined from ``LEGISLATOR_TBL`` so each vote is a Track-B
+    4-tuple. Resumable: a roll-call already in ``out_path`` is skipped (keyed by
+    bill+location+motion id+seq).
     """
     import json
 
@@ -263,10 +333,13 @@ def backfill_ca_votes(
             with open_remote_zip(pubinfo_zip_url(year), client=http) as archive:
                 with archive.open(DETAIL_VOTE_FILE) as handle:
                     detail_text = handle.read().decode("latin-1")
+                with archive.open(LEGISLATOR_FILE) as legislators:
+                    legislator_text = legislators.read().decode("latin-1")
         finally:
             if owns:
                 http.close()
 
+    parties = parse_legislator_party(legislator_text) if legislator_text else {}
     rollcalls = parse_detail_rollcalls(detail_text, floor_only=floor_only)
     done = _done_keys(out)
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -276,12 +349,12 @@ def backfill_ca_votes(
     written = members = 0
     with out.open("a", encoding="utf-8") as handle:
         for rollcall in rollcalls:
-            key = f"{rollcall.raw_bill_id}|{rollcall.location_code}|{rollcall.motion_id}"
-            if key in done:
+            record = ca_rollcall_record(rollcall, parties=parties)
+            if _rollcall_key(record) in done:
                 continue
             if max_rollcalls is not None and written >= max_rollcalls:
                 break
-            handle.write(json.dumps(ca_rollcall_record(rollcall)) + "\n")
+            handle.write(json.dumps(record) + "\n")
             written += 1
             members += len(rollcall.votes)
     return CaBackfillProgress(

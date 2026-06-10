@@ -10,6 +10,7 @@ import pytest
 
 from src.runtime.ca_leginfo_votes import (
     DETAIL_VOTE_FILE,
+    LEGISLATOR_FILE,
     CaRollCall,
     HttpRangeReader,
     backfill_ca_votes,
@@ -17,7 +18,15 @@ from src.runtime.ca_leginfo_votes import (
     open_remote_zip,
     parse_ca_bill_id,
     parse_detail_rollcalls,
+    parse_legislator_party,
     pubinfo_zip_url,
+)
+
+_LEGISLATORS = "\n".join(
+    [
+        "`AD14`\t`20252026`\t`Wicks, Buffy`\t`A`\t`Wicks`\t`Buffy`\t`Wicks`\tN\tN\t`AM`\t`AM`\t`DEM`\tY",
+        "`SD09`\t`20252026`\t`Durazo, M`\t`S`\t`Durazo`\t`M`\t`Durazo`\tN\tN\t`Sen`\t`Sen`\t`DEM`\tY",
+    ]
 )
 
 # Two motions: an Assembly-floor pass on AB1 and a committee fail on SB9. Columns:
@@ -109,9 +118,10 @@ def test_result_pass_when_ayes_exceed_noes() -> None:
         measure="AB2",
         location_code="SFLOOR",
         motion_id="1",
+        motion_seq="1",
         chamber="senate",
         date="2025-01-01",
-        votes=(("A", "aye"), ("B", "aye"), ("C", "no")),
+        votes=(("A", "yea"), ("B", "yea"), ("C", "nay")),
     )
     assert rc.result == "pass" and rc.ayes == 2 and rc.noes == 1 and rc.other == 0
 
@@ -122,7 +132,7 @@ def test_ca_rollcall_record_shape() -> None:
     assert record["bill_id"] == "ca:2025-2026:AB1"
     assert record["raw_bill_id"] == "202520260AB1"
     assert record["result"] == "fail"
-    assert record["votes"][0] == ["Wicks", "aye"]
+    assert record["votes"][0] == ["Wicks", "U", "CA", "yea"]  # 4-tuple, party unresolved
     assert set(record) == {
         "bill_id",
         "raw_bill_id",
@@ -130,12 +140,45 @@ def test_ca_rollcall_record_shape() -> None:
         "chamber",
         "location_code",
         "motion_id",
+        "motion_seq",
+        "sectors",
         "result",
         "ayes",
         "noes",
         "other",
         "votes",
     }
+
+
+def test_party_join_from_legislator_table() -> None:
+    # LEGISLATOR_TBL: district, session, name, house(S/A), last, first, ... party@11
+    legislators = "\n".join(
+        [
+            "`AD14`\t`20252026`\t`Wicks, Buffy`\t`A`\t`Wicks`\t`Buffy`\t`Wicks`\tN\tN\t`AM`\t`AM`\t`DEM`\tY",
+            "`SD09`\t`20252026`\t`Allen, Ben`\t`S`\t`Allen`\t`Ben`\t`Allen`\tN\tN\t`Sen`\t`Sen`\t`REP`\tY",
+            "`xx`\t`x`\t`Bad`\t`A`\t``\t`x`\tx\tx\tx\tx\tx\t`DEM`\tY",  # blank surname -> skipped
+        ]
+    )
+    parties = parse_legislator_party(legislators)
+    assert parties[("wicks", "A")] == "DEM" and parties[("allen", "S")] == "REP"
+    rc = next(r for r in parse_detail_rollcalls(_DETAIL) if r.measure == "AB1")
+    record = ca_rollcall_record(rc, parties=parties)
+    assert record["votes"][0] == ["Wicks", "DEM", "CA", "yea"]  # party resolved
+
+
+def test_party_conflict_resolves_unknown() -> None:
+    # same surname, same house, two parties -> dropped (ambiguous -> unknown);
+    # blank lines and short rows are tolerated.
+    legislators = "\n".join(
+        [
+            "",  # blank -> skipped
+            "`AD0`\t`s`\t`Short`\t`A`",  # too few columns -> skipped
+            "`AD1`\t`s`\t`Garcia, A`\t`A`\t`Garcia`\t`A`\tx\tN\tN\t`AM`\t`AM`\t`DEM`\tY",
+            "`AD2`\t`s`\t`Garcia, B`\t`A`\t`Garcia`\t`B`\tx\tN\tN\t`AM`\t`AM`\t`REP`\tY",
+        ]
+    )
+    parties = parse_legislator_party(legislators)
+    assert ("garcia", "A") not in parties  # conflict removed
 
 
 # --------------------------------------------------------------- range-zip extraction
@@ -184,13 +227,14 @@ def test_open_remote_zip_extracts_single_entry() -> None:
 
 
 def test_backfill_over_range_zip_writes_records(tmp_path: Path) -> None:
-    blob = _zip_bytes({DETAIL_VOTE_FILE: _DETAIL})
+    blob = _zip_bytes({DETAIL_VOTE_FILE: _DETAIL, LEGISLATOR_FILE: _LEGISLATORS})
     out = tmp_path / "ca.jsonl"
     progress = backfill_ca_votes(year=2025, out_path=out, client=_range_client(blob))
     assert progress.rollcalls_written == 2
     assert progress.members_total == 5  # 3 on AB1 + 2 on SB9
     first = json.loads(out.read_text().splitlines()[0])
     assert first["bill_id"] == "ca:2025-2026:AB1"
+    assert first["votes"][0] == ["Wicks", "DEM", "CA", "yea"]  # party joined from the zip
 
 
 def test_backfill_with_detail_text_is_resumable(tmp_path: Path) -> None:
@@ -221,7 +265,7 @@ def test_backfill_respects_max_rollcalls(tmp_path: Path) -> None:
 def test_http_range_reader_default_client(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     import src.runtime.ca_leginfo_votes as mod
 
-    blob = _zip_bytes({DETAIL_VOTE_FILE: _DETAIL})
+    blob = _zip_bytes({DETAIL_VOTE_FILE: _DETAIL, LEGISLATOR_FILE: _LEGISLATORS})
     real = httpx.Client
 
     def handler(request: httpx.Request) -> httpx.Response:
