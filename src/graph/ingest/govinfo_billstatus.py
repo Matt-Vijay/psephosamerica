@@ -47,6 +47,15 @@ class BillSponsor:
 
 
 @dataclass(frozen=True)
+class BillCommittee:
+    """A committee a bill was referred to: name, Thomas system code, chamber."""
+
+    name: str
+    system_code: str | None
+    chamber: str | None
+
+
+@dataclass(frozen=True)
 class BillStatus:
     """One parsed BILLSTATUS record."""
 
@@ -59,7 +68,7 @@ class BillStatus:
     subjects: tuple[str, ...]
     sponsors: tuple[BillSponsor, ...]
     cosponsors: tuple[BillSponsor, ...]
-    committees: tuple[str, ...]
+    committees: tuple[BillCommittee, ...]
     summary_text: str | None
 
 
@@ -163,7 +172,11 @@ def parse_billstatus_xml(xml: str) -> BillStatus:
         if (name := _text(item, "name"))
     )
     committees = tuple(
-        name
+        BillCommittee(
+            name=name,
+            system_code=_text(item, "systemCode"),
+            chamber=_text(item, "chamber"),
+        )
         for item in _iter(bill.find("committees"), "item", "billCommittees/item")
         if (name := _text(item, "name"))
     )

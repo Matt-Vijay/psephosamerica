@@ -23,6 +23,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from datetime import datetime
 
+from src.graph.committees import CommitteeRef
 from src.graph.edges import GraphEdge
 from src.graph.entity_resolution.ids import stable_id
 from src.graph.ingest.govinfo_billstatus import BillStatus, canonical_bill_id
@@ -64,6 +65,46 @@ def classification_edges(status: BillStatus, *, provenance: ProvenanceEnvelope) 
                 src_id=bill,
                 dst_id=target,
                 attributes={"name": subject},
+                provenance=provenance,
+            )
+        )
+    return edges
+
+
+def committee_referral_edges(
+    status: BillStatus, *, provenance: ProvenanceEnvelope
+) -> list[GraphEdge]:
+    """``bill -> committee`` referral edges (one per referred committee w/ a code).
+
+    The committee node is the canonical :class:`~src.graph.committees.CommitteeRef`
+    (``cc-<digest>``) minted from the Thomas ``systemCode`` + chamber, so the edge
+    joins to the same committee the committee-membership adapter uses. Committees
+    without a system code (or with an unparseable chamber) are skipped.
+    """
+    bill = canonical_bill_id(status)
+    edges: list[GraphEdge] = []
+    seen: set[str] = set()
+    for committee in status.committees:
+        if not committee.system_code:
+            continue
+        try:
+            ref = CommitteeRef(
+                jurisdiction_id="us-congress",
+                code=committee.system_code,
+                chamber=committee.chamber,  # type: ignore[arg-type]
+            )
+        except ValueError:
+            continue
+        target = ref.canonical_id
+        if target in seen:
+            continue
+        seen.add(target)
+        edges.append(
+            GraphEdge(
+                edge_type="referred_to",
+                src_id=bill,
+                dst_id=target,
+                attributes={"name": committee.name},
                 provenance=provenance,
             )
         )

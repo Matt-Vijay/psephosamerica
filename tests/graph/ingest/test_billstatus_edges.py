@@ -2,8 +2,10 @@ from __future__ import annotations
 
 from datetime import UTC, date, datetime
 
+from src.graph.committees import CommitteeRef
 from src.graph.ingest.billstatus_edges import (
     classification_edges,
+    committee_referral_edges,
     sponsorship_edges,
     subject_id,
 )
@@ -88,6 +90,53 @@ def test_classification_edges_feed_the_bill_dossier_density() -> None:
     assert context is not None
     relations = {fact.relation for fact in context.facts}
     assert "policy_area" in relations and "legislative_subject" in relations
+
+
+_XML_COMMITTEES = """<billStatus><bill>
+  <congress>118</congress><type>HR</type><number>1</number><title>Lower Energy Costs Act</title>
+  <introducedDate>2023-03-14</introducedDate>
+  <committees>
+    <item><systemCode>hsii00</systemCode><name>Natural Resources Committee</name><chamber>House</chamber></item>
+    <item><systemCode>hsii00</systemCode><name>Natural Resources Committee</name><chamber>House</chamber></item>
+    <item><name>No Code Committee</name></item>
+  </committees>
+</bill></billStatus>"""
+
+
+def test_committee_referral_edges_use_canonical_committee_ids() -> None:
+    status = parse_billstatus_xml(_XML_COMMITTEES)
+    edges = committee_referral_edges(status, provenance=_prov())
+    bill = canonical_bill_id(status)
+    assert len(edges) == 1  # duplicate collapsed, the code-less committee skipped
+    edge = edges[0]
+    assert edge.edge_type == "referred_to"
+    assert edge.src_id == bill
+    assert (
+        edge.dst_id
+        == CommitteeRef(jurisdiction_id="us-congress", code="hsii00", chamber="House").canonical_id
+    )
+    assert edge.attributes["name"] == "Natural Resources Committee"
+
+
+def test_committee_referral_skips_unparseable_chamber() -> None:
+    status = parse_billstatus_xml(
+        "<billStatus><bill><congress>118</congress><type>HR</type><number>3</number>"
+        "<title>Bad Chamber Act</title><committees><item>"
+        "<systemCode>xx00</systemCode><name>Mystery</name><chamber>Mars</chamber>"
+        "</item></committees></bill></billStatus>"
+    )
+    assert committee_referral_edges(status, provenance=_prov()) == []
+
+
+def test_committee_parse_captures_code_and_chamber() -> None:
+    status = parse_billstatus_xml(_XML_COMMITTEES)
+    first = status.committees[0]
+    assert (first.name, first.system_code, first.chamber) == (
+        "Natural Resources Committee",
+        "hsii00",
+        "House",
+    )
+    assert status.committees[2].system_code is None  # code-less committee still parsed
 
 
 def test_sponsorship_edges_resolve_members_and_skip_unknown() -> None:

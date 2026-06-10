@@ -62,7 +62,7 @@ def test_parse_extracts_all_fields() -> None:
     assert status.policy_area == "Energy"
     assert status.subjects == ("Energy prices", "Oil and gas")
     assert [s.bioguide_id for s in status.sponsors] == ["S001176"]
-    assert status.committees == ("Energy and Commerce Committee",)
+    assert [c.name for c in status.committees] == ["Energy and Commerce Committee"]
     assert status.summary_text is not None and "lowers energy costs" in status.summary_text
 
 
