@@ -17,6 +17,7 @@ from __future__ import annotations
 import json
 import math
 from collections import defaultdict
+from collections.abc import Callable
 from datetime import date
 from pathlib import Path
 from typing import Any
@@ -160,7 +161,7 @@ def run(rich_corpus: Path, *, records_path: Path, content_path: Path, cutoff: da
         return max(devs) if devs else 0.0  # member's most defection-prone subject on this bill
 
     base_names = ("loyalty_gap", "sector_divergence")
-    arms = {
+    arms: dict[str, tuple[tuple[str, ...], Callable[[VoteRecord, str | None, tuple[str, ...]], dict[str, float]]]] = {
         "base": (base_names, lambda r, pa, subs: {}),
         "policy": ((*base_names, "crs_policy_divergence"),
                    lambda r, pa, subs: {"crs_policy_divergence": policy_feat(r, pa)}),
