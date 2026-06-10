@@ -14,6 +14,7 @@ from src.graph.ingest.govinfo_billstatus import (
     billstatus_provenance,
     bulk_billstatus_url,
     canonical_bill_id,
+    canonical_bill_id_from_filename,
     govinfo_record_id,
     parse_billstatus_xml,
     vote_link_report,
@@ -180,6 +181,19 @@ def test_schema_drift_alternate_tags() -> None:
     status = parse_billstatus_xml(xml)
     assert (status.bill_type, status.number) == ("s", 50)
     assert status.summary_text == "Summary via old schema."
+
+
+def test_canonical_id_from_filename_matches_parsed() -> None:
+    status = parse_billstatus_xml(_BILLSTATUS)
+    assert canonical_bill_id_from_filename("BILLSTATUS-118hr1.xml") == canonical_bill_id(status)
+    # case-insensitive, and equals the vote-linkage id
+    assert canonical_bill_id_from_filename("billstatus-118HR1.xml") == canonical_bill_id(status)
+
+
+def test_canonical_id_from_filename_rejects_bad_names() -> None:
+    assert canonical_bill_id_from_filename("index.xml") is None
+    assert canonical_bill_id_from_filename("BILLSTATUS-118zz1.xml") is None  # unknown type
+    assert canonical_bill_id_from_filename("README.txt") is None
 
 
 def test_bulk_url() -> None:

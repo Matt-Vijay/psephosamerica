@@ -211,6 +211,29 @@ def govinfo_record_id(status: BillStatus) -> str:
     return f"BILLSTATUS-{status.congress}{status.bill_type}{status.number}"
 
 
+_FILENAME_RE = re.compile(r"BILLSTATUS-(\d+)([a-z]+)(\d+)\.xml$", re.IGNORECASE)
+
+
+def canonical_bill_id_from_filename(name: str) -> str | None:
+    """Derive the canonical bill id from a ``BILLSTATUS-<congress><type><num>.xml`` name.
+
+    Lets a resumable run skip already-ingested bills *without re-fetching* the XML
+    (the filename alone carries congress + type + number). Returns ``None`` for a
+    name that does not match or whose type is not a known congress bill type.
+    """
+    match = _FILENAME_RE.search(name.strip())
+    if match is None:
+        return None
+    congress, bill_type, number = match.group(1), match.group(2), match.group(3)
+    try:
+        identifier = congress_bill_identifier(bill_type, int(number))
+    except ValueError:
+        return None
+    return BillRef(
+        jurisdiction_id="us-congress", session_id=congress, identifier=identifier
+    ).canonical_id
+
+
 def billstatus_dossier_text(status: BillStatus) -> str:
     """Dense embedding text: title + policy area + subjects + CRS summary.
 
