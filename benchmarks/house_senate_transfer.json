@@ -1,0 +1,13 @@
+{
+  "source": "house_118",
+  "target": "senate_119",
+  "zero_shot_auc": 0.7438665706492795,
+  "target_only_auc": 0.7412759891801449,
+  "joint_auc": 0.743652640183914,
+  "gap": -0.0025905814691346007,
+  "target_eval_pairs": 14282,
+  "target_positives": 596,
+  "senate_cutoff": "2025-09-10",
+  "house_pairs": 200000,
+  "senate_pairs": 64025
+}
