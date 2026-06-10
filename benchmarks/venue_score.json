@@ -1,0 +1,811 @@
+{
+  "cutoff": "2024-04-20",
+  "venues": [
+    "us_congress:118 house"
+  ],
+  "per_sector_pass_profile": {
+    "agriculture_food": {
+      "venue": "us_congress:118 house",
+      "venue_key": "us_congress:118|house|",
+      "p_pass": 0.6048976608187134,
+      "interval": [
+        0.30573785458380187,
+        0.863158240538479
+      ],
+      "sample_count": 8,
+      "citations": [
+        {
+          "bill_id": "us_congress:118:h-r-1339",
+          "date": "2023-04-26",
+          "passed": true,
+          "yea": 409,
+          "nay": 11
+        },
+        {
+          "bill_id": "us_congress:118:h-res-723",
+          "date": "2023-09-26",
+          "passed": true,
+          "yea": 209,
+          "nay": 198
+        },
+        {
+          "bill_id": "us_congress:118:h-res-723",
+          "date": "2023-09-26",
+          "passed": true,
+          "yea": 215,
+          "nay": 209
+        },
+        {
+          "bill_id": "us_congress:118:h-res-723",
+          "date": "2023-09-26",
+          "passed": true,
+          "yea": 216,
+          "nay": 212
+        },
+        {
+          "bill_id": "us_congress:118:h-r-4368",
+          "date": "2023-09-28",
+          "passed": false,
+          "yea": 211,
+          "nay": 217
+        }
+      ],
+      "marginal_members": [
+        "G000582",
+        "G000582",
+        "G000582",
+        "G000582",
+        "G000582"
+      ]
+    },
+    "communications_technology": {
+      "venue": "us_congress:118 house",
+      "venue_key": "us_congress:118|house|",
+      "p_pass": 0.7581269349845201,
+      "interval": [
+        0.6456611570247934,
+        1.0
+      ],
+      "sample_count": 7,
+      "citations": [
+        {
+          "bill_id": "us_congress:118:h-r-1149",
+          "date": "2023-04-19",
+          "passed": true,
+          "yea": 410,
+          "nay": 8
+        },
+        {
+          "bill_id": "us_congress:118:h-r-1338",
+          "date": "2023-07-25",
+          "passed": true,
+          "yea": 250,
+          "nay": 163
+        },
+        {
+          "bill_id": "us_congress:118:h-r-6603",
+          "date": "2024-04-16",
+          "passed": true,
+          "yea": 406,
+          "nay": 19
+        },
+        {
+          "bill_id": "us_congress:118:h-r-4755",
+          "date": "2024-04-29",
+          "passed": true,
+          "yea": 354,
+          "nay": 36
+        },
+        {
+          "bill_id": "us_congress:118:h-res-1243",
+          "date": "2024-05-22",
+          "passed": true,
+          "yea": 205,
+          "nay": 203
+        }
+      ],
+      "marginal_members": [
+        "G000582",
+        "G000582",
+        "G000582",
+        "G000582",
+        "G000582"
+      ]
+    },
+    "construction_real_estate": {
+      "venue": "us_congress:118 house",
+      "venue_key": "us_congress:118|house|",
+      "p_pass": 0.7614164086687306,
+      "interval": [
+        0.6414652961213058,
+        0.9332143199927109
+      ],
+      "sample_count": 24,
+      "citations": [
+        {
+          "bill_id": "us_congress:118:h-res-83",
+          "date": "2023-02-01",
+          "passed": true,
+          "yea": 219,
+          "nay": 207
+        },
+        {
+          "bill_id": "us_congress:118:h-res-83",
+          "date": "2023-02-01",
+          "passed": true,
+          "yea": 218,
+          "nay": 209
+        },
+        {
+          "bill_id": "us_congress:118:h-res-241",
+          "date": "2023-03-23",
+          "passed": true,
+          "yea": 219,
+          "nay": 204
+        },
+        {
+          "bill_id": "us_congress:118:h-res-241",
+          "date": "2023-03-23",
+          "passed": true,
+          "yea": 218,
+          "nay": 205
+        },
+        {
+          "bill_id": "us_congress:118:h-r-5",
+          "date": "2023-03-24",
+          "passed": false,
+          "yea": 203,
+          "nay": 218
+        }
+      ],
+      "marginal_members": [
+        "G000582",
+        "G000582",
+        "G000582",
+        "G000582",
+        "G000582"
+      ]
+    },
+    "defense_national_security": {
+      "venue": "us_congress:118 house",
+      "venue_key": "us_congress:118|house|",
+      "p_pass": 0.7647812713602188,
+      "interval": [
+        0.679279673204875,
+        0.8712443127017108
+      ],
+      "sample_count": 67,
+      "citations": [
+        {
+          "bill_id": "us_congress:118:h-con-res-21",
+          "date": "2023-03-08",
+          "passed": false,
+          "yea": 103,
+          "nay": 321
+        },
+        {
+          "bill_id": "us_congress:118:h-j-res-27",
+          "date": "2023-03-09",
+          "passed": true,
+          "yea": 227,
+          "nay": 198
+        },
+        {
+          "bill_id": "us_congress:118:h-res-240",
+          "date": "2023-04-17",
+          "passed": true,
+          "yea": 410,
+          "nay": 0
+        },
+        {
+          "bill_id": "us_congress:118:h-j-res-27",
+          "date": "2023-04-18",
+          "passed": true,
+          "yea": 227,
+          "nay": 196
+        },
+        {
+          "bill_id": "us_congress:118:h-con-res-30",
+          "date": "2023-04-27",
+          "passed": false,
+          "yea": 102,
+          "nay": 321
+        }
+      ],
+      "marginal_members": [
+        "G000582",
+        "G000582",
+        "G000582",
+        "G000582",
+        "G000582"
+      ]
+    },
+    "education_workforce": {
+      "venue": "us_congress:118 house",
+      "venue_key": "us_congress:118|house|",
+      "p_pass": 0.8176450742240216,
+      "interval": [
+        0.7361455275293085,
+        0.9641857596186989
+      ],
+      "sample_count": 29,
+      "citations": [
+        {
+          "bill_id": "us_congress:118:h-res-429",
+          "date": "2023-05-23",
+          "passed": true,
+          "yea": 219,
+          "nay": 208
+        },
+        {
+          "bill_id": "us_congress:118:h-res-429",
+          "date": "2023-05-23",
+          "passed": true,
+          "yea": 217,
+          "nay": 204
+        },
+        {
+          "bill_id": "us_congress:118:h-j-res-45",
+          "date": "2023-05-24",
+          "passed": true,
+          "yea": 218,
+          "nay": 203
+        },
+        {
+          "bill_id": "us_congress:118:h-res-524",
+          "date": "2023-06-21",
+          "passed": true,
+          "yea": 215,
+          "nay": 207
+        },
+        {
+          "bill_id": "us_congress:118:h-res-524",
+          "date": "2023-06-21",
+          "passed": true,
+          "yea": 215,
+          "nay": 211
+        }
+      ],
+      "marginal_members": [
+        "G000582",
+        "G000582",
+        "G000582",
+        "G000582",
+        "G000582"
+      ]
+    },
+    "energy_utilities": {
+      "venue": "us_congress:118 house",
+      "venue_key": "us_congress:118|house|",
+      "p_pass": 0.7210246360582306,
+      "interval": [
+        0.5988239750929105,
+        0.8663879656733671
+      ],
+      "sample_count": 37,
+      "citations": [
+        {
+          "bill_id": "us_congress:118:h-r-302",
+          "date": "2023-02-06",
+          "passed": true,
+          "yea": 357,
+          "nay": 56
+        },
+        {
+          "bill_id": "us_congress:118:h-res-260",
+          "date": "2023-03-28",
+          "passed": true,
+          "yea": 218,
+          "nay": 203
+        },
+        {
+          "bill_id": "us_congress:118:h-res-260",
+          "date": "2023-03-28",
+          "passed": true,
+          "yea": 218,
+          "nay": 203
+        },
+        {
+          "bill_id": "us_congress:118:h-r-1",
+          "date": "2023-03-30",
+          "passed": false,
+          "yea": 207,
+          "nay": 222
+        },
+        {
+          "bill_id": "us_congress:118:h-r-1",
+          "date": "2023-03-30",
+          "passed": true,
+          "yea": 225,
+          "nay": 204
+        }
+      ],
+      "marginal_members": [
+        "G000582",
+        "G000582",
+        "G000582",
+        "G000582",
+        "G000582"
+      ]
+    },
+    "financial_services": {
+      "venue": "us_congress:118 house",
+      "venue_key": "us_congress:118|house|",
+      "p_pass": 0.8033906882591093,
+      "interval": [
+        0.7167073163197013,
+        0.9888809426916687
+      ],
+      "sample_count": 16,
+      "citations": [
+        {
+          "bill_id": "us_congress:118:h-r-500",
+          "date": "2023-01-30",
+          "passed": true,
+          "yea": 419,
+          "nay": 0
+        },
+        {
+          "bill_id": "us_congress:118:h-r-1156",
+          "date": "2023-05-22",
+          "passed": true,
+          "yea": 400,
+          "nay": 5
+        },
+        {
+          "bill_id": "us_congress:118:h-res-847",
+          "date": "2023-11-07",
+          "passed": true,
+          "yea": 217,
+          "nay": 204
+        },
+        {
+          "bill_id": "us_congress:118:h-res-847",
+          "date": "2023-11-07",
+          "passed": true,
+          "yea": 217,
+          "nay": 204
+        },
+        {
+          "bill_id": "us_congress:118:h-res-891",
+          "date": "2023-11-29",
+          "passed": true,
+          "yea": 213,
+          "nay": 205
+        }
+      ],
+      "marginal_members": [
+        "G000582",
+        "G000582",
+        "G000582",
+        "G000582",
+        "G000582"
+      ]
+    },
+    "health": {
+      "venue": "us_congress:118 house",
+      "venue_key": "us_congress:118|house|",
+      "p_pass": 0.7320046439628483,
+      "interval": [
+        0.5952915551476452,
+        0.9075531089521192
+      ],
+      "sample_count": 24,
+      "citations": [
+        {
+          "bill_id": "us_congress:118:h-r-26",
+          "date": "2023-01-11",
+          "passed": false,
+          "yea": 212,
+          "nay": 219
+        },
+        {
+          "bill_id": "us_congress:118:h-r-26",
+          "date": "2023-01-11",
+          "passed": true,
+          "yea": 220,
+          "nay": 210
+        },
+        {
+          "bill_id": "us_congress:118:h-res-75",
+          "date": "2023-01-31",
+          "passed": true,
+          "yea": 218,
+          "nay": 209
+        },
+        {
+          "bill_id": "us_congress:118:h-res-75",
+          "date": "2023-01-31",
+          "passed": true,
+          "yea": 216,
+          "nay": 208
+        },
+        {
+          "bill_id": "us_congress:118:h-r-497",
+          "date": "2023-01-31",
+          "passed": false,
+          "yea": 210,
+          "nay": 219
+        }
+      ],
+      "marginal_members": [
+        "G000582",
+        "G000582",
+        "G000582",
+        "G000582",
+        "G000582"
+      ]
+    },
+    "insurance": {
+      "venue": "us_congress:118 house",
+      "venue_key": "us_congress:118|house|",
+      "p_pass": 0.5888157894736842,
+      "interval": [
+        0.0,
+        1.0
+      ],
+      "sample_count": 0,
+      "citations": [],
+      "marginal_members": [
+        "G000582",
+        "G000582",
+        "G000582",
+        "G000582",
+        "G000582"
+      ]
+    },
+    "labor": {
+      "venue": "us_congress:118 house",
+      "venue_key": "us_congress:118|house|",
+      "p_pass": 0.7955263157894737,
+      "interval": [
+        0.70182922447576,
+        0.9881334113938052
+      ],
+      "sample_count": 15,
+      "citations": [
+        {
+          "bill_id": "us_congress:118:h-res-75",
+          "date": "2023-01-31",
+          "passed": true,
+          "yea": 218,
+          "nay": 209
+        },
+        {
+          "bill_id": "us_congress:118:h-res-75",
+          "date": "2023-01-31",
+          "passed": true,
+          "yea": 216,
+          "nay": 208
+        },
+        {
+          "bill_id": "us_congress:118:h-r-497",
+          "date": "2023-01-31",
+          "passed": false,
+          "yea": 210,
+          "nay": 219
+        },
+        {
+          "bill_id": "us_congress:118:h-r-497",
+          "date": "2023-01-31",
+          "passed": true,
+          "yea": 227,
+          "nay": 203
+        },
+        {
+          "bill_id": "us_congress:118:h-res-166",
+          "date": "2023-02-28",
+          "passed": true,
+          "yea": 213,
+          "nay": 201
+        }
+      ],
+      "marginal_members": [
+        "G000582",
+        "G000582",
+        "G000582",
+        "G000582",
+        "G000582"
+      ]
+    },
+    "legal_judiciary": {
+      "venue": "us_congress:118 house",
+      "venue_key": "us_congress:118|house|",
+      "p_pass": 0.8302266081871346,
+      "interval": [
+        0.7585805251948495,
+        0.9786453608166245
+      ],
+      "sample_count": 26,
+      "citations": [
+        {
+          "bill_id": "us_congress:118:h-res-12",
+          "date": "2023-01-10",
+          "passed": true,
+          "yea": 221,
+          "nay": 211
+        },
+        {
+          "bill_id": "us_congress:118:h-res-298",
+          "date": "2023-04-18",
+          "passed": true,
+          "yea": 218,
+          "nay": 203
+        },
+        {
+          "bill_id": "us_congress:118:h-res-298",
+          "date": "2023-04-18",
+          "passed": true,
+          "yea": 217,
+          "nay": 202
+        },
+        {
+          "bill_id": "us_congress:118:h-j-res-42",
+          "date": "2023-04-19",
+          "passed": true,
+          "yea": 229,
+          "nay": 189
+        },
+        {
+          "bill_id": "us_congress:118:h-j-res-42",
+          "date": "2023-06-13",
+          "passed": true,
+          "yea": 233,
+          "nay": 197
+        }
+      ],
+      "marginal_members": [
+        "G000582",
+        "G000582",
+        "G000582",
+        "G000582",
+        "G000582"
+      ]
+    },
+    "manufacturing_industry": {
+      "venue": "us_congress:118 house",
+      "venue_key": "us_congress:118|house|",
+      "p_pass": 0.6261961722488038,
+      "interval": [
+        0.2065432914738929,
+        1.0
+      ],
+      "sample_count": 1,
+      "citations": [
+        {
+          "bill_id": "us_congress:118:h-r-6571",
+          "date": "2024-05-15",
+          "passed": true,
+          "yea": 390,
+          "nay": 19
+        }
+      ],
+      "marginal_members": [
+        "G000582",
+        "G000582",
+        "G000582",
+        "G000582",
+        "G000582"
+      ]
+    },
+    "natural_resources_environment": {
+      "venue": "us_congress:118 house",
+      "venue_key": "us_congress:118|house|",
+      "p_pass": 0.7724780701754386,
+      "interval": [
+        0.692120095441773,
+        0.8731303618972333
+      ],
+      "sample_count": 74,
+      "citations": [
+        {
+          "bill_id": "us_congress:118:h-j-res-30",
+          "date": "2023-02-28",
+          "passed": true,
+          "yea": 216,
+          "nay": 204
+        },
+        {
+          "bill_id": "us_congress:118:h-res-199",
+          "date": "2023-03-08",
+          "passed": true,
+          "yea": 217,
+          "nay": 205
+        },
+        {
+          "bill_id": "us_congress:118:h-res-199",
+          "date": "2023-03-08",
+          "passed": true,
+          "yea": 216,
+          "nay": 206
+        },
+        {
+          "bill_id": "us_congress:118:h-j-res-27",
+          "date": "2023-03-09",
+          "passed": true,
+          "yea": 227,
+          "nay": 198
+        },
+        {
+          "bill_id": "us_congress:118:h-r-1159",
+          "date": "2023-03-22",
+          "passed": true,
+          "yea": 404,
+          "nay": 7
+        }
+      ],
+      "marginal_members": [
+        "G000582",
+        "G000582",
+        "G000582",
+        "G000582",
+        "G000582"
+      ]
+    },
+    "trade_international": {
+      "venue": "us_congress:118 house",
+      "venue_key": "us_congress:118|house|",
+      "p_pass": 0.7865304709141274,
+      "interval": [
+        0.6850982695512267,
+        0.9430108706929821
+      ],
+      "sample_count": 28,
+      "citations": [
+        {
+          "bill_id": "us_congress:118:h-res-97",
+          "date": "2023-02-07",
+          "passed": true,
+          "yea": 217,
+          "nay": 208
+        },
+        {
+          "bill_id": "us_congress:118:h-res-97",
+          "date": "2023-02-07",
+          "passed": true,
+          "yea": 217,
+          "nay": 208
+        },
+        {
+          "bill_id": "us_congress:118:h-r-185",
+          "date": "2023-02-08",
+          "passed": false,
+          "yea": 208,
+          "nay": 220
+        },
+        {
+          "bill_id": "us_congress:118:h-r-185",
+          "date": "2023-02-08",
+          "passed": true,
+          "yea": 227,
+          "nay": 201
+        },
+        {
+          "bill_id": "us_congress:118:h-res-723",
+          "date": "2023-09-26",
+          "passed": true,
+          "yea": 209,
+          "nay": 198
+        }
+      ],
+      "marginal_members": [
+        "G000582",
+        "G000582",
+        "G000582",
+        "G000582",
+        "G000582"
+      ]
+    },
+    "transportation_infrastructure": {
+      "venue": "us_congress:118 house",
+      "venue_key": "us_congress:118|house|",
+      "p_pass": 0.777745995423341,
+      "interval": [
+        0.6668546607175265,
+        0.9862899336203037
+      ],
+      "sample_count": 13,
+      "citations": [
+        {
+          "bill_id": "us_congress:118:h-res-597",
+          "date": "2023-07-18",
+          "passed": true,
+          "yea": 213,
+          "nay": 207
+        },
+        {
+          "bill_id": "us_congress:118:h-res-597",
+          "date": "2023-07-18",
+          "passed": true,
+          "yea": 213,
+          "nay": 206
+        },
+        {
+          "bill_id": "us_congress:118:h-r-3935",
+          "date": "2023-07-20",
+          "passed": true,
+          "yea": 351,
+          "nay": 69
+        },
+        {
+          "bill_id": "us_congress:118:h-res-838",
+          "date": "2023-11-02",
+          "passed": true,
+          "yea": 213,
+          "nay": 200
+        },
+        {
+          "bill_id": "us_congress:118:h-res-838",
+          "date": "2023-11-02",
+          "passed": true,
+          "yea": 213,
+          "nay": 203
+        }
+      ],
+      "marginal_members": [
+        "G000582",
+        "G000582",
+        "G000582",
+        "G000582",
+        "G000582"
+      ]
+    }
+  },
+  "example_ranking_energy": [
+    {
+      "venue": "us_congress:118 house",
+      "venue_key": "us_congress:118|house|",
+      "p_pass": 0.7210246360582306,
+      "interval": [
+        0.5988239750929105,
+        0.8663879656733671
+      ],
+      "sample_count": 37,
+      "citations": [
+        {
+          "bill_id": "us_congress:118:h-r-302",
+          "date": "2023-02-06",
+          "passed": true,
+          "yea": 357,
+          "nay": 56
+        },
+        {
+          "bill_id": "us_congress:118:h-res-260",
+          "date": "2023-03-28",
+          "passed": true,
+          "yea": 218,
+          "nay": 203
+        },
+        {
+          "bill_id": "us_congress:118:h-res-260",
+          "date": "2023-03-28",
+          "passed": true,
+          "yea": 218,
+          "nay": 203
+        },
+        {
+          "bill_id": "us_congress:118:h-r-1",
+          "date": "2023-03-30",
+          "passed": false,
+          "yea": 207,
+          "nay": 222
+        },
+        {
+          "bill_id": "us_congress:118:h-r-1",
+          "date": "2023-03-30",
+          "passed": true,
+          "yea": 225,
+          "nay": 204
+        }
+      ],
+      "marginal_members": [
+        "G000582",
+        "G000582",
+        "G000582",
+        "G000582",
+        "G000582"
+      ]
+    }
+  ],
+  "note": "Single-jurisdiction (House) corpus -> the ranking degenerates to one venue; the per-sector pass profile is the useful output. Multi-venue ranking (other chambers, committees, state legislatures) activates as Track A lands those jurisdictions -- the Venue key already carries chamber/committee fields."
+}
