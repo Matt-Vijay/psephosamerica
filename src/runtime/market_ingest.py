@@ -21,6 +21,8 @@ counted, never fabricated.
 from __future__ import annotations
 
 import json
+import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -47,6 +49,25 @@ PRICES_FILENAME = "prices.jsonl"
 
 # A Kalshi Politics series is in scope when its title looks legislative.
 _KALSHI_KEYWORDS = ("bill", "act", "law", "congress", "senate", "house vote", "veto")
+
+
+def _get_retrying(
+    client: httpx.Client,
+    url: str,
+    *,
+    params: dict[str, str],
+    sleep: Callable[[float], None],
+    max_retries: int = 3,
+) -> httpx.Response:
+    """GET with escalating backoff on 429 (Kalshi throttles rapid series scans)."""
+    for attempt in range(max_retries + 1):
+        response = client.get(url, params=params, follow_redirects=True)
+        if response.status_code == 429 and attempt < max_retries:
+            sleep(2.0 * (attempt + 1))
+            continue
+        response.raise_for_status()
+        return response
+    raise AssertionError("unreachable")  # pragma: no cover - loop returns or raises
 
 
 def fetch_polymarket_congress_markets(
@@ -96,13 +117,20 @@ def fetch_polymarket_history(
 
 
 def fetch_kalshi_legislation_markets(
-    *, client: httpx.Client, max_series: int | None = None
+    *,
+    client: httpx.Client,
+    max_series: int | None = None,
+    sleep: Callable[[float], None] = time.sleep,
+    delay_seconds: float = 0.35,
 ) -> list[dict[str, Any]]:
-    """Markets of every Politics series whose title looks legislative."""
-    response = client.get(
-        f"{KALSHI_API}/series", params={"category": "Politics"}, follow_redirects=True
+    """Markets of every Politics series whose title looks legislative.
+
+    One request per in-scope series, paced by ``delay_seconds`` with 429
+    backoff -- Kalshi throttles a fast scan over the ~180 matching series.
+    """
+    response = _get_retrying(
+        client, f"{KALSHI_API}/series", params={"category": "Politics"}, sleep=sleep
     )
-    response.raise_for_status()
     series = response.json().get("series", [])
     in_scope = [
         s for s in series if any(k in str(s.get("title") or "").lower() for k in _KALSHI_KEYWORDS)
@@ -110,16 +138,18 @@ def fetch_kalshi_legislation_markets(
     if max_series is not None:
         in_scope = in_scope[:max_series]
     markets: list[dict[str, Any]] = []
-    for entry in in_scope:
+    for index, entry in enumerate(in_scope):
         ticker = str(entry.get("ticker") or "")
         if not ticker:
             continue
-        page = client.get(
+        if index > 0:
+            sleep(delay_seconds)
+        page = _get_retrying(
+            client,
             f"{KALSHI_API}/markets",
             params={"series_ticker": ticker, "limit": "100"},
-            follow_redirects=True,
+            sleep=sleep,
         )
-        page.raise_for_status()
         for market in page.json().get("markets", []) or []:
             market["series_ticker"] = ticker
             markets.append(market)
@@ -134,18 +164,19 @@ def fetch_kalshi_candles(
     start_ts: int,
     end_ts: int,
     period_minutes: int = 1440,
+    sleep: Callable[[float], None] = time.sleep,
 ) -> list[dict[str, Any]]:
-    """Daily candlesticks for one Kalshi market."""
-    response = client.get(
+    """Daily candlesticks for one Kalshi market (429-backoff like the scan)."""
+    response = _get_retrying(
+        client,
         f"{KALSHI_API}/series/{series_ticker}/markets/{market_ticker}/candlesticks",
         params={
             "start_ts": str(start_ts),
             "end_ts": str(end_ts),
             "period_interval": str(period_minutes),
         },
-        follow_redirects=True,
+        sleep=sleep,
     )
-    response.raise_for_status()
     candles = response.json().get("candlesticks", [])
     return list(candles) if isinstance(candles, list) else []
 
@@ -209,6 +240,7 @@ def snapshot_markets(
     with_history: bool = True,
     history_days: int = 365,
     max_kalshi_series: int | None = None,
+    sleep: Callable[[float], None] = time.sleep,
 ) -> MarketSnapshotReport:
     """One full snapshot: fetch both venues, merge, append prices + deltas."""
     out_dir = Path(out_directory)
@@ -235,7 +267,9 @@ def snapshot_markets(
                     errors += 1
 
         kalshi_count = 0
-        for raw in fetch_kalshi_legislation_markets(client=http, max_series=max_kalshi_series):
+        for raw in fetch_kalshi_legislation_markets(
+            client=http, max_series=max_kalshi_series, sleep=sleep
+        ):
             record = kalshi_market_record(raw, known_at=observed)
             if record is None:
                 continue
@@ -244,12 +278,14 @@ def snapshot_markets(
             if with_history and record["bill_ids"]:
                 start = int(observed.timestamp()) - history_days * 86400
                 try:
+                    sleep(0.35)
                     candles = fetch_kalshi_candles(
                         str(raw.get("series_ticker") or ""),
                         record["native_id"],
                         client=http,
                         start_ts=start,
                         end_ts=int(observed.timestamp()),
+                        sleep=sleep,
                     )
                 except httpx.HTTPError:
                     errors += 1

@@ -18,6 +18,11 @@ from src.runtime.market_ingest import (
 
 _NOW = datetime(2026, 6, 11, 12, 0, tzinfo=UTC)
 
+
+def _noop(_seconds: float) -> None:
+    return None
+
+
 _PM_MARKET = {
     "conditionId": "0xdef1",
     "question": "Will the DEFIANCE Act become law this year?",
@@ -136,14 +141,14 @@ def test_fetch_polymarket_history_non_list() -> None:
 
 
 def test_fetch_kalshi_filters_series_by_title() -> None:
-    markets = fetch_kalshi_legislation_markets(client=_router())
+    markets = fetch_kalshi_legislation_markets(client=_router(), sleep=_noop)
     # the weather series is filtered out; the SAVE series' two raw markets come back
     assert [m.get("ticker") for m in markets] == ["KXVOTESAVEAMERICA-26MAY-NOV03", None]
     assert markets[0]["series_ticker"] == "KXVOTESAVEAMERICA"
 
 
 def test_fetch_kalshi_respects_max_series() -> None:
-    assert fetch_kalshi_legislation_markets(client=_router(), max_series=0) == []
+    assert fetch_kalshi_legislation_markets(client=_router(), max_series=0, sleep=_noop) == []
 
 
 def test_fetch_kalshi_candles() -> None:
@@ -153,6 +158,7 @@ def test_fetch_kalshi_candles() -> None:
         client=_router(),
         start_ts=0,
         end_ts=10,
+        sleep=_noop,
     )
     assert candles == [_CANDLE, _CANDLE_NO_TS]
 
@@ -161,7 +167,7 @@ def test_fetch_kalshi_candles() -> None:
 
 
 def test_snapshot_writes_sidecar_and_links(tmp_path: Path) -> None:
-    report = snapshot_markets(out_directory=tmp_path, client=_router(), now=_NOW)
+    report = snapshot_markets(out_directory=tmp_path, client=_router(), now=_NOW, sleep=_noop)
     assert report.markets_total == 3  # 2 polymarket + 1 kalshi
     assert report.polymarket_markets == 2 and report.kalshi_markets == 1
     assert report.markets_linked == 2  # DEFIANCE (S. 1837) + SAVE (H.R. 22)
@@ -189,9 +195,9 @@ def test_snapshot_writes_sidecar_and_links(tmp_path: Path) -> None:
 
 
 def test_snapshot_is_idempotent_and_announces_updates(tmp_path: Path) -> None:
-    first = snapshot_markets(out_directory=tmp_path, client=_router(), now=_NOW)
+    first = snapshot_markets(out_directory=tmp_path, client=_router(), now=_NOW, sleep=_noop)
     assert first.deltas_written == 3
-    again = snapshot_markets(out_directory=tmp_path, client=_router(), now=_NOW)
+    again = snapshot_markets(out_directory=tmp_path, client=_router(), now=_NOW, sleep=_noop)
     assert again.deltas_written == 0  # nothing changed -> no deltas
     assert again.prices_written == 0  # same observations -> deduped
 
@@ -200,7 +206,7 @@ def test_snapshot_is_idempotent_and_announces_updates(tmp_path: Path) -> None:
     changed["description"] = "Amended: resolves Yes if S. 1837 OR H.R. 99 is signed into law."
     pages = [[{"markets": [changed, _PM_UNLINKED]}]]
     third = snapshot_markets(
-        out_directory=tmp_path, client=_router(pm_events_pages=pages), now=_NOW
+        out_directory=tmp_path, client=_router(pm_events_pages=pages), now=_NOW, sleep=_noop
     )
     assert third.deltas_written == 1
     deltas = [json.loads(line) for line in (tmp_path / "deltas.jsonl").read_text().splitlines()]
@@ -208,10 +214,12 @@ def test_snapshot_is_idempotent_and_announces_updates(tmp_path: Path) -> None:
 
 
 def test_snapshot_preserves_prior_markets(tmp_path: Path) -> None:
-    snapshot_markets(out_directory=tmp_path, client=_router(), now=_NOW)
+    snapshot_markets(out_directory=tmp_path, client=_router(), now=_NOW, sleep=_noop)
     # second pass sees only the kalshi market -> polymarket rows are preserved
     pages: list[list[dict]] = [[]]
-    snapshot_markets(out_directory=tmp_path, client=_router(pm_events_pages=pages), now=_NOW)
+    snapshot_markets(
+        out_directory=tmp_path, client=_router(pm_events_pages=pages), now=_NOW, sleep=_noop
+    )
     markets = [json.loads(line) for line in (tmp_path / "markets.jsonl").read_text().splitlines()]
     assert len(markets) == 3  # 2 polymarket preserved + 1 kalshi refreshed
 
@@ -228,7 +236,7 @@ def test_snapshot_counts_history_fetch_errors(tmp_path: Path) -> None:
 
 def test_snapshot_without_history(tmp_path: Path) -> None:
     report = snapshot_markets(
-        out_directory=tmp_path, client=_router(), now=_NOW, with_history=False
+        out_directory=tmp_path, client=_router(), now=_NOW, sleep=_noop, with_history=False
     )
     prices = [json.loads(line) for line in (tmp_path / "prices.jsonl").read_text().splitlines()]
     assert {p["source"] for p in prices} == {"snapshot"}
@@ -253,7 +261,7 @@ def test_snapshot_skips_idless_and_priceless_markets(tmp_path: Path) -> None:
     no_prices = {"conditionId": "0xnp", "question": "no prices yet", "closed": False}
     pages = [[{"markets": [no_id, no_prices, _PM_MARKET]}]]
     report = snapshot_markets(
-        out_directory=tmp_path, client=_router(pm_events_pages=pages), now=_NOW
+        out_directory=tmp_path, client=_router(pm_events_pages=pages), now=_NOW, sleep=_noop
     )
     assert report.markets_total == 3  # no_prices + _PM_MARKET + kalshi; no_id dropped
     prices = [json.loads(line) for line in (tmp_path / "prices.jsonl").read_text().splitlines()]
@@ -269,10 +277,10 @@ def test_linkage_rate_zero_when_empty(tmp_path: Path) -> None:
 
 
 def test_read_jsonl_tolerates_blank_lines(tmp_path: Path) -> None:
-    snapshot_markets(out_directory=tmp_path, client=_router(), now=_NOW)
+    snapshot_markets(out_directory=tmp_path, client=_router(), now=_NOW, sleep=_noop)
     prices_path = tmp_path / "prices.jsonl"
     prices_path.write_text("\n" + prices_path.read_text(), encoding="utf-8")
-    again = snapshot_markets(out_directory=tmp_path, client=_router(), now=_NOW)
+    again = snapshot_markets(out_directory=tmp_path, client=_router(), now=_NOW, sleep=_noop)
     assert again.prices_written == 0  # dedup still works across the blank line
 
 
@@ -281,7 +289,7 @@ def test_clob_token_bad_json_skips_history(tmp_path: Path) -> None:
     bad["clobTokenIds"] = "not-json"
     pages = [[{"markets": [bad]}]]
     report = snapshot_markets(
-        out_directory=tmp_path, client=_router(pm_events_pages=pages), now=_NOW
+        out_directory=tmp_path, client=_router(pm_events_pages=pages), now=_NOW, sleep=_noop
     )
     assert report.fetch_errors == 0  # no history attempted, not an error
     prices = [json.loads(line) for line in (tmp_path / "prices.jsonl").read_text().splitlines()]
@@ -296,6 +304,53 @@ def test_snapshot_default_client(monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     router = _router()
     monkeypatch.setattr(mod.httpx, "Client", lambda **_kw: router)
     # client_or_default builds via httpx.Client(...) -> our router; owns=True closes it at the end
-    report = snapshot_markets(out_directory=tmp_path, now=_NOW)
+    report = snapshot_markets(out_directory=tmp_path, now=_NOW, sleep=_noop)
     assert report.markets_total == 3
     monkeypatch.setattr(mod.httpx, "Client", real)
+
+
+def test_kalshi_scan_paces_between_series() -> None:
+    delays: list[float] = []
+    series = [
+        {"ticker": "KXBILLA", "title": "Bill A becomes law"},
+        {"ticker": "KXBILLB", "title": "Bill B becomes law"},
+    ]
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if str(request.url).endswith("/series") or "/series?" in str(request.url):
+            return httpx.Response(200, json={"series": series})
+        return httpx.Response(200, json={"markets": []})
+
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+    fetch_kalshi_legislation_markets(client=client, sleep=delays.append, delay_seconds=0.5)
+    assert delays == [0.5]  # one pause between the two series pages
+
+
+def test_kalshi_429_is_retried_with_backoff() -> None:
+    calls = {"n": 0}
+    delays: list[float] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        url = str(request.url)
+        if url.endswith("/series") or "/series?" in url:
+            return httpx.Response(200, json={"series": _KALSHI_SERIES[:1]})
+        calls["n"] += 1
+        if calls["n"] == 1:
+            return httpx.Response(429)  # first markets page throttled
+        return httpx.Response(200, json={"markets": [_KALSHI_MARKET]})
+
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+    markets = fetch_kalshi_legislation_markets(client=client, sleep=delays.append)
+    assert [m["ticker"] for m in markets] == ["KXVOTESAVEAMERICA-26MAY-NOV03"]
+    assert 2.0 in delays  # first backoff = 2.0 * 1
+
+
+def test_kalshi_429_exhausted_raises() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        if str(request.url).endswith("/series") or "/series?" in str(request.url):
+            return httpx.Response(200, json={"series": _KALSHI_SERIES[:1]})
+        return httpx.Response(429)  # always throttled
+
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+    with pytest.raises(httpx.HTTPStatusError):
+        fetch_kalshi_legislation_markets(client=client, sleep=_noop)
