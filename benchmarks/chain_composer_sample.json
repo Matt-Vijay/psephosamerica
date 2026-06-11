@@ -1,0 +1,661 @@
+{
+  "as_of": "2025-09-30",
+  "deadline": "2027-01-03",
+  "cross_chamber_rate": 0.08305084745762711,
+  "cross_chamber_evidence": "98/1180 House bills (hr/hjres, 113th-118th) with a House floor roll-call later reached a Senate floor roll-call in the ingested corpora",
+  "signature_prior": 0.98,
+  "sigma": {
+    "common": 1.5,
+    "party": 2.2
+  },
+  "bills": [
+    {
+      "bill_key": "119:hr:2102",
+      "policy_area": "Armed Forces and National Security",
+      "p_law_by_deadline": 0.0002375551939476076,
+      "links": [
+        {
+          "name": "house_floor_by_deadline",
+          "probability": 0.017849533634413675,
+          "source": "stage_hazard head (trained <=118th)",
+          "detail": "conditional on surviving 280 days since introduction"
+        },
+        {
+          "name": "house_passage",
+          "probability": 0.6233673726043454,
+          "source": "correlated count PMF, House roster",
+          "detail": "pivot 217 of 432; majority leans yea, minority lean yea"
+        },
+        {
+          "name": "senate_floor",
+          "probability": 0.08305084745762711,
+          "source": "empirical cross-chamber rate",
+          "detail": "98/1180 House bills (hr/hjres, 113th-118th) with a House floor roll-call later reached a Senate floor roll-call in the ingested corpora"
+        },
+        {
+          "name": "senate_cloture",
+          "probability": 0.30341771993021394,
+          "source": "correlated count PMF, Senate roster",
+          "detail": "60-vote cloture pivot"
+        },
+        {
+          "name": "senate_passage",
+          "probability": 0.8645348505646833,
+          "source": "correlated count PMF, Senate roster",
+          "detail": "pivot 51 of 100"
+        },
+        {
+          "name": "signature",
+          "probability": 0.98,
+          "source": "historical prior",
+          "detail": "historical prior: of bills presented 2013-2024 (113th-118th), vetoes were <2% (Senate Historical Office veto counts); override/return cases ignored"
+        }
+      ],
+      "attribution": [
+        {
+          "name": "house_floor_by_deadline",
+          "probability": 0.017849533634413675,
+          "log_cost_share": 0.4824115709696901,
+          "source": "stage_hazard head (trained <=118th)"
+        },
+        {
+          "name": "house_passage",
+          "probability": 0.6233673726043454,
+          "log_cost_share": 0.05663427070295602,
+          "source": "correlated count PMF, House roster"
+        },
+        {
+          "name": "senate_floor",
+          "probability": 0.08305084745762711,
+          "log_cost_share": 0.2981748676824999,
+          "source": "empirical cross-chamber rate"
+        },
+        {
+          "name": "senate_cloture",
+          "probability": 0.30341771993021394,
+          "log_cost_share": 0.14291539936301023,
+          "source": "correlated count PMF, Senate roster"
+        },
+        {
+          "name": "senate_passage",
+          "probability": 0.8645348505646833,
+          "log_cost_share": 0.017442987788962097,
+          "source": "correlated count PMF, Senate roster"
+        },
+        {
+          "name": "signature",
+          "probability": 0.98,
+          "log_cost_share": 0.002420903492881563,
+          "source": "historical prior"
+        }
+      ]
+    },
+    {
+      "bill_key": "119:hr:14",
+      "policy_area": "Government Operations and Politics",
+      "p_law_by_deadline": 0.00016513577794093832,
+      "links": [
+        {
+          "name": "house_floor_by_deadline",
+          "probability": 0.012408049572058332,
+          "source": "stage_hazard head (trained <=118th)",
+          "detail": "conditional on surviving 289 days since introduction"
+        },
+        {
+          "name": "house_passage",
+          "probability": 0.6233673726043454,
+          "source": "correlated count PMF, House roster",
+          "detail": "pivot 217 of 432; majority leans yea, minority lean nay"
+        },
+        {
+          "name": "senate_floor",
+          "probability": 0.08305084745762711,
+          "source": "empirical cross-chamber rate",
+          "detail": "98/1180 House bills (hr/hjres, 113th-118th) with a House floor roll-call later reached a Senate floor roll-call in the ingested corpora"
+        },
+        {
+          "name": "senate_cloture",
+          "probability": 0.30341771993021394,
+          "source": "correlated count PMF, Senate roster",
+          "detail": "60-vote cloture pivot"
+        },
+        {
+          "name": "senate_passage",
+          "probability": 0.8645348505646833,
+          "source": "correlated count PMF, Senate roster",
+          "detail": "pivot 51 of 100"
+        },
+        {
+          "name": "signature",
+          "probability": 0.98,
+          "source": "historical prior",
+          "detail": "historical prior: of bills presented 2013-2024 (113th-118th), vetoes were <2% (Senate Historical Office veto counts); override/return cases ignored"
+        }
+      ],
+      "attribution": [
+        {
+          "name": "house_floor_by_deadline",
+          "probability": 0.012408049572058332,
+          "log_cost_share": 0.5040233816673204,
+          "source": "stage_hazard head (trained <=118th)"
+        },
+        {
+          "name": "house_passage",
+          "probability": 0.6233673726043454,
+          "log_cost_share": 0.05426951703231521,
+          "source": "correlated count PMF, House roster"
+        },
+        {
+          "name": "senate_floor",
+          "probability": 0.08305084745762711,
+          "log_cost_share": 0.2857246303245705,
+          "source": "empirical cross-chamber rate"
+        },
+        {
+          "name": "senate_cloture",
+          "probability": 0.30341771993021394,
+          "log_cost_share": 0.13694799286090556,
+          "source": "correlated count PMF, Senate roster"
+        },
+        {
+          "name": "senate_passage",
+          "probability": 0.8645348505646833,
+          "log_cost_share": 0.01671465900695594,
+          "source": "correlated count PMF, Senate roster"
+        },
+        {
+          "name": "signature",
+          "probability": 0.98,
+          "log_cost_share": 0.002319819107932292,
+          "source": "historical prior"
+        }
+      ]
+    },
+    {
+      "bill_key": "119:hr:17",
+      "policy_area": "Labor and Employment",
+      "p_law_by_deadline": 0.00020992126874853619,
+      "links": [
+        {
+          "name": "house_floor_by_deadline",
+          "probability": 0.015773162795725625,
+          "source": "stage_hazard head (trained <=118th)",
+          "detail": "conditional on surviving 269 days since introduction"
+        },
+        {
+          "name": "house_passage",
+          "probability": 0.6233673726043454,
+          "source": "correlated count PMF, House roster",
+          "detail": "pivot 217 of 432; majority leans yea, minority lean nay"
+        },
+        {
+          "name": "senate_floor",
+          "probability": 0.08305084745762711,
+          "source": "empirical cross-chamber rate",
+          "detail": "98/1180 House bills (hr/hjres, 113th-118th) with a House floor roll-call later reached a Senate floor roll-call in the ingested corpora"
+        },
+        {
+          "name": "senate_cloture",
+          "probability": 0.30341771993021394,
+          "source": "correlated count PMF, Senate roster",
+          "detail": "60-vote cloture pivot"
+        },
+        {
+          "name": "senate_passage",
+          "probability": 0.8645348505646833,
+          "source": "correlated count PMF, Senate roster",
+          "detail": "pivot 51 of 100"
+        },
+        {
+          "name": "signature",
+          "probability": 0.98,
+          "source": "historical prior",
+          "detail": "historical prior: of bills presented 2013-2024 (113th-118th), vetoes were <2% (Senate Historical Office veto counts); override/return cases ignored"
+        }
+      ],
+      "attribution": [
+        {
+          "name": "house_floor_by_deadline",
+          "probability": 0.015773162795725625,
+          "log_cost_share": 0.4899697850523724,
+          "source": "stage_hazard head (trained <=118th)"
+        },
+        {
+          "name": "house_passage",
+          "probability": 0.6233673726043454,
+          "log_cost_share": 0.055807254644673066,
+          "source": "correlated count PMF, House roster"
+        },
+        {
+          "name": "senate_floor",
+          "probability": 0.08305084745762711,
+          "log_cost_share": 0.29382069483469886,
+          "source": "empirical cross-chamber rate"
+        },
+        {
+          "name": "senate_cloture",
+          "probability": 0.30341771993021394,
+          "log_cost_share": 0.1408284416114211,
+          "source": "correlated count PMF, Senate roster"
+        },
+        {
+          "name": "senate_passage",
+          "probability": 0.8645348505646833,
+          "log_cost_share": 0.01718827221079977,
+          "source": "correlated count PMF, Senate roster"
+        },
+        {
+          "name": "signature",
+          "probability": 0.98,
+          "log_cost_share": 0.0023855516460348472,
+          "source": "historical prior"
+        }
+      ]
+    },
+    {
+      "bill_key": "119:hr:15",
+      "policy_area": "Civil Rights and Liberties, Minority Issues",
+      "p_law_by_deadline": 0.00037233278699447123,
+      "links": [
+        {
+          "name": "house_floor_by_deadline",
+          "probability": 0.027976515664475662,
+          "source": "stage_hazard head (trained <=118th)",
+          "detail": "conditional on surviving 234 days since introduction"
+        },
+        {
+          "name": "house_passage",
+          "probability": 0.6233673726043454,
+          "source": "correlated count PMF, House roster",
+          "detail": "pivot 217 of 432; majority leans yea, minority lean nay"
+        },
+        {
+          "name": "senate_floor",
+          "probability": 0.08305084745762711,
+          "source": "empirical cross-chamber rate",
+          "detail": "98/1180 House bills (hr/hjres, 113th-118th) with a House floor roll-call later reached a Senate floor roll-call in the ingested corpora"
+        },
+        {
+          "name": "senate_cloture",
+          "probability": 0.30341771993021394,
+          "source": "correlated count PMF, Senate roster",
+          "detail": "60-vote cloture pivot"
+        },
+        {
+          "name": "senate_passage",
+          "probability": 0.8645348505646833,
+          "source": "correlated count PMF, Senate roster",
+          "detail": "pivot 51 of 100"
+        },
+        {
+          "name": "signature",
+          "probability": 0.98,
+          "source": "historical prior",
+          "detail": "historical prior: of bills presented 2013-2024 (113th-118th), vetoes were <2% (Senate Historical Office veto counts); override/return cases ignored"
+        }
+      ],
+      "attribution": [
+        {
+          "name": "house_floor_by_deadline",
+          "probability": 0.027976515664475662,
+          "log_cost_share": 0.4529528286047659,
+          "source": "stage_hazard head (trained <=118th)"
+        },
+        {
+          "name": "house_passage",
+          "probability": 0.6233673726043454,
+          "log_cost_share": 0.059857631767633264,
+          "source": "correlated count PMF, House roster"
+        },
+        {
+          "name": "senate_floor",
+          "probability": 0.08305084745762711,
+          "log_cost_share": 0.31514560372312295,
+          "source": "empirical cross-chamber rate"
+        },
+        {
+          "name": "senate_cloture",
+          "probability": 0.30341771993021394,
+          "log_cost_share": 0.15104948369272125,
+          "source": "correlated count PMF, Senate roster"
+        },
+        {
+          "name": "senate_passage",
+          "probability": 0.8645348505646833,
+          "log_cost_share": 0.018435762075497516,
+          "source": "correlated count PMF, Senate roster"
+        },
+        {
+          "name": "signature",
+          "probability": 0.98,
+          "log_cost_share": 0.0025586901362591083,
+          "source": "historical prior"
+        }
+      ]
+    },
+    {
+      "bill_key": "119:hr:20",
+      "policy_area": "Labor and Employment",
+      "p_law_by_deadline": 0.000165767595547664,
+      "links": [
+        {
+          "name": "house_floor_by_deadline",
+          "probability": 0.012455523379869717,
+          "source": "stage_hazard head (trained <=118th)",
+          "detail": "conditional on surviving 289 days since introduction"
+        },
+        {
+          "name": "house_passage",
+          "probability": 0.6233673726043454,
+          "source": "correlated count PMF, House roster",
+          "detail": "pivot 217 of 432; majority leans yea, minority lean nay"
+        },
+        {
+          "name": "senate_floor",
+          "probability": 0.08305084745762711,
+          "source": "empirical cross-chamber rate",
+          "detail": "98/1180 House bills (hr/hjres, 113th-118th) with a House floor roll-call later reached a Senate floor roll-call in the ingested corpora"
+        },
+        {
+          "name": "senate_cloture",
+          "probability": 0.30341771993021394,
+          "source": "correlated count PMF, Senate roster",
+          "detail": "60-vote cloture pivot"
+        },
+        {
+          "name": "senate_passage",
+          "probability": 0.8645348505646833,
+          "source": "correlated count PMF, Senate roster",
+          "detail": "pivot 51 of 100"
+        },
+        {
+          "name": "signature",
+          "probability": 0.98,
+          "source": "historical prior",
+          "detail": "historical prior: of bills presented 2013-2024 (113th-118th), vetoes were <2% (Senate Historical Office veto counts); override/return cases ignored"
+        }
+      ],
+      "attribution": [
+        {
+          "name": "house_floor_by_deadline",
+          "probability": 0.012455523379869717,
+          "log_cost_share": 0.5038058025135436,
+          "source": "stage_hazard head (trained <=118th)"
+        },
+        {
+          "name": "house_passage",
+          "probability": 0.6233673726043454,
+          "log_cost_share": 0.054293324436042165,
+          "source": "correlated count PMF, House roster"
+        },
+        {
+          "name": "senate_floor",
+          "probability": 0.08305084745762711,
+          "log_cost_share": 0.28584997438511967,
+          "source": "empirical cross-chamber rate"
+        },
+        {
+          "name": "senate_cloture",
+          "probability": 0.30341771993021394,
+          "log_cost_share": 0.1370080703470143,
+          "source": "correlated count PMF, Senate roster"
+        },
+        {
+          "name": "senate_passage",
+          "probability": 0.8645348505646833,
+          "log_cost_share": 0.016721991532780704,
+          "source": "correlated count PMF, Senate roster"
+        },
+        {
+          "name": "signature",
+          "probability": 0.98,
+          "log_cost_share": 0.0023208367854996668,
+          "source": "historical prior"
+        }
+      ]
+    },
+    {
+      "bill_key": "119:hr:2763",
+      "policy_area": "Taxation",
+      "p_law_by_deadline": 0.00015777502281881406,
+      "links": [
+        {
+          "name": "house_floor_by_deadline",
+          "probability": 0.011854973699694888,
+          "source": "stage_hazard head (trained <=118th)",
+          "detail": "conditional on surviving 254 days since introduction"
+        },
+        {
+          "name": "house_passage",
+          "probability": 0.6233673726043454,
+          "source": "correlated count PMF, House roster",
+          "detail": "pivot 217 of 432; majority leans yea, minority lean nay"
+        },
+        {
+          "name": "senate_floor",
+          "probability": 0.08305084745762711,
+          "source": "empirical cross-chamber rate",
+          "detail": "98/1180 House bills (hr/hjres, 113th-118th) with a House floor roll-call later reached a Senate floor roll-call in the ingested corpora"
+        },
+        {
+          "name": "senate_cloture",
+          "probability": 0.30341771993021394,
+          "source": "correlated count PMF, Senate roster",
+          "detail": "60-vote cloture pivot"
+        },
+        {
+          "name": "senate_passage",
+          "probability": 0.8645348505646833,
+          "source": "correlated count PMF, Senate roster",
+          "detail": "pivot 51 of 100"
+        },
+        {
+          "name": "signature",
+          "probability": 0.98,
+          "source": "historical prior",
+          "detail": "historical prior: of bills presented 2013-2024 (113th-118th), vetoes were <2% (Senate Historical Office veto counts); override/return cases ignored"
+        }
+      ],
+      "attribution": [
+        {
+          "name": "house_floor_by_deadline",
+          "probability": 0.011854973699694888,
+          "log_cost_share": 0.5066067290153111,
+          "source": "stage_hazard head (trained <=118th)"
+        },
+        {
+          "name": "house_passage",
+          "probability": 0.6233673726043454,
+          "log_cost_share": 0.05398684843924026,
+          "source": "correlated count PMF, House roster"
+        },
+        {
+          "name": "senate_floor",
+          "probability": 0.08305084745762711,
+          "log_cost_share": 0.28423640297932595,
+          "source": "empirical cross-chamber rate"
+        },
+        {
+          "name": "senate_cloture",
+          "probability": 0.30341771993021394,
+          "log_cost_share": 0.13623468456956073,
+          "source": "correlated count PMF, Senate roster"
+        },
+        {
+          "name": "senate_passage",
+          "probability": 0.8645348505646833,
+          "log_cost_share": 0.016627598914963404,
+          "source": "correlated count PMF, Senate roster"
+        },
+        {
+          "name": "signature",
+          "probability": 0.98,
+          "log_cost_share": 0.0023077360815984267,
+          "source": "historical prior"
+        }
+      ]
+    },
+    {
+      "bill_key": "119:hr:18",
+      "policy_area": "Crime and Law Enforcement",
+      "p_law_by_deadline": 0.0001824126566799545,
+      "links": [
+        {
+          "name": "house_floor_by_deadline",
+          "probability": 0.013706207793838866,
+          "source": "stage_hazard head (trained <=118th)",
+          "detail": "conditional on surviving 192 days since introduction"
+        },
+        {
+          "name": "house_passage",
+          "probability": 0.6233673726043454,
+          "source": "correlated count PMF, House roster",
+          "detail": "pivot 217 of 432; majority leans yea, minority lean nay"
+        },
+        {
+          "name": "senate_floor",
+          "probability": 0.08305084745762711,
+          "source": "empirical cross-chamber rate",
+          "detail": "98/1180 House bills (hr/hjres, 113th-118th) with a House floor roll-call later reached a Senate floor roll-call in the ingested corpora"
+        },
+        {
+          "name": "senate_cloture",
+          "probability": 0.30341771993021394,
+          "source": "correlated count PMF, Senate roster",
+          "detail": "60-vote cloture pivot"
+        },
+        {
+          "name": "senate_passage",
+          "probability": 0.8645348505646833,
+          "source": "correlated count PMF, Senate roster",
+          "detail": "pivot 51 of 100"
+        },
+        {
+          "name": "signature",
+          "probability": 0.98,
+          "source": "historical prior",
+          "detail": "historical prior: of bills presented 2013-2024 (113th-118th), vetoes were <2% (Senate Historical Office veto counts); override/return cases ignored"
+        }
+      ],
+      "attribution": [
+        {
+          "name": "house_floor_by_deadline",
+          "probability": 0.013706207793838866,
+          "log_cost_share": 0.4982910079252498,
+          "source": "stage_hazard head (trained <=118th)"
+        },
+        {
+          "name": "house_passage",
+          "probability": 0.6233673726043454,
+          "log_cost_share": 0.054896750540775155,
+          "source": "correlated count PMF, House roster"
+        },
+        {
+          "name": "senate_floor",
+          "probability": 0.08305084745762711,
+          "log_cost_share": 0.2890269641600676,
+          "source": "empirical cross-chamber rate"
+        },
+        {
+          "name": "senate_cloture",
+          "probability": 0.30341771993021394,
+          "log_cost_share": 0.13853080352029554,
+          "source": "correlated count PMF, Senate roster"
+        },
+        {
+          "name": "senate_passage",
+          "probability": 0.8645348505646833,
+          "log_cost_share": 0.016907842856471348,
+          "source": "correlated count PMF, Senate roster"
+        },
+        {
+          "name": "signature",
+          "probability": 0.98,
+          "log_cost_share": 0.0023466309971406363,
+          "source": "historical prior"
+        }
+      ]
+    },
+    {
+      "bill_key": "119:hr:999",
+      "policy_area": "Health",
+      "p_law_by_deadline": 0.00012493653992309107,
+      "links": [
+        {
+          "name": "house_floor_by_deadline",
+          "probability": 0.009387540362583345,
+          "source": "stage_hazard head (trained <=118th)",
+          "detail": "conditional on surviving 317 days since introduction"
+        },
+        {
+          "name": "house_passage",
+          "probability": 0.6233673726043454,
+          "source": "correlated count PMF, House roster",
+          "detail": "pivot 217 of 432; majority leans yea, minority lean nay"
+        },
+        {
+          "name": "senate_floor",
+          "probability": 0.08305084745762711,
+          "source": "empirical cross-chamber rate",
+          "detail": "98/1180 House bills (hr/hjres, 113th-118th) with a House floor roll-call later reached a Senate floor roll-call in the ingested corpora"
+        },
+        {
+          "name": "senate_cloture",
+          "probability": 0.30341771993021394,
+          "source": "correlated count PMF, Senate roster",
+          "detail": "60-vote cloture pivot"
+        },
+        {
+          "name": "senate_passage",
+          "probability": 0.8645348505646833,
+          "source": "correlated count PMF, Senate roster",
+          "detail": "pivot 51 of 100"
+        },
+        {
+          "name": "signature",
+          "probability": 0.98,
+          "source": "historical prior",
+          "detail": "historical prior: of bills presented 2013-2024 (113th-118th), vetoes were <2% (Senate Historical Office veto counts); override/return cases ignored"
+        }
+      ],
+      "attribution": [
+        {
+          "name": "house_floor_by_deadline",
+          "probability": 0.009387540362583345,
+          "log_cost_share": 0.5194175993067401,
+          "source": "stage_hazard head (trained <=118th)"
+        },
+        {
+          "name": "house_passage",
+          "probability": 0.6233673726043454,
+          "log_cost_share": 0.052585089328464715,
+          "source": "correlated count PMF, House roster"
+        },
+        {
+          "name": "senate_floor",
+          "probability": 0.08305084745762711,
+          "log_cost_share": 0.2768562543133271,
+          "source": "empirical cross-chamber rate"
+        },
+        {
+          "name": "senate_cloture",
+          "probability": 0.30341771993021394,
+          "log_cost_share": 0.13269737472799922,
+          "source": "correlated count PMF, Senate roster"
+        },
+        {
+          "name": "senate_passage",
+          "probability": 0.8645348505646833,
+          "log_cost_share": 0.016195866207031704,
+          "source": "correlated count PMF, Senate roster"
+        },
+        {
+          "name": "signature",
+          "probability": 0.98,
+          "log_cost_share": 0.0022478161164371565,
+          "source": "historical prior"
+        }
+      ]
+    }
+  ]
+}

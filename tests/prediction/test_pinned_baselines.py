@@ -11,6 +11,7 @@ regression of the pinned numbers is caught.
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
@@ -59,3 +60,22 @@ def test_vote_only_pin_present() -> None:
         for s in DefectionBaseline.load(_BENCH / "defection_auc_baseline.json").slices
     }
     assert auc.get("congress-118", 0.0) >= 0.72  # the vote-only defection pin
+
+
+def test_stage_hazard_pin_wellformed() -> None:
+    payload = json.loads((_BENCH / "stage_hazard_baseline.json").read_text(encoding="utf-8"))
+    assert payload["slice"] == "floor-vote-hazard-118"
+    # the covariate model must beat the intercept-only baseline by a real margin
+    assert payload["c_index"] >= payload["c_index_intercept_only"] + 0.1
+    assert 0.5 <= payload["c_index"] <= 1.0
+    assert 0.0 <= payload["ece_365"] <= 0.05
+    assert payload["eval_bills"] > 10_000
+
+
+def test_count_pmf_pin_wellformed() -> None:
+    payload = json.loads((_BENCH / "count_pmf_baseline.json").read_text(encoding="utf-8"))
+    assert payload["slice"] == "count-pmf-118"
+    # the correlated PMF must beat independence on CRPS and fix the tail coverage
+    assert payload["crps_correlated"] < payload["crps_independence"]
+    assert 0.8 <= payload["coverage90_correlated"] <= 1.0
+    assert payload["sigma_party"] > 0.0

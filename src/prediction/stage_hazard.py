@@ -48,6 +48,20 @@ class HazardModel:
         raw = self.period_logits[None, :] + (features @ self.coefficients)[:, None]
         return _sigmoid(raw)
 
+    def predict_event_between(
+        self, features: Array, start_days: float, end_days: float
+    ) -> Array:
+        """P(event in (start, end] | no event by start) -- conditional survival.
+
+        Prices a bill already ``start_days`` old: the periods it survived are
+        conditioned away, not re-counted.
+        """
+        p_start = self.predict_event_by(features, start_days)
+        p_end = self.predict_event_by(features, max(start_days, end_days))
+        surv = np.maximum(1.0 - p_start, 1e-12)
+        out: Array = np.clip((p_end - p_start) / surv, 0.0, 1.0)
+        return out
+
     def predict_event_by(self, features: Array, horizon_days: float) -> Array:
         """P(event within ``horizon_days`` of t0) = 1 - prod_t (1 - h_t) over covered periods.
 
