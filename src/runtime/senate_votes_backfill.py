@@ -73,6 +73,19 @@ def _rich_bill_id(congress: int, document_name: str | None) -> str:
         return f"us_congress:{congress}:unknown"
 
 
+_QUESTION_RE = re.compile(r"<(?:vote_question_text|question)>\s*([^<]*?)\s*</", re.S)
+
+
+def _vote_question(xml: str) -> str:
+    """The roll-call's question text (e.g. "On the Nomination"), from the raw XML.
+
+    Extracted here (not in the graph parser, which is Track A's) so the rich
+    record can label confirmation votes; empty string when absent.
+    """
+    match = _QUESTION_RE.search(xml)
+    return match.group(1).strip() if match else ""
+
+
 def senate_rich_record(xml: str, *, sectors_by_bill: Mapping[str, list[str]]) -> dict[str, object]:
     """Turn one Senate roll-call XML into a rich roll-call record (sectors attached)."""
     rollcall = parse_senate_rollcall_xml(xml)
@@ -83,6 +96,7 @@ def senate_rich_record(xml: str, *, sectors_by_bill: Mapping[str, list[str]]) ->
         "bill_id": _rich_bill_id(rollcall.congress, rollcall.document_name),
         "date": rollcall.vote_date.isoformat(),
         "congress": rollcall.congress,
+        "question": _vote_question(xml),
         "sectors": sectors,
         "votes": [
             [member.lis_member_id, member.party, member.state, member.choice.strip().lower()]
