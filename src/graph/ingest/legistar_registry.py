@@ -73,6 +73,11 @@ LEGISTAR_CLIENTS: tuple[LegistarClient, ...] = (
     LegistarClient("cabq", "city", "nm", "Albuquerque"),
     LegistarClient("somervillema", "city", "ma", "Somerville"),
     LegistarClient("richmondva", "city", "va", "Richmond"),
+    LegistarClient("phila", "city", "pa", "Philadelphia"),
+    LegistarClient("miamifl", "city", "fl", "Miami"),
+    LegistarClient("cityoftacoma", "city", "wa", "Tacoma"),
+    LegistarClient("sunnyvaleca", "city", "ca", "Sunnyvale"),
+    LegistarClient("emeryville", "city", "ca", "Emeryville"),
     # ── counties ──
     LegistarClient("kingcounty", "county", "wa", "King County"),
     LegistarClient("lacounty", "county", "ca", "Los Angeles County"),
@@ -165,4 +170,9 @@ LEGISTAR_CLIENTS: tuple[LegistarClient, ...] = (
     LegistarClient("erie", "county", "ny", "Erie County"),
     LegistarClient("humboldt", "county", "ca", "Humboldt County"),
     LegistarClient("eldorado", "county", "ca", "El Dorado County"),
+    LegistarClient("princegeorgescountymd", "county", "md", "Prince George's County"),
+    LegistarClient("westchestercountyny", "county", "ny", "Westchester County"),
+    LegistarClient("dekalbcountyga", "county", "ga", "DeKalb County"),
+    LegistarClient("dupage", "county", "il", "DuPage County"),
+    LegistarClient("sonoma-county", "county", "ca", "Sonoma County"),
 )
