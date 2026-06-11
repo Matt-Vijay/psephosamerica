@@ -108,3 +108,28 @@ background workers are live: the semantic-AB watcher (fires on the settled seman
 export) and the ≥60-min continuous-learning run (capturing the semantic hot-swap).
 Carried-over SOTA: bill-content defection AUC **0.7707** on the 118th (beats the
 0.7247 vote-only pin by +0.046), pinned in `bill_content_baseline.json`.
+
+## Quality pass (post-queue, while API keys are fetched)
+
+- **Real bug fixed — `DefectionHead` dropped non-base coefficients at scoring.**
+  `probability`/`contributions` summed over the module's 2-feature constant, not
+  the head's own coefficients, so `defection_rag`'s AFTER arm scored *without* its
+  trained `rag_signal` coefficient. Fixed (score over `self.coefficients`;
+  numerically identical for every 2-feature head) + regression test. Honest
+  re-measurement of the v4 sector-bag RAG experiment WITH the coefficient applied:
+  before 0.5876 → after 0.58765 (Δ +0.00005, best k=16) — the v4 conclusion
+  ("sector-bag adds nothing; dense embeddings were needed") stands, now measured
+  correctly.
+- **Consolidation: 7 byte-equivalent copies of the logistic trainer/AUC scorer**
+  (defection_head, defection_signals, defection_multitask, defection_rag,
+  bill_content / combined-SOTA / CRS-multitask experiments, bill_content_bayesian)
+  now import one canonical `src/prediction/logistic.py`. Verified numerics-
+  preserving by re-running the combined-SOTA experiment on the real 118th corpus:
+  all four arms **bit-for-bit identical** to the pinned artifact (base
+  0.7064244594723444, bill_rag 0.770670883580485, crs_only 0.776440177527352,
+  combined 0.7998324310245228).
+- **Hardening:** thin-record sigmoid no longer overflows on extreme logits;
+  statement-corpus coverage skips corrupt/partial lines; transfer runner returns
+  an error dict (not KeyError) for a missing target congress and its stale
+  "Senate not yet ingested" note now points at the real Senate ingest; corpus
+  watcher reuses the shared mid-write-safe JSONL reader. New tests for all of it.

@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 from datetime import date
+from pathlib import Path
 
 from src.prediction.defection import build_party_profiles
+from src.prediction.defection_external_signals import statement_corpus_coverage
 from src.prediction.defection_signals import (
     evaluate_signal,
     hierarchical_defection_prior,
@@ -12,7 +14,7 @@ from src.prediction.defection_signals import (
 from src.prediction.vote_record import VoteRecord
 
 
-def _record(member: str, *, is_yea: bool, party_lean_yea: bool, sectors, day: int) -> VoteRecord:
+def _record(member: str, *, is_yea: bool, party_lean_yea: bool, sectors: tuple[str, ...], day: int) -> VoteRecord:
     return VoteRecord(
         member=member,
         party="R",
@@ -62,3 +64,20 @@ def test_evaluate_signal_reports_delta() -> None:
     assert result.delta_auc == result.augmented_auc - result.base_auc
     assert "defection_prior" in result.coefficients
     assert 0.0 <= result.augmented_auc <= 1.0
+
+
+def test_statement_corpus_coverage_skips_corrupt_lines(tmp_path: Path) -> None:
+    path = tmp_path / "statements.jsonl"
+    path.write_text(
+        '{"member_bioguide_id": "A000001"}\n'
+        '{"member_bioguide_id": "A000002"}\n'
+        '{"truncated mid-wri\n'
+        '{"other_key": 1}\n'
+        '{"member_bioguide_id": "A000001"}\n',
+        encoding="utf-8",
+    )
+    assert statement_corpus_coverage(path) == 2
+
+
+def test_statement_corpus_coverage_missing_file_is_zero(tmp_path: Path) -> None:
+    assert statement_corpus_coverage(tmp_path / "absent.jsonl") == 0
