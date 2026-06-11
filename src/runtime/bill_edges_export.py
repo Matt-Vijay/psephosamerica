@@ -31,9 +31,9 @@ from src.graph.ingest.billstatus_edges import (
     committee_referral_edges,
     sponsorship_edges,
 )
+from src.graph.export import RECORDS_FILENAME
 from src.graph.ingest.govinfo_billstatus import billstatus_from_record, bulk_billstatus_url
 from src.graph.provenance import ProvenanceEnvelope
-from src.runtime.semantic_reembed import _RECORDS  # corpus filename constant
 
 _BULK_ROOT = "https://www.govinfo.gov/bulkdata/BILLSTATUS"
 
@@ -43,7 +43,7 @@ def build_bioguide_resolver(corpus_directory: Path | str) -> dict[str, str]:
     from src.graph.export import read_contract_corpus
 
     resolver: dict[str, str] = {}
-    if not (Path(corpus_directory) / _RECORDS).exists():
+    if not (Path(corpus_directory) / RECORDS_FILENAME).exists():
         return resolver
     for row in read_contract_corpus(corpus_directory):
         if row.entity_type != "person":

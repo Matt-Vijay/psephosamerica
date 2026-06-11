@@ -25,10 +25,12 @@ from typing import Any
 from src.graph.cdc import diff_outputs
 from src.graph.contracts import EntityResolutionOutput
 from src.graph.enrichment.semantic_embedder import SemanticEmbedder
-from src.graph.export import read_contract_corpus, write_contract_corpus, write_delta_feed
-
-_RECORDS = "records.jsonl"
-_DELTAS = "deltas.jsonl"
+from src.graph.export import (
+    DELTAS_FILENAME,
+    read_contract_corpus,
+    write_contract_corpus,
+    write_delta_feed,
+)
 
 
 def load_content_text(path: Path | str) -> dict[str, str]:
@@ -110,7 +112,7 @@ def semantic_reembed_corpus(
 
     write_contract_corpus(rows, directory=directory, as_of=as_of)
     deltas = diff_outputs(prior, {row.canonical_id: row for row in rows})
-    deltas_written = write_delta_feed(deltas, path=directory / _DELTAS, append=True)
+    deltas_written = write_delta_feed(deltas, path=directory / DELTAS_FILENAME, append=True)
     return ReembedProgress(
         corpus_rows=len(rows),
         eligible=len(todo) + already,

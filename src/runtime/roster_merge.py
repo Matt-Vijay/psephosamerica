@@ -37,7 +37,12 @@ import httpx
 
 from src.graph.cdc import diff_outputs
 from src.graph.contracts import EntityResolutionOutput
-from src.graph.export import read_contract_corpus, write_contract_corpus, write_delta_feed
+from src.graph.export import (
+    DELTAS_FILENAME,
+    read_contract_corpus,
+    write_contract_corpus,
+    write_delta_feed,
+)
 from src.graph.ingest.congress_legislators import DEFAULT_SINCE, parse_legislators
 from src.graph.materialize import materialize_person_nodes
 from src.runtime.govinfo_bills_materialize import _client
@@ -146,7 +151,7 @@ def merge_roster_into_corpus(
     curr = {row.canonical_id: row for row in out_rows}
     deltas = diff_outputs(prior, curr)
     write_contract_corpus(out_rows, directory=main_dir, as_of=as_of)
-    deltas_written = write_delta_feed(deltas, path=main_dir / "deltas.jsonl", append=True)
+    deltas_written = write_delta_feed(deltas, path=main_dir / DELTAS_FILENAME, append=True)
     return RosterMergeReport(
         roster_members=len(roster_nodes),
         main_before=len(main_rows),

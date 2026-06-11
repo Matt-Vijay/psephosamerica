@@ -24,6 +24,7 @@ from pathlib import Path
 import httpx
 
 from src.graph.ingest.gdelt import news_mention_edge, news_provenance, parse_gdelt_article
+from src.graph.export import RECORDS_FILENAME
 from src.runtime.govinfo_bills_materialize import _client
 
 _DOC_API = "https://api.gdeltproject.org/api/v2/doc/doc"
@@ -39,7 +40,7 @@ def federal_members(corpus_directory: Path | str) -> list[_Member]:
     """Corpus persons that carry a ``bioguide:`` external id (the federal members)."""
     from src.graph.export import read_contract_corpus
 
-    if not (Path(corpus_directory) / "records.jsonl").exists():
+    if not (Path(corpus_directory) / RECORDS_FILENAME).exists():
         return []
     members: list[_Member] = []
     for row in read_contract_corpus(corpus_directory):

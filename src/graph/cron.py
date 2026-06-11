@@ -23,11 +23,16 @@ from src.graph.contracts import EntityResolutionOutput
 from src.graph.edges import GraphEdge
 from src.graph.entity_resolution.assignment import CanonicalAssignment
 from src.graph.entity_resolution.records import SourceRecord
-from src.graph.export import read_contract_corpus, write_contract_corpus, write_delta_feed
+from src.graph.export import (
+    DELTAS_FILENAME,
+    RECORDS_FILENAME,
+    read_contract_corpus,
+    write_contract_corpus,
+    write_delta_feed,
+)
 from src.graph.regenerate import CorpusResult, regenerate_corpus
 
 _ASSIGNMENT_FILE = "assignment.json"
-_DELTA_FILE = "deltas.jsonl"
 
 
 def save_assignment(assignment: CanonicalAssignment, path: Path | str) -> None:
@@ -57,7 +62,7 @@ def run_cycle(
 
     prior_assignment = load_assignment(out_dir / _ASSIGNMENT_FILE)
     prior_outputs: dict[str, EntityResolutionOutput] = {}
-    if (out_dir / "records.jsonl").exists():
+    if (out_dir / RECORDS_FILENAME).exists():
         prior_outputs = {row.canonical_id: row for row in read_contract_corpus(out_dir)}
 
     result = regenerate_corpus(
@@ -70,6 +75,6 @@ def run_cycle(
     )
 
     write_contract_corpus(result.rows, directory=out_dir, as_of=as_of)
-    write_delta_feed(result.deltas, path=out_dir / _DELTA_FILE, append=True)
+    write_delta_feed(result.deltas, path=out_dir / DELTAS_FILENAME, append=True)
     save_assignment(result.assignment, out_dir / _ASSIGNMENT_FILE)
     return result

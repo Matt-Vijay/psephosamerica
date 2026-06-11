@@ -21,8 +21,12 @@ from pathlib import Path
 from src.graph.cdc import EntityDelta
 from src.graph.contracts import EntityResolutionOutput
 
-_RECORDS_FILE = "records.jsonl"
-_MANIFEST_FILE = "manifest.json"
+# The on-disk corpus layout. Public: every runner that touches a corpus directory
+# (merge, re-embed, edge export, watchers) names these files through here rather
+# than re-declaring the literals.
+RECORDS_FILENAME = "records.jsonl"
+MANIFEST_FILENAME = "manifest.json"
+DELTAS_FILENAME = "deltas.jsonl"
 
 
 @dataclass(frozen=True)
@@ -47,14 +51,14 @@ def write_contract_corpus(
     ordered = sorted(rows, key=lambda row: row.canonical_id)
     content = "".join(f"{row.model_dump_json()}\n" for row in ordered)
     digest = hashlib.sha256(content.encode("utf-8")).hexdigest()
-    (out_dir / _RECORDS_FILE).write_text(content, encoding="utf-8")
+    (out_dir / RECORDS_FILENAME).write_text(content, encoding="utf-8")
     manifest = CorpusManifest(
         as_of=as_of.isoformat(),
         record_count=len(ordered),
         content_sha256=digest,
-        records_path=str(out_dir / _RECORDS_FILE),
+        records_path=str(out_dir / RECORDS_FILENAME),
     )
-    (out_dir / _MANIFEST_FILE).write_text(
+    (out_dir / MANIFEST_FILENAME).write_text(
         json.dumps(asdict(manifest), indent=2, sort_keys=True) + "\n", encoding="utf-8"
     )
     return manifest
@@ -62,7 +66,7 @@ def write_contract_corpus(
 
 def read_contract_corpus(directory: Path | str) -> list[EntityResolutionOutput]:
     """Read back a corpus written by :func:`write_contract_corpus`."""
-    path = Path(directory) / _RECORDS_FILE
+    path = Path(directory) / RECORDS_FILENAME
     return [
         EntityResolutionOutput.model_validate_json(line)
         for line in path.read_text(encoding="utf-8").splitlines()

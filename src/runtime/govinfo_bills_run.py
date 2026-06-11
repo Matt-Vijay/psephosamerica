@@ -28,7 +28,13 @@ from pathlib import Path
 import httpx
 
 from src.graph.contracts import EntityResolutionOutput
-from src.graph.export import read_contract_corpus, write_contract_corpus, write_delta_feed
+from src.graph.export import (
+    DELTAS_FILENAME,
+    RECORDS_FILENAME,
+    read_contract_corpus,
+    write_contract_corpus,
+    write_delta_feed,
+)
 from src.graph.ingest.govinfo_billstatus import (
     billstatus_bill_row,
     canonical_bill_id_from_filename,
@@ -40,9 +46,6 @@ from src.runtime.govinfo_bills_materialize import (
     _client,
     list_billstatus_file_urls,
 )
-
-_RECORDS = "records.jsonl"
-_DELTAS = "deltas.jsonl"
 
 
 @dataclass(frozen=True)
@@ -93,7 +96,7 @@ class BatchProgress:
 
 
 def _existing_rows(directory: Path) -> list[EntityResolutionOutput]:
-    if (directory / _RECORDS).exists():
+    if (directory / RECORDS_FILENAME).exists():
         return read_contract_corpus(directory)
     return []
 
@@ -161,7 +164,7 @@ def ingest_batch(
     )
     merged = [*existing, *result.rows]
     write_contract_corpus(merged, directory=out_dir, as_of=as_of)
-    deltas_written = write_delta_feed(result.deltas, path=out_dir / _DELTAS, append=True)
+    deltas_written = write_delta_feed(result.deltas, path=out_dir / DELTAS_FILENAME, append=True)
     return BatchProgress(
         existing_before=len(existing),
         candidates_total=len(all_candidates),

@@ -25,6 +25,8 @@ import httpx
 
 from src.graph.contracts import EntityResolutionOutput
 from src.graph.export import (
+    DELTAS_FILENAME,
+    RECORDS_FILENAME,
     CorpusManifest,
     read_contract_corpus,
     write_contract_corpus,
@@ -205,7 +207,7 @@ def materialize_govinfo_bill_corpus(
             http.close()
 
     prior: Mapping[str, EntityResolutionOutput] = {}
-    if (out_dir / "records.jsonl").exists():
+    if (out_dir / RECORDS_FILENAME).exists():
         prior = {row.canonical_id: row for row in read_contract_corpus(out_dir)}
 
     result = regenerate_corpus(
@@ -216,7 +218,7 @@ def materialize_govinfo_bill_corpus(
         prior_outputs=prior,
     )
     manifest = write_contract_corpus(result.rows, directory=out_dir, as_of=as_of)
-    delta_count = write_delta_feed(result.deltas, path=out_dir / "deltas.jsonl", append=True)
+    delta_count = write_delta_feed(result.deltas, path=out_dir / DELTAS_FILENAME, append=True)
     return BillCorpusResult(
         manifest=manifest,
         bill_count=len(result.rows),

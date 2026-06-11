@@ -20,7 +20,12 @@ from datetime import datetime
 from pathlib import Path
 
 from src.graph.cdc import diff_outputs
-from src.graph.export import read_contract_corpus, write_contract_corpus, write_delta_feed
+from src.graph.export import (
+    DELTAS_FILENAME,
+    read_contract_corpus,
+    write_contract_corpus,
+    write_delta_feed,
+)
 
 
 @dataclass(frozen=True)
@@ -57,7 +62,7 @@ def merge_bill_corpus_into_main(
     deltas = diff_outputs(prior, curr)
 
     write_contract_corpus(merged, directory=main_dir, as_of=as_of)
-    deltas_written = write_delta_feed(deltas, path=main_dir / "deltas.jsonl", append=True)
+    deltas_written = write_delta_feed(deltas, path=main_dir / DELTAS_FILENAME, append=True)
     return MergeReport(
         main_before=len(main_rows),
         bills_in=len(bill_rows),
