@@ -1,0 +1,8 @@
+{
+  "slice": "federal-to-ca-floor",
+  "zero_shot_auc": 0.6639517552981352,
+  "target_only_auc": 0.6639517552981352,
+  "joint_auc": 0.6639517552981352,
+  "eval_pairs": 873993,
+  "tolerance": 0.005
+}
