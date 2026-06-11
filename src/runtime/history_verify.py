@@ -1474,6 +1474,3 @@ def verify_history_aggregate_local(root: Path) -> HistoryVerifyResult:
             member_pages_stage,
         )
     )
-
-
-verify_local_history_aggregate = verify_history_aggregate_local
