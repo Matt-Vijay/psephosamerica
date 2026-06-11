@@ -65,3 +65,14 @@ operator reports/packet). `src/runtime/commands/__init__.py` re-exports every
 top-level symbol, so all historical import paths (`from src.runtime.commands
 import X`) keep working, and `registry.py` holds `COMMAND_REGISTRY` plus
 `dispatch_command` — the single dispatch point used by `src/runtime/main.py`.
+`src/runtime/cli.py` got the same treatment (`src/runtime/cli/`, with
+`parser.py` assembling the subcommands).
+
+**Patching in tests.** The commands package installs a small
+`_PatchForwardingModule` shim: assigning an attribute on
+`src.runtime.commands` (which is what `mock.patch` / `monkeypatch` do) is
+forwarded to every submodule that defines that name, so the historical patch
+targets like `mock.patch("src.runtime.commands.build_runtime")` still reach
+the real call sites. New tests should prefer patching the owning submodule
+directly (e.g. `src.runtime.commands.history._verify_local_history_aggregate`);
+once all tests do, the shim can be deleted.
