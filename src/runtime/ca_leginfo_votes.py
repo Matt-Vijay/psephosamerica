@@ -30,6 +30,7 @@ from pathlib import Path
 
 import httpx
 
+from src.graph.ingest.ca_leginfo import ca_session_of
 from src.runtime.http_client import client_or_default
 
 LEGINFO_BASE = "https://downloads.leginfo.legislature.ca.gov"
@@ -117,12 +118,11 @@ def parse_ca_bill_id(raw: str) -> tuple[str, str]:
     """``202520260AB1`` -> (session ``"2025-2026"``, measure ``"AB1"``).
 
     Layout: 4-digit start year, 4-digit end year, 1-digit special-session flag,
-    then the measure (type + number).
+    then the measure. Extraordinary sessions (flag != 0) get a ``-x<digit>``
+    session suffix so their measure numbers, which restart at 1, never collide
+    with the regular session's (``...1AB1`` -> ``2025-2026-x1``).
     """
-    if len(raw) < 10 or not raw[:9].isdigit():
-        raise ValueError(f"unparseable CA bill id: {raw!r}")
-    session = f"{raw[:4]}-{raw[4:8]}"
-    return session, raw[9:]
+    return ca_session_of(raw), raw[9:]
 
 
 def _chamber_for(location_code: str) -> str:

@@ -109,3 +109,32 @@ def test_parse_ca_legislators() -> None:
     assert mcguire.jurisdiction == "us-ca"
     assert any(e.system == "ca_leginfo_seat" for e in mcguire.external_ids)
     assert mcguire.provenance.known_at.year == 2025  # session start
+
+
+def test_ca_session_of_extraordinary_sessions_stay_distinct() -> None:
+    from src.graph.ingest.ca_leginfo import ca_session_of
+
+    assert ca_session_of("202520260AB1") == "2025-2026"
+    assert ca_session_of("202520261AB1") == "2025-2026-x1"
+    assert ca_session_of("201320142AB1") == "2013-2014-x2"
+    with pytest.raises(ValueError):
+        ca_session_of("2025AB1")
+    # regular vs extraordinary AB1 mint DIFFERENT canonical bills
+    regular = ca_bill_ref(ca_session_of("202520260AB1"), "AB1").canonical_id
+    special = ca_bill_ref(ca_session_of("202520261AB1"), "AB1").canonical_id
+    assert regular != special
+
+
+def test_parse_bill_titles_keeps_special_session_separate() -> None:
+    versions = "\n".join(
+        [
+            "`20250AB199INT`\t`202520260AB1`\t99\t2025-01-02 00:00:00\t`I`\tNULL\t`Regular AB1.`\tx",
+            "`20251AB199INT`\t`202520261AB1`\t99\t2025-06-02 00:00:00\t`I`\tNULL\t`Special AB1.`\tx",
+        ]
+    )
+    titles = parse_bill_titles(versions)
+    assert len(titles) == 2
+    sessions = {t.session for t in titles}
+    assert sessions == {"2025-2026", "2025-2026-x1"}
+    ids = {ca_bill_ref(t.session, t.measure).canonical_id for t in titles}
+    assert len(ids) == 2  # no collision

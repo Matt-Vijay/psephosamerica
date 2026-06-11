@@ -279,3 +279,8 @@ def test_http_range_reader_default_client(monkeypatch: pytest.MonkeyPatch, tmp_p
     )
     progress = backfill_ca_votes(year=2025, out_path=tmp_path / "ca.jsonl")
     assert progress.rollcalls_written == 2
+
+
+def test_parse_ca_bill_id_extraordinary_session() -> None:
+    assert parse_ca_bill_id("202520261AB1") == ("2025-2026-x1", "AB1")
+    assert parse_ca_bill_id("202520260AB1") == ("2025-2026", "AB1")

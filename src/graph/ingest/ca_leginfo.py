@@ -44,6 +44,22 @@ def parse_ca_session(raw: str) -> str:
     return f"{value[:4]}-{value[4:]}"
 
 
+def ca_session_of(raw_bill_id: str) -> str:
+    """A raw CA bill id's session, extraordinary sessions kept distinct.
+
+    Position 8 of ``202520261AB1`` is the special-session digit: ``0`` is the
+    regular session; ``1``/``2``… are extraordinary sessions whose measure
+    numbers restart at 1, so they must NOT share the regular session's id space
+    (CA itself writes them "ABX1 1"). ``...0AB1`` -> ``2025-2026``;
+    ``...1AB1`` -> ``2025-2026-x1``.
+    """
+    if len(raw_bill_id) < 10 or not raw_bill_id[:9].isdigit():
+        raise ValueError(f"unparseable CA bill id: {raw_bill_id!r}")
+    session = f"{raw_bill_id[:4]}-{raw_bill_id[4:8]}"
+    special = raw_bill_id[8]
+    return session if special == "0" else f"{session}-x{special}"
+
+
 def ca_bill_ref(session: str, measure: str) -> BillRef:
     """``("2025-2026", "AB13")`` -> the deterministic CA BillRef (``cb-…``)."""
     match = _MEASURE_RE.match(measure.strip())
@@ -91,7 +107,7 @@ def parse_bill_titles(version_table: str) -> list[CaBillTitle]:
         raw_bill_id, version_raw, date_raw, subject = fields[1], fields[2], fields[3], fields[6]
         if not raw_bill_id or not subject or subject == "NULL":
             continue
-        if len(raw_bill_id) < 10 or not raw_bill_id[:8].isdigit():
+        if len(raw_bill_id) < 10 or not raw_bill_id[:9].isdigit():
             continue
         try:
             version = int(version_raw)
@@ -103,8 +119,7 @@ def parse_bill_titles(version_table: str) -> list[CaBillTitle]:
             earliest[raw_bill_id] = date_iso
         prior = by_bill.get(raw_bill_id)
         if prior is None or version < prior[0]:
-            session = f"{raw_bill_id[:4]}-{raw_bill_id[4:8]}"
-            by_bill[raw_bill_id] = (version, subject, date_iso, session)
+            by_bill[raw_bill_id] = (version, subject, date_iso, ca_session_of(raw_bill_id))
 
     titles: list[CaBillTitle] = []
     for raw_bill_id, (_version, subject, _date, session) in sorted(by_bill.items()):
