@@ -1,0 +1,190 @@
+{
+  "frozen_at": "2026-06-11T19:50:45.522070+00:00",
+  "as_of": "2026-06-11",
+  "n_markets": 11,
+  "spread_capture": "unavailable: sidecar has no bid/ask; arms when order-book fields land",
+  "content_sha256": "94224fe4366d17975b60f5e918e2e3c83fe389589c0f20285585a98fe13f421b",
+  "markets": [
+    {
+      "market_id": "cm-dwtn6mxseh3qyaff",
+      "native_id": "0xe73ed5d9cc758f69483433d2a3b063626c23bb2647dacedcd6a2dc04fad2e2a6",
+      "venue": "polymarket",
+      "question": "Will $2.50 Coin become law this year?",
+      "matched_keys": [
+        "119:hr:5616"
+      ],
+      "method": "chain_composer",
+      "fair_value": 0.000179,
+      "market_price": 0.265,
+      "edge": -0.264821,
+      "side": "buy_no",
+      "kelly_stake_usd": 24.98,
+      "as_of": "2026-06-11"
+    },
+    {
+      "market_id": "cm-ecfrtanl7m3wcfkg",
+      "native_id": "0x28d6d12eac68223138afb976332da144b44a3ebcf71960b8a0efe4f21f4521c2",
+      "venue": "polymarket",
+      "question": "Will the Housing for the 21st Century Act become law this year?",
+      "matched_keys": [
+        "119:hr:6644"
+      ],
+      "method": "chain_composer",
+      "fair_value": 0.018965,
+      "market_price": 0.72,
+      "edge": -0.701035,
+      "side": "buy_no",
+      "kelly_stake_usd": 24.34,
+      "as_of": "2026-06-11"
+    },
+    {
+      "market_id": "cm-fpgjn47akmgxdqug",
+      "native_id": "0xbd264d3ca85be3e899ba8cf8f5599369c673378b0574c83fc5dc96cc1c231f40",
+      "venue": "polymarket",
+      "question": "Will Export-control chip security become law this year?",
+      "matched_keys": [
+        "119:hr:3447"
+      ],
+      "method": "chain_composer",
+      "fair_value": 0.00013,
+      "market_price": 0.57,
+      "edge": -0.56987,
+      "side": "buy_no",
+      "kelly_stake_usd": 24.99,
+      "as_of": "2026-06-11"
+    },
+    {
+      "market_id": "cm-k4tmrkyvdyhjopcn",
+      "native_id": "0xc2a2b9fb879765ecec9e738cb07ce913c379449d6b046e50bce4f9625ddd2e30",
+      "venue": "polymarket",
+      "question": "Will AI-chip export licensing become law this year?",
+      "matched_keys": [
+        "119:hr:6875"
+      ],
+      "method": "chain_composer",
+      "fair_value": 0.000459,
+      "market_price": 0.475,
+      "edge": -0.474541,
+      "side": "buy_no",
+      "kelly_stake_usd": 24.98,
+      "as_of": "2026-06-11"
+    },
+    {
+      "market_id": "cm-lml523wiqskojnnm",
+      "native_id": "0x463787e54a3b7801c5717b2b2bddb3db59b1dc7f6f3f6edf4c0c2b4064d7f07c",
+      "venue": "polymarket",
+      "question": "Will the Smithsonian Women\u2019s History Museum become law this year?",
+      "matched_keys": [
+        "119:hr:1329"
+      ],
+      "method": "chain_composer",
+      "fair_value": 0.000129,
+      "market_price": 0.365,
+      "edge": -0.364871,
+      "side": "buy_no",
+      "kelly_stake_usd": 24.99,
+      "as_of": "2026-06-11"
+    },
+    {
+      "market_id": "cm-pjnqtsv4q7nsl73v",
+      "native_id": "0x58d735c94571661e7819362dc457b44062b6623e8cb018bb5ca5a52bffe5f897",
+      "venue": "polymarket",
+      "question": "Will the SELF DRIVE Act become law this year?",
+      "matched_keys": [
+        "119:hr:2819",
+        "119:hr:7390",
+        "119:s:1696"
+      ],
+      "method": "chain_composer",
+      "fair_value": 0.000132,
+      "market_price": 0.5,
+      "edge": -0.499868,
+      "side": "buy_no",
+      "kelly_stake_usd": 24.99,
+      "as_of": "2026-06-11"
+    },
+    {
+      "market_id": "cm-qvxkpbysrzkwyhbz",
+      "native_id": "0xf2a1d529e46480e1e1c5df6c344b7ee1e7c751c3f519cdf64cd7756d7570d93a",
+      "venue": "polymarket",
+      "question": "H.R. 22 (SAVE Act) signed into law in 2026?",
+      "matched_keys": [
+        "119:hr:1746",
+        "119:hr:22",
+        "119:hr:256",
+        "119:s:128"
+      ],
+      "method": "chain_composer",
+      "fair_value": 7.3e-05,
+      "market_price": 0.08,
+      "edge": -0.079927,
+      "side": "buy_no",
+      "kelly_stake_usd": 24.98,
+      "as_of": "2026-06-11"
+    },
+    {
+      "market_id": "cm-sqdb56qbmrbeqqkf",
+      "native_id": "0x8d7b8e6341406de4021802ba1bd445b62bafb226130c38c5f08f2346e4815883",
+      "venue": "polymarket",
+      "question": "Will the DEFIANCE Act become law this year?",
+      "matched_keys": [
+        "119:s:1837"
+      ],
+      "method": "chain_composer",
+      "fair_value": 4.2e-05,
+      "market_price": 0.73,
+      "edge": -0.729958,
+      "side": "buy_no",
+      "kelly_stake_usd": 25.0,
+      "as_of": "2026-06-11"
+    },
+    {
+      "market_id": "cm-ucrkjox7kj27b4wa",
+      "native_id": "0x9e9d668a4febba154c8e92c425d989505f1655d7dde199ebb1449e182114c627",
+      "venue": "polymarket",
+      "question": "Will Trump Airport become law this year?",
+      "matched_keys": [
+        "119:hr:691"
+      ],
+      "method": "chain_composer",
+      "fair_value": 0.00012,
+      "market_price": 0.1005,
+      "edge": -0.10038,
+      "side": "buy_no",
+      "kelly_stake_usd": 24.97,
+      "as_of": "2026-06-11"
+    },
+    {
+      "market_id": "cm-utukfvuqfjfa5mac",
+      "native_id": "0x5bdd688a6645c562468861a20ce1e56d4a04903665af8647691b1806679b7b82",
+      "venue": "polymarket",
+      "question": "Will the SHOWER Act become law this year?",
+      "matched_keys": [
+        "119:hr:4593"
+      ],
+      "method": "chain_composer",
+      "fair_value": 0.000204,
+      "market_price": 0.525,
+      "edge": -0.524796,
+      "side": "buy_no",
+      "kelly_stake_usd": 24.99,
+      "as_of": "2026-06-11"
+    },
+    {
+      "market_id": "cm-x4yumt3rhqrzmrki",
+      "native_id": "0x66bb726a78761329326fa100fb541af99eb423b1325b8824199251a6c77024fa",
+      "venue": "polymarket",
+      "question": "Will Film/TV production expensing become law this year?",
+      "matched_keys": [
+        "119:hr:4787"
+      ],
+      "method": "chain_composer",
+      "fair_value": 0.000108,
+      "market_price": 0.585,
+      "edge": -0.584892,
+      "side": "buy_no",
+      "kelly_stake_usd": 25.0,
+      "as_of": "2026-06-11"
+    }
+  ]
+}
