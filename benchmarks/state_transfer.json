@@ -2,16 +2,17 @@
   "federal_corpus": "data/real/house_118_rich.jsonl",
   "state_corpus": "data/real/ca_2013_2025_rich.jsonl",
   "state_floor_rollcalls": 48676,
+  "rollcalls_with_sectors": 14952,
   "state_cutoff": "2022-08-01",
   "source_pairs": 200000,
   "target_train_pairs": 200000,
   "transfer": {
     "source": "US House (federal floor votes)",
     "target": "California Legislature (floor votes)",
-    "zero_shot_auc": 0.6639517552981352,
-    "target_only_auc": 0.6639517552981352,
-    "joint_auc": 0.6639517552981352,
-    "gap": 0.0,
+    "zero_shot_auc": 0.6656847308083975,
+    "target_only_auc": 0.6655255517275958,
+    "joint_auc": 0.6658605219411636,
+    "gap": -0.00015917908080176346,
     "target_eval_pairs": 873993,
     "target_positives": 6400
   }
