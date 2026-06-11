@@ -21,18 +21,17 @@ relevant corpus being present.
 
 from __future__ import annotations
 
-import math
 from collections import defaultdict
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from src.prediction.defection import PartyProfiles, defected, defection_features, ranking_metrics
+from src.prediction.defection import PartyProfiles, defected, defection_features
+from src.prediction.logistic import auc_of_rows, train_logistic_rows
 from src.prediction.vote_record import VoteRecord
 
 # A signal provider maps a record to zero or more named features (pre-cutoff only).
 SignalProvider = Callable[[VoteRecord], dict[str, float]]
 _BASE_FEATURES = ("loyalty_gap", "sector_divergence")
-_LOGIT_CLAMP = 40.0
 
 
 def hierarchical_defection_prior(
@@ -83,50 +82,6 @@ def _augmented_features(
     return features
 
 
-def _train_logistic(
-    rows: list[tuple[dict[str, float], bool]],
-    feature_names: tuple[str, ...],
-    *,
-    learning_rate: float = 0.3,
-    epochs: int = 300,
-    l2: float = 0.01,
-) -> tuple[float, dict[str, float]]:
-    if not rows:
-        return 0.0, {n: 0.0 for n in feature_names}
-    positives = sum(1 for _f, y in rows if y)
-    rate = min(0.95, max(0.05, positives / len(rows)))
-    intercept = math.log(rate / (1.0 - rate))
-    coef = {n: 0.0 for n in feature_names}
-    scale = 1.0 / len(rows)
-    for _ in range(epochs):
-        d_int = 0.0
-        d_coef = {n: 0.0 for n in feature_names}
-        for features, label in rows:
-            raw = intercept + sum(coef[n] * features.get(n, 0.0) for n in feature_names)
-            pred = 1.0 / (1.0 + math.exp(-max(-_LOGIT_CLAMP, min(_LOGIT_CLAMP, raw))))
-            err = pred - (1.0 if label else 0.0)
-            d_int += err
-            for n in feature_names:
-                d_coef[n] += err * features.get(n, 0.0)
-        intercept -= learning_rate * d_int * scale
-        for n in feature_names:
-            coef[n] -= learning_rate * (d_coef[n] * scale + l2 * coef[n])
-    return intercept, coef
-
-
-def _auc(
-    intercept: float,
-    coef: dict[str, float],
-    feature_names: tuple[str, ...],
-    rows: list[tuple[dict[str, float], bool]],
-) -> float:
-    scores = []
-    for features, _label in rows:
-        raw = intercept + sum(coef[n] * features.get(n, 0.0) for n in feature_names)
-        scores.append(1.0 / (1.0 + math.exp(-max(-_LOGIT_CLAMP, min(_LOGIT_CLAMP, raw)))))
-    return ranking_metrics(scores, [y for _f, y in rows]).auc
-
-
 @dataclass(frozen=True)
 class SignalResult:
     signal_name: str
@@ -159,14 +114,14 @@ def evaluate_signal(
     """Train base vs base+signal heads; report ΔAUC honestly (even if 0)."""
     base_train = [(defection_features(r, profiles), defected(r)) for r in train]
     base_eval = [(defection_features(r, profiles), defected(r)) for r in eval_records]
-    b_int, b_coef = _train_logistic(base_train, _BASE_FEATURES)
-    base_auc = _auc(b_int, b_coef, _BASE_FEATURES, base_eval)
+    b_int, b_coef = train_logistic_rows(base_train, _BASE_FEATURES)
+    base_auc = auc_of_rows(b_int, b_coef, _BASE_FEATURES, base_eval)
 
     names = (*_BASE_FEATURES, *extra_feature_names)
     aug_train = [(_augmented_features(r, profiles, providers), defected(r)) for r in train]
     aug_eval = [(_augmented_features(r, profiles, providers), defected(r)) for r in eval_records]
-    a_int, a_coef = _train_logistic(aug_train, names)
-    aug_auc = _auc(a_int, a_coef, names, aug_eval)
+    a_int, a_coef = train_logistic_rows(aug_train, names)
+    aug_auc = auc_of_rows(a_int, a_coef, names, aug_eval)
 
     return SignalResult(
         signal_name=signal_name,

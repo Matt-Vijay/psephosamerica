@@ -47,26 +47,20 @@ def _is_vote_linkable(record: dict[str, object]) -> bool:
 
 def count_linked_bills(records_path: Path) -> LinkageStatus:
     """Count bill rows by embedding / policy-area / vote-linkability."""
+    from src.runtime.bill_content_experiment import _iter_records
+
     total = emb = policy = linkable = 0
-    if records_path.exists():
-        with records_path.open(encoding="utf-8") as handle:
-            for line in handle:
-                if not line.strip():
-                    continue
-                try:
-                    record = json.loads(line)
-                except ValueError:
-                    continue  # skip a partially-written line (Track A may be mid-export)
-                if record.get("entity_type") != "bill":
-                    continue
-                total += 1
-                if record.get("dossier_embedding"):
-                    emb += 1
-                dossier = record.get("dossier_json") or {}
-                if isinstance(dossier, dict) and dossier.get("policy_area"):
-                    policy += 1
-                if _is_vote_linkable(record):
-                    linkable += 1
+    for record in _iter_records(records_path):
+        if record.get("entity_type") != "bill":
+            continue
+        total += 1
+        if record.get("dossier_embedding"):
+            emb += 1
+        dossier = record.get("dossier_json") or {}
+        if isinstance(dossier, dict) and dossier.get("policy_area"):
+            policy += 1
+        if _is_vote_linkable(record):
+            linkable += 1
     return LinkageStatus(
         total_bills=total, with_embedding=emb, with_policy_area=policy, vote_linkable=linkable
     )

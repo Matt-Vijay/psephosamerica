@@ -33,13 +33,13 @@ from typing import Any
 import numpy as np
 import numpy.typing as npt
 
-from src.prediction.defection import build_party_profiles, defected, defection_features, ranking_metrics
+from src.prediction.defection import build_party_profiles, defected, defection_features
+from src.prediction.logistic import auc_of_rows, train_logistic_rows
 from src.prediction.vote_record import VoteRecord
 from src.runtime.cross_pressured_experiment import _BINARY
 
 Array = npt.NDArray[np.float64]
 _NORM_FLOOR = 1e-12
-_LOGIT_CLAMP = 40.0
 _PIN = 0.7247
 
 
@@ -241,40 +241,6 @@ class _MemberBillStore:
         return out
 
 
-def _train_logistic(
-    rows: list[tuple[dict[str, float], bool]], names: tuple[str, ...], *, epochs: int = 300
-) -> tuple[float, dict[str, float]]:
-    if not rows:
-        return 0.0, {n: 0.0 for n in names}
-    positives = sum(1 for _f, y in rows if y)
-    rate = min(0.95, max(0.05, positives / len(rows)))
-    intercept = math.log(rate / (1.0 - rate))
-    coef = {n: 0.0 for n in names}
-    scale = 1.0 / len(rows)
-    for _ in range(epochs):
-        d_int = 0.0
-        d_coef = {n: 0.0 for n in names}
-        for features, label in rows:
-            raw = intercept + sum(coef[n] * features.get(n, 0.0) for n in names)
-            pred = 1.0 / (1.0 + math.exp(-max(-_LOGIT_CLAMP, min(_LOGIT_CLAMP, raw))))
-            err = pred - (1.0 if label else 0.0)
-            d_int += err
-            for n in names:
-                d_coef[n] += err * features.get(n, 0.0)
-        intercept -= 0.3 * d_int * scale
-        for n in names:
-            coef[n] -= 0.3 * (d_coef[n] * scale + 0.01 * coef[n])
-    return intercept, coef
-
-
-def _auc(intercept: float, coef: dict[str, float], names: tuple[str, ...], rows: list[tuple[dict[str, float], bool]]) -> float:
-    scores = [
-        1.0 / (1.0 + math.exp(-max(-_LOGIT_CLAMP, min(_LOGIT_CLAMP, intercept + sum(coef[n] * f.get(n, 0.0) for n in names)))))
-        for f, _y in rows
-    ]
-    return ranking_metrics(scores, [y for _f, y in rows]).auc
-
-
 def _projection(dim_in: int, dim_out: int) -> Array:
     """Deterministic Gaussian random projection (fixed seed) for dense embeddings."""
     rng = np.random.default_rng(20260610)
@@ -309,8 +275,8 @@ def run_bill_content_experiment(
 
     base_train = [(defection_features(lv.record, profiles), defected(lv.record)) for lv in train]
     base_eval = [(defection_features(lv.record, profiles), defected(lv.record)) for lv in eval_lv]
-    b_int, b_coef = _train_logistic(base_train, ("loyalty_gap", "sector_divergence"))
-    base_auc = _auc(b_int, b_coef, ("loyalty_gap", "sector_divergence"), base_eval)
+    b_int, b_coef = train_logistic_rows(base_train, ("loyalty_gap", "sector_divergence"))
+    base_auc = auc_of_rows(b_int, b_coef, ("loyalty_gap", "sector_divergence"), base_eval)
 
     # Build per-member dense-embedding stores from pre-cutoff votes.
     stores: dict[str, _MemberBillStore] = defaultdict(_MemberBillStore)
@@ -358,16 +324,16 @@ def run_bill_content_experiment(
     for k in k_values:
         tr = [({**b, "bill_rag_signal": sig[k]}, y) for b, sig, _p, y in train_feats]
         ev = [({**b, "bill_rag_signal": sig[k]}, y) for b, sig, _p, y in eval_feats]
-        i, c = _train_logistic(tr, rag_names)
-        auc = _auc(i, c, rag_names, ev)
+        i, c = train_logistic_rows(tr, rag_names)
+        auc = auc_of_rows(i, c, rag_names, ev)
         entry = {"rag_auc": auc, "delta_vs_base": auc - base_auc}
         if auc > best_auc:
             best_auc, best_k, best_variant = auc, k, "rag"
         if proj_names:
             tr_c = [({**b, "bill_rag_signal": sig[k], **p}, y) for b, sig, p, y in train_feats]
             ev_c = [({**b, "bill_rag_signal": sig[k], **p}, y) for b, sig, p, y in eval_feats]
-            ci, cc = _train_logistic(tr_c, combo_names)
-            cauc = _auc(ci, cc, combo_names, ev_c)
+            ci, cc = train_logistic_rows(tr_c, combo_names)
+            cauc = auc_of_rows(ci, cc, combo_names, ev_c)
             entry["rag_proj_auc"] = cauc
             entry["delta_proj_vs_base"] = cauc - base_auc
             if cauc > best_auc:

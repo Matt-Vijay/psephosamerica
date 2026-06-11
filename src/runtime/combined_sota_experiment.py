@@ -11,13 +11,13 @@ a new SOTA. Strict cutoff; every signal pre-cutoff.
 from __future__ import annotations
 
 import json
-import math
 from collections import defaultdict
 from datetime import date
 from pathlib import Path
 from typing import Any
 
-from src.prediction.defection import build_party_profiles, defected, defection_features, ranking_metrics
+from src.prediction.defection import build_party_profiles, defected, defection_features
+from src.prediction.logistic import auc_of_rows, train_logistic_rows
 from src.runtime.bill_content_experiment import (
     _MemberBillStore,
     _projection,
@@ -28,34 +28,7 @@ from src.runtime.bill_content_experiment import (
 from src.runtime.crs_multitask_experiment import load_crs_policy_map
 from src.runtime.cross_pressured_experiment import load_rich_rollcalls
 
-_LOGIT_CLAMP = 40.0
 _MIN_POLICY_VOTES = 3
-
-
-def _fit(rows: list[tuple[dict[str, float], bool]], names: tuple[str, ...]) -> tuple[float, dict[str, float]]:
-    rate = min(0.95, max(0.05, sum(1 for _f, y in rows if y) / len(rows)))
-    intercept = math.log(rate / (1.0 - rate))
-    coef = {n: 0.0 for n in names}
-    scale = 1.0 / len(rows)
-    for _ in range(300):
-        d_int = 0.0
-        d_coef = {n: 0.0 for n in names}
-        for f, y in rows:
-            raw = intercept + sum(coef[n] * f.get(n, 0.0) for n in names)
-            pred = 1.0 / (1.0 + math.exp(-max(-_LOGIT_CLAMP, min(_LOGIT_CLAMP, raw))))
-            err = pred - (1.0 if y else 0.0)
-            d_int += err
-            for n in names:
-                d_coef[n] += err * f.get(n, 0.0)
-        intercept -= 0.3 * d_int * scale
-        for n in names:
-            coef[n] -= 0.3 * (d_coef[n] * scale + 0.01 * coef[n])
-    return intercept, coef
-
-
-def _auc(intercept: float, coef: dict[str, float], names: tuple[str, ...], rows: list[tuple[dict[str, float], bool]]) -> float:
-    scores = [1.0 / (1.0 + math.exp(-max(-_LOGIT_CLAMP, min(_LOGIT_CLAMP, intercept + sum(coef[n] * f.get(n, 0.0) for n in names))))) for f, _y in rows]
-    return ranking_metrics(scores, [y for _f, y in rows]).auc
 
 
 def run(rich: Path, records: Path, content: Path, *, cutoff: date, eval_end: date, k: int = 32, projection_dim: int = 16, max_train: int = 200_000) -> dict[str, Any]:
@@ -113,8 +86,8 @@ def run(rich: Path, records: Path, content: Path, *, cutoff: date, eval_end: dat
     }
     results: dict[str, float] = {}
     for name, names in arms.items():
-        i, c = _fit(tr, names)
-        results[name] = _auc(i, c, names, ev)
+        i, c = train_logistic_rows(tr, names)
+        results[name] = auc_of_rows(i, c, names, ev)
     best = max(results, key=lambda a: results[a])
     return {
         "cutoff": cutoff.isoformat(), "eval_pairs": len(ev), "k": k,

@@ -18,7 +18,6 @@ buys. We report the sector-bag result honestly and leave the dense path wired.
 
 from __future__ import annotations
 
-import math
 from collections import defaultdict
 from collections.abc import Callable
 
@@ -35,6 +34,7 @@ from src.prediction.defection import (
     ranking_metrics,
 )
 from src.prediction.defection_head import DefectionHead
+from src.prediction.logistic import train_logistic_rows
 from src.runtime.cross_pressured_experiment import VoteRecord
 
 Array = npt.NDArray[np.float64]
@@ -43,7 +43,6 @@ Embedder = Callable[[tuple[str, ...]], Array]
 _SECTOR_VOCAB = sorted(sector_keywords())
 _SECTOR_INDEX = {sector: i for i, sector in enumerate(_SECTOR_VOCAB)}
 _NORM_FLOOR = 1e-12
-_LOGIT_CLAMP = 40.0
 
 
 def sector_bag_embedding(sectors: tuple[str, ...]) -> Array:
@@ -130,26 +129,9 @@ def _train_head_with_features(
     epochs: int = 300,
     l2: float = 0.01,
 ) -> DefectionHead:
-    if not rows:
-        return DefectionHead(intercept=0.0, coefficients={n: 0.0 for n in feature_names})
-    positives = sum(1 for _f, y in rows if y)
-    rate = min(0.95, max(0.05, positives / len(rows)))
-    intercept = math.log(rate / (1.0 - rate))
-    coefficients = {n: 0.0 for n in feature_names}
-    scale = 1.0 / len(rows)
-    for _ in range(epochs):
-        d_intercept = 0.0
-        d_coef = {n: 0.0 for n in feature_names}
-        for features, label in rows:
-            raw = intercept + sum(coefficients[n] * features.get(n, 0.0) for n in feature_names)
-            predicted = 1.0 / (1.0 + math.exp(-max(-_LOGIT_CLAMP, min(_LOGIT_CLAMP, raw))))
-            error = predicted - (1.0 if label else 0.0)
-            d_intercept += error
-            for n in feature_names:
-                d_coef[n] += error * features.get(n, 0.0)
-        intercept -= learning_rate * d_intercept * scale
-        for n in feature_names:
-            coefficients[n] -= learning_rate * (d_coef[n] * scale + l2 * coefficients[n])
+    intercept, coefficients = train_logistic_rows(
+        rows, feature_names, learning_rate=learning_rate, epochs=epochs, l2=l2
+    )
     return DefectionHead(intercept=intercept, coefficients=coefficients)
 
 

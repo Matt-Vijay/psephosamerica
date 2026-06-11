@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import math
 from collections import defaultdict
 from datetime import date
 from pathlib import Path
@@ -21,7 +20,8 @@ from typing import Any
 
 import numpy as np
 
-from src.prediction.defection import build_party_profiles, defected, defection_features, ranking_metrics
+from src.prediction.defection import build_party_profiles, defected, defection_features
+from src.prediction.logistic import auc_of_rows, train_logistic_rows
 from src.runtime.bill_content_experiment import (
     _MemberBillStore,
     _projection,
@@ -30,35 +30,11 @@ from src.runtime.bill_content_experiment import (
 )
 from src.runtime.cross_pressured_experiment import load_rich_rollcalls
 
-_LOGIT_CLAMP = 40.0
 _FEATURES = ("loyalty_gap", "sector_divergence", "bill_rag_signal")
 
 
 def _fit(rows: list[tuple[dict[str, float], bool]], names: tuple[str, ...], idx: np.ndarray) -> tuple[float, dict[str, float]]:
-    sample = [rows[int(i)] for i in idx]
-    rate = min(0.95, max(0.05, sum(1 for _f, y in sample if y) / len(sample)))
-    intercept = math.log(rate / (1.0 - rate))
-    coef = {n: 0.0 for n in names}
-    scale = 1.0 / len(sample)
-    for _ in range(300):
-        d_int = 0.0
-        d_coef = {n: 0.0 for n in names}
-        for f, y in sample:
-            raw = intercept + sum(coef[n] * f.get(n, 0.0) for n in names)
-            pred = 1.0 / (1.0 + math.exp(-max(-_LOGIT_CLAMP, min(_LOGIT_CLAMP, raw))))
-            err = pred - (1.0 if y else 0.0)
-            d_int += err
-            for n in names:
-                d_coef[n] += err * f.get(n, 0.0)
-        intercept -= 0.3 * d_int * scale
-        for n in names:
-            coef[n] -= 0.3 * (d_coef[n] * scale + 0.01 * coef[n])
-    return intercept, coef
-
-
-def _auc(intercept: float, coef: dict[str, float], names: tuple[str, ...], rows: list[tuple[dict[str, float], bool]]) -> float:
-    scores = [1.0 / (1.0 + math.exp(-max(-_LOGIT_CLAMP, min(_LOGIT_CLAMP, intercept + sum(coef[n] * f.get(n, 0.0) for n in names))))) for f, _y in rows]
-    return ranking_metrics(scores, [y for _f, y in rows]).auc
+    return train_logistic_rows([rows[int(i)] for i in idx], names)
 
 
 def run(rich: Path, records: Path, *, cutoff: date, eval_end: date, k: int = 32, projection_dim: int = 16, n_seeds: int = 10, max_train: int = 200_000) -> dict[str, Any]:
@@ -97,7 +73,7 @@ def run(rich: Path, records: Path, *, cutoff: date, eval_end: date, k: int = 32,
         rng = np.random.default_rng(seed)
         idx = rng.integers(0, n, size=n)
         i, c = _fit(train_rows, names, idx)
-        aucs.append(_auc(i, c, names, eval_rows))
+        aucs.append(auc_of_rows(i, c, names, eval_rows))
         coefs.append({"intercept": i, **c})
     arr = np.asarray(aucs)
 
