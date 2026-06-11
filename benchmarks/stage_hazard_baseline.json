@@ -1,0 +1,9 @@
+{
+  "slice": "floor-vote-hazard-118",
+  "c_index": 0.7884947081013018,
+  "c_index_intercept_only": 0.5,
+  "brier_365": 0.03434148215855753,
+  "ece_365": 0.018802362506237597,
+  "eval_bills": 19307,
+  "tolerance": 0.005
+}

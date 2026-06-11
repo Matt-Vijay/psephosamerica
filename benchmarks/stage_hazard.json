@@ -1,0 +1,89 @@
+{
+  "event": "first recorded floor roll-call in origin chamber",
+  "train_congresses": "<= 117",
+  "eval_congress": 118,
+  "train_bills": 51297,
+  "eval_bills": 19307,
+  "train_event_rate": 0.02733103300387937,
+  "eval_event_rate": 0.025897342932615114,
+  "horizon_days": 365.0,
+  "c_index": 0.7884947081013018,
+  "c_index_intercept_only": 0.5,
+  "c_index_lift": 0.28849470810130184,
+  "calibration_365": {
+    "n": 12334,
+    "brier": 0.03434148215855753,
+    "ece": 0.018802362506237597,
+    "base_rate": 0.03688989784335982,
+    "reliability": [
+      {
+        "predicted": 0.016920610330891744,
+        "observed": 0.01539708265802269,
+        "n": 1234.0
+      },
+      {
+        "predicted": 0.021460158916391327,
+        "observed": 0.012155591572123177,
+        "n": 1234.0
+      },
+      {
+        "predicted": 0.025625139204129406,
+        "observed": 0.004051863857374392,
+        "n": 1234.0
+      },
+      {
+        "predicted": 0.029555841014366,
+        "observed": 0.007293354943273906,
+        "n": 1234.0
+      },
+      {
+        "predicted": 0.03330429013334762,
+        "observed": 0.014598540145985401,
+        "n": 1233.0
+      },
+      {
+        "predicted": 0.03756471951936734,
+        "observed": 0.016220600162206,
+        "n": 1233.0
+      },
+      {
+        "predicted": 0.042911223451175436,
+        "observed": 0.0364963503649635,
+        "n": 1233.0
+      },
+      {
+        "predicted": 0.04911017173187041,
+        "observed": 0.047039740470397405,
+        "n": 1233.0
+      },
+      {
+        "predicted": 0.053966770509743286,
+        "observed": 0.06082725060827251,
+        "n": 1233.0
+      },
+      {
+        "predicted": 0.07692595361947749,
+        "observed": 0.1549067315490673,
+        "n": 1233.0
+      }
+    ]
+  },
+  "calibration_365_intercept_only": {
+    "brier": 0.03556500938586257,
+    "ece": 0.014316476223893588
+  },
+  "top_coefficients": {
+    "is_house": 0.5805,
+    "policy:Congress": 0.5499,
+    "sponsor_in_majority": 0.3667,
+    "policy:Health": -0.2549,
+    "bipartisan_share": -0.2264,
+    "policy:Taxation": -0.214,
+    "intro_phase": -0.1852,
+    "committee_count": 0.1713,
+    "policy:Education": -0.1411,
+    "policy:Economics and Public Finance": 0.1144,
+    "policy:Armed Forces and National Security": -0.1068,
+    "policy:Transportation and Public Works": -0.0691
+  }
+}
