@@ -1,0 +1,10 @@
+{
+  "slice": "count-pmf-118",
+  "crps_independence": 22.48938674642577,
+  "crps_correlated": 21.230810415444385,
+  "coverage90_correlated": 0.9041095890410958,
+  "sigma_common": 1.5,
+  "sigma_party": 2.2,
+  "eval_rollcalls": 365,
+  "tolerance": 0.005
+}

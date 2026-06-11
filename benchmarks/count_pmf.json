@@ -1,0 +1,20 @@
+{
+  "corpus": "data/real/house_118_rich.jsonl",
+  "windows": {
+    "rates": "<= 2023-12-31",
+    "sigma_fit": "(2023-12-31, 2024-04-20]",
+    "eval": "(2024-04-20, 2024-12-31]"
+  },
+  "fit_rollcalls": 151,
+  "eval_rollcalls": 365,
+  "sigma_common": 1.5,
+  "sigma_party": 2.2,
+  "crps_independence": 22.48938674642577,
+  "crps_correlated": 21.230810415444385,
+  "crps_improvement": 1.2585763309813842,
+  "coverage90_independence": 0.10136986301369863,
+  "coverage90_correlated": 0.9041095890410958,
+  "loglik_independence": -8272.69202993765,
+  "loglik_correlated": -1703.989141245599,
+  "beats_independence": true
+}
