@@ -41,7 +41,7 @@ COVERAGE: tuple[CoverageEntry, ...] = (
         "federal",
         "Person IDs + vote edges",
         "keyless",
-        "100 senators, 4,100 edges",
+        "286 senators (LIS), 494,265 vote edges 113-119",
     ),
     CoverageEntry(
         "FEC committee master (cm.txt)", "federal", "Org IDs", "local-bulk", "20,941 committees"
@@ -69,11 +69,46 @@ COVERAGE: tuple[CoverageEntry, ...] = (
         "federal",
         "floor_speech edges (bioguide-linked)",
         "keyless",
-        "2,762 edges / 537 members",
+        "380,119 edges / 2,352 issues (113-119)",
+    ),
+    CoverageEntry(
+        "govinfo BILLSTATUS bulk (113-119)",
+        "federal",
+        "Bill IDs + CRS content + embeddings",
+        "keyless",
+        "106,536 bills, 100% of substantive votes linkable",
+    ),
+    CoverageEntry(
+        "congress-legislators roster",
+        "federal",
+        "Person IDs (bioguide+LIS, real names)",
+        "keyless",
+        "1,132 members (440 renamed + 692 added)",
+    ),
+    CoverageEntry(
+        "BILLSTATUS bill edges (sponsor/subject/committee)",
+        "federal",
+        "graph edges",
+        "derived",
+        "1,673,411 edges / 106,999 bills",
+    ),
+    CoverageEntry(
+        "FEC donor-industry profiles",
+        "federal",
+        "dossier_json.donor_profile",
+        "derived",
+        "518 members, $1.21B itemized",
     ),
     # ── state ──
     CoverageEntry(
         "OpenStates people (all 50 states)", "state", "Person IDs", "keyless", "7,359 legislators"
+    ),
+    CoverageEntry(
+        "CA leginfo bulk (partial-ZIP range reads)",
+        "state",
+        "Bill IDs + titles + legislators + rich roll-calls",
+        "keyless",
+        "25,539 bills, 720 seats, 48,676 roll-calls / 2.96M votes",
     ),
     # ── county ──
     CoverageEntry(
@@ -102,7 +137,7 @@ COVERAGE: tuple[CoverageEntry, ...] = (
         "city",
         "Person IDs across governments",
         "keyless",
-        "124 governments (44,600 officials)",
+        "134 governments (44,600+ officials)",
     ),
     CoverageEntry(
         "Text-PDF municipal minutes (pdfplumber)",
@@ -113,7 +148,18 @@ COVERAGE: tuple[CoverageEntry, ...] = (
     ),
     # ── cross-cutting ──
     CoverageEntry(
-        "GDELT news", "cross-cutting", "news-mention edges", "keyless", "75 edges / 56 outlets"
+        "Prediction markets (Polymarket + Kalshi)",
+        "cross-cutting",
+        "market entities + bill links + price history",
+        "keyless",
+        "1,275 markets, 49 bill-linked, 5,322 price obs",
+    ),
+    CoverageEntry(
+        "GDELT news",
+        "cross-cutting",
+        "news-mention edges",
+        "keyless",
+        "539 edges (API throttles bulk)",
     ),
     CoverageEntry(
         "Bluesky public posts", "cross-cutting", "social-post edges", "keyless", "78 posts"
@@ -135,7 +181,7 @@ COVERAGE: tuple[CoverageEntry, ...] = (
         "enrichment",
         "ready rows w/ embeddings",
         "derived",
-        "7,918 rows, 100% enriched",
+        "141,266 rows; 139,974 w/ 384-d semantic",
     ),
     CoverageEntry(
         "entity-linker (NER -> canonical_person_id)",
