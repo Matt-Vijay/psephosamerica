@@ -1,6 +1,3 @@
-# mypy: ignore-errors
-# TODO(runtime-commands): pre-existing type debt carried over from the monolithic
-# commands.py (where the commands.pyi stub hid it from mypy). Burn down per module.
 """Prediction offline-readiness summary and resume-script commands."""
 
 from __future__ import annotations
@@ -13,6 +10,7 @@ from pathlib import Path
 from typing import Any, cast
 
 from src.runtime.commands._shared import (
+    _dict_or_empty,
     _BENCHMARK_INVENTORY_FEATURE_SOURCE_COVERAGE_COUNT_KEYS,
     _BENCHMARK_INVENTORY_FEATURE_SOURCE_COVERAGE_RATE_KEYS,
     _BENCHMARK_INVENTORY_SOURCE_COVERAGE_COUNT_KEYS,
@@ -305,7 +303,7 @@ def _handle_verify_prediction_offline_readiness_summary(args: Any) -> dict[str, 
             quality_gate_failures.append("env_preflight_verify_missing")
         elif not bool(env_preflight_verify.get("ok")):
             quality_gate_failures.append("env_preflight_verify_not_ok")
-    benchmark = payload.get("benchmark") if isinstance(payload.get("benchmark"), dict) else {}
+    benchmark = _dict_or_empty(payload.get("benchmark"))
     eval_window_run = _prediction_readiness_eval_window_run_summary(
         benchmark.get("eval_window_run")
     )
@@ -432,7 +430,7 @@ def _prediction_offline_readiness_congress_requirement_issues(
     local_inputs = payload.get("local_inputs")
     congress_load = local_inputs.get("congress_load") if isinstance(local_inputs, dict) else {}
     expected_blockers = _prediction_readiness_congress_load_requirement_blockers(
-        congress_load if isinstance(congress_load, dict) else {},
+        _dict_or_empty(congress_load),
         required=True,
     )
     blockers = set(_string_list(payload.get("blockers")))
@@ -539,11 +537,9 @@ def _validate_prediction_offline_readiness_run_metadata(
 def _prediction_offline_readiness_expected_source_state(
     payload: dict[str, Any],
 ) -> dict[str, Any]:
-    benchmark = payload.get("benchmark") if isinstance(payload.get("benchmark"), dict) else {}
-    runtime = payload.get("runtime") if isinstance(payload.get("runtime"), dict) else {}
-    env_preflight = (
-        payload.get("env_preflight") if isinstance(payload.get("env_preflight"), dict) else {}
-    )
+    benchmark = _dict_or_empty(payload.get("benchmark"))
+    runtime = _dict_or_empty(payload.get("runtime"))
+    env_preflight = _dict_or_empty(payload.get("env_preflight"))
     expected = {
         "offline_input_ok": bool(payload.get("offline_input_ok")),
         "live_ready": bool(payload.get("live_ready")),
@@ -683,7 +679,7 @@ def _prediction_offline_readiness_expected_source_state(
 def _prediction_offline_readiness_benchmark_scope_shape_issues(
     payload: dict[str, Any],
 ) -> list[str]:
-    benchmark = payload.get("benchmark") if isinstance(payload.get("benchmark"), dict) else {}
+    benchmark = _dict_or_empty(payload.get("benchmark"))
     source_states: list[dict[str, Any]] = []
     if isinstance(benchmark, dict):
         source_states.append(benchmark)
@@ -733,13 +729,14 @@ def _prediction_offline_readiness_benchmark_scoped_id_issues(
     jurisdiction_ids_value = source_state.get("jurisdiction_ids")
     legislative_body_ids_value = source_state.get("legislative_body_ids")
     legislative_session_ids_value = source_state.get("legislative_session_ids")
+    jurisdiction_ids_list = _sorted_string_list_or_empty(jurisdiction_ids_value)
     if not (
-        _sorted_string_list_or_empty(jurisdiction_ids_value)
+        jurisdiction_ids_list
         and isinstance(legislative_body_ids_value, list)
         and all(isinstance(item, str) for item in legislative_body_ids_value)
     ):
         return issues
-    jurisdiction_ids = set(jurisdiction_ids_value)
+    jurisdiction_ids = set(jurisdiction_ids_list)
     legislative_body_ids = set(legislative_body_ids_value)
     if any(
         len(parts := item.split(":")) != 2 or parts[0] not in jurisdiction_ids or not parts[1]
@@ -907,9 +904,10 @@ def _prediction_offline_readiness_sample_scoped_id_issues(
     jurisdiction_ids = source_state.get(jurisdiction_key)
     body_ids = source_state.get(body_key)
     session_ids = source_state.get(session_key)
-    if not _sorted_string_list_or_empty(jurisdiction_ids):
+    jurisdiction_ids_list = _sorted_string_list_or_empty(jurisdiction_ids)
+    if not jurisdiction_ids_list:
         return []
-    jurisdiction_id_set = set(jurisdiction_ids)
+    jurisdiction_id_set = set(jurisdiction_ids_list)
     issues: list[str] = []
     body_id_set: set[str] = set()
     if body_ids is not None and _sorted_string_list_or_empty(body_ids):
@@ -1763,17 +1761,9 @@ def _prediction_readiness_eval_window_run_summary(component: Any) -> dict[str, A
             **_prediction_readiness_eval_window_run_label_gate_summary(component),
             **_prediction_readiness_eval_window_run_strict_gate_summary(component),
         }
-    current_result = (
-        component.get("current_result") if isinstance(component.get("current_result"), dict) else {}
-    )
-    run_metadata = (
-        component.get("run_metadata") if isinstance(component.get("run_metadata"), dict) else {}
-    )
-    source_state = (
-        run_metadata.get("source_state")
-        if isinstance(run_metadata.get("source_state"), dict)
-        else {}
-    )
+    current_result = _dict_or_empty(component.get("current_result"))
+    run_metadata = _dict_or_empty(component.get("run_metadata"))
+    source_state = _dict_or_empty(run_metadata.get("source_state"))
     artifact = component.get("artifact")
     artifact_sha256 = component.get("artifact_sha256")
     plan = current_result.get("plan")
@@ -2149,7 +2139,7 @@ def _prediction_readiness_backfill_plan_source_state(
             sample_case_count += 1
             vote_event_id = sample_case.get("vote_event_id")
             if _is_non_negative_plain_int(vote_event_id):
-                sample_vote_event_ids.append(cast(int, vote_event_id))
+                sample_vote_event_ids.append(vote_event_id)
             bill_key = sample_case.get("bill_context_key") or sample_case.get("bill_key")
             if isinstance(bill_key, str) and bill_key.strip() == bill_key and bill_key:
                 sample_bill_keys.add(bill_key)
@@ -2609,7 +2599,7 @@ def _prediction_readiness_component_blocker_counts(
 def _prediction_readiness_next_actions_by_kind(
     actions: list[str],
 ) -> dict[str, list[str]]:
-    grouped = {
+    grouped: dict[str, list[str]] = {
         "env_setup": [],
         "data_refresh": [],
         "semantic_materialization": [],

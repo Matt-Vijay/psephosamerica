@@ -1,6 +1,3 @@
-# mypy: ignore-errors
-# TODO(runtime-commands): pre-existing type debt carried over from the monolithic
-# commands.py (where the commands.pyi stub hid it from mypy). Burn down per module.
 """Prediction evaluation report and manifest commands."""
 
 from __future__ import annotations
@@ -9,6 +6,7 @@ import datetime as dt
 import hashlib
 import json
 
+from collections.abc import Collection
 from pathlib import Path
 from src.evidence.source_anchor_policy import has_official_claim_source_anchor
 from src.pipeline.publish_snapshot_run import _ontology_edge_from_row
@@ -1414,7 +1412,7 @@ def _prediction_eval_manifest_ontology_feature_signal_state(
 
 def _prediction_eval_split_missing_source_anchor_signal_names(
     split: Any,
-    required_signal_names: set[str],
+    required_signal_names: Collection[str],
 ) -> set[str]:
     missing: set[str] = set()
     for example in getattr(split, "examples", []):
@@ -2487,9 +2485,10 @@ def _prediction_cutoff_partition_values_valid(
     ]
     if all(value is None for value in values):
         return True
-    if not all(_is_non_negative_plain_int(value) for value in values):
+    checked = [value for value in values if _is_non_negative_plain_int(value)]
+    if len(checked) != len(values):
         return False
-    total, cutoff, unknown, future = (int(value) for value in values)
+    total, cutoff, unknown, future = checked
     return cutoff + unknown + future == total
 
 
@@ -2708,7 +2707,7 @@ def _prediction_eval_manifest_verify_run_metadata(
     }
     for arg_name, _ in _PREDICTION_EVAL_MANIFEST_COVERAGE_THRESHOLDS:
         verification_flags[arg_name] = getattr(args, arg_name, None)
-    run_metadata = {
+    run_metadata: dict[str, Any] = {
         "command": "verify-prediction-eval-manifest",
         "verification_flags": verification_flags,
         "artifact_sha256": hashlib.sha256(manifest_path.read_bytes()).hexdigest()

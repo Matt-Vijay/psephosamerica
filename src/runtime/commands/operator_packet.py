@@ -1,6 +1,3 @@
-# mypy: ignore-errors
-# TODO(runtime-commands): pre-existing type debt carried over from the monolithic
-# commands.py (where the commands.pyi stub hid it from mypy). Burn down per module.
 """Operator packet manifest/export/resume-plan commands."""
 
 from __future__ import annotations
@@ -17,6 +14,8 @@ from types import SimpleNamespace
 from typing import Any, cast
 
 from src.runtime.commands._shared import (
+    _list_or_empty,
+    _dict_or_empty,
     _OPERATOR_EVAL_WINDOW_RUN_GATE_SOURCE_STATE_KEYS,
     _PREDICTION_OPERATOR_RESUME_PLAN_SAMPLE_STRING_KEYS,
     _attach_optional_verification_output,
@@ -533,19 +532,13 @@ def _handle_verify_prediction_operator_status(args: Any) -> dict[str, Any]:
         ):
             issues.append("runbook_verify_path_mismatch")
 
-    run_metadata = (
-        status.get("run_metadata") if isinstance(status.get("run_metadata"), dict) else {}
-    )
+    run_metadata = _dict_or_empty(status.get("run_metadata"))
     if bool(getattr(args, "require_run_metadata", False)) and not run_metadata:
         quality_gate_failures.append("run_metadata_missing")
     elif run_metadata and run_metadata.get("command") != "prediction-operator-status":
         issues.append("run_metadata_command_mismatch")
     issues.extend(_operator_status_count_issues(status))
-    status_metadata_source_state = (
-        run_metadata.get("source_state")
-        if isinstance(run_metadata.get("source_state"), dict)
-        else {}
-    )
+    status_metadata_source_state = _dict_or_empty(run_metadata.get("source_state"))
     if run_metadata:
         source_state_sample_scope_issues = _operator_status_sample_source_state_issues(
             status_metadata_source_state
@@ -572,14 +565,8 @@ def _handle_verify_prediction_operator_status(args: Any) -> dict[str, Any]:
             )
         )
 
-    recorded_source_sha = (
-        run_metadata.get("source_artifact_sha256")
-        if isinstance(run_metadata.get("source_artifact_sha256"), dict)
-        else {}
-    )
-    status_artifact_sha = (
-        status.get("artifact_sha256") if isinstance(status.get("artifact_sha256"), dict) else {}
-    )
+    recorded_source_sha = _dict_or_empty(run_metadata.get("source_artifact_sha256"))
+    status_artifact_sha = _dict_or_empty(status.get("artifact_sha256"))
     actual_runbook_verify_sha = (
         _optional_file_sha256(runbook_verify_path) if runbook_verify_raw else None
     )
@@ -601,11 +588,7 @@ def _handle_verify_prediction_operator_status(args: Any) -> dict[str, Any]:
             issues.append("source_artifact_sha256_mismatch:runbook_verify")
             break
 
-    status_flags = (
-        run_metadata.get("verification_flags")
-        if isinstance(run_metadata.get("verification_flags"), dict)
-        else {}
-    )
+    status_flags = _dict_or_empty(run_metadata.get("verification_flags"))
     recomputed_status = (
         _handle_prediction_operator_status(
             SimpleNamespace(
@@ -774,11 +757,7 @@ def _handle_prediction_operator_packet_manifest(args: Any) -> dict[str, Any]:
         "runtime_env_template",
         _path_from_payload(env_verify, "template_output"),
     )
-    source_artifacts = (
-        readiness_summary.get("source_artifacts")
-        if isinstance(readiness_summary.get("source_artifacts"), dict)
-        else {}
-    )
+    source_artifacts = _dict_or_empty(readiness_summary.get("source_artifacts"))
     for name, payload in sorted(source_artifacts.items()):
         if isinstance(payload, dict):
             _operator_packet_add_file(
@@ -871,17 +850,11 @@ def _handle_verify_prediction_operator_packet_manifest(args: Any) -> dict[str, A
     if manifest.get("command") != "prediction-operator-packet-manifest":
         issues.append("artifact_command_mismatch")
 
-    run_metadata = (
-        manifest.get("run_metadata") if isinstance(manifest.get("run_metadata"), dict) else {}
-    )
+    run_metadata = _dict_or_empty(manifest.get("run_metadata"))
     if bool(getattr(args, "require_run_metadata", False)) and not run_metadata:
         quality_gate_failures.append("run_metadata_missing")
     issues.extend(_operator_packet_manifest_count_issues(manifest))
-    manifest_metadata_source_state = (
-        run_metadata.get("source_state")
-        if isinstance(run_metadata.get("source_state"), dict)
-        else {}
-    )
+    manifest_metadata_source_state = _dict_or_empty(run_metadata.get("source_state"))
     if run_metadata:
         source_state_sample_scope_issues = _operator_status_sample_source_state_issues(
             manifest_metadata_source_state
@@ -917,11 +890,7 @@ def _handle_verify_prediction_operator_packet_manifest(args: Any) -> dict[str, A
     ):
         issues.append("status_verify_path_mismatch")
 
-    recorded_source_sha = (
-        run_metadata.get("source_artifact_sha256")
-        if isinstance(run_metadata.get("source_artifact_sha256"), dict)
-        else {}
-    )
+    recorded_source_sha = _dict_or_empty(run_metadata.get("source_artifact_sha256"))
     actual_status_verify_sha = (
         _optional_file_sha256(status_verify_path) if status_verify_raw else None
     )
@@ -938,11 +907,7 @@ def _handle_verify_prediction_operator_packet_manifest(args: Any) -> dict[str, A
             source_artifact_mismatches.append("status_verify")
             issues.append("source_artifact_sha256_mismatch:status_verify")
 
-    flags = (
-        run_metadata.get("verification_flags")
-        if isinstance(run_metadata.get("verification_flags"), dict)
-        else {}
-    )
+    flags = _dict_or_empty(run_metadata.get("verification_flags"))
     recomputed_manifest = (
         _handle_prediction_operator_packet_manifest(
             SimpleNamespace(
@@ -981,11 +946,7 @@ def _handle_verify_prediction_operator_packet_manifest(args: Any) -> dict[str, A
 
     secret_failures: list[str] = []
     if bool(getattr(args, "require_no_secret_literals", False)):
-        packet_files = (
-            recomputed_manifest.get("packet_files")
-            if isinstance(recomputed_manifest.get("packet_files"), list)
-            else []
-        )
+        packet_files = _list_or_empty(recomputed_manifest.get("packet_files"))
         secret_failures = _operator_packet_secret_literal_failures(packet_files)
         quality_gate_failures.extend(secret_failures)
 
@@ -1071,11 +1032,7 @@ def _handle_prediction_operator_packet_export(args: Any) -> dict[str, Any]:
         "packet_manifest",
         issues,
     )
-    packet_files = (
-        packet_manifest.get("packet_files")
-        if isinstance(packet_manifest.get("packet_files"), list)
-        else []
-    )
+    packet_files = _list_or_empty(packet_manifest.get("packet_files"))
 
     exported_files: list[dict[str, Any]] = []
     skipped_files: list[str] = []
@@ -1112,7 +1069,7 @@ def _handle_prediction_operator_packet_export(args: Any) -> dict[str, Any]:
         secret_failures = _operator_packet_export_secret_literal_failures(exported_files)
         quality_gate_failures.extend(secret_failures)
 
-    export_manifest = {
+    export_manifest: dict[str, Any] = {
         "command": "prediction-operator-packet-export-manifest",
         "manifest_verify": str(manifest_verify_path),
         "manifest_verify_sha256": _optional_file_sha256(manifest_verify_path),
@@ -1459,7 +1416,7 @@ def _prediction_operator_packet_export_congress_load(
     if not isinstance(status, dict):
         return {}
     congress_load = status.get("congress_load")
-    return congress_load if isinstance(congress_load, dict) else {}
+    return _dict_or_empty(congress_load)
 
 
 def _prediction_operator_packet_export_bill_sponsor_availability(
@@ -1475,7 +1432,7 @@ def _prediction_operator_packet_export_bill_sponsor_availability(
     if not isinstance(status, dict):
         return {}
     bill_sponsor_availability = status.get("bill_sponsor_availability")
-    return bill_sponsor_availability if isinstance(bill_sponsor_availability, dict) else {}
+    return _dict_or_empty(bill_sponsor_availability)
 
 
 def _prediction_operator_packet_export_jurisdiction_topology(
@@ -1491,7 +1448,7 @@ def _prediction_operator_packet_export_jurisdiction_topology(
     if not isinstance(status, dict):
         return {}
     jurisdiction_topology = status.get("jurisdiction_topology")
-    return jurisdiction_topology if isinstance(jurisdiction_topology, dict) else {}
+    return _dict_or_empty(jurisdiction_topology)
 
 
 def _prediction_operator_packet_export_source_url_audit(
@@ -3566,17 +3523,11 @@ def _handle_verify_prediction_operator_packet_export(args: Any) -> dict[str, Any
     export = _load_json_packet_payload(artifact_path, "packet_export", issues)
     if export.get("command") != "prediction-operator-packet-export":
         issues.append("artifact_command_mismatch")
-    run_metadata = (
-        export.get("run_metadata") if isinstance(export.get("run_metadata"), dict) else {}
-    )
+    run_metadata = _dict_or_empty(export.get("run_metadata"))
     if bool(getattr(args, "require_run_metadata", False)) and not run_metadata:
         quality_gate_failures.append("run_metadata_missing")
     issues.extend(_operator_packet_export_count_issues(export))
-    export_metadata_source_state = (
-        run_metadata.get("source_state")
-        if isinstance(run_metadata.get("source_state"), dict)
-        else {}
-    )
+    export_metadata_source_state = _dict_or_empty(run_metadata.get("source_state"))
     if run_metadata:
         source_state_sample_scope_issues = _operator_status_sample_source_state_issues(
             export_metadata_source_state
@@ -3729,9 +3680,7 @@ def _handle_verify_prediction_operator_packet_export(args: Any) -> dict[str, Any
     elif export.get("checksums_sha256") != _optional_file_sha256(checksums_path):
         checksums_matches = False
 
-    exported_files = (
-        export.get("exported_files") if isinstance(export.get("exported_files"), list) else []
-    )
+    exported_files = _list_or_empty(export.get("exported_files"))
     checksums_content_matches = _operator_packet_checksums_content_matches(
         checksums_path=checksums_path,
         export_manifest_path=export_manifest_path,
@@ -4027,16 +3976,8 @@ def _handle_verify_prediction_operator_packet_directory(args: Any) -> dict[str, 
         f"export_manifest.{issue}"
         for issue in _operator_packet_export_count_issues(export_manifest)
     )
-    export_manifest_run_metadata = (
-        export_manifest.get("run_metadata")
-        if isinstance(export_manifest.get("run_metadata"), dict)
-        else {}
-    )
-    export_manifest_source_state = (
-        export_manifest_run_metadata.get("source_state")
-        if isinstance(export_manifest_run_metadata.get("source_state"), dict)
-        else {}
-    )
+    export_manifest_run_metadata = _dict_or_empty(export_manifest.get("run_metadata"))
+    export_manifest_source_state = _dict_or_empty(export_manifest_run_metadata.get("source_state"))
     issues.extend(
         f"export_manifest.run_metadata.source_state.{issue}"
         for issue in _operator_status_sample_source_state_issues(export_manifest_source_state)
@@ -4053,11 +3994,7 @@ def _handle_verify_prediction_operator_packet_directory(args: Any) -> dict[str, 
     if bool(getattr(args, "require_checksums", False)) and not checksums_present:
         quality_gate_failures.append("checksums_missing")
 
-    exported_files = (
-        export_manifest.get("exported_files")
-        if isinstance(export_manifest.get("exported_files"), list)
-        else []
-    )
+    exported_files = _list_or_empty(export_manifest.get("exported_files"))
     missing_exported_file_count = 0
     exported_file_sha256_invalid: list[str] = []
     exported_file_sha256_mismatch_count = 0
@@ -4272,7 +4209,7 @@ def _handle_prediction_operator_resume_plan(args: Any) -> dict[str, Any]:
         secret_failures = _prediction_resume_script_secret_literal_failures(script_text)
         quality_gate_failures.extend(secret_failures)
     command_count = sum(len(phase["commands"]) for phase in phases)
-    source_state = {
+    source_state: dict[str, Any] = {
         "packet_verify_ok": packet_verify_ok,
         "phase_count": len(phases),
         "command_count": command_count,
@@ -4373,9 +4310,7 @@ def _handle_verify_prediction_operator_resume_plan(args: Any) -> dict[str, Any]:
     artifact = _load_json_packet_payload(artifact_path, "resume_plan", issues)
     if artifact.get("command") != "prediction-operator-resume-plan":
         issues.append("artifact_command_mismatch")
-    run_metadata = (
-        artifact.get("run_metadata") if isinstance(artifact.get("run_metadata"), dict) else {}
-    )
+    run_metadata = _dict_or_empty(artifact.get("run_metadata"))
     run_metadata_present = bool(run_metadata)
     if bool(getattr(args, "require_run_metadata", False)) and not run_metadata_present:
         quality_gate_failures.append("run_metadata_missing")
@@ -4410,11 +4345,7 @@ def _handle_verify_prediction_operator_resume_plan(args: Any) -> dict[str, Any]:
     ):
         quality_gate_failures.append("resume_plan_mismatch")
 
-    source_state = (
-        run_metadata.get("source_state")
-        if isinstance(run_metadata.get("source_state"), dict)
-        else {}
-    )
+    source_state = _dict_or_empty(run_metadata.get("source_state"))
     expected_source_state = {
         "packet_verify_ok": bool(artifact.get("packet_verify_ok")),
         "phase_count": artifact.get("phase_count"),
@@ -4455,16 +4386,12 @@ def _handle_verify_prediction_operator_resume_plan(args: Any) -> dict[str, Any]:
     }
     expected_source_state.update(
         _operator_eval_window_run_label_gate_source_state(
-            artifact.get("eval_window_run")
-            if isinstance(artifact.get("eval_window_run"), dict)
-            else {}
+            _dict_or_empty(artifact.get("eval_window_run"))
         )
     )
     expected_source_state.update(
         _operator_eval_window_run_archive_source_state(
-            artifact.get("eval_window_run")
-            if isinstance(artifact.get("eval_window_run"), dict)
-            else {}
+            _dict_or_empty(artifact.get("eval_window_run"))
         )
     )
     expected_source_state.update(
@@ -4597,16 +4524,12 @@ def _handle_verify_prediction_operator_resume_plan(args: Any) -> dict[str, Any]:
     }
     result_source_state.update(
         _operator_eval_window_run_label_gate_source_state(
-            artifact.get("eval_window_run")
-            if isinstance(artifact.get("eval_window_run"), dict)
-            else {}
+            _dict_or_empty(artifact.get("eval_window_run"))
         )
     )
     result_source_state.update(
         _operator_eval_window_run_archive_source_state(
-            artifact.get("eval_window_run")
-            if isinstance(artifact.get("eval_window_run"), dict)
-            else {}
+            _dict_or_empty(artifact.get("eval_window_run"))
         )
     )
     result_source_state.update(
@@ -4640,7 +4563,7 @@ def _handle_verify_prediction_operator_resume_plan(args: Any) -> dict[str, Any]:
         "phase_count": artifact.get("phase_count"),
         "command_count": artifact.get("command_count"),
         "missing_env": _string_list(artifact.get("missing_env")),
-        "dotenv": artifact.get("dotenv") if isinstance(artifact.get("dotenv"), dict) else {},
+        "dotenv": _dict_or_empty(artifact.get("dotenv")),
         "eval_window_run": _prediction_readiness_eval_window_run_summary(
             artifact.get("eval_window_run")
         ),
@@ -4849,7 +4772,7 @@ def _prediction_operator_resume_plan_verification_flags_match(
     verification_flags = run_metadata.get("verification_flags")
     if not isinstance(verification_flags, dict):
         return False
-    dotenv = artifact.get("dotenv") if isinstance(artifact.get("dotenv"), dict) else {}
+    dotenv = _dict_or_empty(artifact.get("dotenv"))
     expected_dotenv = dotenv.get("path") if isinstance(dotenv.get("path"), str) else None
     return verification_flags.get("dotenv") == expected_dotenv
 
@@ -4865,7 +4788,7 @@ def _prediction_operator_resume_plan_source_artifact_sha256_matches(
         return False
     packet_dir_raw = artifact.get("packet_dir")
     packet_dir = Path(packet_dir_raw) if isinstance(packet_dir_raw, str) else None
-    dotenv = artifact.get("dotenv") if isinstance(artifact.get("dotenv"), dict) else {}
+    dotenv = _dict_or_empty(artifact.get("dotenv"))
     dotenv_path_raw = dotenv.get("path")
     dotenv_path = Path(dotenv_path_raw) if isinstance(dotenv_path_raw, str) else None
     operator_status_path = (
@@ -4917,8 +4840,8 @@ def _prediction_operator_resume_plan_core(plan: dict[str, Any]) -> dict[str, Any
         "runnable_phase_count": plan.get("runnable_phase_count"),
         "blocked_phase_count": plan.get("blocked_phase_count"),
         "missing_env": _string_list(plan.get("missing_env")),
-        "dotenv": plan.get("dotenv") if isinstance(plan.get("dotenv"), dict) else {},
-        "phases": plan.get("phases") if isinstance(plan.get("phases"), list) else [],
+        "dotenv": _dict_or_empty(plan.get("dotenv")),
+        "phases": _list_or_empty(plan.get("phases")),
         "eval_window_run": _prediction_readiness_eval_window_run_summary(
             plan.get("eval_window_run")
         ),
@@ -5460,7 +5383,7 @@ def _operator_packet_secret_literal_failures(
 
 
 def _prediction_operator_handoff_runbook_text(result: dict[str, Any]) -> str:
-    plan = result.get("operator_plan") if isinstance(result.get("operator_plan"), dict) else {}
+    plan = _dict_or_empty(result.get("operator_plan"))
     lines = [
         "# Prediction Operator Handoff",
         "",
@@ -5470,9 +5393,7 @@ def _prediction_operator_handoff_runbook_text(result: dict[str, Any]) -> str:
         "",
         "## Verified Artifacts",
     ]
-    artifact_sha256 = (
-        result.get("artifact_sha256") if isinstance(result.get("artifact_sha256"), dict) else {}
-    )
+    artifact_sha256 = _dict_or_empty(result.get("artifact_sha256"))
     verified_artifacts = [
         (
             "Env preflight verify",
@@ -5516,7 +5437,7 @@ def _prediction_operator_handoff_runbook_text(result: dict[str, Any]) -> str:
         lines.extend(f"- `{action}`" for action in next_live_actions)
     else:
         lines.append("- none")
-    congress_load = plan.get("congress_load") if isinstance(plan.get("congress_load"), dict) else {}
+    congress_load = _dict_or_empty(plan.get("congress_load"))
     if congress_load:
         lines.extend(
             [
@@ -5546,23 +5467,15 @@ def _prediction_operator_handoff_runbook_text(result: dict[str, Any]) -> str:
             lines.extend(f"  - `{blocker}`" for blocker in blockers)
         else:
             lines.append("  - none")
-    bill_sponsor_availability = (
-        plan.get("bill_sponsor_availability")
-        if isinstance(plan.get("bill_sponsor_availability"), dict)
-        else {}
-    )
+    bill_sponsor_availability = _dict_or_empty(plan.get("bill_sponsor_availability"))
     sponsor_line = _operator_bill_sponsor_availability_line(bill_sponsor_availability)
     if sponsor_line is not None:
         lines.extend(["", "## Bill Sponsor Availability", "", sponsor_line])
-    jurisdiction_topology = (
-        plan.get("jurisdiction_topology")
-        if isinstance(plan.get("jurisdiction_topology"), dict)
-        else {}
-    )
+    jurisdiction_topology = _dict_or_empty(plan.get("jurisdiction_topology"))
     jurisdiction_lines = _operator_jurisdiction_topology_lines(jurisdiction_topology)
     if jurisdiction_lines:
         lines.extend(["", *jurisdiction_lines])
-    cutoff_audit = plan.get("cutoff_audit") if isinstance(plan.get("cutoff_audit"), dict) else {}
+    cutoff_audit = _dict_or_empty(plan.get("cutoff_audit"))
     if cutoff_audit:
         lines.extend(
             [
@@ -5582,9 +5495,7 @@ def _prediction_operator_handoff_runbook_text(result: dict[str, Any]) -> str:
                 f"{_plain_int_or_zero(cutoff_audit.get('excluded_future_ontology_edge_count'))}",
             ]
         )
-    eval_window_run = (
-        plan.get("eval_window_run") if isinstance(plan.get("eval_window_run"), dict) else {}
-    )
+    eval_window_run = _dict_or_empty(plan.get("eval_window_run"))
     lines.extend(
         [
             "",

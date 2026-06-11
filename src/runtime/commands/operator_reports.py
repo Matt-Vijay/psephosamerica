@@ -1,6 +1,3 @@
-# mypy: ignore-errors
-# TODO(runtime-commands): pre-existing type debt carried over from the monolithic
-# commands.py (where the commands.pyi stub hid it from mypy). Burn down per module.
 """Operator handoff, runbook, and status commands."""
 
 from __future__ import annotations
@@ -13,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from src.runtime.commands._shared import (
+    _dict_or_empty,
     _OPERATOR_EVAL_WINDOW_RUN_GATE_SOURCE_KEYS,
     _OPERATOR_EVAL_WINDOW_RUN_GATE_SOURCE_STATE_KEYS,
     _PREDICTION_OPERATOR_RESUME_PLAN_SAMPLE_STRING_KEYS,
@@ -144,16 +142,8 @@ def _operator_handoff_check_resume_links(
 
 
 def _operator_handoff_plan(readiness_summary: dict[str, Any]) -> dict[str, Any]:
-    env_preflight = (
-        readiness_summary.get("env_preflight")
-        if isinstance(readiness_summary.get("env_preflight"), dict)
-        else {}
-    )
-    runtime = (
-        readiness_summary.get("runtime")
-        if isinstance(readiness_summary.get("runtime"), dict)
-        else {}
-    )
+    env_preflight = _dict_or_empty(readiness_summary.get("env_preflight"))
+    runtime = _dict_or_empty(readiness_summary.get("runtime"))
     resume_batches = [
         batch for batch in runtime.get("operator_resume_batches", []) if isinstance(batch, dict)
     ]
@@ -198,24 +188,12 @@ def _operator_handoff_plan(readiness_summary: dict[str, Any]) -> dict[str, Any]:
 
 
 def _operator_handoff_congress_load(readiness_summary: dict[str, Any]) -> dict[str, Any]:
-    local_inputs = (
-        readiness_summary.get("local_inputs")
-        if isinstance(readiness_summary.get("local_inputs"), dict)
-        else {}
-    )
-    congress_load = (
-        local_inputs.get("congress_load")
-        if isinstance(local_inputs.get("congress_load"), dict)
-        else {}
-    )
+    local_inputs = _dict_or_empty(readiness_summary.get("local_inputs"))
+    congress_load = _dict_or_empty(local_inputs.get("congress_load"))
     required = bool(readiness_summary.get("congress_load_required"))
     if not required and not congress_load:
         return {}
-    source_state = (
-        congress_load.get("source_state")
-        if isinstance(congress_load.get("source_state"), dict)
-        else {}
-    )
+    source_state = _dict_or_empty(congress_load.get("source_state"))
     summary = {
         "required": required,
         "present": bool(congress_load.get("present")),
@@ -241,25 +219,13 @@ def _operator_handoff_congress_load(readiness_summary: dict[str, Any]) -> dict[s
 
 
 def _operator_handoff_eval_window_run(readiness_summary: dict[str, Any]) -> dict[str, Any]:
-    benchmark = (
-        readiness_summary.get("benchmark")
-        if isinstance(readiness_summary.get("benchmark"), dict)
-        else {}
-    )
+    benchmark = _dict_or_empty(readiness_summary.get("benchmark"))
     return _prediction_readiness_eval_window_run_summary(benchmark.get("eval_window_run"))
 
 
 def _operator_handoff_cutoff_audit(readiness_summary: dict[str, Any]) -> dict[str, int]:
-    run_metadata = (
-        readiness_summary.get("run_metadata")
-        if isinstance(readiness_summary.get("run_metadata"), dict)
-        else {}
-    )
-    source_state = (
-        run_metadata.get("source_state")
-        if isinstance(run_metadata.get("source_state"), dict)
-        else {}
-    )
+    run_metadata = _dict_or_empty(readiness_summary.get("run_metadata"))
+    source_state = _dict_or_empty(run_metadata.get("source_state"))
     return {
         key.removeprefix("benchmark_eval_cutoff_"): value
         for key, value in source_state.items()
@@ -268,16 +234,8 @@ def _operator_handoff_cutoff_audit(readiness_summary: dict[str, Any]) -> dict[st
 
 
 def _operator_handoff_source_url_audit(readiness_summary: dict[str, Any]) -> dict[str, Any]:
-    run_metadata = (
-        readiness_summary.get("run_metadata")
-        if isinstance(readiness_summary.get("run_metadata"), dict)
-        else {}
-    )
-    source_state = (
-        run_metadata.get("source_state")
-        if isinstance(run_metadata.get("source_state"), dict)
-        else {}
-    )
+    run_metadata = _dict_or_empty(readiness_summary.get("run_metadata"))
+    source_state = _dict_or_empty(run_metadata.get("source_state"))
     summary: dict[str, Any] = {}
     for key in (
         "source_url_audit_quality_gate_failure_count",
@@ -299,16 +257,8 @@ def _operator_handoff_source_url_audit(readiness_summary: dict[str, Any]) -> dic
 def _operator_handoff_bill_sponsor_availability(
     readiness_summary: dict[str, Any],
 ) -> dict[str, int | float]:
-    run_metadata = (
-        readiness_summary.get("run_metadata")
-        if isinstance(readiness_summary.get("run_metadata"), dict)
-        else {}
-    )
-    source_state = (
-        run_metadata.get("source_state")
-        if isinstance(run_metadata.get("source_state"), dict)
-        else {}
-    )
+    run_metadata = _dict_or_empty(readiness_summary.get("run_metadata"))
+    source_state = _dict_or_empty(run_metadata.get("source_state"))
     total = source_state.get("inventory_bill_sponsor_count")
     available = source_state.get("inventory_bill_available_sponsor_count")
     rate = source_state.get("inventory_bill_sponsor_availability_rate")
@@ -329,11 +279,7 @@ def _operator_handoff_bill_sponsor_availability(
 
 
 def _operator_handoff_jurisdiction_topology(readiness_summary: dict[str, Any]) -> dict[str, Any]:
-    benchmark = (
-        readiness_summary.get("benchmark")
-        if isinstance(readiness_summary.get("benchmark"), dict)
-        else {}
-    )
+    benchmark = _dict_or_empty(readiness_summary.get("benchmark"))
     source_state = (
         benchmark.get("run_metadata", {}).get("source_state")
         if isinstance(benchmark.get("run_metadata"), dict)
@@ -1156,7 +1102,7 @@ def _operator_status_batches(value: Any) -> list[dict[str, Any]]:
 
 
 def _operator_status_plan_from_handoff(handoff: dict[str, Any]) -> dict[str, Any]:
-    plan = handoff.get("operator_plan") if isinstance(handoff.get("operator_plan"), dict) else {}
+    plan = _dict_or_empty(handoff.get("operator_plan"))
     batches = [
         batch for batch in plan.get("operator_resume_batches", []) if isinstance(batch, dict)
     ]
@@ -1189,9 +1135,7 @@ def _operator_runbook_verified_artifact_missing(
     handoff: dict[str, Any],
     runbook_text: str,
 ) -> list[str]:
-    artifact_sha256 = (
-        handoff.get("artifact_sha256") if isinstance(handoff.get("artifact_sha256"), dict) else {}
-    )
+    artifact_sha256 = _dict_or_empty(handoff.get("artifact_sha256"))
     missing: list[str] = []
     for name in (
         "env_preflight_verify",

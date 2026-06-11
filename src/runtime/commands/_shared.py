@@ -261,7 +261,7 @@ _PREDICTION_OPERATOR_RESUME_PLAN_SAMPLE_STRING_KEYS = frozenset(
 )
 
 
-def _prediction_operator_resume_plan_sorted_string_list(value: object) -> bool:
+def _prediction_operator_resume_plan_sorted_string_list(value: object) -> TypeGuard[list[str]]:
     if not isinstance(value, list):
         return False
     if any(not isinstance(item, str) or not item or item.strip() != item for item in value):
@@ -425,3 +425,13 @@ def _load_json_object_or_none(path: Path) -> dict[str, Any] | None:
     except Exception:  # noqa: BLE001
         return None
     return payload if isinstance(payload, dict) else None
+
+
+def _dict_or_empty(value: Any) -> dict[str, Any]:
+    """Return ``value`` if it is a dict, else an empty dict (typed narrow)."""
+    return value if isinstance(value, dict) else {}
+
+
+def _list_or_empty(value: Any) -> list[Any]:
+    """Return ``value`` if it is a list, else an empty list (typed narrow)."""
+    return value if isinstance(value, list) else []
