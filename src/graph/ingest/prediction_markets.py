@@ -116,14 +116,17 @@ def _strings(values: object) -> list[str]:
 
 
 def _market_era(end_date: str | None, *, observed: date) -> date:
-    """The date that names a market's congress: its own end date when parseable.
+    """The date that names a market's congress: min(its end date, today).
 
     A bare citation in a CLOSED market from a prior cycle ("...bill pass in
-    2024?") must default to the congress sitting THEN, not at snapshot time.
+    2024?") must default to the congress sitting THEN, not at snapshot time —
+    but a LIVE market whose deadline spills past the current term ("before
+    Jan 4, 2027") still cites a bill that exists NOW, so the era never runs
+    ahead of the observation date.
     """
     raw = (end_date or "")[:10]
     try:
-        return date.fromisoformat(raw)
+        return min(date.fromisoformat(raw), observed)
     except ValueError:
         return observed
 

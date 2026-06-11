@@ -262,3 +262,18 @@ def test_unparseable_end_date_falls_back_to_snapshot_congress() -> None:
     }
     record = polymarket_market_record(market, known_at=_KNOWN)
     assert record is not None and record["citations"][0]["congress"] == 119
+
+
+def test_live_market_deadline_past_term_stays_in_current_congress() -> None:
+    # "becomes law before Jan 4, 2027" spills one day into the 120th congress,
+    # but the cited H.R. 22 exists NOW -> era = min(end, observed) -> 119th.
+    market = {
+        "conditionId": "0xsave",
+        "question": 'Will "SAVE Act" (H.R. 22) becomes law before Jan 4, 2027?',
+        "description": "Resolves Yes if H.R. 22 is signed into law before Jan 4, 2027.",
+        "endDateIso": "2027-01-04",
+        "closed": False,
+    }
+    record = polymarket_market_record(market, known_at=_KNOWN)
+    assert record is not None
+    assert record["citations"][0]["congress"] == 119
