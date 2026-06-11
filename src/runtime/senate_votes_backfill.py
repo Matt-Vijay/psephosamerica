@@ -29,7 +29,7 @@ import httpx
 
 from src.graph.bills import parse_congress_bill_identifier
 from src.graph.ingest.senate import bill_canonical_id_for, parse_senate_rollcall_xml
-from src.runtime.govinfo_bills_materialize import _client
+from src.runtime.http_client import client_or_default
 
 _LISTS = "https://www.senate.gov/legislative/LIS/roll_call_lists"
 _VOTES = "https://www.senate.gov/legislative/LIS/roll_call_votes"
@@ -130,7 +130,7 @@ def backfill_senate_votes(
     out = Path(out_path)
     sectors_by_bill = load_bill_sectors(content_sidecar)
     done = _existing_vote_ids(out)
-    http, owns = _client(client)
+    http, owns = client_or_default(client)
     sessions_seen = listed = new = skipped = 0
     out.parent.mkdir(parents=True, exist_ok=True)
     existing = (

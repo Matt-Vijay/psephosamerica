@@ -30,6 +30,8 @@ from pathlib import Path
 
 import httpx
 
+from src.runtime.http_client import client_or_default
+
 LEGINFO_BASE = "https://downloads.leginfo.legislature.ca.gov"
 DETAIL_VOTE_FILE = "BILL_DETAIL_VOTE_TBL.dat"
 LEGISLATOR_FILE = "LEGISLATOR_TBL.dat"
@@ -328,7 +330,8 @@ def backfill_ca_votes(
 
     out = Path(out_path)
     if detail_text is None:
-        http, owns = _client_for(client)
+        # 120s: a single ranged read of the compressed vote table is several MB.
+        http, owns = client_or_default(client, timeout=120.0)
         try:
             with open_remote_zip(pubinfo_zip_url(year), client=http) as archive:
                 with archive.open(DETAIL_VOTE_FILE) as handle:
@@ -360,12 +363,6 @@ def backfill_ca_votes(
     return CaBackfillProgress(
         rollcalls_written=written, members_total=members, rollcalls_total=existing + written
     )
-
-
-def _client_for(client: httpx.Client | None) -> tuple[httpx.Client, bool]:
-    if client is not None:
-        return client, False
-    return httpx.Client(timeout=120.0), True
 
 
 def _main(argv: list[str] | None = None) -> int:  # pragma: no cover - CLI glue

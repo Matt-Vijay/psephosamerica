@@ -34,8 +34,8 @@ from src.graph.export import (
 )
 from src.graph.ingest.govinfo_billstatus import billstatus_bill_row, parse_billstatus_xml
 from src.graph.regenerate import regenerate_corpus
+from src.runtime.http_client import client_or_default
 
-_USER_AGENT = "openpact-research/0.1 (public-record bill ingest)"
 _BULK = "https://www.govinfo.gov/bulkdata"
 # House + Senate bill + (joint/concurrent/simple) resolution types.
 BILLSTATUS_BILL_TYPES: tuple[str, ...] = (
@@ -68,17 +68,11 @@ class FetchReport:
     errors: list[str] = field(default_factory=list)
 
 
-def _client(client: httpx.Client | None) -> tuple[httpx.Client, bool]:
-    if client is not None:
-        return client, False
-    return httpx.Client(timeout=60.0, headers={"User-Agent": _USER_AGENT}), True
-
-
 def list_billstatus_file_urls(
     congress: int, bill_type: str, *, client: httpx.Client | None = None
 ) -> list[str]:
     """List the BILLSTATUS XML file URLs for a congress + bill type (keyless JSON)."""
-    http, owns = _client(client)
+    http, owns = client_or_default(client)
     try:
         response = http.get(
             billstatus_listing_url(congress, bill_type),
@@ -113,7 +107,7 @@ def fetch_billstatus_rows(
     ``None`` fetches all listed. Per-file errors are skipped and counted.
     """
     observed = first_observed_at if first_observed_at is not None else datetime.now(UTC)
-    http, owns = _client(client)
+    http, owns = client_or_default(client)
     types = tuple(bill_types)
     rows: list[EntityResolutionOutput] = []
     listed = fetched = parsed = skipped = 0
@@ -188,7 +182,7 @@ def materialize_govinfo_bill_corpus(
     """
     out_dir = Path(directory)
     types = tuple(bill_types)
-    http, owns = _client(client)
+    http, owns = client_or_default(client)
     rows: list[EntityResolutionOutput] = []
     reports: list[FetchReport] = []
     try:

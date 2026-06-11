@@ -45,7 +45,7 @@ from src.graph.export import (
 )
 from src.graph.ingest.congress_legislators import DEFAULT_SINCE, parse_legislators
 from src.graph.materialize import materialize_person_nodes
-from src.runtime.govinfo_bills_materialize import _client
+from src.runtime.http_client import client_or_default
 
 _ROSTER_BASE = "https://unitedstates.github.io/congress-legislators"
 ROSTER_FILES: tuple[str, ...] = ("legislators-current.json", "legislators-historical.json")
@@ -60,7 +60,7 @@ def fetch_roster(
     *, client: httpx.Client | None = None, files: Iterable[str] = ROSTER_FILES
 ) -> list[dict[str, Any]]:
     """Fetch + concatenate the keyless roster JSON files into one member list."""
-    http, owns = _client(client)
+    http, owns = client_or_default(client)
     members: list[dict[str, Any]] = []
     try:
         for name in files:

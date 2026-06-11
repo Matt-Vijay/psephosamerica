@@ -43,9 +43,9 @@ from src.graph.ingest.govinfo_billstatus import (
 from src.graph.regenerate import regenerate_corpus
 from src.runtime.govinfo_bills_materialize import (
     BILLSTATUS_BILL_TYPES,
-    _client,
     list_billstatus_file_urls,
 )
+from src.runtime.http_client import client_or_default
 
 
 @dataclass(frozen=True)
@@ -63,7 +63,7 @@ def collect_candidates(
     client: httpx.Client | None = None,
 ) -> list[Candidate]:
     """List every bill file across congresses+types with its canonical id (no fetch)."""
-    http, owns = _client(client)
+    http, owns = client_or_default(client)
     seen: set[str] = set()
     candidates: list[Candidate] = []
     try:
@@ -118,7 +118,7 @@ def ingest_batch(
     """
     out_dir = Path(directory)
     observed = first_observed_at if first_observed_at is not None else datetime.now(UTC)
-    http, owns = _client(client)
+    http, owns = client_or_default(client)
     try:
         all_candidates = (
             candidates

@@ -23,7 +23,8 @@ from pathlib import Path
 import httpx
 
 from src.graph.ingest.govinfo_billstatus import billstatus_record, parse_billstatus_xml
-from src.runtime.govinfo_bills_materialize import BILLSTATUS_BILL_TYPES, _client
+from src.runtime.govinfo_bills_materialize import BILLSTATUS_BILL_TYPES
+from src.runtime.http_client import client_or_default
 from src.runtime.govinfo_bills_run import Candidate, collect_candidates
 
 
@@ -73,7 +74,7 @@ def build_sector_sidecar_batch(
 ) -> SectorProgress:
     """Fetch+append up to ``max_fetch`` not-yet-recorded bill sector records."""
     sidecar = Path(path)
-    http, owns = _client(client)
+    http, owns = client_or_default(client)
     written = skipped = 0
     todo_len = 0
     try:

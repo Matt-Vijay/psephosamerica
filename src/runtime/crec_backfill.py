@@ -31,7 +31,7 @@ from src.graph.ingest.congressional_record import (
     parse_crec_mods,
 )
 from src.runtime.bill_edges_export import build_bioguide_resolver
-from src.runtime.govinfo_bills_materialize import _client
+from src.runtime.http_client import client_or_default
 
 _BILL_MENTION_RE = re.compile(r"\b(?:H\.?\s?R\.?|S\.?|H\.?J\.?Res\.?|S\.?J\.?Res\.?)\s?(\d{1,5})\b")
 
@@ -93,7 +93,7 @@ def backfill_crec_speeches(
     observed = first_observed_at if first_observed_at is not None else datetime.now(UTC)
     resolver = build_bioguide_resolver(corpus_directory)
     done = _done_dates(out)
-    http, owns = _client(client)
+    http, owns = client_or_default(client)
     checked = issues = written = unresolved = 0
     out.parent.mkdir(parents=True, exist_ok=True)
     existing = (

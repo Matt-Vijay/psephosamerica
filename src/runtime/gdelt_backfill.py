@@ -25,7 +25,7 @@ import httpx
 
 from src.graph.ingest.gdelt import news_mention_edge, news_provenance, parse_gdelt_article
 from src.graph.export import RECORDS_FILENAME
-from src.runtime.govinfo_bills_materialize import _client
+from src.runtime.http_client import client_or_default
 
 _DOC_API = "https://api.gdeltproject.org/api/v2/doc/doc"
 
@@ -133,7 +133,7 @@ def backfill_gdelt_mentions(
     observed = first_observed_at if first_observed_at is not None else datetime.now(UTC)
     members = federal_members(corpus_directory)
     done = _done_members(out)
-    http, owns = _client(client)
+    http, owns = client_or_default(client)
     seen = queried = written = skipped = 0
     out.parent.mkdir(parents=True, exist_ok=True)
     existing = (
