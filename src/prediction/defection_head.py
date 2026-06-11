@@ -14,7 +14,6 @@ defection-likely members for the live congress with cited contributions.
 
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass, field
 from datetime import date
 
@@ -27,9 +26,9 @@ from src.prediction.defection import (
     ranking_metrics,
     split_by_cutoff,
 )
+from src.prediction.logistic import clamped_sigmoid, train_logistic_rows
 from src.prediction.vote_record import VoteRecord
 
-_LOGIT_CLAMP = 40.0
 _FEATURES = ("loyalty_gap", "sector_divergence")
 
 
@@ -39,15 +38,20 @@ class DefectionHead:
     coefficients: dict[str, float]
 
     def probability(self, features: dict[str, float]) -> float:
+        # Sum over the head's OWN coefficients, not the module's base-feature
+        # constant: heads trained with extra features (e.g. rag_signal) must not
+        # silently drop those coefficients at scoring time.
         raw = self.intercept + sum(
-            self.coefficients.get(name, 0.0) * features.get(name, 0.0) for name in _FEATURES
+            coefficient * features.get(name, 0.0)
+            for name, coefficient in self.coefficients.items()
         )
-        return 1.0 / (1.0 + math.exp(-max(-_LOGIT_CLAMP, min(_LOGIT_CLAMP, raw))))
+        return clamped_sigmoid(raw)
 
     def contributions(self, features: dict[str, float]) -> dict[str, float]:
         """Per-feature logit contributions, for explorer attribution."""
         return {
-            name: self.coefficients.get(name, 0.0) * features.get(name, 0.0) for name in _FEATURES
+            name: coefficient * features.get(name, 0.0)
+            for name, coefficient in self.coefficients.items()
         }
 
 
@@ -61,26 +65,9 @@ def train_defection_head(
 ) -> DefectionHead:
     """Fit the logistic defection head on pre-cutoff defection labels."""
     rows = [(defection_features(r, profiles), defected(r)) for r in train]
-    if not rows:
-        return DefectionHead(intercept=0.0, coefficients={name: 0.0 for name in _FEATURES})
-    positives = sum(1 for _f, y in rows if y)
-    rate = min(0.95, max(0.05, positives / len(rows)))
-    intercept = math.log(rate / (1.0 - rate))
-    coefficients = {name: 0.0 for name in _FEATURES}
-    scale = 1.0 / len(rows)
-    for _ in range(epochs):
-        d_intercept = 0.0
-        d_coef = {name: 0.0 for name in _FEATURES}
-        for features, label in rows:
-            raw = intercept + sum(coefficients[n] * features.get(n, 0.0) for n in _FEATURES)
-            predicted = 1.0 / (1.0 + math.exp(-max(-_LOGIT_CLAMP, min(_LOGIT_CLAMP, raw))))
-            error = predicted - (1.0 if label else 0.0)
-            d_intercept += error
-            for name in _FEATURES:
-                d_coef[name] += error * features.get(name, 0.0)
-        intercept -= learning_rate * d_intercept * scale
-        for name in _FEATURES:
-            coefficients[name] -= learning_rate * (d_coef[name] * scale + l2 * coefficients[name])
+    intercept, coefficients = train_logistic_rows(
+        rows, _FEATURES, learning_rate=learning_rate, epochs=epochs, l2=l2
+    )
     return DefectionHead(intercept=intercept, coefficients=coefficients)
 
 

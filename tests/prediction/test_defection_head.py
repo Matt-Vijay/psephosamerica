@@ -6,6 +6,7 @@ from datetime import date
 
 from src.prediction.defection import build_party_profiles
 from src.prediction.defection_head import (
+    DefectionHead,
     evaluate_defection_head,
     rank_defections,
     train_defection_head,
@@ -91,3 +92,16 @@ def test_rank_with_truth_populates_actual_defected() -> None:
     without_truth = rank_defections(head, records, profiles, top_n=1)
     assert with_truth[0].actual_defected is True  # D voted against party lean
     assert without_truth[0].actual_defected is None
+
+
+def test_probability_uses_every_trained_coefficient() -> None:
+    # Regression: heads trained with extra features (e.g. rag_signal) must not
+    # silently drop those coefficients at scoring time.
+    base = DefectionHead(intercept=0.0, coefficients={"loyalty_gap": 1.0, "sector_divergence": 0.0})
+    extended = DefectionHead(
+        intercept=0.0,
+        coefficients={"loyalty_gap": 1.0, "sector_divergence": 0.0, "rag_signal": 2.0},
+    )
+    features = {"loyalty_gap": 0.5, "sector_divergence": 0.0, "rag_signal": 1.0}
+    assert extended.probability(features) > base.probability(features)
+    assert extended.contributions(features)["rag_signal"] == 2.0
