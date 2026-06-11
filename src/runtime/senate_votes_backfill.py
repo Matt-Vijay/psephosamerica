@@ -28,22 +28,17 @@ from pathlib import Path
 import httpx
 
 from src.graph.bills import parse_congress_bill_identifier
+from src.ingest.congress.senate_votes import roll_call_list_url, roll_call_url
 from src.graph.ingest.senate import bill_canonical_id_for, parse_senate_rollcall_xml
 from src.runtime.http_client import client_or_default
 
-_LISTS = "https://www.senate.gov/legislative/LIS/roll_call_lists"
-_VOTES = "https://www.senate.gov/legislative/LIS/roll_call_votes"
 _VOTE_NUMBER_RE = re.compile(r"<vote_number>\s*(\d+)\s*</vote_number>")
 
-
-def senate_menu_url(congress: int, session: int) -> str:
-    """Keyless XML menu of a Senate session's roll-calls."""
-    return f"{_LISTS}/vote_menu_{congress}_{session}.xml"
-
-
-def senate_vote_url(congress: int, session: int, vote_number: int) -> str:
-    """Keyless XML for one Senate roll-call."""
-    return f"{_VOTES}/vote{congress}{session}/vote_{congress}_{session}_{vote_number:05d}.xml"
+# The URL builders live on the ingest layer (these started as local copies while
+# src/ingest/congress pointed the index at a URL that answers HTML; that is fixed,
+# so the backfill delegates).
+senate_menu_url = roll_call_list_url
+senate_vote_url = roll_call_url
 
 
 def parse_menu_vote_numbers(xml: str) -> list[int]:
