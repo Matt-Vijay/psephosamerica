@@ -77,6 +77,12 @@ def statement_corpus_coverage(statement_rows_path: Path) -> int:
         return 0
     members: set[str] = set()
     for line in statement_rows_path.read_text(encoding="utf-8").splitlines():
-        if line.strip():
-            members.add(str(json.loads(line)["member_bioguide_id"]))
+        if not line.strip():
+            continue
+        try:
+            member = json.loads(line).get("member_bioguide_id")
+        except ValueError:
+            continue  # partially-written or corrupt line: count what is readable
+        if member:
+            members.add(str(member))
     return len(members)

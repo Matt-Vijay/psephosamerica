@@ -2,11 +2,9 @@
 
 Builds vote records from a rich roll-call corpus, splits them by congress, trains
 the defection head on a *source* set of congresses, and measures zero-shot /
-target-only / joint defection AUC on a held-out *target* congress -- the real,
-available proxy for House→Senate transfer until a Senate corpus is ingested. The
-same harness runs House→Senate by passing a Senate corpus as the target; the only
-thing missing is the Senate roll-call ingest (a Track A data dependency), which is
-recorded honestly in the report rather than faked.
+target-only / joint defection AUC on a held-out *target* congress. The same
+``chamber_transfer`` harness also runs the real House→Senate transfer against the
+``senate_corpus`` ingest (result pinned in ``benchmarks/house_senate_transfer.json``).
 """
 
 from __future__ import annotations
@@ -49,6 +47,11 @@ def run(
     if not congresses:
         return {"corpus": str(corpus), "error": "empty corpus"}
     target = target_congress if target_congress is not None else congresses[-1]
+    if target not in by_congress:
+        return {
+            "corpus": str(corpus),
+            "error": f"target congress {target} not in corpus (have {congresses})",
+        }
     source_records: list[VoteRecord] = []
     for congress in congresses:
         if congress != target:
@@ -71,10 +74,10 @@ def run(
         "source_pairs": len(source_records),
         "transfer": report.as_dict(),
         "senate_status": (
-            "Senate roll-call corpus not yet ingested (Track A data dependency); "
-            "the same harness runs House->Senate once data/real/senate_*.jsonl exists. "
-            "This run reports the real cross-congress House->House transfer as the "
-            "available proxy."
+            "Senate roll-calls are ingested via src/runtime/senate_corpus.py "
+            "(data/real/senate_119_rich.jsonl); the House->Senate transfer result "
+            "lives in benchmarks/house_senate_transfer.json. This run reports the "
+            "cross-congress transfer for the given corpus."
         ),
     }
 

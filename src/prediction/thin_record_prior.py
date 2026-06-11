@@ -21,6 +21,7 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
+from src.prediction.logistic import clamped_sigmoid
 from src.prediction.nn.structural_embeddings import StructuralEmbeddings
 
 _PROBABILITY_FLOOR = 1e-6
@@ -49,7 +50,8 @@ class ThinRecordTarget:
 
 
 def _sigmoid(value: float) -> float:
-    return 1.0 / (1.0 + math.exp(-value))
+    # Shared clamped sigmoid: an extreme stance logit must not overflow math.exp.
+    return clamped_sigmoid(value)
 
 
 def _mean(values: list[float]) -> float:
