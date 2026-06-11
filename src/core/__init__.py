@@ -1,3 +1,5 @@
+"""Pure foundation utilities (settings, logging); imports nothing else in src."""
+
 from src.core.logging import get_logger
 from src.core.settings import Settings
 

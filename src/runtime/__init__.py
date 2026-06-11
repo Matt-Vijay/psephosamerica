@@ -1,3 +1,10 @@
+"""Operator runtime: command dispatch, runners, and publish machinery.
+
+The orchestration layer for local/CI operation. ``src.runtime.cli`` parses
+argv, ``src.runtime.commands`` executes operator commands, and the runner
+modules wrap ingest/recompute/publish flows with provenance tracking.
+"""
+
 # App surface
 from .app import OpenPactRuntime, build_runtime, open_runtime_connection
 from .bootstrap import bootstrap_database, load_initial_migration_sql, load_schema_sql

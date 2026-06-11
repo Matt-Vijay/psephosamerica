@@ -1,3 +1,5 @@
+"""ZIP-code bundle assembly: districts, members, and federal bundles."""
+
 from src.zip.resolve import (
     DistrictMemberRow,
     FederalBundle,

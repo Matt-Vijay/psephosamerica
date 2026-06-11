@@ -1,3 +1,9 @@
+"""Read-side queries over the database and published snapshot artifacts.
+
+Pure fetch/assemble helpers shared by the runtime, demo, and homepage
+layers; no writes, no orchestration.
+"""
+
 from src.query.conflict import (
     ConflictBundle,
     assemble_committee_sector_trade_bundle,

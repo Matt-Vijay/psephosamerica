@@ -1,3 +1,5 @@
+"""Change-feed events derived from rule fires, evidence cards, and score deltas."""
+
 from src.feed.changes import (
     FeedEvent,
     FeedEventKind,

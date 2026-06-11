@@ -1,3 +1,5 @@
+"""Database access: connection building, schema bootstrap, lookups, repositories."""
+
 from src.db.bootstrap import apply_sql, read_migration_sql, read_schema_sql
 from src.db.connection import build_connection_kwargs, connect
 from src.db.lookups import LookupBuildError, LookupBundle, build_lookup_bundle

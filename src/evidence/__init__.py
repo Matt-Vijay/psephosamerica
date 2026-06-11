@@ -1,3 +1,5 @@
+"""Evidence cards: typed fact/inference/normative blocks with source anchors."""
+
 from .builder import (
     assemble_blocks,
     build_evidence_block,

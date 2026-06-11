@@ -1,3 +1,5 @@
+"""Conflict-of-interest scoring: snapshot rows, dimension scores, deltas."""
+
 from src.scoring.deltas import diff_many_members, diff_one_member, filter_changed
 from src.scoring.snapshots import (
     build_snapshot_row,
