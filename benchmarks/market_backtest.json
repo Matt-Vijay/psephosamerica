@@ -1,0 +1,157 @@
+{
+  "n_scored": 6,
+  "skipped": {
+    "unparsed": 1208,
+    "no_bill_link": 33,
+    "no_rollcall": 13,
+    "no_price": 0,
+    "price_after_vote": 15
+  },
+  "mean_model_logloss": 0.8769686894941723,
+  "mean_market_logloss": 0.43489313570487975,
+  "model_beats_market": false,
+  "n_traded": 4,
+  "total_pnl_after_costs": -0.6655000000000001,
+  "within_party_sigma": {
+    "D": 3.22490309931942
+  },
+  "cost_model": {
+    "half_spread": 0.01,
+    "kalshi_fee_rate": 0.07,
+    "edge_threshold": 0.05
+  },
+  "markets": [
+    {
+      "market_id": "cm-5wrbxuarw5dunqoh",
+      "venue": "polymarket",
+      "question": "Will 8-11 Democratic senators vote in favor of the Laken Riley Act?",
+      "kind": "count_bucket",
+      "matched_vote_date": "2025-01-20",
+      "matched_keys": [
+        "119:hr:29",
+        "119:hr:751",
+        "119:hr:7511",
+        "119:s:5"
+      ],
+      "decision_time": "2025-01-19T12:00:03+00:00",
+      "market_price": 0.4205,
+      "model_fair": 0.012806170628178778,
+      "edge": -0.4076938293718212,
+      "resolved_yes": false,
+      "model_logloss": 0.012888876486872728,
+      "market_logloss": 0.5455896162023306,
+      "side": "buy_no",
+      "pnl_after_costs": 0.4105
+    },
+    {
+      "market_id": "cm-7jl26pwd3s2gkpvy",
+      "venue": "polymarket",
+      "question": "Will 24 or more Democratic senators vote in favor of the Laken Riley Act?",
+      "kind": "count_bucket",
+      "matched_vote_date": "2025-01-20",
+      "matched_keys": [
+        "119:hr:29",
+        "119:hr:751",
+        "119:hr:7511",
+        "119:s:5"
+      ],
+      "decision_time": "2025-01-19T12:00:03+00:00",
+      "market_price": 0.003,
+      "model_fair": 0.1274132381567487,
+      "edge": 0.1244132381567487,
+      "resolved_yes": false,
+      "model_logloss": 0.13629318934141005,
+      "market_logloss": 0.0030045090202987243,
+      "side": "buy_yes",
+      "pnl_after_costs": -0.013000000000000001
+    },
+    {
+      "market_id": "cm-ao5p4izatr5jpjrc",
+      "venue": "polymarket",
+      "question": "Will less than 8 Democratic senators vote in favor of the Laken Riley Act?",
+      "kind": "count_bucket",
+      "matched_vote_date": "2025-01-20",
+      "matched_keys": [
+        "119:hr:29",
+        "119:hr:751",
+        "119:hr:7511",
+        "119:s:5"
+      ],
+      "decision_time": "2025-01-19T12:00:03+00:00",
+      "market_price": 0.243,
+      "model_fair": 0.6469589715148616,
+      "edge": 0.4039589715148616,
+      "resolved_yes": false,
+      "model_logloss": 1.0411710007995665,
+      "market_logloss": 0.2783920255446883,
+      "side": "buy_yes",
+      "pnl_after_costs": -0.253
+    },
+    {
+      "market_id": "cm-tkl33x64wxwf3sao",
+      "venue": "polymarket",
+      "question": "Will 12-15 Democratic senators vote in favor of the Laken Riley Act?",
+      "kind": "count_bucket",
+      "matched_vote_date": "2025-01-20",
+      "matched_keys": [
+        "119:hr:29",
+        "119:hr:751",
+        "119:hr:7511",
+        "119:s:5"
+      ],
+      "decision_time": "2025-01-19T12:00:03+00:00",
+      "market_price": 0.2,
+      "model_fair": 0.020865810446283294,
+      "edge": -0.1791341895537167,
+      "resolved_yes": true,
+      "model_logloss": 3.8696433233117884,
+      "market_logloss": 1.6094379124341003,
+      "side": "buy_no",
+      "pnl_after_costs": -0.81
+    },
+    {
+      "market_id": "cm-tsqzp6qqvbkowmno",
+      "venue": "polymarket",
+      "question": "Will 16-19 Democratic senators vote in favor of the Laken Riley Act?",
+      "kind": "count_bucket",
+      "matched_vote_date": "2025-01-20",
+      "matched_keys": [
+        "119:hr:29",
+        "119:hr:751",
+        "119:hr:7511",
+        "119:s:5"
+      ],
+      "decision_time": "2025-01-19T12:00:03+00:00",
+      "market_price": 0.115,
+      "model_fair": 0.09921131439323852,
+      "edge": -0.015788685606761485,
+      "resolved_yes": false,
+      "model_logloss": 0.10448458205885104,
+      "market_logloss": 0.12216763397420753,
+      "side": "none",
+      "pnl_after_costs": 0.0
+    },
+    {
+      "market_id": "cm-wa3sgnmtfymkow5a",
+      "venue": "polymarket",
+      "question": "Will 20-23 Democratic senators vote in favor of the Laken Riley Act?",
+      "kind": "count_bucket",
+      "matched_vote_date": "2025-01-20",
+      "matched_keys": [
+        "119:hr:29",
+        "119:hr:751",
+        "119:hr:7511",
+        "119:s:5"
+      ],
+      "decision_time": "2025-01-19T12:00:03+00:00",
+      "market_price": 0.0495,
+      "model_fair": 0.09274449486068916,
+      "edge": 0.04324449486068915,
+      "resolved_yes": false,
+      "model_logloss": 0.0973311649665451,
+      "market_logloss": 0.05076711705365319,
+      "side": "none",
+      "pnl_after_costs": 0.0
+    }
+  ]
+}
