@@ -26,7 +26,7 @@ def test_roll_call_url_zero_pads_vote_number() -> None:
 def test_roll_call_list_url() -> None:
     assert (
         roll_call_list_url(118, 2)
-        == "https://www.senate.gov/legislative/LIS/roll_call_votes/vote1182/vote_summary.xml"
+        == "https://www.senate.gov/legislative/LIS/roll_call_lists/vote_menu_118_2.xml"
     )
 
 

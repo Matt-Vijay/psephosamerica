@@ -16,6 +16,7 @@ from defusedxml.ElementTree import fromstring
 from .models import VoteCastRecord, VoteEventRecord
 
 SENATE_VOTE_BASE = "https://www.senate.gov/legislative/LIS/roll_call_votes"
+SENATE_LIST_BASE = "https://www.senate.gov/legislative/LIS/roll_call_lists"
 VoteOption = Literal["yea", "nay", "present", "not_voting", "paired", "abstain"]
 
 
@@ -26,8 +27,10 @@ def roll_call_url(congress: int, session: int, vote_number: int) -> str:
 
 
 def roll_call_list_url(congress: int, session: int) -> str:
-    prefix = f"vote{congress}{session}"
-    return f"{SENATE_VOTE_BASE}/{prefix}/vote_summary.xml"
+    # The per-session vote index lives under roll_call_lists as vote_menu_*.xml;
+    # the old roll_call_votes/.../vote_summary.xml path answers 200 with an HTML
+    # page, which silently parsed to zero votes.
+    return f"{SENATE_LIST_BASE}/vote_menu_{congress}_{session}.xml"
 
 
 def _vote_option(raw: str) -> VoteOption:
