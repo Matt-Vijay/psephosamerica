@@ -1,6 +1,3 @@
-# mypy: ignore-errors
-# TODO(runtime-commands): pre-existing type debt carried over from the monolithic
-# commands.py (where the commands.pyi stub hid it from mypy). Burn down per module.
 """Generic helpers shared across operator command modules."""
 
 from __future__ import annotations
@@ -13,7 +10,7 @@ import sys
 from pathlib import Path
 from src.runtime.json_artifacts import write_json_artifact as _atomic_write_json_artifact
 from src.runtime.paths import local_artifact_root
-from typing import Any, cast
+from typing import Any, TypeGuard, cast
 from uuid import uuid4
 
 
@@ -179,12 +176,12 @@ def _required_string_list(value: Any) -> list[str]:
     return [str(value)]
 
 
-def _is_plain_int(value: object) -> bool:
+def _is_plain_int(value: object) -> TypeGuard[int]:
     return type(value) is int
 
 
 def _plain_int_or_zero(value: object) -> int:
-    return cast(int, value) if _is_plain_int(value) else 0
+    return value if _is_plain_int(value) else 0
 
 
 _DEFAULT_RUNTIME_ENV_REQUIREMENTS = (
@@ -194,11 +191,11 @@ _DEFAULT_RUNTIME_ENV_REQUIREMENTS = (
 )
 
 
-def _is_non_negative_plain_int(value: object) -> bool:
+def _is_non_negative_plain_int(value: object) -> TypeGuard[int]:
     return isinstance(value, int) and not isinstance(value, bool) and value >= 0
 
 
-def _is_optional_non_negative_plain_int(value: object) -> bool:
+def _is_optional_non_negative_plain_int(value: object) -> TypeGuard[int | None]:
     return value is None or _is_non_negative_plain_int(value)
 
 
@@ -235,7 +232,7 @@ def _positive_finite_timeout(value: object) -> tuple[float, str | None]:
     if isinstance(value, bool):
         return 0.0, "timeout must be a positive finite number"
     try:
-        timeout = float(value)
+        timeout = float(cast(Any, value))
     except (TypeError, ValueError):
         return 0.0, "timeout must be a positive finite number"
     if not math.isfinite(timeout) or timeout <= 0.0:

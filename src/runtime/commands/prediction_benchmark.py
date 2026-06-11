@@ -1,6 +1,3 @@
-# mypy: ignore-errors
-# TODO(runtime-commands): pre-existing type debt carried over from the monolithic
-# commands.py (where the commands.pyi stub hid it from mypy). Burn down per module.
 """Prediction benchmark verification and backfill-plan commands."""
 
 from __future__ import annotations
@@ -13,7 +10,7 @@ import os
 from pathlib import Path
 from src.runtime.congress_options import current_congress_for_date
 from types import SimpleNamespace
-from typing import Any
+from typing import Any, TypeGuard
 
 from src.runtime.commands._shared import (
     _BENCHMARK_INVENTORY_FEATURE_SOURCE_COVERAGE_COUNT_KEYS,
@@ -3098,7 +3095,7 @@ def _prediction_backfill_plan_benchmark_scope_state_valid(
     return True
 
 
-def _prediction_backfill_plan_sorted_string_list(value: Any) -> bool:
+def _prediction_backfill_plan_sorted_string_list(value: Any) -> TypeGuard[list[str]]:
     return (
         isinstance(value, list)
         and all(isinstance(item, str) and item and item.strip() == item for item in value)

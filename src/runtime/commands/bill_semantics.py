@@ -1,6 +1,3 @@
-# mypy: ignore-errors
-# TODO(runtime-commands): pre-existing type debt carried over from the monolithic
-# commands.py (where the commands.pyi stub hid it from mypy). Burn down per module.
 """Bill-semantics materialization, plan, and verification commands."""
 
 from __future__ import annotations
@@ -67,13 +64,13 @@ def _handle_materialize_bill_semantics(args: Any) -> dict[str, Any]:
     if targeting_requested:
         bill_rows_by_key = [(_materialize_bill_semantic_row_key(row), row) for row in bill_rows]
         target_key_set = set(target_bill_keys)
-        bill_rows_by_key = [
+        matched_rows_by_key = [
             (bill_key, row)
             for bill_key, row in bill_rows_by_key
             if bill_key is not None and bill_key in target_key_set
         ]
-        bill_rows = [row for _, row in bill_rows_by_key]
-        matched_bill_keys = [bill_key for bill_key, _ in bill_rows_by_key]
+        bill_rows = [row for _, row in matched_rows_by_key]
+        matched_bill_keys = [bill_key for bill_key, _ in matched_rows_by_key]
     unmatched_bill_keys = sorted(set(target_bill_keys) - set(matched_bill_keys))
     quality_gate_failures: list[str] = []
     if getattr(args, "fail_on_unmatched_targets", False) and unmatched_bill_keys:

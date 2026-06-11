@@ -1,6 +1,3 @@
-# mypy: ignore-errors
-# TODO(runtime-commands): pre-existing type debt carried over from the monolithic
-# commands.py (where the commands.pyi stub hid it from mypy). Burn down per module.
 """Runtime environment preflight commands."""
 
 from __future__ import annotations
@@ -49,7 +46,7 @@ def _handle_runtime_env_preflight(args: Any) -> dict[str, Any]:
     next_actions = sorted(
         {action for actions in next_actions_by_env.values() for action in actions}
     )
-    result = {
+    result: dict[str, Any] = {
         "ok": not missing_env and not dotenv_issues,
         "command": "runtime-env-preflight",
         "checked": len(checks),

@@ -1,6 +1,3 @@
-# mypy: ignore-errors
-# TODO(runtime-commands): pre-existing type debt carried over from the monolithic
-# commands.py (where the commands.pyi stub hid it from mypy). Burn down per module.
 """Prediction evaluation window plan/summary/run commands."""
 
 from __future__ import annotations
@@ -896,10 +893,11 @@ def _validate_prediction_eval_window_summary_counts(
         issues.append("total_evaluation_label_count must be a non-negative integer")
     else:
         window_total = sum(
-            window.get("evaluation_label_count")
+            count
             for window in windows
             if isinstance(window, dict)
-            and _is_non_negative_plain_int(window.get("evaluation_label_count"))
+            for count in (window.get("evaluation_label_count"),)
+            if _is_non_negative_plain_int(count)
         )
         if declared_total != window_total:
             issues.append("total_evaluation_label_count mismatch")
