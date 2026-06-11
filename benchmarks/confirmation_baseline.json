@@ -1,0 +1,8 @@
+{
+  "slice": "confirmation-118-119",
+  "auc": 0.9525138933825216,
+  "auc_party_line": 0.9207854857292391,
+  "brier": 0.1110027502001228,
+  "eval_votes": 40933.0,
+  "tolerance": 0.005
+}

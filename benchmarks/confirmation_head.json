@@ -1,0 +1,18 @@
+{
+  "train_congresses": "<= 117",
+  "train_votes": 90905,
+  "eval_congresses": "118-119",
+  "eval_votes": 40933.0,
+  "auc": 0.9525138933825216,
+  "auc_party_line": 0.9207854857292391,
+  "brier": 0.1110027502001228,
+  "brier_party_line": 0.09366525786040603,
+  "accuracy": 0.8871570615395891,
+  "accuracy_party_line": 0.906334742139594,
+  "coefficients": {
+    "intercept": -0.7055863788066153,
+    "party_match": 2.1146516938294706,
+    "conf_rate_match": 1.4980722034433664
+  },
+  "beats_party_line": true
+}
