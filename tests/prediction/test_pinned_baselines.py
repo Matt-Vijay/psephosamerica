@@ -79,3 +79,11 @@ def test_count_pmf_pin_wellformed() -> None:
     assert payload["crps_correlated"] < payload["crps_independence"]
     assert 0.8 <= payload["coverage90_correlated"] <= 1.0
     assert payload["sigma_party"] > 0.0
+
+
+def test_confirmation_pin_wellformed() -> None:
+    payload = json.loads((_BENCH / "confirmation_baseline.json").read_text(encoding="utf-8"))
+    assert payload["slice"] == "confirmation-118-119"
+    # the member residual must out-rank the party-line baseline
+    assert payload["auc"] > payload["auc_party_line"]
+    assert payload["eval_votes"] > 10_000
