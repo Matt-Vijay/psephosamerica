@@ -38,12 +38,12 @@ class _Member:
 
 def federal_members(corpus_directory: Path | str) -> list[_Member]:
     """Corpus persons that carry a ``bioguide:`` external id (the federal members)."""
-    from src.graph.export import read_contract_corpus
+    from src.graph.export import iter_contract_corpus
 
     if not (Path(corpus_directory) / RECORDS_FILENAME).exists():
         return []
     members: list[_Member] = []
-    for row in read_contract_corpus(corpus_directory):
+    for row in iter_contract_corpus(corpus_directory):
         if row.entity_type == "person" and any(e.startswith("bioguide:") for e in row.external_ids):
             members.append(_Member(canonical_id=row.canonical_id, name=row.display_name))
     return members

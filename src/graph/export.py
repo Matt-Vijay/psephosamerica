@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from collections.abc import Iterable
+from collections.abc import Iterable, Iterator
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
@@ -66,12 +66,21 @@ def write_contract_corpus(
 
 def read_contract_corpus(directory: Path | str) -> list[EntityResolutionOutput]:
     """Read back a corpus written by :func:`write_contract_corpus`."""
+    return list(iter_contract_corpus(directory))
+
+
+def iter_contract_corpus(directory: Path | str) -> Iterator[EntityResolutionOutput]:
+    """Stream a corpus row by row.
+
+    The live corpus is ~1.5 GB / 115K rows; scan-style consumers (filtering for
+    federal members, building an id index) should iterate rather than hold every
+    parsed row -- materializing the full list peaks at several GB of RSS.
+    """
     path = Path(directory) / RECORDS_FILENAME
-    return [
-        EntityResolutionOutput.model_validate_json(line)
-        for line in path.read_text(encoding="utf-8").splitlines()
-        if line.strip()
-    ]
+    with path.open(encoding="utf-8") as handle:
+        for line in handle:
+            if line.strip():
+                yield EntityResolutionOutput.model_validate_json(line)
 
 
 def write_delta_feed(

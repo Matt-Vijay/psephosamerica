@@ -8,6 +8,7 @@ from pathlib import Path
 from src.graph.cdc import EntityDelta
 from src.graph.contracts import ContractSourceAnchor, build_bill_output
 from src.graph.export import (
+    iter_contract_corpus,
     read_contract_corpus,
     write_contract_corpus,
     write_delta_feed,
@@ -42,6 +43,16 @@ def test_write_and_read_roundtrip(tmp_path: Path) -> None:
     assert (tmp_path / "manifest.json").exists()
     restored = read_contract_corpus(tmp_path)
     assert {r.canonical_id for r in restored} == {"cb-a", "cb-b"}
+
+
+def test_iter_contract_corpus_streams_lazily(tmp_path: Path) -> None:
+    write_contract_corpus([_row("cb-a"), _row("cb-b")], directory=tmp_path, as_of=_T)
+    # tolerate a blank line mid-file (append seams)
+    records = tmp_path / "records.jsonl"
+    records.write_text(records.read_text().replace("\n", "\n\n", 1), encoding="utf-8")
+    stream = iter_contract_corpus(tmp_path)
+    assert next(iter(stream)).canonical_id == "cb-a"  # first row without reading the rest
+    assert [r.canonical_id for r in iter_contract_corpus(tmp_path)] == ["cb-a", "cb-b"]
 
 
 def test_records_sorted_for_determinism(tmp_path: Path) -> None:

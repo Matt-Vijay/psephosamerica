@@ -40,12 +40,12 @@ _BULK_ROOT = "https://www.govinfo.gov/bulkdata/BILLSTATUS"
 
 def build_bioguide_resolver(corpus_directory: Path | str) -> dict[str, str]:
     """``{bioguide_id: canonical_person_id}`` from the corpus's person rows."""
-    from src.graph.export import read_contract_corpus
+    from src.graph.export import iter_contract_corpus
 
     resolver: dict[str, str] = {}
     if not (Path(corpus_directory) / RECORDS_FILENAME).exists():
         return resolver
-    for row in read_contract_corpus(corpus_directory):
+    for row in iter_contract_corpus(corpus_directory):
         if row.entity_type != "person":
             continue
         for external in row.external_ids:
