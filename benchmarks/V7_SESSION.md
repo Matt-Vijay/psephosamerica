@@ -48,7 +48,8 @@ statement features (the same lever CRS policy-area provided for defection).
 
 ## Verification
 
-ruff + ruff format + mypy --strict clean on all new modules; **4,968 tests**
+ruff + ruff format + mypy --strict clean on all new modules; **4,999 tests**
 green at session close (4,880 at open). Commits: hazard (9dbf01f), format
-(0df32dd), count PMF (d4182b7), composer (c7b693a), backtest (ce092ca),
-paper trader (this commit).
+(0df32dd), count PMF (d4182b7), composer (c7b693a), backtest (ce092ca), paper
+trader (00aaaed), confirmation (5892c29, 43bc16f), bootstraps (ef69899,
+c4ecead), state transfer (732e4d3, 205bfe1).
