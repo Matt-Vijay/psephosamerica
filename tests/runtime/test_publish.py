@@ -13,6 +13,7 @@ import pytest
 
 from src.runtime.publish import (
     PublishRuntimeResult,
+    _promote_staging_dir,
     default_snapshot_id,
     run_publish_runtime,
 )
@@ -259,3 +260,50 @@ class TestRunPublishRuntimePromotion:
         assert not (target_dir / "new.json").exists()
         mock_fail.assert_called_once()
         mock_finish.assert_not_called()
+
+
+class TestPromoteStagingDirRollback:
+    """Crash-safety of the staging -> live promotion.
+
+    The promotion renames the live tree aside as a backup, then renames the
+    staging tree into place. If the second rename blows up, the previous live
+    tree must be restored and the error must propagate.
+    """
+
+    def test_failed_promotion_restores_previous_snapshot(self, tmp_path: Path) -> None:
+        target_dir = tmp_path / "publish"
+        target_dir.mkdir()
+        (target_dir / "old.json").write_text("old", encoding="utf-8")
+        missing_staging = tmp_path / "staging-that-never-existed"
+
+        with pytest.raises(FileNotFoundError):
+            _promote_staging_dir(missing_staging, target_dir, _SNAP_ID)
+
+        assert (target_dir / "old.json").read_text(encoding="utf-8") == "old"
+        backups = [p for p in tmp_path.iterdir() if p.name.startswith(".openpact-backup-")]
+        assert backups == []
+
+    def test_failed_promotion_without_previous_snapshot_propagates(self, tmp_path: Path) -> None:
+        target_dir = tmp_path / "publish"
+        missing_staging = tmp_path / "staging-that-never-existed"
+
+        with pytest.raises(FileNotFoundError):
+            _promote_staging_dir(missing_staging, target_dir, _SNAP_ID)
+
+        assert not target_dir.exists()
+
+    def test_successful_promotion_replaces_target_and_cleans_backup(self, tmp_path: Path) -> None:
+        target_dir = tmp_path / "publish"
+        target_dir.mkdir()
+        (target_dir / "old.json").write_text("old", encoding="utf-8")
+        staging_dir = tmp_path / "staging"
+        staging_dir.mkdir()
+        (staging_dir / "new.json").write_text("new", encoding="utf-8")
+
+        _promote_staging_dir(staging_dir, target_dir, _SNAP_ID)
+
+        assert (target_dir / "new.json").read_text(encoding="utf-8") == "new"
+        assert not (target_dir / "old.json").exists()
+        assert not staging_dir.exists()
+        backups = [p for p in tmp_path.iterdir() if p.name.startswith(".openpact-backup-")]
+        assert backups == []
