@@ -115,6 +115,19 @@ def _strings(values: object) -> list[str]:
     return [str(value) for value in values]
 
 
+def _market_era(end_date: str | None, *, observed: date) -> date:
+    """The date that names a market's congress: its own end date when parseable.
+
+    A bare citation in a CLOSED market from a prior cycle ("...bill pass in
+    2024?") must default to the congress sitting THEN, not at snapshot time.
+    """
+    raw = (end_date or "")[:10]
+    try:
+        return date.fromisoformat(raw)
+    except ValueError:
+        return observed
+
+
 def _rules_sha256(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
@@ -134,7 +147,7 @@ def _market_record(
     source_url: str,
     known_at: datetime,
 ) -> dict[str, Any]:
-    default_congress = congress_for_date(known_at.date())
+    default_congress = congress_for_date(_market_era(end_date, observed=known_at.date()))
     citations = parse_bill_citations(f"{question}\n{rules_text}", default_congress=default_congress)
     return {
         "market_id": market_entity_id(venue, native_id),

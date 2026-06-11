@@ -234,3 +234,31 @@ def test_price_record_carries_known_at() -> None:
 def test_epoch_to_utc() -> None:
     t = epoch_to_utc(0)
     assert t.year == 1970 and t.tzinfo is UTC
+
+
+def test_closed_market_citation_defaults_to_its_own_congress() -> None:
+    # A 2024-era market citing "H.R. 7890" must resolve to the 118th congress
+    # (sitting at its end date), not the congress sitting at snapshot time.
+    market = {
+        "conditionId": "0xold",
+        "question": "Will the bathroom bill pass in 2024?",
+        "description": "Resolves Yes if H.R. 7890 passes before the end of 2024.",
+        "endDateIso": "2024-12-31",
+        "closed": True,
+    }
+    record = polymarket_market_record(market, known_at=_KNOWN)  # snapshot in 2026 (119th)
+    assert record is not None
+    assert record["citations"][0]["congress"] == 118
+    assert record["citations"][0]["canonical_bill_id"] == (
+        BillRef.for_congress(118, "H.R. 7890").canonical_id
+    )
+
+
+def test_unparseable_end_date_falls_back_to_snapshot_congress() -> None:
+    market = {
+        "conditionId": "0xnd",
+        "description": "Resolves on S. 99.",
+        "endDateIso": "soon",
+    }
+    record = polymarket_market_record(market, known_at=_KNOWN)
+    assert record is not None and record["citations"][0]["congress"] == 119
