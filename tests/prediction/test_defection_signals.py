@@ -14,7 +14,9 @@ from src.prediction.defection_signals import (
 from src.prediction.vote_record import VoteRecord
 
 
-def _record(member: str, *, is_yea: bool, party_lean_yea: bool, sectors: tuple[str, ...], day: int) -> VoteRecord:
+def _record(
+    member: str, *, is_yea: bool, party_lean_yea: bool, sectors: tuple[str, ...], day: int
+) -> VoteRecord:
     return VoteRecord(
         member=member,
         party="R",
@@ -30,8 +32,14 @@ def _record(member: str, *, is_yea: bool, party_lean_yea: bool, sectors: tuple[s
 def _corpus() -> list[VoteRecord]:
     out: list[VoteRecord] = []
     for day in range(1, 21):
-        out.append(_record("D", is_yea=True, party_lean_yea=False, sectors=("energy_utilities",), day=day))
-        out.append(_record("L1", is_yea=False, party_lean_yea=False, sectors=("energy_utilities",), day=day))
+        out.append(
+            _record("D", is_yea=True, party_lean_yea=False, sectors=("energy_utilities",), day=day)
+        )
+        out.append(
+            _record(
+                "L1", is_yea=False, party_lean_yea=False, sectors=("energy_utilities",), day=day
+            )
+        )
         out.append(_record("L2", is_yea=False, party_lean_yea=False, sectors=("health",), day=day))
     return out
 
@@ -40,11 +48,17 @@ def test_hierarchical_prior_shrinks_thin_records() -> None:
     train = _corpus()
     provider = hierarchical_defection_prior(train, member_strength=20.0)
     # frequent defector D -> high prior; loyalists -> low prior
-    d = provider(_record("D", is_yea=True, party_lean_yea=False, sectors=(), day=1))["defection_prior"]
-    l1 = provider(_record("L1", is_yea=False, party_lean_yea=False, sectors=(), day=1))["defection_prior"]
+    d = provider(_record("D", is_yea=True, party_lean_yea=False, sectors=(), day=1))[
+        "defection_prior"
+    ]
+    l1 = provider(_record("L1", is_yea=False, party_lean_yea=False, sectors=(), day=1))[
+        "defection_prior"
+    ]
     assert d > l1
     # an unknown member falls back to the party/global rate (between 0 and 1)
-    unknown = provider(_record("ZZ", is_yea=True, party_lean_yea=False, sectors=(), day=1))["defection_prior"]
+    unknown = provider(_record("ZZ", is_yea=True, party_lean_yea=False, sectors=(), day=1))[
+        "defection_prior"
+    ]
     assert 0.0 <= unknown <= 1.0
 
 

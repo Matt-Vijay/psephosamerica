@@ -120,7 +120,9 @@ def main(argv: list[str] | None = None) -> int:
     report = run(Path(args.corpus), cutoff=date.fromisoformat(args.cutoff))
     Path(args.out).write_text(json.dumps(report, indent=2), encoding="utf-8")
     for sig in report["signals"]:
-        print(f"{sig['signal_name']:22s} ΔAUC={sig['delta_auc']:+.4f} (aug={sig['augmented_auc']:.4f})")
+        print(
+            f"{sig['signal_name']:22s} ΔAUC={sig['delta_auc']:+.4f} (aug={sig['augmented_auc']:.4f})"
+        )
     print(f"beats 0.7247 pin: {report['beats_pin']}")
     print(f"wrote {args.out}")
     return 0

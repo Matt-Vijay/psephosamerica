@@ -27,9 +27,7 @@ from src.prediction.defection_signals import SignalProvider
 from src.prediction.vote_record import VoteRecord
 
 
-def statement_engagement_provider(
-    statement_rows_path: Path, *, cutoff: date
-) -> SignalProvider:
+def statement_engagement_provider(statement_rows_path: Path, *, cutoff: date) -> SignalProvider:
     """Per (member, sector) pre-cutoff public-statement counts, normalised by log1p."""
     import math
 

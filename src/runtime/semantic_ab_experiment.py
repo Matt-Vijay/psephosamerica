@@ -54,8 +54,13 @@ def run(
     for name, field, concat in variants:
         emap = load_bill_embedding_map(records_path, field=field, concat_with=concat)
         report = run_bill_content_experiment(
-            rolls, emap, cutoff=cutoff, eval_end=eval_end,
-            k_values=k_values, projection_dim=projection_dim, synthetic=False,
+            rolls,
+            emap,
+            cutoff=cutoff,
+            eval_end=eval_end,
+            k_values=k_values,
+            projection_dim=projection_dim,
+            synthetic=False,
         )
         arms[name] = {
             "best_auc": report["best_auc"],

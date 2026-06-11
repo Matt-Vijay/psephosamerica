@@ -28,7 +28,9 @@ _VOTE = "https://www.senate.gov/legislative/LIS/roll_call_votes/vote{congress}{s
 
 def _slug_bill(document_name: str, congress: int) -> str:
     parts = document_name.strip().lower().replace(".", "").split()
-    return f"us_congress:{congress}:" + "-".join(parts) if parts else f"us_congress:{congress}:unknown"
+    return (
+        f"us_congress:{congress}:" + "-".join(parts) if parts else f"us_congress:{congress}:unknown"
+    )
 
 
 def parse_senate_vote_xml(xml: str) -> dict[str, object] | None:
@@ -44,7 +46,9 @@ def parse_senate_vote_xml(xml: str) -> dict[str, object] | None:
     try:
         from datetime import datetime
 
-        vote_date = datetime.strptime(date_raw.split(",")[0] + "," + date_raw.split(",")[1], "%B %d, %Y").date()
+        vote_date = datetime.strptime(
+            date_raw.split(",")[0] + "," + date_raw.split(",")[1], "%B %d, %Y"
+        ).date()
     except (ValueError, IndexError):
         return None
     # bill name lives under <document><document_name>; amendments under <amendment>
@@ -61,7 +65,14 @@ def parse_senate_vote_xml(xml: str) -> dict[str, object] | None:
         choice = _CHOICE.get(choice_raw, choice_raw)
         member = (m.findtext("lis_member_id") or m.findtext("last_name") or "").strip()
         if member:
-            votes.append([member, (m.findtext("party") or "").strip(), (m.findtext("state") or "").strip(), choice])
+            votes.append(
+                [
+                    member,
+                    (m.findtext("party") or "").strip(),
+                    (m.findtext("state") or "").strip(),
+                    choice,
+                ]
+            )
     if not votes:
         return None
     return {
@@ -73,16 +84,22 @@ def parse_senate_vote_xml(xml: str) -> dict[str, object] | None:
     }
 
 
-def fetch_senate_rollcalls(congress: int, session: int, *, client: httpx.Client | None = None) -> list[dict[str, object]]:
+def fetch_senate_rollcalls(
+    congress: int, session: int, *, client: httpx.Client | None = None
+) -> list[dict[str, object]]:
     """Fetch all roll-calls for a (congress, session) via the vote menu."""
     owns = client is None
-    http = client or httpx.Client(timeout=30.0, headers={"User-Agent": "openpact-research/0.1 (public-record)"})
+    http = client or httpx.Client(
+        timeout=30.0, headers={"User-Agent": "openpact-research/0.1 (public-record)"}
+    )
     rows: list[dict[str, object]] = []
     try:
         menu = http.get(_MENU.format(congress=congress, session=session))
         if menu.status_code != 200:
             return rows
-        numbers = sorted({int(n) for n in re.findall(r"<vote_number>(\d+)</vote_number>", menu.text)})
+        numbers = sorted(
+            {int(n) for n in re.findall(r"<vote_number>(\d+)</vote_number>", menu.text)}
+        )
         for number in numbers:
             resp = http.get(_VOTE.format(congress=congress, session=session, number=number))
             if resp.status_code != 200:
@@ -107,7 +124,9 @@ def main(argv: list[str] | None = None) -> int:
 
     rows = fetch_senate_rollcalls(args.congress, args.session)
     real = sum(1 for r in rows if not str(r["bill_id"]).endswith((":unknown", ":motion")))
-    Path(args.out).write_text("\n".join(json.dumps(r) for r in rows) + ("\n" if rows else ""), encoding="utf-8")
+    Path(args.out).write_text(
+        "\n".join(json.dumps(r) for r in rows) + ("\n" if rows else ""), encoding="utf-8"
+    )
     print(f"wrote {args.out}: {len(rows)} roll-calls, {real} with a named bill")
     return 0
 

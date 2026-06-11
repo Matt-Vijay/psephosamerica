@@ -46,10 +46,14 @@ def run(corpus: Path, *, cutoff: date) -> dict[str, Any]:
             per_sector[sector] = scores[0].as_dict()
 
     # an example bill profile (energy permitting) ranking across venues
-    example = [s.as_dict() for s in index.score(["energy_utilities"], marginal_members_by_venue=marginal)]
+    example = [
+        s.as_dict() for s in index.score(["energy_utilities"], marginal_members_by_venue=marginal)
+    ]
     return {
         "cutoff": cutoff.isoformat(),
-        "venues": sorted({Venue(jurisdiction=f"us_congress:{c}", chamber="house").label() for c in congresses}),
+        "venues": sorted(
+            {Venue(jurisdiction=f"us_congress:{c}", chamber="house").label() for c in congresses}
+        ),
         "per_sector_pass_profile": per_sector,
         "example_ranking_energy": example,
         "note": (

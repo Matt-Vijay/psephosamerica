@@ -80,7 +80,9 @@ def load_crs_subjects_map(records_path: Path, content_path: Path) -> dict[str, t
     return out
 
 
-def run(rich_corpus: Path, *, records_path: Path, content_path: Path, cutoff: date) -> dict[str, Any]:
+def run(
+    rich_corpus: Path, *, records_path: Path, content_path: Path, cutoff: date
+) -> dict[str, Any]:
     policy_map = load_crs_policy_map(records_path, content_path)
     subjects_map = load_crs_subjects_map(records_path, content_path)
     rolls = load_rich_rollcalls(rich_corpus)
@@ -91,7 +93,13 @@ def run(rich_corpus: Path, *, records_path: Path, content_path: Path, cutoff: da
     linked: list[tuple[VoteRecord, str | None, tuple[str, ...]]] = []
     for lv in build_linked_votes(rolls, None):
         key = normalize_bill_key(lv.bill_id)
-        linked.append((lv.record, policy_map.get(key) if key else None, subjects_map.get(key, ()) if key else ()))
+        linked.append(
+            (
+                lv.record,
+                policy_map.get(key) if key else None,
+                subjects_map.get(key, ()) if key else (),
+            )
+        )
 
     train = [t for t in linked if t[0].vote_date <= cutoff]
     eval_records = [t for t in linked if t[0].vote_date > cutoff]
@@ -129,24 +137,45 @@ def run(rich_corpus: Path, *, records_path: Path, content_path: Path, cutoff: da
         return max(devs) if devs else 0.0  # member's most defection-prone subject on this bill
 
     base_names = ("loyalty_gap", "sector_divergence")
-    arms: dict[str, tuple[tuple[str, ...], Callable[[VoteRecord, str | None, tuple[str, ...]], dict[str, float]]]] = {
+    arms: dict[
+        str,
+        tuple[
+            tuple[str, ...], Callable[[VoteRecord, str | None, tuple[str, ...]], dict[str, float]]
+        ],
+    ] = {
         "base": (base_names, lambda r, pa, subs: {}),
-        "policy": ((*base_names, "crs_policy_divergence"),
-                   lambda r, pa, subs: {"crs_policy_divergence": policy_feat(r, pa)}),
-        "policy_subjects": ((*base_names, "crs_policy_divergence", "crs_subject_divergence"),
-                            lambda r, pa, subs: {"crs_policy_divergence": policy_feat(r, pa),
-                                                 "crs_subject_divergence": subject_feat(r, subs)}),
+        "policy": (
+            (*base_names, "crs_policy_divergence"),
+            lambda r, pa, subs: {"crs_policy_divergence": policy_feat(r, pa)},
+        ),
+        "policy_subjects": (
+            (*base_names, "crs_policy_divergence", "crs_subject_divergence"),
+            lambda r, pa, subs: {
+                "crs_policy_divergence": policy_feat(r, pa),
+                "crs_subject_divergence": subject_feat(r, subs),
+            },
+        ),
     }
     results: dict[str, Any] = {}
     base_auc = 0.0
     for name, (names, extra) in arms.items():
-        tr = [({**defection_features(r, profiles), **extra(r, pa, subs)}, defected(r)) for r, pa, subs in train]
-        ev = [({**defection_features(r, profiles), **extra(r, pa, subs)}, defected(r)) for r, pa, subs in eval_records]
+        tr = [
+            ({**defection_features(r, profiles), **extra(r, pa, subs)}, defected(r))
+            for r, pa, subs in train
+        ]
+        ev = [
+            ({**defection_features(r, profiles), **extra(r, pa, subs)}, defected(r))
+            for r, pa, subs in eval_records
+        ]
         i, c = train_logistic_rows(tr, names)
         auc = auc_of_rows(i, c, names, ev)
         if name == "base":
             base_auc = auc
-        results[name] = {"auc": auc, "delta_vs_base": auc - base_auc, "coef": {k: c.get(k, 0.0) for k in names if k not in base_names}}
+        results[name] = {
+            "auc": auc,
+            "delta_vs_base": auc - base_auc,
+            "coef": {k: c.get(k, 0.0) for k in names if k not in base_names},
+        }
 
     covered = sum(1 for _r, pa, _s in eval_records if pa)
     best = max(results, key=lambda a: results[a]["auc"])
@@ -175,7 +204,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--out", default="benchmarks/crs_multitask.json")
     args = parser.parse_args(argv)
 
-    report = run(Path(args.rich), records_path=Path(args.records), content_path=Path(args.content), cutoff=date.fromisoformat(args.cutoff))
+    report = run(
+        Path(args.rich),
+        records_path=Path(args.records),
+        content_path=Path(args.content),
+        cutoff=date.fromisoformat(args.cutoff),
+    )
     Path(args.out).write_text(json.dumps(report, indent=2), encoding="utf-8")
     print(f"CRS coverage={report['crs_policy_coverage']:.2f} base_auc={report['base_auc']:.4f}")
     for name, arm in report["arms"].items():

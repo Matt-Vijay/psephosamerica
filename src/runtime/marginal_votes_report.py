@@ -79,9 +79,7 @@ def generate(
     for i, (p, r, bill_id, features) in enumerate(scored[:top_n], start=1):
         contributions = head.contributions(features)
         ordered = sorted(contributions.items(), key=lambda kv: abs(kv[1]), reverse=True)
-        factors = [
-            f"{_FACTOR_LABEL.get(n, n)} ({v:+.2f})" for n, v in ordered if abs(v) > 1e-9
-        ]
+        factors = [f"{_FACTOR_LABEL.get(n, n)} ({v:+.2f})" for n, v in ordered if abs(v) > 1e-9]
         top = max(contributions.items(), key=lambda kv: kv[1]) if contributions else ("", 0.0)
         cf = (
             f"if the member no longer {_FACTOR_LABEL.get(top[0], top[0])}, P(defect) drops most"
@@ -92,13 +90,23 @@ def generate(
         venue_pass = yy / nn if nn else overall_pass
         rows.append(
             MarginalVote(
-                rank=i, member=r.member, party=r.party, state=r.state, bill_id=bill_id,
-                target_vote_date=r.vote_date.isoformat(), p_defect=p, factors=factors,
-                counterfactual=cf, venue_p_pass=venue_pass,
+                rank=i,
+                member=r.member,
+                party=r.party,
+                state=r.state,
+                bill_id=bill_id,
+                target_vote_date=r.vote_date.isoformat(),
+                p_defect=p,
+                factors=factors,
+                counterfactual=cf,
+                venue_p_pass=venue_pass,
                 citations=[
                     {"kind": "rollcall_bill", "ref": bill_id},
-                    {"kind": "member_history", "ref": r.member,
-                     "detail": f"loyalty_gap={features.get('loyalty_gap', 0.0):.3f}"},
+                    {
+                        "kind": "member_history",
+                        "ref": r.member,
+                        "detail": f"loyalty_gap={features.get('loyalty_gap', 0.0):.3f}",
+                    },
                 ],
             )
         )
@@ -158,8 +166,10 @@ def main(argv: list[str] | None = None) -> int:
 
     votes = build_linked_flat_votes(Path(args.corpus))
     report = generate(
-        votes, cutoff=date.fromisoformat(args.cutoff),
-        target_end=date.fromisoformat(args.target_end), top_n=args.top_n,
+        votes,
+        cutoff=date.fromisoformat(args.cutoff),
+        target_end=date.fromisoformat(args.target_end),
+        top_n=args.top_n,
     )
     Path(args.out).write_text(json.dumps(report, indent=2), encoding="utf-8")
     Path(args.html).write_text(render_html(report), encoding="utf-8")

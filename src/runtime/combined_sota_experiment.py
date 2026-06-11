@@ -31,7 +31,17 @@ from src.runtime.cross_pressured_experiment import load_rich_rollcalls
 _MIN_POLICY_VOTES = 3
 
 
-def run(rich: Path, records: Path, content: Path, *, cutoff: date, eval_end: date, k: int = 32, projection_dim: int = 16, max_train: int = 200_000) -> dict[str, Any]:
+def run(
+    rich: Path,
+    records: Path,
+    content: Path,
+    *,
+    cutoff: date,
+    eval_end: date,
+    k: int = 32,
+    projection_dim: int = 16,
+    max_train: int = 200_000,
+) -> dict[str, Any]:
     emap = load_bill_embedding_map(records, field="dossier_embedding")
     policy_map = load_crs_policy_map(records, content)
     linked = build_linked_votes(load_rich_rollcalls(rich), emap)
@@ -59,7 +69,11 @@ def run(rich: Path, records: Path, content: Path, *, cutoff: date, eval_end: dat
 
     def crs_feat(lv: Any) -> float:
         pa = policy_map.get(normalize_bill_key(lv.bill_id) or "")
-        overall = mo[lv.record.member][0] / mo[lv.record.member][1] if mo.get(lv.record.member, [0, 0])[1] else 0.1
+        overall = (
+            mo[lv.record.member][0] / mo[lv.record.member][1]
+            if mo.get(lv.record.member, [0, 0])[1]
+            else 0.1
+        )
         if pa and mp.get((lv.record.member, pa), [0, 0])[1] >= _MIN_POLICY_VOTES:
             return mp[(lv.record.member, pa)][0] / mp[(lv.record.member, pa)][1] - overall
         return 0.0
@@ -67,7 +81,11 @@ def run(rich: Path, records: Path, content: Path, *, cutoff: date, eval_end: dat
     def feats(lv: Any) -> dict[str, float]:
         base = dict(defection_features(lv.record, profiles))
         st = stores.get(lv.record.member)
-        base["bill_rag_signal"] = st.signals(lv.bill_embedding, (k,))[k] if (st and lv.bill_embedding is not None) else 0.0
+        base["bill_rag_signal"] = (
+            st.signals(lv.bill_embedding, (k,))[k]
+            if (st and lv.bill_embedding is not None)
+            else 0.0
+        )
         if proj is not None and lv.bill_embedding is not None:
             pv = lv.bill_embedding @ proj
             for i, n in enumerate(proj_names):
@@ -81,7 +99,13 @@ def run(rich: Path, records: Path, content: Path, *, cutoff: date, eval_end: dat
     arms = {
         "base": ("loyalty_gap", "sector_divergence"),
         "bill_rag": ("loyalty_gap", "sector_divergence", "bill_rag_signal", *proj_names),
-        "bill_rag_crs": ("loyalty_gap", "sector_divergence", "bill_rag_signal", *proj_names, "crs_policy_divergence"),
+        "bill_rag_crs": (
+            "loyalty_gap",
+            "sector_divergence",
+            "bill_rag_signal",
+            *proj_names,
+            "crs_policy_divergence",
+        ),
         "crs_only": ("loyalty_gap", "sector_divergence", "crs_policy_divergence"),
     }
     results: dict[str, float] = {}
@@ -90,14 +114,18 @@ def run(rich: Path, records: Path, content: Path, *, cutoff: date, eval_end: dat
         results[name] = auc_of_rows(i, c, names, ev)
     best = max(results, key=lambda a: results[a])
     return {
-        "cutoff": cutoff.isoformat(), "eval_pairs": len(ev), "k": k,
+        "cutoff": cutoff.isoformat(),
+        "eval_pairs": len(ev),
+        "k": k,
         "aucs": results,
         "bill_rag_vs_base": results["bill_rag"] - results["base"],
         "crs_only_vs_base": results["crs_only"] - results["base"],
         "combined_vs_bill_rag": results["bill_rag_crs"] - results["bill_rag"],
-        "best_arm": best, "best_auc": results[best],
+        "best_arm": best,
+        "best_auc": results[best],
         "stacks": results["bill_rag_crs"] > max(results["bill_rag"], results["crs_only"]) + 0.002,
-        "pin": 0.7707, "beats_pin": results[best] > 0.7707 + 0.005,
+        "pin": 0.7707,
+        "beats_pin": results[best] > 0.7707 + 0.005,
     }
 
 
@@ -113,11 +141,19 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--out", default="benchmarks/combined_sota.json")
     args = p.parse_args(argv)
 
-    r = run(Path(args.rich), Path(args.records), Path(args.content), cutoff=date.fromisoformat(args.cutoff), eval_end=date.fromisoformat(args.eval_end))
+    r = run(
+        Path(args.rich),
+        Path(args.records),
+        Path(args.content),
+        cutoff=date.fromisoformat(args.cutoff),
+        eval_end=date.fromisoformat(args.eval_end),
+    )
     Path(args.out).write_text(json.dumps(r, indent=2), encoding="utf-8")
     for name, auc in r["aucs"].items():
         print(f"  {name:14s} {auc:.4f}")
-    print(f"combined vs bill_rag: {r['combined_vs_bill_rag']:+.4f} | stacks={r['stacks']} | best={r['best_arm']} {r['best_auc']:.4f} | beats 0.7707 pin: {r['beats_pin']}")
+    print(
+        f"combined vs bill_rag: {r['combined_vs_bill_rag']:+.4f} | stacks={r['stacks']} | best={r['best_arm']} {r['best_auc']:.4f} | beats 0.7707 pin: {r['beats_pin']}"
+    )
     print(f"wrote {args.out}")
     return 0
 

@@ -82,7 +82,11 @@ def _citations(record: VoteRecord, bill_id: str, features: dict[str, float]) -> 
         ),
     ]
     if record.sectors:
-        cites.append(Citation(kind="policy_sectors", ref=",".join(record.sectors), detail="bill policy areas"))
+        cites.append(
+            Citation(
+                kind="policy_sectors", ref=",".join(record.sectors), detail="bill policy areas"
+            )
+        )
     return cites
 
 
@@ -191,16 +195,25 @@ def score_registry(registry: RegistryFile, votes: list[tuple[VoteRecord, str]]) 
         actual = truth.get((p.member, p.bill_id, p.target_vote_date))
         scored_preds.append(
             FrozenPrediction(
-                member=p.member, party=p.party, state=p.state, bill_id=p.bill_id,
-                target_vote_date=p.target_vote_date, p_defect=p.p_defect,
-                predicted_defect=p.predicted_defect, counterfactual=p.counterfactual,
-                citations=p.citations, actual_defect=actual,
+                member=p.member,
+                party=p.party,
+                state=p.state,
+                bill_id=p.bill_id,
+                target_vote_date=p.target_vote_date,
+                p_defect=p.p_defect,
+                predicted_defect=p.predicted_defect,
+                counterfactual=p.counterfactual,
+                citations=p.citations,
+                actual_defect=actual,
             )
         )
         if actual is not None:
             resolved.append((p.p_defect, actual))
 
-    metrics: dict[str, float] = {"resolved": float(len(resolved)), "pending": float(len(registry.predictions) - len(resolved))}
+    metrics: dict[str, float] = {
+        "resolved": float(len(resolved)),
+        "pending": float(len(registry.predictions) - len(resolved)),
+    }
     if resolved:
         n = len(resolved)
         metrics["brier"] = sum((pp - (1.0 if y else 0.0)) ** 2 for pp, y in resolved) / n

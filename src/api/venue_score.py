@@ -99,14 +99,20 @@ class VenueIndex:
     """Historical pass rates per (venue, sector) with citations, from roll-calls."""
 
     def __init__(self) -> None:
-        self._sector: dict[str, dict[str, _SectorTally]] = defaultdict(lambda: defaultdict(_SectorTally))
+        self._sector: dict[str, dict[str, _SectorTally]] = defaultdict(
+            lambda: defaultdict(_SectorTally)
+        )
         self._overall: dict[str, _SectorTally] = defaultdict(_SectorTally)
         self._venues: dict[str, Venue] = {}
 
-    def add_rollcall(self, venue: Venue, bill_id: str, vote_date: date, sectors: list[str], yea: int, nay: int) -> None:
+    def add_rollcall(
+        self, venue: Venue, bill_id: str, vote_date: date, sectors: list[str], yea: int, nay: int
+    ) -> None:
         passed = yea > nay
         self._venues[venue.key()] = venue
-        citation = Citation(bill_id=bill_id, vote_date=vote_date.isoformat(), passed=passed, yea=yea, nay=nay)
+        citation = Citation(
+            bill_id=bill_id, vote_date=vote_date.isoformat(), passed=passed, yea=yea, nay=nay
+        )
         overall = self._overall[venue.key()]
         overall.passes += int(passed)
         overall.total += 1

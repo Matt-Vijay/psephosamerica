@@ -32,10 +32,7 @@ def _load_votes(corpus: Path, *, rich: bool) -> list[tuple[VoteRecord, str]]:
     from src.runtime.bill_content_experiment import build_linked_votes
     from src.runtime.cross_pressured_experiment import load_rich_rollcalls
 
-    return [
-        (lv.record, lv.bill_id)
-        for lv in build_linked_votes(load_rich_rollcalls(corpus), None)
-    ]
+    return [(lv.record, lv.bill_id) for lv in build_linked_votes(load_rich_rollcalls(corpus), None)]
 
 
 def _load(path: Path) -> RegistryFile:
@@ -44,18 +41,27 @@ def _load(path: Path) -> RegistryFile:
     raw = json.loads(path.read_text(encoding="utf-8"))
     preds = [
         FrozenPrediction(
-            member=p["member"], party=p["party"], state=p["state"], bill_id=p["bill_id"],
-            target_vote_date=p["target_vote_date"], p_defect=p["p_defect"],
-            predicted_defect=p["predicted_defect"], counterfactual=p["counterfactual"],
+            member=p["member"],
+            party=p["party"],
+            state=p["state"],
+            bill_id=p["bill_id"],
+            target_vote_date=p["target_vote_date"],
+            p_defect=p["p_defect"],
+            predicted_defect=p["predicted_defect"],
+            counterfactual=p["counterfactual"],
             citations=[Citation(**c) for c in p["citations"]],
             actual_defect=p.get("actual_defect"),
         )
         for p in raw["predictions"]
     ]
     return RegistryFile(
-        frozen_at_cutoff=raw["frozen_at_cutoff"], target_window_end=raw["target_window_end"],
-        model_name=raw["model_name"], content_sha256=raw["content_sha256"],
-        predictions=preds, scored=raw.get("scored", False), metrics=raw.get("metrics", {}),
+        frozen_at_cutoff=raw["frozen_at_cutoff"],
+        target_window_end=raw["target_window_end"],
+        model_name=raw["model_name"],
+        content_sha256=raw["content_sha256"],
+        predictions=preds,
+        scored=raw.get("scored", False),
+        metrics=raw.get("metrics", {}),
     )
 
 
@@ -86,8 +92,10 @@ def main(argv: list[str] | None = None) -> int:
     if args.cmd == "freeze":
         votes = _load_votes(Path(args.corpus), rich=args.rich)
         reg = freeze_registry(
-            votes, cutoff=date.fromisoformat(args.cutoff),
-            target_end=date.fromisoformat(args.target_end), max_predictions=args.max,
+            votes,
+            cutoff=date.fromisoformat(args.cutoff),
+            target_end=date.fromisoformat(args.target_end),
+            max_predictions=args.max,
         )
         Path(args.out).write_text(json.dumps(reg.to_dict(), indent=2), encoding="utf-8")
         print(

@@ -33,11 +33,23 @@ from src.runtime.cross_pressured_experiment import load_rich_rollcalls
 _FEATURES = ("loyalty_gap", "sector_divergence", "bill_rag_signal")
 
 
-def _fit(rows: list[tuple[dict[str, float], bool]], names: tuple[str, ...], idx: np.ndarray) -> tuple[float, dict[str, float]]:
+def _fit(
+    rows: list[tuple[dict[str, float], bool]], names: tuple[str, ...], idx: np.ndarray
+) -> tuple[float, dict[str, float]]:
     return train_logistic_rows([rows[int(i)] for i in idx], names)
 
 
-def run(rich: Path, records: Path, *, cutoff: date, eval_end: date, k: int = 32, projection_dim: int = 16, n_seeds: int = 10, max_train: int = 200_000) -> dict[str, Any]:
+def run(
+    rich: Path,
+    records: Path,
+    *,
+    cutoff: date,
+    eval_end: date,
+    k: int = 32,
+    projection_dim: int = 16,
+    n_seeds: int = 10,
+    max_train: int = 200_000,
+) -> dict[str, Any]:
     emap = load_bill_embedding_map(records, field="dossier_embedding")
     linked = build_linked_votes(load_rich_rollcalls(rich), emap)
     train = [lv for lv in linked if lv.record.vote_date <= cutoff][-max_train:]
@@ -56,7 +68,11 @@ def run(rich: Path, records: Path, *, cutoff: date, eval_end: date, k: int = 32,
     def feats(lv: Any) -> dict[str, float]:
         base = dict(defection_features(lv.record, profiles))
         st = stores.get(lv.record.member)
-        base["bill_rag_signal"] = st.signals(lv.bill_embedding, (k,))[k] if (st and lv.bill_embedding is not None) else 0.0
+        base["bill_rag_signal"] = (
+            st.signals(lv.bill_embedding, (k,))[k]
+            if (st and lv.bill_embedding is not None)
+            else 0.0
+        )
         if proj is not None and lv.bill_embedding is not None:
             pv = lv.bill_embedding @ proj
             for i, n in enumerate(proj_names):
@@ -77,17 +93,27 @@ def run(rich: Path, records: Path, *, cutoff: date, eval_end: date, k: int = 32,
         coefs.append({"intercept": i, **c})
     arr = np.asarray(aucs)
 
-    payload = {"model": "bill_content_sota", "k": k, "projection_dim": projection_dim, "seeds": coefs}
+    payload = {
+        "model": "bill_content_sota",
+        "k": k,
+        "projection_dim": projection_dim,
+        "seeds": coefs,
+    }
     digest = hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()
     ckpt = Path("checkpoints") / "sha256" / digest[:2] / digest[2:4] / f"{digest}.json"
     ckpt.parent.mkdir(parents=True, exist_ok=True)
     ckpt.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
 
     return {
-        "cutoff": cutoff.isoformat(), "k": k, "n_seeds": n_seeds,
-        "mean_auc": float(arr.mean()), "std_auc": float(arr.std()),
-        "per_seed_auc": aucs, "eval_pairs": len(eval_rows),
-        "checkpoint_sha256": digest, "checkpoint_path": str(ckpt),
+        "cutoff": cutoff.isoformat(),
+        "k": k,
+        "n_seeds": n_seeds,
+        "mean_auc": float(arr.mean()),
+        "std_auc": float(arr.std()),
+        "per_seed_auc": aucs,
+        "eval_pairs": len(eval_rows),
+        "checkpoint_sha256": digest,
+        "checkpoint_path": str(ckpt),
     }
 
 
@@ -102,9 +128,16 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--out", default="benchmarks/bill_content_bayesian.json")
     args = p.parse_args(argv)
 
-    report = run(Path(args.rich), Path(args.records), cutoff=date.fromisoformat(args.cutoff), eval_end=date.fromisoformat(args.eval_end))
+    report = run(
+        Path(args.rich),
+        Path(args.records),
+        cutoff=date.fromisoformat(args.cutoff),
+        eval_end=date.fromisoformat(args.eval_end),
+    )
     Path(args.out).write_text(json.dumps(report, indent=2), encoding="utf-8")
-    print(f"bill-content SOTA AUC {report['mean_auc']:.4f} ± {report['std_auc']:.4f} (10 seeds); checkpoint {report['checkpoint_sha256'][:16]}")
+    print(
+        f"bill-content SOTA AUC {report['mean_auc']:.4f} ± {report['std_auc']:.4f} (10 seeds); checkpoint {report['checkpoint_sha256'][:16]}"
+    )
     print(f"wrote {args.out}")
     return 0
 

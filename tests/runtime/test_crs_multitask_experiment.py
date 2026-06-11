@@ -14,25 +14,43 @@ def _setup(tmp_path: Path) -> tuple[Path, Path, Path]:
     records = tmp_path / "records.jsonl"
     recs = []
     for i in range(60):
-        recs.append({"entity_type": "bill", "canonical_id": f"cb-{i}", "external_ids": [f"congress:113-hr-{i}"]})
+        recs.append(
+            {
+                "entity_type": "bill",
+                "canonical_id": f"cb-{i}",
+                "external_ids": [f"congress:113-hr-{i}"],
+            }
+        )
     records.write_text("\n".join(json.dumps(r) for r in recs), encoding="utf-8")
     # bill_content: canonical_id -> policy_area (energy bills get a distinct CRS area)
     content = tmp_path / "bill_content.jsonl"
-    cont = [{"canonical_id": f"cb-{i}", "policy_area": "Energy" if i % 2 == 0 else "Health", "subjects": []} for i in range(60)]
+    cont = [
+        {
+            "canonical_id": f"cb-{i}",
+            "policy_area": "Energy" if i % 2 == 0 else "Health",
+            "subjects": [],
+        }
+        for i in range(60)
+    ]
     content.write_text("\n".join(json.dumps(r) for r in cont), encoding="utf-8")
     # rich rollcalls: defector D breaks party on Energy (even-index) bills
     rich = tmp_path / "rich.jsonl"
     rolls = []
     for i in range(60):
         energy = i % 2 == 0
-        rolls.append({
-            "bill_id": f"us_congress:113:hr-{i}", "date": f"2013-{1 + i % 11:02d}-15",
-            "congress": 113, "sectors": [],
-            "votes": [
-                ["D", "R", "TX", "yea" if energy else "nay"],
-                ["L1", "R", "TX", "nay"], ["L2", "R", "TX", "nay"],
-            ],
-        })
+        rolls.append(
+            {
+                "bill_id": f"us_congress:113:hr-{i}",
+                "date": f"2013-{1 + i % 11:02d}-15",
+                "congress": 113,
+                "sectors": [],
+                "votes": [
+                    ["D", "R", "TX", "yea" if energy else "nay"],
+                    ["L1", "R", "TX", "nay"],
+                    ["L2", "R", "TX", "nay"],
+                ],
+            }
+        )
     rich.write_text("\n".join(json.dumps(r) for r in rolls), encoding="utf-8")
     return rich, records, content
 

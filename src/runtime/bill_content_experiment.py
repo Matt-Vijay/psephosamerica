@@ -307,11 +307,21 @@ def run_bill_content_experiment(
 
     # One retrieval pass per record yields the signal for every k at once.
     train_feats = [
-        (defection_features(lv.record, profiles), all_k_signals(lv), proj_feats(lv), defected(lv.record))
+        (
+            defection_features(lv.record, profiles),
+            all_k_signals(lv),
+            proj_feats(lv),
+            defected(lv.record),
+        )
         for lv in train
     ]
     eval_feats = [
-        (defection_features(lv.record, profiles), all_k_signals(lv), proj_feats(lv), defected(lv.record))
+        (
+            defection_features(lv.record, profiles),
+            all_k_signals(lv),
+            proj_feats(lv),
+            defected(lv.record),
+        )
         for lv in eval_lv
     ]
 

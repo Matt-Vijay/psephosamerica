@@ -14,15 +14,20 @@ def _rich(path: Path) -> None:
     for i in range(120):
         kind = "energy_utilities" if i % 2 else "health"
         # defector D breaks party on energy; loyalists hold
-        rolls.append({
-            "bill_id": f"us_congress:118:hr-{i}",
-            "date": f"2024-{1 + i % 11:02d}-15",
-            "congress": 118, "sectors": [kind],
-            "votes": [
-                ["D", "R", "TX", "yea" if kind == "energy_utilities" else "nay"],
-                ["L1", "R", "TX", "nay"], ["L2", "R", "TX", "nay"], ["L3", "R", "TX", "nay"],
-            ],
-        })
+        rolls.append(
+            {
+                "bill_id": f"us_congress:118:hr-{i}",
+                "date": f"2024-{1 + i % 11:02d}-15",
+                "congress": 118,
+                "sectors": [kind],
+                "votes": [
+                    ["D", "R", "TX", "yea" if kind == "energy_utilities" else "nay"],
+                    ["L1", "R", "TX", "nay"],
+                    ["L2", "R", "TX", "nay"],
+                    ["L3", "R", "TX", "nay"],
+                ],
+            }
+        )
     path.write_text("\n".join(json.dumps(r) for r in rolls), encoding="utf-8")
 
 

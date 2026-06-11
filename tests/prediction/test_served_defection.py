@@ -13,8 +13,13 @@ from src.prediction.vote_record import VoteRecord
 
 def _record(member: str, *, is_yea: bool, lean_yea: bool, sectors, day: int) -> VoteRecord:
     return VoteRecord(
-        member=member, party="R", state="TX", vote_date=date(2024, 1, day),
-        is_yea=is_yea, party_alignment=1.0 if lean_yea else -1.0, sectors=sectors,
+        member=member,
+        party="R",
+        state="TX",
+        vote_date=date(2024, 1, day),
+        is_yea=is_yea,
+        party_alignment=1.0 if lean_yea else -1.0,
+        sectors=sectors,
         is_cross_pressured=is_yea != lean_yea,
     )
 
@@ -22,8 +27,12 @@ def _record(member: str, *, is_yea: bool, lean_yea: bool, sectors, day: int) -> 
 def _corpus():
     out = []
     for day in range(1, 21):
-        out.append(_record("D", is_yea=True, lean_yea=False, sectors=("energy_utilities",), day=day))
-        out.append(_record("L1", is_yea=False, lean_yea=False, sectors=("energy_utilities",), day=day))
+        out.append(
+            _record("D", is_yea=True, lean_yea=False, sectors=("energy_utilities",), day=day)
+        )
+        out.append(
+            _record("L1", is_yea=False, lean_yea=False, sectors=("energy_utilities",), day=day)
+        )
         out.append(_record("L2", is_yea=False, lean_yea=False, sectors=("health",), day=day))
     return out
 
@@ -34,7 +43,12 @@ def test_served_object_has_all_fields() -> None:
     head = train_defection_head(corpus, profiles)
     ensemble = bootstrap_seed_ensemble(corpus, profiles, n_seeds=5)
     served = assemble_served_defection(
-        corpus[0], "us_congress:118:hr-1", head, profiles, temperature=1.2, ensemble=ensemble,
+        corpus[0],
+        "us_congress:118:hr-1",
+        head,
+        profiles,
+        temperature=1.2,
+        ensemble=ensemble,
     )
     assert 0.0 <= served.probability_defect <= 1.0
     assert served.interval_lower <= served.interval_upper

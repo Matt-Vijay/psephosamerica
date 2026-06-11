@@ -16,13 +16,21 @@ def _metric_row(metrics: dict[str, Any]) -> str:
     if not metrics:
         return ""
     parts = []
-    for label, key in (("resolved", "resolved"), ("pending", "pending"), ("Brier", "brier"),
-                        ("accuracy", "accuracy"), ("AUC", "auc"), ("base rate", "base_rate")):
+    for label, key in (
+        ("resolved", "resolved"),
+        ("pending", "pending"),
+        ("Brier", "brier"),
+        ("accuracy", "accuracy"),
+        ("AUC", "auc"),
+        ("base rate", "base_rate"),
+    ):
         if key in metrics:
             val = metrics[key]
-            parts.append(f'<span class="tile">{label}: {val:.3f}</span>'
-                         if isinstance(val, float) and key in {"brier", "accuracy", "auc", "base_rate"}
-                         else f'<span class="tile">{label}: {int(val)}</span>')
+            parts.append(
+                f'<span class="tile">{label}: {val:.3f}</span>'
+                if isinstance(val, float) and key in {"brier", "accuracy", "auc", "base_rate"}
+                else f'<span class="tile">{label}: {int(val)}</span>'
+            )
     return "<div>" + "".join(parts) + "</div>"
 
 
@@ -34,15 +42,15 @@ def _row(p: dict[str, Any]) -> str:
         hit = (p["p_defect"] >= 0.5) == bool(actual)
         outcome = (
             f'<span style="color:{"#1a7f37" if hit else "#c0392b"}">'
-            f'{"defected" if actual else "held"} · {"✓" if hit else "✗"}</span>'
+            f"{'defected' if actual else 'held'} · {'✓' if hit else '✗'}</span>"
         )
     cites = "; ".join(escape(f"{c['kind']}:{c['ref']}") for c in p.get("citations", [])[:3])
     return (
         "<tr>"
-        f'<td><strong>{escape(p["member"])}</strong> '
+        f"<td><strong>{escape(p['member'])}</strong> "
         f'<span class="muted">({escape(p["party"])}-{escape(p["state"])})</span></td>'
-        f'<td>{escape(p["bill_id"])}</td>'
-        f'<td>{escape(p["target_vote_date"])}</td>'
+        f"<td>{escape(p['bill_id'])}</td>"
+        f"<td>{escape(p['target_vote_date'])}</td>"
         f'<td class="prob">{p["p_defect"] * 100:.0f}%</td>'
         f"<td>{outcome}</td>"
         f'<td class="muted">{cites}</td>'
@@ -70,12 +78,12 @@ def render_registry_html(registry: dict[str, Any], *, top_n: int = 100) -> str:
         f"<style>{style}</style></head><body>"
         "<h1>OpenPact — Forward Prediction Registry</h1>"
         f'<p class="muted">Defection predictions frozen at cutoff '
-        f'<strong>{escape(str(registry.get("frozen_at_cutoff")))}</strong> for the window '
-        f'through <strong>{escape(str(registry.get("target_window_end")))}</strong> · '
+        f"<strong>{escape(str(registry.get('frozen_at_cutoff')))}</strong> for the window "
+        f"through <strong>{escape(str(registry.get('target_window_end')))}</strong> · "
         f"status <strong>{status}</strong> · model "
-        f'<code>{escape(str(registry.get("model_name")))}</code></p>'
+        f"<code>{escape(str(registry.get('model_name')))}</code></p>"
         f'<p class="muted">Tamper-evidence — content sha256 '
-        f'<code>{escape(str(registry.get("content_sha256", ""))[:32])}…</code> '
+        f"<code>{escape(str(registry.get('content_sha256', ''))[:32])}…</code> "
         "(frozen before outcomes; unchanged by scoring).</p>"
         f"{_metric_row(registry.get('metrics', {}))}"
         "<table><thead><tr><th>Member</th><th>Bill</th><th>Vote date</th>"

@@ -57,7 +57,8 @@ def run(corpus: Path, *, cutoff: date) -> dict[str, Any]:
 
     cal_examples = [
         CalibrationExample(
-            member_id=r.member, probability_yea=head.probability(defection_features(r, profiles)),
+            member_id=r.member,
+            probability_yea=head.probability(defection_features(r, profiles)),
             is_yea=defected(r),
         )
         for r in cal
@@ -91,11 +92,20 @@ def run(corpus: Path, *, cutoff: date) -> dict[str, Any]:
 
     # conformal coverage per slice (marginal + Mondrian); target >= 0.85 on prone.
     cov_marginal = conformal_coverage(
-        head, cal, test, profiles, alpha=0.10,
+        head,
+        cal,
+        test,
+        profiles,
+        alpha=0.10,
         slicers={"defection_prone": lambda r: is_defection_prone(r, profiles)},
     )
     cov_mondrian = conformal_coverage(
-        head, cal, test, profiles, alpha=0.10, mondrian=True,
+        head,
+        cal,
+        test,
+        profiles,
+        alpha=0.10,
+        mondrian=True,
         slicers={"defection_prone": lambda r: is_defection_prone(r, profiles)},
     )
     report["conformal"] = {
@@ -106,7 +116,9 @@ def run(corpus: Path, *, cutoff: date) -> dict[str, Any]:
     report["defection_prone_coverage_ok"] = prone_cov >= 0.85
 
     # pick the calibrator that minimises overall test ECE
-    eces = {m: report["calibration"][m]["overall"]["ece"] for m in ("raw", "temperature", "isotonic")}
+    eces = {
+        m: report["calibration"][m]["overall"]["ece"] for m in ("raw", "temperature", "isotonic")
+    }
     report["best_calibrator"] = min(eces, key=lambda m: eces[m])
     report["ece_by_calibrator"] = eces
     return report

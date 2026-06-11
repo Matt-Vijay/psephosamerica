@@ -31,4 +31,9 @@ def test_parse_senate_vote() -> None:
 
 
 def test_parse_returns_none_on_no_members() -> None:
-    assert parse_senate_vote_xml("<roll_call_vote><congress>119</congress><vote_date>January 9, 2025, 1:00 PM</vote_date><members></members></roll_call_vote>") is None
+    assert (
+        parse_senate_vote_xml(
+            "<roll_call_vote><congress>119</congress><vote_date>January 9, 2025, 1:00 PM</vote_date><members></members></roll_call_vote>"
+        )
+        is None
+    )

@@ -12,13 +12,29 @@ def _registry(scored: bool) -> dict:
         "model_name": "defection_head_logreg",
         "content_sha256": "b807e94ab80f2d5f" + "0" * 48,
         "scored": scored,
-        "metrics": {"resolved": 200, "pending": 0, "brier": 0.21, "accuracy": 0.70, "auc": 0.71, "base_rate": 0.14} if scored else {},
+        "metrics": {
+            "resolved": 200,
+            "pending": 0,
+            "brier": 0.21,
+            "accuracy": 0.70,
+            "auc": 0.71,
+            "base_rate": 0.14,
+        }
+        if scored
+        else {},
         "predictions": [
             {
-                "member": "J000300", "party": "R", "state": "NJ", "bill_id": "us_congress:119:hr-1",
-                "target_vote_date": "2025-10-15", "p_defect": 0.62, "predicted_defect": True,
+                "member": "J000300",
+                "party": "R",
+                "state": "NJ",
+                "bill_id": "us_congress:119:hr-1",
+                "target_vote_date": "2025-10-15",
+                "p_defect": 0.62,
+                "predicted_defect": True,
                 "counterfactual": "if loyalty were neutralised, P(defect) drops most",
-                "citations": [{"kind": "rollcall_bill", "ref": "us_congress:119:hr-1", "detail": "bill"}],
+                "citations": [
+                    {"kind": "rollcall_bill", "ref": "us_congress:119:hr-1", "detail": "bill"}
+                ],
                 "actual_defect": True if scored else None,
             }
         ],

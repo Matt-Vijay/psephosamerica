@@ -135,7 +135,10 @@ def main(argv: list[str] | None = None) -> int:
         else:
             signal = status.vote_linkable
         if sha != last_sha:
-            print(f"poll {poll}: manifest {sha[:12]} | {status.as_dict()} | signal={signal}", flush=True)
+            print(
+                f"poll {poll}: manifest {sha[:12]} | {status.as_dict()} | signal={signal}",
+                flush=True,
+            )
             last_sha = sha
         # Only fire on a re-export we have not already processed, and only once the
         # gating count has SETTLED (unchanged since the previous poll) -- Track A
@@ -145,7 +148,10 @@ def main(argv: list[str] | None = None) -> int:
         stable = signal == prev_signal
         prev_signal = signal
         if not already_seen and stable and signal >= args.threshold:
-            print(f"TRIGGER: {status.vote_linkable} vote-linkable dense bills >= {args.threshold}", flush=True)
+            print(
+                f"TRIGGER: {status.vote_linkable} vote-linkable dense bills >= {args.threshold}",
+                flush=True,
+            )
             if args.semantic_ab:
                 from src.runtime.semantic_ab_experiment import run as run_semantic_ab
 
@@ -180,7 +186,9 @@ def main(argv: list[str] | None = None) -> int:
         if poll < args.max_polls - 1:
             time.sleep(args.poll_seconds)
     final = count_linked_bills(records_path)
-    print(f"poll budget exhausted; vote-linkable dense bills still {final.vote_linkable}", flush=True)
+    print(
+        f"poll budget exhausted; vote-linkable dense bills still {final.vote_linkable}", flush=True
+    )
     return 2
 
 

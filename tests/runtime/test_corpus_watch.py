@@ -24,7 +24,12 @@ def test_count_linked_bills_distinguishes_linkable(tmp_path: Path) -> None:
         [
             {"entity_type": "person", "canonical_id": "p1"},
             # dense + canonical us_congress -> linkable
-            {"entity_type": "bill", "canonical_id": "us_congress:118:hr1", "dossier_embedding": [0.1, 0.2], "dossier_json": {"policy_area": "Health"}},
+            {
+                "entity_type": "bill",
+                "canonical_id": "us_congress:118:hr1",
+                "dossier_embedding": [0.1, 0.2],
+                "dossier_json": {"policy_area": "Health"},
+            },
             # dense but no join key -> not linkable
             {"entity_type": "bill", "canonical_id": "x:1", "dossier_embedding": [0.1]},
             # join key via external_ids but no embedding -> not linkable
@@ -39,7 +44,9 @@ def test_count_linked_bills_distinguishes_linkable(tmp_path: Path) -> None:
 
 
 def test_should_trigger_threshold() -> None:
-    below = LinkageStatus(total_bills=10, with_embedding=10, with_policy_area=10, vote_linkable=4999)
+    below = LinkageStatus(
+        total_bills=10, with_embedding=10, with_policy_area=10, vote_linkable=4999
+    )
     at = LinkageStatus(total_bills=10, with_embedding=10, with_policy_area=10, vote_linkable=5000)
     assert should_trigger(below) is False
     assert should_trigger(at) is True

@@ -8,12 +8,18 @@ from src.prediction.vote_record import VoteRecord
 from src.runtime.marginal_votes_report import generate, render_html
 
 
-def _vote(member: str, *, is_yea: bool, lean_yea: bool, day: int, bill: str) -> tuple[VoteRecord, str]:
+def _vote(
+    member: str, *, is_yea: bool, lean_yea: bool, day: int, bill: str
+) -> tuple[VoteRecord, str]:
     return (
         VoteRecord(
-            member=member, party="R", state="TX",
+            member=member,
+            party="R",
+            state="TX",
             vote_date=date(2025, 1, 1) + (date(2025, 12, 31) - date(2025, 1, 1)) * day // 100,
-            is_yea=is_yea, party_alignment=1.0 if lean_yea else -1.0, sectors=(),
+            is_yea=is_yea,
+            party_alignment=1.0 if lean_yea else -1.0,
+            sectors=(),
             is_cross_pressured=is_yea != lean_yea,
         ),
         bill,
@@ -23,9 +29,15 @@ def _vote(member: str, *, is_yea: bool, lean_yea: bool, day: int, bill: str) -> 
 def _votes() -> list[tuple[VoteRecord, str]]:
     out = []
     for day in range(100):
-        out.append(_vote("D", is_yea=True, lean_yea=False, day=day, bill=f"us_congress:119:hr-{day}"))
-        out.append(_vote("L1", is_yea=False, lean_yea=False, day=day, bill=f"us_congress:119:hr-{day}"))
-        out.append(_vote("L2", is_yea=False, lean_yea=False, day=day, bill=f"us_congress:119:hr-{day}"))
+        out.append(
+            _vote("D", is_yea=True, lean_yea=False, day=day, bill=f"us_congress:119:hr-{day}")
+        )
+        out.append(
+            _vote("L1", is_yea=False, lean_yea=False, day=day, bill=f"us_congress:119:hr-{day}")
+        )
+        out.append(
+            _vote("L2", is_yea=False, lean_yea=False, day=day, bill=f"us_congress:119:hr-{day}")
+        )
     return out
 
 

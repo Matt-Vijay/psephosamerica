@@ -27,11 +27,15 @@ def _records(path: Path, *, semantic: bool) -> None:
 def _rich(path: Path) -> None:
     rolls = []
     for i in range(20):
-        rolls.append({
-            "bill_id": f"us_congress:118:hr-{i % 3}", "date": f"2024-{1 + i % 9:02d}-15",
-            "congress": 118, "sectors": ["health"],
-            "votes": [["A", "R", "TX", "yea" if i % 2 else "nay"], ["B", "D", "CA", "nay"]],
-        })
+        rolls.append(
+            {
+                "bill_id": f"us_congress:118:hr-{i % 3}",
+                "date": f"2024-{1 + i % 9:02d}-15",
+                "congress": 118,
+                "sectors": ["health"],
+                "votes": [["A", "R", "TX", "yea" if i % 2 else "nay"], ["B", "D", "CA", "nay"]],
+            }
+        )
     path.write_text("\n".join(json.dumps(r) for r in rolls), encoding="utf-8")
 
 
@@ -47,7 +51,9 @@ def test_loader_field_and_concat(tmp_path: Path) -> None:
     _records(rec, semantic=True)
     hash_map = load_bill_embedding_map(rec, field="dossier_embedding")
     sem_map = load_bill_embedding_map(rec, field="semantic_embedding")
-    concat_map = load_bill_embedding_map(rec, field="dossier_embedding", concat_with="semantic_embedding")
+    concat_map = load_bill_embedding_map(
+        rec, field="dossier_embedding", concat_with="semantic_embedding"
+    )
     assert any(v.shape[0] == 2 for v in hash_map.values())
     assert any(v.shape[0] == 3 for v in sem_map.values())
     assert any(v.shape[0] == 5 for v in concat_map.values())  # 2 + 3 concatenated
@@ -58,7 +64,14 @@ def test_ab_runs_hash_only_when_semantic_absent(tmp_path: Path) -> None:
     rich = tmp_path / "rich.jsonl"
     _records(rec, semantic=False)
     _rich(rich)
-    report = run(rich_corpus=rich, records_path=rec, cutoff=date(2024, 5, 1), eval_end=date(2024, 12, 31), k_values=(4,), projection_dim=0)
+    report = run(
+        rich_corpus=rich,
+        records_path=rec,
+        cutoff=date(2024, 5, 1),
+        eval_end=date(2024, 12, 31),
+        k_values=(4,),
+        projection_dim=0,
+    )
     assert report["semantic_available"] is False
     assert set(report["arms"]) == {"hash"}
     assert "not yet exported" in report["decision"]
@@ -69,7 +82,14 @@ def test_ab_runs_all_arms_when_semantic_present(tmp_path: Path) -> None:
     rich = tmp_path / "rich.jsonl"
     _records(rec, semantic=True)
     _rich(rich)
-    report = run(rich_corpus=rich, records_path=rec, cutoff=date(2024, 5, 1), eval_end=date(2024, 12, 31), k_values=(4,), projection_dim=0)
+    report = run(
+        rich_corpus=rich,
+        records_path=rec,
+        cutoff=date(2024, 5, 1),
+        eval_end=date(2024, 12, 31),
+        k_values=(4,),
+        projection_dim=0,
+    )
     assert report["semantic_available"] is True
     assert set(report["arms"]) == {"hash", "semantic", "concat"}
     assert report["best_arm"] in {"hash", "semantic", "concat"}

@@ -42,8 +42,7 @@ class DefectionHead:
         # constant: heads trained with extra features (e.g. rag_signal) must not
         # silently drop those coefficients at scoring time.
         raw = self.intercept + sum(
-            coefficient * features.get(name, 0.0)
-            for name, coefficient in self.coefficients.items()
+            coefficient * features.get(name, 0.0) for name, coefficient in self.coefficients.items()
         )
         return clamped_sigmoid(raw)
 

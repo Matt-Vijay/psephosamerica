@@ -93,7 +93,11 @@ def assemble_served_defection(
     ]
     if record.sectors:
         evidence.append(
-            {"kind": "policy_sectors", "ref": ",".join(record.sectors), "detail": "bill policy areas"}
+            {
+                "kind": "policy_sectors",
+                "ref": ",".join(record.sectors),
+                "detail": "bill policy areas",
+            }
         )
     return ServedDefection(
         member=record.member,
