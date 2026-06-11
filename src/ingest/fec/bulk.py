@@ -12,6 +12,7 @@ Supported files:
 
 from __future__ import annotations
 
+import contextlib
 import csv
 import datetime
 from decimal import Decimal, InvalidOperation
@@ -117,10 +118,8 @@ def iter_candidate_committee_linkage(
             election_yr_raw = _field(row, 1)
             election_yr: int | None = None
             if election_yr_raw:
-                try:
+                with contextlib.suppress(ValueError):
                     election_yr = int(election_yr_raw)
-                except ValueError:
-                    pass
             yield CandidateCommitteeLinkage(
                 fec_candidate_id=cand_id,
                 fec_committee_id=cmte_id,

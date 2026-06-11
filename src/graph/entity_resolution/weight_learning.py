@@ -40,10 +40,10 @@ def learn_match_weights(
     pseudocount: float = 0.5,
 ) -> MatchWeights:
     """Estimate Fellegi-Sunter weights from labeled pairs (falling back to ``default``)."""
-    agree_match = {dim: 0 for dim in LEARNABLE_DIMENSIONS}
-    seen_match = {dim: 0 for dim in LEARNABLE_DIMENSIONS}
-    agree_non = {dim: 0 for dim in LEARNABLE_DIMENSIONS}
-    seen_non = {dim: 0 for dim in LEARNABLE_DIMENSIONS}
+    agree_match = dict.fromkeys(LEARNABLE_DIMENSIONS, 0)
+    seen_match = dict.fromkeys(LEARNABLE_DIMENSIONS, 0)
+    agree_non = dict.fromkeys(LEARNABLE_DIMENSIONS, 0)
+    seen_non = dict.fromkeys(LEARNABLE_DIMENSIONS, 0)
     n_match = 0
     n_total = 0
 

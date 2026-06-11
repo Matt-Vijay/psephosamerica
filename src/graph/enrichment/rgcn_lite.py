@@ -70,7 +70,7 @@ def rgcn_lite_embeddings(
 
     for _ in range(hops):
         messages = {node_id: np.zeros(dim) for node_id in node_ids}
-        degree = {node_id: 0 for node_id in node_ids}
+        degree = dict.fromkeys(node_ids, 0)
         for edge in edges:
             weight = projection(edge.edge_type)
             messages[edge.src_id] += weight @ state[edge.dst_id]

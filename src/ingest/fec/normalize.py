@@ -42,8 +42,7 @@ def _strip_and_upper(s: str | None) -> str:
         return ""
     s = unicodedata.normalize("NFKD", s)
     s = s.upper().strip()
-    s = _MULTI_SPACE.sub(" ", s)
-    return s
+    return _MULTI_SPACE.sub(" ", s)
 
 
 def normalize_donor_name(raw: str | None) -> str:

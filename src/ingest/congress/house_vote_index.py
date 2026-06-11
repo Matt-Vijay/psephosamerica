@@ -153,4 +153,4 @@ def _parse_action_date(value: str) -> datetime.date:
     try:
         return datetime.datetime.strptime(value, "%d-%b-%Y").date()
     except ValueError:
-        raise ValueError(f"Unparseable action-date in House vote index: {value!r}")
+        raise ValueError(f"Unparseable action-date in House vote index: {value!r}") from None

@@ -63,6 +63,5 @@ def _features(text: str) -> list[str]:
     features = list(tokens)
     for token in tokens:
         padded = f"#{token}#"
-        for i in range(len(padded) - 2):
-            features.append(f"cg:{padded[i : i + 3]}")
+        features.extend(f"cg:{padded[i : i + 3]}" for i in range(len(padded) - 2))
     return features
