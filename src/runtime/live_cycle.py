@@ -116,7 +116,11 @@ def _main(argv: list[str] | None = None) -> int:  # pragma: no cover - CLI glue
     parser.add_argument("--ticks", type=int, default=5)
     parser.add_argument("--interval", type=float, default=900.0)
     args = parser.parse_args(argv)
-    reports = run_loop(ticks=args.ticks, interval_seconds=args.interval)
+    reports = run_loop(
+        ticks=args.ticks,
+        interval_seconds=args.interval,
+        emit=lambda line: print(line, flush=True),  # observable under nohup
+    )
     return 0 if all(r.ok for r in reports) else 1
 
 
