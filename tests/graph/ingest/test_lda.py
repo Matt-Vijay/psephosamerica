@@ -4,10 +4,14 @@ from datetime import UTC, date, datetime, timedelta, timezone
 
 import pytest
 
+from src.graph.bills import BillRef
 from src.graph.ingest.lda import (
     LdaFiling,
+    congress_for_year,
+    lda_bill_lobbying_edges,
     lda_provenance,
     lda_retention_edge,
+    parse_lda_activities,
     parse_lda_client,
     parse_lda_filing,
     parse_lda_registrant,
@@ -147,3 +151,77 @@ def test_retention_edge_self_loop_rejected() -> None:
             filing=filing,
             provenance=_PROV,
         )
+
+
+# ── lobbying activities + bill linkage ─────────────────────────────
+
+
+def test_congress_for_year() -> None:
+    assert congress_for_year(2023) == 118
+    assert congress_for_year(2024) == 118
+    assert congress_for_year(2021) == 117
+
+
+def test_congress_for_year_rejects_prehistoric() -> None:
+    with pytest.raises(ValueError, match="1st U.S. Congress"):
+        congress_for_year(1700)
+
+
+def test_parse_activities_extracts_issue_and_bills() -> None:
+    record = {
+        "lobbying_activities": [
+            {
+                "general_issue_area_code": "HCR",
+                "description": "Issues related to H.R. 2471 and S. 4321 funding.",
+            },
+            {
+                "general_issue_area_code": "TAX",
+                "description": "General tax policy, no bill named.",
+            },
+            {"general_issue_area_code": "", "description": "Nothing actionable here."},
+        ]
+    }
+    activities = parse_lda_activities(record)
+    assert len(activities) == 2  # third dropped (no code, no bill)
+    assert activities[0].issue_area_code == "HCR"
+    assert activities[0].bill_identifiers == ("hr-2471", "s-4321")
+    assert activities[1].issue_area_code == "TAX"
+    assert activities[1].bill_identifiers == ()
+
+
+def test_parse_activities_empty() -> None:
+    assert parse_lda_activities({}) == []
+
+
+def test_bill_lobbying_edges() -> None:
+    filing = parse_lda_filing(_FILING)  # year 2024 -> 118th congress
+    activities = parse_lda_activities(
+        {"lobbying_activities": [{"general_issue_area_code": "HCR", "description": "H.R. 2471"}]}
+    )
+    edges = lda_bill_lobbying_edges(
+        client_canonical_id="ce-client",
+        filing=filing,
+        activities=activities,
+        provenance=_PROV,
+        registrant_name="Smith Garson",
+    )
+    assert len(edges) == 1
+    edge = edges[0]
+    assert edge.edge_type == "lobbying_contact"
+    assert edge.src_id == "ce-client"
+    assert edge.dst_id == BillRef.for_congress(118, "H.R. 2471").canonical_id
+    assert edge.attributes["issue_area"] == "HCR"
+    assert edge.attributes["registrant"] == "Smith Garson"
+
+
+def test_bill_lobbying_edges_none_without_bill() -> None:
+    filing = parse_lda_filing(_FILING)
+    activities = parse_lda_activities(
+        {"lobbying_activities": [{"general_issue_area_code": "TAX", "description": "no bill"}]}
+    )
+    assert (
+        lda_bill_lobbying_edges(
+            client_canonical_id="ce-c", filing=filing, activities=activities, provenance=_PROV
+        )
+        == []
+    )
