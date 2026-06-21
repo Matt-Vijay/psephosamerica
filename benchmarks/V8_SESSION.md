@@ -21,13 +21,13 @@ served answer is cited (source_url + content_sha256 + known_at).
 | 1 | Query API over the connected graph | `src/query/graph_store.py`, `src/query/graph_query.py`, `src/api/graph_http.py` | shipped |
 | 2 | GraphRAG reasoning (retrieval + grounding now; key-gated LLM) | `src/query/graph_rag.py`, `src/query/query_embedder.py` | shipped |
 | 3 | Public explorer (per-official / per-jurisdiction pages) | `src/api/graph_http.py` (render_*), wired in `src/api/wsgi_app.py` | shipped |
-| 4 | Flagship: cross-jurisdiction near-duplicate ordinances | `src/query/redundancy.py` | shipped (text embeddings gated on LOCUS) |
+| 4 | Flagship: cross-jurisdiction near-duplicate ordinances | `src/query/redundancy.py`, `src/query/locus.py` | shipped + verified on real 2.2M-ordinance LOCUS corpus |
 | 5 | Federal waste/redundancy queries | `src/query/redundancy.py` | shipped, verified on real corpus |
 | 6 | This writeup | `benchmarks/V8_SESSION.md` | here |
 
 Commits (branch `consolidate-prediction-and-quality-pass`):
 `cb0bb17` (#1 store+query) · `131d008` (#2 GraphRAG) · `7e308c6` (#1+#3 HTTP+explorer) ·
-`0464d59` (#4+#5 redundancy apps).
+`0464d59` (#4+#5 redundancy apps) · `164e992` (#4 LOCUS flagship).
 
 ## The substrate (`graph_store.py`)
 
@@ -130,32 +130,65 @@ Served: `GET /v1/graph/{redundant_policy_areas,reauthorizations,donor_paths}`.
 
 ## #4 — Flagship: cross-jurisdiction near-duplicate detection
 
-`near_duplicate_ordinances` does pairwise numpy cosine over `dossier_embedding`
-and flags near-duplicates, attaching each side's jurisdiction so a hit is a
-genuine cross-body diffusion claim — the model-legislation signal LOCUS stopped
-short of.
+Two implementations, both shipped and cited:
 
-Verified on the real CA corpus (the embedded jurisdiction available today): it
-correctly surfaces companion/duplicate measures, e.g.
+**(a) Bill-embedding near-dup** (`redundancy.near_duplicate_ordinances`): pairwise
+numpy cosine over `dossier_embedding`, attaching each side's jurisdiction.
+Verified on the real CA corpus — correctly surfaces companion/duplicate measures
+(`SB2 ↔ AB2: Budget Act of 2024` sim 0.944; `AB96 ↔ SB96: Emergency Telephone
+Users Surcharge Act` sim 0.942). Served: `GET /v1/graph/duplicate_ordinances`.
 
-- `SB2: Budget Act of 2024.` ↔ `AB2: Budget Act of 2024.` (sim 0.944) — the
-  Senate/Assembly twin bills
-- `AB96: Emergency Telephone Users Surcharge Act` ↔ `SB96: …` (sim 0.942)
-- `AB104` ↔ `AB106: Budget Acts of 2022 and 2023.` (sim 0.944)
+**(b) LOCUS text near-dup — the real cross-city flagship** (`src/query/locus.py`).
+Track A landed **LOCUS v1**: **2,207,679 municipal/county ordinance provisions**
+across **2,287+ jurisdictions** (in just the first 300k rows), each with raw
+`text`, LOCUS `topic`/`function`, canonical `jurisdiction_id`
+(`us-ca-city-oakland`), and four `dimension_scores` (opacity, paternalism,
+enforcement_discretion, problem_salience). `near_duplicate_ordinances` finds
+near-identical ordinance **text across different jurisdictions** with
+**MinHash + LSH banding** over token shingles — **numpy-only, no embeddings**, so
+it works on the `pending` LOCUS rows *today*. This is the model-legislation
+diffusion LOCUS stopped short of.
 
-Served: `GET /v1/graph/duplicate_ordinances?threshold&cross_jurisdiction_only`.
+Verified on a real 150k-row scan (`threshold=0.8`, cross-jurisdiction only):
 
-**Honest limitation (gated on the other track):** the contract currently
-carries embeddings for **us-congress (106,536)** and **ca-legislature (25,539)**
-bills only; municipal ordinance *text* arrives as `municipal_vote_edges`
-references whose target bills are not yet enriched with dossier embeddings.
-Cross-*city* near-duplicate detection (the 9,239-jurisdiction LOCUS pitch)
-therefore activates automatically the moment LOCUS ordinance text + embeddings
-land in the contract — no code change needed. Additionally, today's
-`dossier_embedding` is a feature-hash of a (currently sparse) dossier summary
-rather than full bill text, so similarity reflects title/metadata more than
-body text; a richer semantic re-embed (already scaffolded in
-`src/runtime/semantic_reembed.py`, Track A side) will raise discrimination.
+| jaccard | jurisdiction A | jurisdiction B | shared text |
+|--------:|----------------|----------------|-------------|
+| 0.98 | us-mo-city-dixon | us-mo-city-marshall | Section 125.160 Duties of the City's Prosecuting Attorney |
+| 0.97 | us-mo-city-chillicothe | us-mo-city-kimberling_city | Section 310.060 Emergency Vehicles — Use of Lights and Sirens |
+| 0.97 | us-mo-city-marshall | us-mo-city-monett | Section 340.125 Riding Bicycles, Sleds, Roller Skates |
+| 0.92 | us-al-city-hartselle | us-ms-city-pascagoula | Sec. 1-11 Code does not affect prior offenses or rights |
+
+A whole cluster of Missouri cities share a model municipal code verbatim (matching
+section numbers and text), and a cross-*state* AL↔MS hit appears — exactly the
+"who copied whose law" signal that needs cross-jurisdiction comparison, not text
+scoring alone.
+
+**Opacity / paternalism map** (`opacity_paternalism_map`, real LOCUS, 300k scan,
+min 50 ordinances) — which jurisdictions write the most opaque law:
+
+| mean opacity | jurisdiction | n |
+|-------------:|--------------|--:|
+| 0.86 | us-ca-city-san_francisco | 97 |
+| 0.82 | us-fl-county-martin_county | 71 |
+| 0.79 | us-va-county-fairfax_county | 80 |
+| 0.78 | us-fl-county-sarasota_county | 345 |
+
+**Topic diffusion** (`topic_diffusion`, real LOCUS, 300k scan): Nuisance spans
+2,276 jurisdictions, Buildings 2,272, Zoning 2,242 — the breadth of which local
+policy areas are near-universal.
+
+Served (CC-BY-NC-4.0 attribution on every payload):
+`GET /v1/graph/locus/{opacity_map,duplicates,topic_diffusion}`.
+
+**Honest limitation (auto-sharpens with the other track):** LOCUS rows are
+`pending` — no `dossier_embedding` yet — so the LOCUS flagship uses **text
+MinHash** rather than semantic embeddings (which actually makes it robust *today*
+without enrichment). When Track A enriches LOCUS rows with embeddings, the
+embedding near-dup path (a) extends to all 9,239 jurisdictions automatically. The
+federal/CA `dossier_embedding` is a feature-hash of a (currently sparse) dossier
+summary, so embedding-based similarity reflects title/metadata more than body
+text until the semantic re-embed (`src/runtime/semantic_reembed.py`, Track A)
+lands.
 
 ## Tests
 
@@ -168,9 +201,13 @@ tests/query/test_graph_query.py        (joins, paths, citations)
 tests/query/test_query_embedder.py     incl. byte-parity vs the contract embedder
 tests/query/test_graph_rag.py          15  (retrieval, grounding, stub, key-gating)
 tests/query/test_redundancy.py          7
-tests/api/test_graph_http.py           handlers (entities/votes/path/ask/explorer/redundancy)
+tests/query/test_locus.py               7  (opacity map, MinHash near-dup, topic diffusion)
+tests/api/test_graph_http.py           handlers (entities/votes/path/ask/explorer/redundancy/locus)
 tests/api/test_wsgi_graph_routes.py    WSGI routing + existing prediction route unaffected
 ```
+
+Full `tests/query` + `tests/api` run: **all green, no regression** to the frozen
+prediction pins or existing read-service/explorer code.
 
 ruff + ruff-format clean; mypy clean on every new module (the only mypy errors
 in the touched import graph are pre-existing `pypdf` stubs in `src/parse/`,
@@ -178,9 +215,10 @@ outside this track's domain).
 
 ## What remains / blocked
 
-- **Municipal ordinance embeddings** (for true cross-city near-dup): gated on
-  Track A landing LOCUS ordinance text + embeddings in `contract_records`. The
-  flagship machinery is done and will light up automatically.
+- **LOCUS landed** (2.2M ordinances): the cross-city flagship now runs on real
+  data via text MinHash (no embeddings needed). When Track A enriches LOCUS rows
+  with `dossier_embedding`, the embedding near-dup path extends across all 9,239
+  jurisdictions automatically — no code change.
 - **Hard donor→official edges**: gated on FEC donor edges in the contract; the
   donor→vote path falls back to embedding similarity until then.
 - **Live LLM GraphRAG answers**: gated on `ANTHROPIC_API_KEY`; the stub serves
