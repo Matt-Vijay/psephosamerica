@@ -100,6 +100,8 @@ class PredictionWsgiApp:
                 headers={"Content-Type": _JSON_CONTENT_TYPE, "Cache-Control": "no-store"},
                 body=b'{"status":"ok"}',
             )
+        if path in ("/", "/index.html"):
+            return self._graph.serve_home()
         if path == "/v1/dashboard":
             return serve_calibration_dashboard(self._dashboard)
         if path == "/v1/dashboard.html":
@@ -144,6 +146,18 @@ class PredictionWsgiApp:
             return self._graph.serve_locus_duplicates(query)
         if path == "/v1/graph/locus/topic_diffusion":
             return self._graph.serve_locus_topic_diffusion(query)
+        if path == "/v1/graph/copied_bills":
+            return self._graph.serve_copied_bills(query)
+        if path == "/v1/graph/accountability":
+            return self._graph.serve_accountability(query)
+        if path == "/v1/graph/jurisdiction_accountability":
+            return self._graph.serve_jurisdiction_accountability(query)
+        if path == "/v1/graph/said_vs_voted":
+            return self._graph.serve_said_vs_voted(query)
+        if path == "/v1/explorer/search":
+            return self._graph.serve_search(query)
+        if path == "/v1/explorer/ask":
+            return self._graph.serve_ask_page(query)
         if path.startswith("/v1/explorer/official/"):
             person = unquote(path[len("/v1/explorer/official/") :])
             if not person:

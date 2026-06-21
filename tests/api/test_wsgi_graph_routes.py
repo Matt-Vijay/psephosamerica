@@ -98,10 +98,18 @@ def _app() -> PredictionWsgiApp:
             )
         ],
     )
+    from src.query.graph_rag import GraphRagAnswerer, stub_generate
+
+    graph = GraphService(store_factory=_graph_store)
+    # Pin a deterministic offline answerer so /v1/graph/ask never touches the
+    # network (the live OpenRouter path is unit-tested in test_graph_rag.py).
+    graph._answerer = GraphRagAnswerer(
+        store=graph.store, generate=stub_generate, used_llm=False, backend="stub"
+    )
     return PredictionWsgiApp(
         read_service=service,
         dashboard=dashboard,
-        graph_service=GraphService(store_factory=_graph_store),
+        graph_service=graph,
     )
 
 

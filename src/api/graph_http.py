@@ -30,7 +30,7 @@ from dataclasses import dataclass, field
 
 from src.api.http import JsonHttpResponse
 from src.query import graph_query as gq
-from src.query import locus, redundancy
+from src.query import lenses, locus, redundancy
 from src.query.graph_rag import GraphRagAnswerer
 from src.query.graph_store import GraphStore, Node, build_store
 
@@ -316,6 +316,92 @@ class GraphService:
             }
         )
 
+    # -- #3 analytical lenses -------------------------------------------
+
+    def serve_copied_bills(self, query: dict[str, list[str]]) -> JsonHttpResponse:
+        scan = _int(query, "scan", default=20000, maximum=200000)
+        threshold = _float(query, "threshold", default=0.7)
+        cross_only = _first(query, "cross_jurisdiction_only") == "true"
+        pairs = lenses.copied_bill_clusters(
+            lenses.BILL_CONTENT_PATHS,
+            store=self.store,
+            limit=scan,
+            threshold=threshold,
+            cross_jurisdiction_only=cross_only,
+        )
+        return _json_response(
+            {
+                "scanned": scan,
+                "threshold": threshold,
+                "count": len(pairs),
+                "pairs": [
+                    {
+                        "jaccard": round(p.jaccard, 4),
+                        "cross_jurisdiction": p.cross_jurisdiction,
+                        "a": p.a,
+                        "b": p.b,
+                    }
+                    for p in pairs
+                ],
+            }
+        )
+
+    def serve_accountability(self, query: dict[str, list[str]]) -> JsonHttpResponse:
+        limit = _int(query, "limit", default=50, maximum=1000)
+        rows = lenses.official_accountability(self.store, limit=limit)
+        return _json_response(
+            {
+                "count": len(rows),
+                "officials": [
+                    {
+                        "entity_id": r.entity_id,
+                        "display_name": r.display_name,
+                        "jurisdiction": r.jurisdiction,
+                        "score": r.score,
+                        "components": r.components,
+                        "observations": r.observations,
+                        "citation": r.citation,
+                    }
+                    for r in rows
+                ],
+            }
+        )
+
+    def serve_jurisdiction_accountability(self, query: dict[str, list[str]]) -> JsonHttpResponse:
+        limit = _int(query, "limit", default=50, maximum=1000)
+        rows = lenses.jurisdiction_accountability(self.store, limit=limit)
+        return _json_response(
+            {
+                "count": len(rows),
+                "jurisdictions": [
+                    {
+                        "jurisdiction": r.jurisdiction,
+                        "officials": r.officials,
+                        "mean_score": r.mean_score,
+                        "mean_source_coverage": r.mean_source_coverage,
+                        "officials_with_voice": r.officials_with_voice,
+                    }
+                    for r in rows
+                ],
+            }
+        )
+
+    def serve_said_vs_voted(self, query: dict[str, list[str]]) -> JsonHttpResponse:
+        person = _first(query, "person_id")
+        if not person:
+            return _error(400, "bad_request", "person_id is required")
+        result = lenses.said_vs_voted(self.store, person)
+        if result is None:
+            return _error(404, "not_found", f"no official {person}")
+        return _json_response(
+            {
+                "official": result.official,
+                "speeches": list(result.speeches),
+                "votes": list(result.votes),
+                "note": result.note,
+            }
+        )
+
     # -- explorer (HTML) ------------------------------------------------
 
     def serve_official_page(self, person_id: str) -> JsonHttpResponse:
@@ -331,6 +417,25 @@ class GraphService:
         if not officials and not bills:
             return _error(404, "not_found", f"no jurisdiction {slug}")
         return _html_response(render_jurisdiction_page(slug, officials, bills))
+
+    def serve_home(self) -> JsonHttpResponse:
+        jurisdictions = list(self.store.jurisdictions().items())
+        return _html_response(render_home_page(jurisdictions))
+
+    def serve_search(self, query: dict[str, list[str]]) -> JsonHttpResponse:
+        term = _first(query, "q")
+        entity_type = _first(query, "type")
+        if not term:
+            return _html_response(render_home_page(list(self.store.jurisdictions().items())))
+        rows = gq.find_entities(self.store, entity_type=entity_type, contains=term, limit=100)
+        return _html_response(render_search_results(term, rows))
+
+    def serve_ask_page(self, query: dict[str, list[str]]) -> JsonHttpResponse:
+        question = _first(query, "q")
+        if not question:
+            return _html_response(render_home_page(list(self.store.jurisdictions().items())))
+        result = self.answerer.answer(question)
+        return _html_response(render_ask_page(result))
 
 
 # -- small request-parsing helpers -------------------------------------
@@ -464,9 +569,130 @@ def render_jurisdiction_page(
     )
 
 
+_SEARCH_BOX = (
+    "<form action='/v1/explorer/search' method='get' class='box'>"
+    "<input name='q' placeholder='Search officials &amp; bills (e.g. Klobuchar, Health)' "
+    "autofocus>"
+    "<select name='type'><option value=''>all</option>"
+    "<option value='person'>officials</option><option value='bill'>bills</option></select>"
+    "<button type='submit'>Search</button></form>"
+)
+_ASK_BOX = (
+    "<form action='/v1/explorer/ask' method='get' class='box'>"
+    "<input name='q' placeholder='Ask a question (e.g. Who voted on the budget act?)'>"
+    "<button type='submit'>Ask</button></form>"
+)
+
+
+def _page(title: str, body: str) -> str:
+    return (
+        f"<!doctype html><html><head><meta charset='utf-8'>"
+        f"<meta name='viewport' content='width=device-width, initial-scale=1'>"
+        f"<title>{html.escape(title)} — OpenPact</title><style>{_PAGE_CSS}"
+        ".box{display:flex;gap:.5rem;margin:1rem 0}.box input{flex:1;padding:.5rem;"
+        "font-size:1rem;border:1px solid #bbb;border-radius:4px}"
+        ".box button,.box select{padding:.5rem .8rem;font-size:1rem}"
+        "nav a{margin-right:1rem}.muted{color:#666}"
+        f"</style></head><body>{body}</body></html>"
+    )
+
+
+def render_home_page(jurisdictions: list[tuple[str, int]]) -> str:
+    juris_links = "".join(
+        f"<li><a href='/v1/explorer/jurisdiction/{html.escape(slug)}'>"
+        f"{html.escape(slug)}</a> <span class='cite'>({count} officials)</span></li>"
+        for slug, count in jurisdictions[:40]
+    )
+    body = (
+        "<h1>OpenPact — explore the governance graph</h1>"
+        "<p class='muted'>A cited, queryable graph of US public officials, bills/ordinances, "
+        "roll-call votes, and policy topics. Every fact shows its source URL and "
+        "<code>known_at</code> timestamp.</p>"
+        "<h2>Search</h2>"
+        + _SEARCH_BOX
+        + "<h2>Ask anything (GraphRAG)</h2>"
+        + _ASK_BOX
+        + "<p class='cite'>Answers are grounded in cited graph evidence. With "
+        "<code>ANTHROPIC_API_KEY</code> set, a live model synthesises a narrative; "
+        "otherwise an honest grounded summary is returned.</p>"
+        "<h2>Analytical lenses</h2><nav>"
+        "<a href='/v1/graph/copied_bills'>Copied / model legislation</a>"
+        "<a href='/v1/graph/accountability'>Official accountability</a>"
+        "<a href='/v1/graph/jurisdiction_accountability'>Jurisdiction accountability</a>"
+        "<a href='/v1/graph/locus/duplicates'>LOCUS cross-city duplicates</a>"
+        "<a href='/v1/graph/redundant_policy_areas'>Federal over-legislation</a>"
+        "</nav>"
+        f"<h2>Jurisdictions ({len(jurisdictions)})</h2><ul>{juris_links}</ul>"
+    )
+    return _page("Explore", body)
+
+
+def render_search_results(term: str, rows: list[gq.QueryResult]) -> str:
+    term_e = html.escape(term)
+    items = []
+    for r in rows:
+        p = r.payload
+        etype = str(p.get("entity_type") or "")
+        cid = html.escape(str(p.get("canonical_id")))
+        name = html.escape(str(p.get("display_name") or cid))
+        if etype == "person":
+            link = f"<a href='/v1/explorer/official/{cid}'>{name}</a>"
+        else:
+            link = name
+        juris = html.escape(str(p.get("jurisdiction") or "—"))
+        items.append(
+            f"<tr><td>{link}</td><td>{etype}</td><td>{juris}</td>"
+            f"<td>{_cite_link(r.citation)}</td></tr>"
+        )
+    table = (
+        "<table><tr><th>Entity</th><th>Type</th><th>Jurisdiction</th><th>Citation</th></tr>"
+        + "".join(items)
+        + "</table>"
+        if items
+        else "<p>No matches.</p>"
+    )
+    body = (
+        "<p><a href='/'>&larr; home</a></p>"
+        + _SEARCH_BOX
+        + f"<h1>Results for {term_e!r} ({len(rows)})</h1>"
+        + table
+    )
+    return _page(f"Search: {term}", body)
+
+
+def render_ask_page(result: object) -> str:
+    # result is a graph_rag.GraphRagResult; access via attributes defensively.
+    question = html.escape(str(getattr(result, "question", "")))
+    answer = html.escape(str(getattr(result, "answer", "")))
+    used_llm = bool(getattr(result, "used_llm", False))
+    served_by = html.escape(str(getattr(result, "served_by", "stub")))
+    citations = result.citations() if hasattr(result, "citations") else []
+    mode = "live model" if used_llm else "grounded stub (no API key)"
+    mode = f"{mode} · served by {served_by}"
+    cite_items = "".join(
+        f"<li><a href='{html.escape(str(c.get('source_url') or ''))}' rel='nofollow noopener'>"
+        f"{html.escape(str(c.get('source_url') or '(no url)'))}</a> "
+        f"<span class='cite'>@ {html.escape(str(c.get('known_at') or '?'))}</span></li>"
+        for c in citations
+    )
+    body = (
+        "<p><a href='/'>&larr; home</a></p>"
+        + _ASK_BOX
+        + f"<h1>{question}</h1>"
+        + f"<p class='cite'>Mode: {html.escape(mode)}</p>"
+        + f"<pre style='white-space:pre-wrap;background:#f8f8f8;padding:1rem;"
+        f"border-radius:4px'>{answer}</pre>"
+        + (f"<h2>Citations ({len(citations)})</h2><ul>{cite_items}</ul>" if citations else "")
+    )
+    return _page(f"Ask: {getattr(result, 'question', '')}", body)
+
+
 __all__ = [
     "GraphService",
     "render_official_page",
     "render_jurisdiction_page",
+    "render_home_page",
+    "render_search_results",
+    "render_ask_page",
     "node_brief",
 ]
