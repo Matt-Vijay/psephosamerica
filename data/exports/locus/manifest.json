@@ -1,6 +1,6 @@
 {
-  "as_of": "2026-06-21T01:43:37.219612+00:00",
-  "content_sha256": "3028128ffffbce311c6de34d15be55461c36bad31915dc1d59f283deb0a04c1e",
-  "record_count": 59957,
+  "as_of": "2026-06-21T01:47:02.388294+00:00",
+  "content_sha256": "495722590a4bb98c01904b35b3bb256affd7666cb02e959b5ba78e95aa6a1a6f",
+  "record_count": 2207679,
   "records_path": "data/exports/locus/records.jsonl"
 }

@@ -146,6 +146,20 @@ COVERAGE: tuple[CoverageEntry, ...] = (
         "keyless",
         "text-layer PDFs (image-only = OCR gap)",
     ),
+    CoverageEntry(
+        "LOCUS-v1 ordinances (CC-BY-NC; HF LocalLaws/LOCUS-v1)",
+        "city",
+        "ordinance Bill IDs + function/topic + 4 dimension scores",
+        "keyless",
+        "2,207,679 ordinances / 2,287 jurisdictions (50 states), full corpus",
+    ),
+    CoverageEntry(
+        "LOCUS jurisdiction linkage (folded-key)",
+        "city",
+        "LOCUS jurisdiction -> canonical jurisdiction",
+        "derived",
+        "59 linked (P 1.00 / R 1.00, 0 false merges), 2,228 minted",
+    ),
     # ── cross-cutting ──
     CoverageEntry(
         "Prediction markets (Polymarket + Kalshi)",

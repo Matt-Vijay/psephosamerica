@@ -1,14 +1,14 @@
 {
-  "as_of": "2026-06-21T01:43:37.219612+00:00",
+  "as_of": "2026-06-21T01:47:02.388294+00:00",
   "attribution": "LOCUS v1.0 (LocalLaws/LOCUS-v1), Peskoff, Barrow, Vu & Davenport, arXiv:2606.19334, licensed CC-BY-NC-4.0 (non-commercial).",
   "dataset_url": "https://huggingface.co/datasets/LocalLaws/LOCUS-v1",
-  "deltas_written": 59957,
-  "is_full_corpus": false,
-  "jurisdictions": 65,
+  "deltas_written": 2207679,
+  "is_full_corpus": true,
+  "jurisdictions": 2287,
   "license": "cc-by-nc-4.0",
-  "ordinances": 59957,
-  "rows_scanned": 60000,
-  "rows_skipped": 11,
+  "ordinances": 2207679,
+  "rows_scanned": 2211516,
+  "rows_skipped": 956,
   "shard_total": 8,
-  "shards_read": 1
+  "shards_read": 8
 }

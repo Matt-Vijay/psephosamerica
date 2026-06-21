@@ -23,6 +23,8 @@ or derived (computed from ingested data). Credential-gated sources are in
 | state | CA leginfo bulk (partial-ZIP range reads) | Bill IDs + titles + legislators + rich roll-calls | keyless | 25,539 bills, 720 seats, 48,676 roll-calls / 2.96M votes |
 | state | OpenStates people (all 50 states) | Person IDs | keyless | 7,359 legislators |
 | county | Legistar county clients | Person IDs + bills + votes | keyless | 21 counties (in 24,368 officials) |
+| city | LOCUS jurisdiction linkage (folded-key) | LOCUS jurisdiction -> canonical jurisdiction | derived | 59 linked (P 1.00 / R 1.00, 0 false merges), 2,228 minted |
+| city | LOCUS-v1 ordinances (CC-BY-NC; HF LocalLaws/LOCUS-v1) | ordinance Bill IDs + function/topic + 4 dimension scores | keyless | 2,207,679 ordinances / 2,287 jurisdictions (50 states), full corpus |
 | city | Legistar city clients (officials) | Person IDs | keyless | in 24,368 municipal officials |
 | city | Legistar event-item votes | vote edges | keyless | 1,161 municipal vote edges |
 | city | Legistar matters (municipal bills) | Bill IDs | keyless | 2,000 bills |
@@ -37,4 +39,4 @@ or derived (computed from ingested data). Credential-gated sources are in
 | enrichment | entity-linker (NER -> canonical_person_id) | text->Person links | derived | P 1.00 / R 0.75 on real sample |
 | enrichment | regenerate driver (contract corpus) | ready rows w/ embeddings | derived | 141,266 rows; 139,974 w/ 384-d semantic |
 
-**28 sources** across 6 tiers.
+**30 sources** across 6 tiers.

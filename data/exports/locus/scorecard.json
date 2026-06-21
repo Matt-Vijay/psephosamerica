@@ -1,0 +1,50 @@
+{
+  "all_gates_passed": true,
+  "by_entity_type": {
+    "bill": 2207679
+  },
+  "by_tier": {
+    "city": 1798445,
+    "county": 409234
+  },
+  "cross_tier_links": 59,
+  "dup_rate": 0.0,
+  "gates": [
+    {
+      "comparison": "<=",
+      "name": "dup_rate",
+      "passed": true,
+      "threshold": 0.0,
+      "value": 0.0
+    },
+    {
+      "comparison": "<=",
+      "name": "orphan_rate",
+      "passed": true,
+      "threshold": 0.0,
+      "value": 0.0
+    },
+    {
+      "comparison": ">=",
+      "name": "jurisdiction_precision",
+      "passed": true,
+      "threshold": 1.0,
+      "value": 1.0
+    },
+    {
+      "comparison": ">=",
+      "name": "jurisdiction_recall",
+      "passed": true,
+      "threshold": 0.75,
+      "value": 1.0
+    }
+  ],
+  "jurisdiction_precision": 1.0,
+  "jurisdiction_recall": 1.0,
+  "jurisdictions_linked": 59,
+  "jurisdictions_minted": 2228,
+  "jurisdictions_total": 2287,
+  "orphan_rate": 0.0,
+  "total_entities": 2207679,
+  "unique_canonical_ids": 2207679
+}
