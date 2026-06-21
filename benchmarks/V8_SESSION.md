@@ -19,11 +19,61 @@ served answer is cited (source_url + content_sha256 + known_at).
 | # | Deliverable | Module(s) | Status |
 |---|-------------|-----------|--------|
 | 1 | Query API over the connected graph | `src/query/graph_store.py`, `src/query/graph_query.py`, `src/api/graph_http.py` | shipped |
-| 2 | GraphRAG reasoning (retrieval + grounding now; key-gated LLM) | `src/query/graph_rag.py`, `src/query/query_embedder.py` | shipped |
+| 2 | GraphRAG reasoning (retrieval + grounding; **OpenRouter LLM primary**) | `src/query/graph_rag.py`, `src/query/query_embedder.py` | shipped |
 | 3 | Public explorer (per-official / per-jurisdiction pages) | `src/api/graph_http.py` (render_*), wired in `src/api/wsgi_app.py` | shipped |
 | 4 | Flagship: cross-jurisdiction near-duplicate ordinances | `src/query/redundancy.py`, `src/query/locus.py` | shipped + verified on real 2.2M-ordinance LOCUS corpus |
 | 5 | Federal waste/redundancy queries | `src/query/redundancy.py` | shipped, verified on real corpus |
 | 6 | This writeup | `benchmarks/V8_SESSION.md` | here |
+
+### V8.1 — usability + analytical lenses (this session)
+
+| # | Deliverable | Module(s) | Status |
+|---|-------------|-----------|--------|
+| U1 | **Ask-anything CLI** (`python -m src.query ask "…"`) | `src/query/__main__.py` | shipped, live-verified |
+| U2 | **One-command explorer launcher** + landing page (search box, ask box, jurisdiction links) | `src/api/serve.py`, `render_home_page`/`render_search_results`/`render_ask_page` in `src/api/graph_http.py` | shipped |
+| U3 | **Analytical lenses**: copied/model-legislation across bills; per-official + per-jurisdiction accountability/opacity; said-vs-voted stub | `src/query/lenses.py`, served in `src/api/graph_http.py` | shipped |
+| U4 | **OpenRouter LLM backend** (OpenAI-compatible, env/.env-driven) with comprehensive fallback detection + `served_by` observability | `src/query/graph_rag.py` | shipped, live-verified |
+| U5 | Usage doc (run commands + endpoints + examples) | `USAGE.md` | shipped |
+
+Run commands and the full endpoint list live in **`USAGE.md`**. Highlights:
+
+```sh
+# Ask a cited question (offline grounded stub, or live OpenRouter when keyed)
+python -m src.query ask "What did the budget reconciliation bill cover?"
+
+# Launch the explorer (landing page with search + ask + jurisdiction links)
+python -m src.api.serve            # http://127.0.0.1:8000/
+
+# Analytical lenses from the CLI
+python -m src.query lens copied-bills --threshold 0.85 --cite
+python -m src.query lens accountability
+python -m src.query said-vs-voted ce-<id>
+```
+
+New JSON/HTML routes (all cited):
+`GET /` (landing), `/v1/explorer/search`, `/v1/explorer/ask`,
+`/v1/graph/copied_bills`, `/v1/graph/accountability`,
+`/v1/graph/jurisdiction_accountability`, `/v1/graph/said_vs_voted`.
+
+**GraphRAG LLM path (U4).** The primary backend is **OpenRouter** (OpenAI-compatible
+`chat/completions`, httpx, no SDK), configured entirely via env / the gitignored
+`.env` (`OPENROUTER_API_KEY`, `OPENROUTER_BASE_URL`, `OPENPACT_LLM_MODEL`,
+`OPENPACT_LLM_FALLBACKS`). The client tries `[primary, *fallbacks]` in order and
+detects, at each step: HTTP 429/5xx/timeout/connection error (retry with backoff
+honoring `Retry-After`, then fall through); 200-responses carrying a body-embedded
+`error`; empty / whitespace / reasoning-only content; and obvious refusals — then
+falls through to the next model, and finally to the never-hallucinating grounded
+**stub** if all fail. The serving model is recorded as `served_by` on the result
+(surfaced in the CLI and the HTML ask page). Anthropic (`claude-opus-4-8`, adaptive
+thinking) remains an optional alternate behind `ANTHROPIC_API_KEY`.
+
+**Live verification (this session):** `python -m src.query ask "What do the
+retrieved congressional resolutions concern, and which are duplicates?"` →
+`Mode: live LLM` · `Served by: nvidia/nemotron-3-ultra-550b-a55b:free` — a real
+grounded answer citing seven `govinfo.gov` BILLSTATUS records with `known_at`
+dates. The fallback chain + all detection modes (429, body-error, empty,
+reasoning-only, refusal, transport error, all-fail→stub) are unit-tested with an
+injected mock poster in `tests/query/test_graph_rag.py`.
 
 Commits (branch `consolidate-prediction-and-quality-pass`):
 `cb0bb17` (#1 store+query) · `131d008` (#2 GraphRAG) · `7e308c6` (#1+#3 HTTP+explorer) ·
