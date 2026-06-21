@@ -1,0 +1,84 @@
+{
+  "as_of": "2026-06-21T21:46:08.154525+00:00",
+  "description": "Federal floor-speech + roll-call vote edge feeds (113th-119th Congresses), leakage-safe (known_at stamped at the public date of each fact). Large .jsonl feeds are gitignored + regenerable; this file is their tracked provenance.",
+  "feeds": {
+    "crec_floor_speech_edges": {
+      "bytes": 27446365787,
+      "content_sha256": "c2c0c3ba9125a132d3674bb4129590c4d69dba4e4a547ae39c8d70f991ff90ff",
+      "day_range": "2013-01-04 .. 2026-06-18",
+      "edge_type": "floor_speech",
+      "edges_per_congress_member_to_bill": {
+        "113": 7846423,
+        "114": 7640275,
+        "115": 8432941,
+        "116": 7322333,
+        "117": 6949946,
+        "118": 7389487,
+        "119": 5617825
+      },
+      "edges_total": 52004494,
+      "member_to_bill_edges": 51090963,
+      "member_to_crday_edges": 803572,
+      "members_unresolved": 2,
+      "path": "data/exports/govinfo_bills/crec_speech_edges.jsonl",
+      "runner": "src.runtime.crec_backfill",
+      "session_day_range_per_congress": {
+        "113": "2013-01-04 .. 2015-01-02 (331 days)",
+        "114": "2015-01-06 .. 2016-12-30 (333 days)",
+        "115": "2017-01-04 .. 2019-01-02 (406 days)",
+        "116": "2019-01-04 .. 2021-01-01 (411 days)",
+        "117": "2021-01-04 .. 2022-12-30 (399 days)",
+        "118": "2023-01-04 .. 2024-12-31 (378 days)",
+        "119": "2025-01-06 .. 2026-06-18 (306 days)"
+      },
+      "session_days": 2564,
+      "source": "GovInfo CREC MODS metadata (govinfo.gov/metadata/pkg/CREC-<date>/mods.xml), keyless"
+    },
+    "house_vote_edges": {
+      "bytes": 1352815253,
+      "content_sha256": "c73f7a09d76eab0e1a13649a752c55858602c072464e90eeeedfa9d449cf2bab",
+      "edge_type": "vote",
+      "edges_per_congress": {
+        "113": 499680,
+        "114": 558118,
+        "115": 488711,
+        "116": 403659,
+        "117": 412513,
+        "118": 526299,
+        "119": 249395
+      },
+      "edges_total": 3138375,
+      "members_unresolved": 6,
+      "path": "data/exports/govinfo_bills/house_vote_edges.jsonl",
+      "rollcalls_converted": 7259,
+      "rollcalls_seen": 7519,
+      "runner": "src.runtime.house_vote_edges",
+      "source": "House Clerk EVS roll-call XML (clerk.house.gov/evs/<year>/roll<NNN>.xml), keyless",
+      "vote_year_range": "2013 .. 2026"
+    },
+    "senate_vote_edges": {
+      "bytes": 233370256,
+      "edge_type": "vote",
+      "edges_per_congress": {
+        "113": 65693,
+        "114": 50200,
+        "115": 59889,
+        "116": 71800,
+        "117": 94797,
+        "118": 69096,
+        "119": 82990
+      },
+      "edges_total": 494465,
+      "note": "Already comprehensive for 113-119. No machine-readable refresh possible from this environment: senate.gov returns HTTP 403 (Akamai Access Denied) to the datacenter egress IP regardless of User-Agent. The fixed index URL/parser is in place (src/ingest/congress/senate_vote_index.py) and works from an unblocked host.",
+      "path": "data/exports/govinfo_bills/senate_vote_edges.jsonl",
+      "runner": "src.runtime.senate_vote_edges (rich roll-calls -> edges)",
+      "source": "senate.gov LIS roll-call XML (pre-fetched; senate.gov now IP-blocks this egress)"
+    }
+  },
+  "machine_readable_source_coverage": {
+    "congresses_without_machine_readable_source": "none for 113-119",
+    "crec_113_119": "complete (govinfo.gov reachable)",
+    "house_113_119": "complete (clerk.house.gov EVS reachable)",
+    "senate_113_119": "complete (pre-fetched; senate.gov blocked for refresh from this env)"
+  }
+}

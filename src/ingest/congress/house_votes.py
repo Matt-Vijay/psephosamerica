@@ -25,6 +25,15 @@ def roll_call_index_url(year: int) -> str:
     return f"{HOUSE_VOTE_BASE}/{year}/index.asp"
 
 
+def _parse_session(raw: str) -> int:
+    """Session number from the Clerk's value: numeric (``2``) or ordinal (``2nd``)."""
+    text = raw.strip().lower()
+    if text.isdigit():
+        return int(text)
+    digits = "".join(ch for ch in text if ch.isdigit())
+    return int(digits) if digits else 0
+
+
 def _vote_option(raw: str) -> VoteOption:
     mapping: dict[str, VoteOption] = {
         "yea": "yea",
@@ -45,13 +54,19 @@ def parse_house_vote_xml(xml_text: str) -> tuple[VoteEventRecord, list[VoteCastR
         raise ValueError("Missing <vote-metadata> element")
 
     congress = int(vote_meta.findtext("congress", "0"))
-    session = int(vote_meta.findtext("session", "0"))
+    session = _parse_session(vote_meta.findtext("session", "0"))
     roll_call = int(vote_meta.findtext("rollcall-num", "0"))
     question = vote_meta.findtext("vote-question", "")
     result = vote_meta.findtext("vote-result")
 
     action_date_el = vote_meta.find("action-date")
-    date_str = action_date_el.get("date", "") if action_date_el is not None else ""
+    # The live Clerk feed carries the date as element text ("3-Jan-2013") with no
+    # attribute; some archives instead put a machine ISO date in a ``date``
+    # attribute alongside human-readable text. Prefer the explicit attribute, then
+    # fall back to the element text.
+    date_str = ""
+    if action_date_el is not None:
+        date_str = action_date_el.get("date", "") or (action_date_el.text or "").strip()
     if date_str:
         try:
             vote_date = datetime.date.fromisoformat(date_str)

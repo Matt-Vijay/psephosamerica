@@ -43,6 +43,7 @@ CONTRACT_RECORDS = Path("data/exports/contract_records/records.jsonl")
 MUNICIPAL_PERSONS = Path("data/exports/municipal/municipal_persons.jsonl")
 MUNICIPAL_VOTES = Path("data/exports/municipal/municipal_vote_edges.jsonl")
 SENATE_VOTES = Path("data/exports/govinfo_bills/senate_vote_edges.jsonl")
+HOUSE_VOTES = Path("data/exports/govinfo_bills/house_vote_edges.jsonl")
 BILL_EDGES = Path("data/exports/govinfo_bills/bill_edges.jsonl")
 # Money-out + lobbying org corpora and their edge sidecars (USASpending federal
 # awards, Senate LDA lobbying). The recipient/agency/registrant/client org nodes
@@ -287,6 +288,7 @@ def build_store(
     edge_paths: Iterable[Path] = (
         MUNICIPAL_VOTES,
         SENATE_VOTES,
+        HOUSE_VOTES,
         BILL_EDGES,
         AWARD_EDGES,
         LOBBYING_EDGES,
@@ -340,6 +342,7 @@ __all__ = [
     "MUNICIPAL_PERSONS",
     "MUNICIPAL_VOTES",
     "SENATE_VOTES",
+    "HOUSE_VOTES",
     "BILL_EDGES",
     "USASPENDING_ORGS",
     "LDA_ORGS",

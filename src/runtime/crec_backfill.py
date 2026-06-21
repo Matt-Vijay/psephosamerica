@@ -18,6 +18,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import time
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
@@ -45,6 +46,43 @@ def date_range(start: date, end: date) -> list[date]:
     """Every calendar date in ``[start, end]`` (inclusive)."""
     days = (end - start).days
     return [start + timedelta(days=offset) for offset in range(days + 1)]
+
+
+# GovInfo throttles bursty keyless clients with 429/503; a comprehensive walk of
+# ~4.5k calendar days will hit that. Retry those (and transient connection errors)
+# with exponential backoff so a momentary throttle never drops a session day. A
+# 200/404 returns on the first try, so injected MockTransport clients (which only
+# answer 200/404) see no behaviour change.
+_RETRYABLE_STATUS = frozenset({429, 500, 502, 503, 504})
+
+
+def _get_with_backoff(
+    http: httpx.Client,
+    url: str,
+    *,
+    max_attempts: int = 6,
+    base_delay: float = 1.0,
+    sleep: object = time.sleep,
+) -> httpx.Response | None:
+    """GET ``url`` retrying rate-limit/transient failures; ``None`` if exhausted."""
+    delay = base_delay
+    for attempt in range(1, max_attempts + 1):
+        try:
+            resp = http.get(url, follow_redirects=True)
+        except httpx.TransportError:
+            if attempt == max_attempts:
+                return None
+            sleep(delay)  # type: ignore[operator]
+            delay *= 2
+            continue
+        if resp.status_code in _RETRYABLE_STATUS and attempt < max_attempts:
+            retry_after = resp.headers.get("retry-after")
+            wait = float(retry_after) if retry_after and retry_after.isdigit() else delay
+            sleep(wait)  # type: ignore[operator]
+            delay *= 2
+            continue
+        return resp
+    return None
 
 
 def bill_mentions(mods_xml: str, *, limit: int = 40) -> list[str]:
@@ -120,8 +158,8 @@ def backfill_crec_speeches(
                 if max_days is not None and checked >= max_days:
                     break
                 checked += 1
-                resp = http.get(crec_package_url(day), follow_redirects=True)
-                if resp.status_code != 200:
+                resp = _get_with_backoff(http, crec_package_url(day))
+                if resp is None or resp.status_code != 200:
                     continue
                 speeches = parse_crec_mods(resp.text, issue_date=day)
                 if not speeches:
