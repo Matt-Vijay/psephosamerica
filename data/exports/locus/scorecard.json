@@ -7,6 +7,8 @@
     "city": 1798445,
     "county": 409234
   },
+  "connected_officials": 22583,
+  "connected_ordinances": 162780,
   "cross_tier_links": 59,
   "dup_rate": 0.0,
   "gates": [

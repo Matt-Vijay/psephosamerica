@@ -86,6 +86,10 @@ class ConnectivityScorecard:
     jurisdictions_linked: int
     jurisdictions_minted: int
     jurisdictions_total: int
+    # Cross-tier connectivity through the canonical jurisdiction join (deliverable
+    # #3): ordinances + officials reachable across the LOCUS<->municipal bridge.
+    connected_ordinances: int = 0
+    connected_officials: int = 0
     gates: list[Gate] = field(default_factory=list)
 
     @property
@@ -118,6 +122,8 @@ def compute_scorecard(
     jurisdictions_linked: int,
     jurisdictions_minted: int,
     jurisdictions_total: int,
+    connected_ordinances: int = 0,
+    connected_officials: int = 0,
 ) -> ConnectivityScorecard:
     """Compute the connectivity/quality scorecard over a contract corpus."""
     by_type: Counter[str] = Counter()
@@ -159,6 +165,8 @@ def compute_scorecard(
         jurisdictions_linked=jurisdictions_linked,
         jurisdictions_minted=jurisdictions_minted,
         jurisdictions_total=jurisdictions_total,
+        connected_ordinances=connected_ordinances,
+        connected_officials=connected_officials,
         gates=gates,
     )
 
@@ -185,6 +193,9 @@ def render_scorecard_markdown(scorecard: ConnectivityScorecard) -> str:
         f"- **dup rate**: {scorecard.dup_rate:.6f}",
         f"- **orphan-node rate**: {scorecard.orphan_rate:.6f}",
         f"- **cross-tier links (LOCUS->canonical jurisdiction)**: {scorecard.cross_tier_links:,}",
+        f"- **cross-tier reach (ordinances <-> officials via the join)**: "
+        f"{scorecard.connected_ordinances:,} ordinances <-> "
+        f"{scorecard.connected_officials:,} officials",
         f"- **jurisdiction precision / recall**: "
         f"{scorecard.jurisdiction_precision:.4f} / {scorecard.jurisdiction_recall:.4f}",
         f"- **jurisdictions linked / minted / total**: "

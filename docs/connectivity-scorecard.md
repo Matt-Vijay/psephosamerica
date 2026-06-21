@@ -10,6 +10,7 @@ graph clears its gates, not merely 'all data exists'.
 - **dup rate**: 0.000000
 - **orphan-node rate**: 0.000000
 - **cross-tier links (LOCUS->canonical jurisdiction)**: 59
+- **cross-tier reach (ordinances <-> officials via the join)**: 162,780 ordinances <-> 22,583 officials
 - **jurisdiction precision / recall**: 1.0000 / 1.0000
 - **jurisdictions linked / minted / total**: 59 / 2,228 / 2,287
 
