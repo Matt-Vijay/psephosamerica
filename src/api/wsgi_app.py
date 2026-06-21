@@ -138,6 +138,12 @@ class PredictionWsgiApp:
             return self._graph.serve_duplicate_ordinances(query)
         if path == "/v1/graph/donor_paths":
             return self._graph.serve_donor_paths(query)
+        if path == "/v1/graph/locus/opacity_map":
+            return self._graph.serve_locus_opacity_map(query)
+        if path == "/v1/graph/locus/duplicates":
+            return self._graph.serve_locus_duplicates(query)
+        if path == "/v1/graph/locus/topic_diffusion":
+            return self._graph.serve_locus_topic_diffusion(query)
         if path.startswith("/v1/explorer/official/"):
             person = unquote(path[len("/v1/explorer/official/") :])
             if not person:

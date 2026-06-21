@@ -30,7 +30,7 @@ from dataclasses import dataclass, field
 
 from src.api.http import JsonHttpResponse
 from src.query import graph_query as gq
-from src.query import redundancy
+from src.query import locus, redundancy
 from src.query.graph_rag import GraphRagAnswerer
 from src.query.graph_store import GraphStore, Node, build_store
 
@@ -238,6 +238,80 @@ class GraphService:
                         "votes": list(p.votes),
                     }
                     for p in paths
+                ],
+            }
+        )
+
+    # -- #4 LOCUS cross-jurisdiction analyses ---------------------------
+
+    def serve_locus_opacity_map(self, query: dict[str, list[str]]) -> JsonHttpResponse:
+        rank_by = _first(query, "rank_by") or "opacity"
+        scan = _int(query, "scan", default=300000, maximum=2_300_000)
+        min_ord = _int(query, "min_ordinances", default=50, maximum=10000)
+        rows = locus.opacity_paternalism_map(
+            locus.LOCUS_CONTENT, limit=scan, min_ordinances=min_ord, rank_by=rank_by
+        )
+        return _json_response(
+            {
+                "license": locus.LOCUS_LICENSE,
+                "source_url": locus.LOCUS_SOURCE_URL,
+                "rank_by": rank_by,
+                "scanned": scan,
+                "count": len(rows),
+                "jurisdictions": [
+                    {
+                        "jurisdiction_id": r.jurisdiction_id,
+                        "ordinance_count": r.ordinance_count,
+                        "means": r.means,
+                    }
+                    for r in rows
+                ],
+            }
+        )
+
+    def serve_locus_duplicates(self, query: dict[str, list[str]]) -> JsonHttpResponse:
+        scan = _int(query, "scan", default=150000, maximum=2_300_000)
+        threshold = _float(query, "threshold", default=0.8)
+        cross_only = _first(query, "cross_jurisdiction_only") != "false"
+        pairs = locus.near_duplicate_ordinances(
+            locus.LOCUS_CONTENT, limit=scan, threshold=threshold, cross_jurisdiction_only=cross_only
+        )
+        return _json_response(
+            {
+                "license": locus.LOCUS_LICENSE,
+                "source_url": locus.LOCUS_SOURCE_URL,
+                "scanned": scan,
+                "threshold": threshold,
+                "count": len(pairs),
+                "pairs": [
+                    {
+                        "jaccard": round(p.jaccard, 4),
+                        "cross_jurisdiction": p.cross_jurisdiction,
+                        "a": p.a,
+                        "b": p.b,
+                    }
+                    for p in pairs
+                ],
+            }
+        )
+
+    def serve_locus_topic_diffusion(self, query: dict[str, list[str]]) -> JsonHttpResponse:
+        scan = _int(query, "scan", default=300000, maximum=2_300_000)
+        rows = locus.topic_diffusion(locus.LOCUS_CONTENT, limit=scan)
+        return _json_response(
+            {
+                "license": locus.LOCUS_LICENSE,
+                "source_url": locus.LOCUS_SOURCE_URL,
+                "scanned": scan,
+                "count": len(rows),
+                "topics": [
+                    {
+                        "topic": r.topic,
+                        "jurisdiction_count": r.jurisdiction_count,
+                        "ordinance_count": r.ordinance_count,
+                        "example_jurisdictions": list(r.example_jurisdictions),
+                    }
+                    for r in rows
                 ],
             }
         )

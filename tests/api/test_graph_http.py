@@ -225,3 +225,89 @@ def test_donor_paths_endpoint() -> None:
     assert data["term"] == "housing rent control"
     assert data["count"] >= 1
     assert data["paths"][0]["official"]["canonical_id"] == "ce-a"
+
+
+def _write_locus(tmp_path, rows: list[dict]):
+    import json as _json
+
+    p = tmp_path / "locus.jsonl"
+    p.write_text("\n".join(_json.dumps(r) for r in rows) + "\n", encoding="utf-8")
+    return p
+
+
+def test_locus_opacity_map_endpoint(tmp_path, monkeypatch) -> None:
+    from src.query import locus
+
+    rows = [
+        {
+            "canonical_id": f"cb-{i}",
+            "jurisdiction_id": "us-ca-city-oakland",
+            "topic": "Zoning",
+            "function": "Rules",
+            "text": f"ordinance text {i}",
+            "dimension_scores": {"opacity": 4.0, "paternalism": 1.0},
+        }
+        for i in range(3)
+    ]
+    p = _write_locus(tmp_path, rows)
+    monkeypatch.setattr(locus, "LOCUS_CONTENT", p)
+    data = _body(_service().serve_locus_opacity_map({"min_ordinances": ["3"]}))
+    assert data["license"]
+    assert data["jurisdictions"][0]["jurisdiction_id"] == "us-ca-city-oakland"
+
+
+def test_locus_duplicates_endpoint(tmp_path, monkeypatch) -> None:
+    from src.query import locus
+
+    shared = "no person shall keep maintain or harbor any animal that disturbs the peace and quiet"
+    rows = [
+        {
+            "canonical_id": "cb-1",
+            "jurisdiction_id": "us-ca-city-oakland",
+            "topic": "Nuisance",
+            "function": "Rules",
+            "text": shared,
+            "dimension_scores": {},
+        },
+        {
+            "canonical_id": "cb-2",
+            "jurisdiction_id": "us-tx-city-austin",
+            "topic": "Nuisance",
+            "function": "Rules",
+            "text": shared,
+            "dimension_scores": {},
+        },
+    ]
+    p = _write_locus(tmp_path, rows)
+    monkeypatch.setattr(locus, "LOCUS_CONTENT", p)
+    data = _body(_service().serve_locus_duplicates({"threshold": ["0.6"]}))
+    assert data["count"] == 1
+    assert data["pairs"][0]["cross_jurisdiction"] is True
+
+
+def test_locus_topic_diffusion_endpoint(tmp_path, monkeypatch) -> None:
+    from src.query import locus
+
+    rows = [
+        {
+            "canonical_id": "z1",
+            "jurisdiction_id": "us-ca-city-oakland",
+            "topic": "Zoning",
+            "function": "Rules",
+            "text": "t",
+            "dimension_scores": {},
+        },
+        {
+            "canonical_id": "z2",
+            "jurisdiction_id": "us-tx-city-austin",
+            "topic": "Zoning",
+            "function": "Rules",
+            "text": "t",
+            "dimension_scores": {},
+        },
+    ]
+    p = _write_locus(tmp_path, rows)
+    monkeypatch.setattr(locus, "LOCUS_CONTENT", p)
+    data = _body(_service().serve_locus_topic_diffusion({}))
+    assert data["topics"][0]["topic"] == "Zoning"
+    assert data["topics"][0]["jurisdiction_count"] == 2

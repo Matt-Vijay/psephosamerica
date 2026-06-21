@@ -178,6 +178,34 @@ def test_donor_paths_route_requires_term() -> None:
     assert status.startswith("400")
 
 
+def test_locus_topic_diffusion_route(tmp_path, monkeypatch) -> None:
+    import json as _json
+
+    from src.query import locus
+
+    p = tmp_path / "locus.jsonl"
+    p.write_text(
+        _json.dumps(
+            {
+                "canonical_id": "z1",
+                "jurisdiction_id": "us-ca-city-oakland",
+                "topic": "Zoning",
+                "function": "Rules",
+                "text": "t",
+                "dimension_scores": {},
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(locus, "LOCUS_CONTENT", p)
+    status, _, body = _call(_app(), "/v1/graph/locus/topic_diffusion")
+    assert status.startswith("200")
+    data = json.loads(body)
+    assert data["topics"][0]["topic"] == "Zoning"
+    assert data["license"]
+
+
 def test_unknown_graph_route_404() -> None:
     status, _, _ = _call(_app(), "/v1/graph/nope")
     assert status.startswith("404")
