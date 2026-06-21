@@ -123,17 +123,28 @@ def _cite_url(brief: dict[str, object]) -> str | None:
 
 
 def _cmd_said_vs_voted(args: argparse.Namespace) -> int:
-    # Include speech edges so this lens actually lights up when CREC is present.
+    # Include both speech feeds so this lens lights up fully: the per-issue
+    # member -> Congressional Record feed (SPEECH_EDGES, broad coverage) and the
+    # typed member -> bill feed (SPEECH_BILL_EDGES, ties a speech to the specific
+    # bills debated). News mentions add the optional voice signal.
     from src.query.graph_store import (
         BILL_EDGES,
         MUNICIPAL_VOTES,
         NEWS_EDGES,
         SENATE_VOTES,
+        SPEECH_BILL_EDGES,
         SPEECH_EDGES,
     )
 
     store = build_store(
-        edge_paths=(MUNICIPAL_VOTES, SENATE_VOTES, BILL_EDGES, SPEECH_EDGES, NEWS_EDGES)
+        edge_paths=(
+            MUNICIPAL_VOTES,
+            SENATE_VOTES,
+            BILL_EDGES,
+            SPEECH_EDGES,
+            SPEECH_BILL_EDGES,
+            NEWS_EDGES,
+        )
     )
     result = lenses.said_vs_voted(store, args.person_id)
     if result is None:

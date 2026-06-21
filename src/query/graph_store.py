@@ -44,10 +44,19 @@ MUNICIPAL_PERSONS = Path("data/exports/municipal/municipal_persons.jsonl")
 MUNICIPAL_VOTES = Path("data/exports/municipal/municipal_vote_edges.jsonl")
 SENATE_VOTES = Path("data/exports/govinfo_bills/senate_vote_edges.jsonl")
 BILL_EDGES = Path("data/exports/govinfo_bills/bill_edges.jsonl")
-# Optional, heavier edge sets (floor speeches, news mentions). Not loaded by
-# default — they make the "said vs voted" and accountability-voice lenses light
-# up. Pass them explicitly via ``edge_paths`` when you want them.
+# Money-out + lobbying org corpora and their edge sidecars (USASpending federal
+# awards, Senate LDA lobbying). The recipient/agency/registrant/client org nodes
+# live in their own contract corpora; their canonical ids are the edge endpoints,
+# so the org corpora are loaded as node sources and the edge sidecars as edges.
+USASPENDING_ORGS = Path("data/exports/usaspending/records.jsonl")
+LDA_ORGS = Path("data/exports/lda/records.jsonl")
+AWARD_EDGES = Path("data/exports/usaspending/award_edges.jsonl")
+LOBBYING_EDGES = Path("data/exports/lda/lobbying_edges.jsonl")
+# Floor-speech edges: the per-issue member -> Congressional Record feed plus the
+# typed member -> bill feed (the latter is what the said-vs-voted and
+# follow-the-money lenses join on). News mentions stay opt-in (heavy, lower value).
 SPEECH_EDGES = Path("data/exports/govinfo_bills/crec_edges.jsonl")
+SPEECH_BILL_EDGES = Path("data/exports/govinfo_bills/crec_speech_edges.jsonl")
 NEWS_EDGES = Path("data/exports/govinfo_bills/gdelt_edges.jsonl")
 
 
@@ -269,8 +278,20 @@ def load_edges_from(path: Path) -> Iterator[Edge]:
 
 def build_store(
     *,
-    node_paths: Iterable[Path] = (CONTRACT_RECORDS, MUNICIPAL_PERSONS),
-    edge_paths: Iterable[Path] = (MUNICIPAL_VOTES, SENATE_VOTES, BILL_EDGES),
+    node_paths: Iterable[Path] = (
+        CONTRACT_RECORDS,
+        MUNICIPAL_PERSONS,
+        USASPENDING_ORGS,
+        LDA_ORGS,
+    ),
+    edge_paths: Iterable[Path] = (
+        MUNICIPAL_VOTES,
+        SENATE_VOTES,
+        BILL_EDGES,
+        AWARD_EDGES,
+        LOBBYING_EDGES,
+        SPEECH_BILL_EDGES,
+    ),
     load_embeddings: bool = False,
     edge_limit: int | None = None,
 ) -> GraphStore:
@@ -279,6 +300,13 @@ def build_store(
     ``node_paths`` later in the iterable win on id collisions (so the richer
     contract record beats a bare municipal-person stub). Missing files are
     skipped so the store builds even before every export has landed.
+
+    The money-out / lobbying / floor-speech sidecars (federal award edges, Senate
+    LDA lobbying edges, typed member -> bill floor-speech edges) are loaded by
+    default so the explorer, the said-vs-voted and follow-the-money lenses, and the
+    ask CLI see them with no opt-in env var. The heavy per-issue CREC feed
+    (:data:`SPEECH_EDGES`, ~800k edges) and news mentions stay opt-in via an
+    explicit ``edge_paths``.
     """
     store = GraphStore()
     for path in node_paths:
@@ -313,6 +341,11 @@ __all__ = [
     "MUNICIPAL_VOTES",
     "SENATE_VOTES",
     "BILL_EDGES",
+    "USASPENDING_ORGS",
+    "LDA_ORGS",
+    "AWARD_EDGES",
+    "LOBBYING_EDGES",
     "SPEECH_EDGES",
+    "SPEECH_BILL_EDGES",
     "NEWS_EDGES",
 ]

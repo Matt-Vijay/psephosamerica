@@ -44,3 +44,11 @@ data/exports/locus/records.jsonl
 data/exports/locus/deltas.jsonl
 data/exports/locus/ordinance_content.jsonl
 data/exports/locus/release/locus_ordinances.parquet
+# USASpending federal-award + Senate LDA lobbying corpora (regenerable org rows +
+# edge sidecars; ingest_meta.json + manifest.json tracked as the run's provenance)
+data/exports/usaspending/records.jsonl
+data/exports/usaspending/deltas.jsonl
+data/exports/usaspending/award_edges.jsonl
+data/exports/lda/records.jsonl
+data/exports/lda/deltas.jsonl
+data/exports/lda/lobbying_edges.jsonl

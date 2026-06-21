@@ -98,11 +98,19 @@ def test_backfill_writes_edges_and_resolves_members(tmp_path: Path) -> None:
     assert progress.issues_found == 1
     assert progress.edges_written == 1  # Schumer resolved
     assert progress.members_unresolved == 1  # Z999999 not in corpus
-    edge = json.loads(out.read_text().splitlines()[0])
+    # Two bills mentioned (H.R. 1478, S. 509) -> two typed member -> bill edges.
+    assert progress.speech_bill_edges_written == 2
+    lines = out.read_text().splitlines()
+    edge = json.loads(lines[0])
     assert edge["edge_type"] == "floor_speech"
     assert edge["src_id"] == "cp-schumer"
     assert edge["dst_id"] == "congressional_record:2023-03-09"
     assert "H.R.1478" in edge["bills_mentioned"]
+    # The typed edges target canonical bill ids (cb-...) under the sitting congress.
+    typed = [json.loads(line) for line in lines[1:]]
+    assert all(e["edge_type"] == "floor_speech" for e in typed)
+    assert all(e["dst_id"].startswith("cb-") for e in typed)
+    assert all(e["src_id"] == "cp-schumer" for e in typed)
 
 
 def test_backfill_skips_non_session_days_and_is_resumable(tmp_path: Path) -> None:
@@ -118,6 +126,8 @@ def test_backfill_skips_non_session_days_and_is_resumable(tmp_path: Path) -> Non
         first_observed_at=_OBS,
     )
     assert first.days_checked == 3 and first.issues_found == 1 and first.edges_written == 1
+    # one per-issue edge + two typed member -> bill edges already in the feed
+    assert first.edges_total == 3
 
     # resume the same window -> the 9th is done; only the 404 days are re-checked
     second = backfill_crec_speeches(
@@ -129,7 +139,8 @@ def test_backfill_skips_non_session_days_and_is_resumable(tmp_path: Path) -> Non
         first_observed_at=_OBS,
     )
     assert second.edges_written == 0
-    assert second.edges_total == 1
+    assert second.speech_bill_edges_written == 0
+    assert second.edges_total == 3
 
 
 def test_done_dates_tolerates_blank_and_non_crec_lines(tmp_path: Path) -> None:

@@ -35,6 +35,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -163,10 +164,77 @@ def _cosine(matrix: np.ndarray, query: np.ndarray) -> np.ndarray:
     return scores
 
 
+_MONEY_TERMS = (
+    "award",
+    "awards",
+    "federal money",
+    "funding",
+    "contract",
+    "grant",
+    "spending",
+    "recipient",
+    "lobby",
+    "lobbied",
+    "lobbying",
+    "lobbyist",
+    "follow the money",
+    "donor",
+)
+
+
+def _is_money_question(question: str) -> bool:
+    """Whether a question is about federal awards / money-out / lobbying."""
+    lowered = question.lower()
+    return any(term in lowered for term in _MONEY_TERMS)
+
+
+def _award_total(store: GraphStore, canonical_id: str) -> float:
+    """Sum of an org's federal-award amounts (0.0 if none)."""
+    total = 0.0
+    for edge in store.out_edges(canonical_id):
+        if edge.edge_type == "federal_award":
+            try:
+                total += float(edge.attributes.get("amount") or 0.0)
+            except ValueError:
+                continue
+    return total
+
+
+def _top_money_orgs(store: GraphStore, question: str, *, limit: int) -> list[Node]:
+    """Top org nodes for a money/lobbying question.
+
+    Orgs carry no embedding, so we rank them transparently: any org whose name
+    overlaps a question token floats first; otherwise the orgs with the largest
+    total federal awards (or any lobbying edge) are surfaced. Pure graph nodes —
+    only orgs that actually have award/lobbying edges are eligible.
+    """
+    tokens = {t for t in re.findall(r"[a-z]{4,}", question.lower()) if t not in _MONEY_TERMS}
+    scored: list[tuple[int, float, str, Node]] = []
+    for node in store.nodes.values():
+        if node.entity_type != "org":
+            continue
+        out = store.out_edges(node.canonical_id)
+        if not any(e.edge_type in ("federal_award", "lobbying_retention") for e in out):
+            continue
+        name_overlap = 1 if any(tok in node.display_name.lower() for tok in tokens) else 0
+        scored.append(
+            (name_overlap, _award_total(store, node.canonical_id), node.display_name, node)
+        )
+    # Highest name-overlap, then largest award total; stable by name for ties.
+    scored.sort(key=lambda row: (-row[0], -row[1], row[2]))
+    return [row[3] for row in scored[:limit]]
+
+
 def _expand_facts(
     store: GraphStore, node: Node
 ) -> tuple[tuple[str, ...], tuple[dict[str, str | None], ...]]:
-    """One-hop cited facts for a node (votes for people, topics for bills)."""
+    """One-hop cited facts for a node.
+
+    People surface their votes and floor speeches; orgs surface the federal awards
+    they received and the lobbying they retained/contacted; bills surface their
+    topics, the votes cast on them, who lobbied on them, and who spoke about them.
+    Every fact carries the originating edge's citation.
+    """
     facts: list[str] = []
     citations: list[dict[str, str | None]] = []
     if node.entity_type == "person":
@@ -176,6 +244,35 @@ def _expand_facts(
             facts.append(f"{node.display_name} voted {choice} on {name}")
             citations.append(edge.provenance.as_citation())
             if len(facts) >= 5:
+                break
+        for edge in store.out_edges(node.canonical_id):
+            if edge.edge_type == "floor_speech" and edge.dst_id.startswith("cb-"):
+                bill = store.node(edge.dst_id)
+                target = bill.display_name if bill else edge.dst_id
+                facts.append(f"{node.display_name} spoke on the floor about {target}")
+                citations.append(edge.provenance.as_citation())
+            if len(facts) >= 8:
+                break
+    elif node.entity_type == "org":
+        for edge in store.out_edges(node.canonical_id):
+            if edge.edge_type == "federal_award":
+                agency = store.node(edge.dst_id)
+                who = agency.display_name if agency else edge.dst_id
+                amount = edge.attributes.get("amount")
+                tail = f" (${amount})" if amount else ""
+                facts.append(f"{node.display_name} received a federal award from {who}{tail}")
+                citations.append(edge.provenance.as_citation())
+            elif edge.edge_type == "lobbying_retention":
+                firm = store.node(edge.dst_id)
+                who = firm.display_name if firm else edge.dst_id
+                facts.append(f"{node.display_name} retained lobbying firm {who}")
+                citations.append(edge.provenance.as_citation())
+            elif edge.edge_type == "lobbying_contact":
+                bill = store.node(edge.dst_id)
+                target = bill.display_name if bill else edge.dst_id
+                facts.append(f"{node.display_name} lobbied on {target}")
+                citations.append(edge.provenance.as_citation())
+            if len(facts) >= 8:
                 break
     else:
         for edge in store.out_edges(node.canonical_id):
@@ -194,6 +291,19 @@ def _expand_facts(
             citations.append(edge.provenance.as_citation())
             if len(facts) >= 8:
                 break
+        for edge in store.in_edges(node.canonical_id):
+            if edge.edge_type == "lobbying_contact":
+                org = store.node(edge.src_id)
+                who = org.display_name if org else edge.src_id
+                facts.append(f"{who} lobbied on {node.display_name}")
+                citations.append(edge.provenance.as_citation())
+            elif edge.edge_type == "floor_speech":
+                person = store.node(edge.src_id)
+                who = person.display_name if person else edge.src_id
+                facts.append(f"{who} spoke on the floor about {node.display_name}")
+                citations.append(edge.provenance.as_citation())
+            if len(facts) >= 12:
+                break
     return tuple(facts), tuple(citations)
 
 
@@ -211,19 +321,38 @@ def retrieve_subgraph(
     cited one-hop facts so the grounding step has real, attributable evidence.
     """
     embedder = embedder or QueryEmbedder()
+    retrieved: list[RetrievedNode] = []
+    seen: set[str] = set()
+
+    # Money-out / lobbying org nodes carry no dossier_embedding (they come from the
+    # USASpending / LDA corpora, not the enriched contract). When the question is
+    # about awards / money / lobbying, surface the top edge-bearing orgs by a
+    # transparent keyword overlap so "follow the money" is answerable; these are
+    # real graph nodes with real cited edges, never fabricated.
+    if _is_money_question(question):
+        for node in _top_money_orgs(store, question, limit=top_k):
+            facts, citations = _expand_facts(store, node)
+            if not facts:
+                continue
+            seen.add(node.canonical_id)
+            retrieved.append(
+                RetrievedNode(node=node, score=0.0, facts=facts, fact_citations=citations)
+            )
+
     candidates = [n for n in store.nodes.values() if n.dossier_embedding is not None]
     if not candidates:
-        return []
+        return retrieved
     matrix = np.vstack([n.dossier_embedding for n in candidates])  # type: ignore[misc]
     query_vec = np.asarray(embedder.embed(question), dtype=np.float64)
     if query_vec.shape[0] != matrix.shape[1]:
         # Dimension mismatch (embedder vs contract): cannot score honestly.
-        return []
+        return retrieved
     scores = _cosine(matrix, query_vec)
     order = np.argsort(-scores)[:top_k]
-    retrieved: list[RetrievedNode] = []
     for idx in order:
         node = candidates[int(idx)]
+        if node.canonical_id in seen:
+            continue
         facts, citations = _expand_facts(store, node)
         retrieved.append(
             RetrievedNode(

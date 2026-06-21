@@ -25,11 +25,16 @@ from pathlib import Path
 import httpx
 
 from src.graph.ingest.congressional_record import (
+    bill_mentions as _normalized_bill_mentions,
+)
+from src.graph.ingest.congressional_record import (
     crec_package_url,
     floor_speech_edge,
     floor_speech_provenance,
     parse_crec_mods,
+    speech_bill_edges,
 )
+from src.graph.ingest.prediction_markets import congress_for_date
 from src.runtime.bill_edges_export import build_bioguide_resolver
 from src.runtime.http_client import client_or_default
 
@@ -43,7 +48,13 @@ def date_range(start: date, end: date) -> list[date]:
 
 
 def bill_mentions(mods_xml: str, *, limit: int = 40) -> list[str]:
-    """Distinct congress bill numbers mentioned in an issue's MODS (capped)."""
+    """Distinct congress bill numbers mentioned in an issue's MODS (capped).
+
+    Kept as the raw, human-readable token list recorded on the per-issue
+    ``floor_speech`` edge's ``bills_mentioned`` attribute (e.g. ``H.R.1478``).
+    The *typed* member -> bill edges use the normalized identifier form
+    (``hr-1478``) from :func:`speech_bill_edges`.
+    """
     seen: list[str] = []
     for match in _BILL_MENTION_RE.finditer(mods_xml):
         token = match.group(0).replace(" ", "")
@@ -63,6 +74,7 @@ class CrecBackfillProgress:
     edges_written: int
     members_unresolved: int
     edges_total: int
+    speech_bill_edges_written: int = 0
 
 
 def _done_dates(path: Path) -> set[str]:
@@ -94,7 +106,7 @@ def backfill_crec_speeches(
     resolver = build_bioguide_resolver(corpus_directory)
     done = _done_dates(out)
     http, owns = client_or_default(client)
-    checked = issues = written = unresolved = 0
+    checked = issues = written = unresolved = bill_edges_written = 0
     out.parent.mkdir(parents=True, exist_ok=True)
     existing = (
         sum(1 for line in out.read_text().splitlines() if line.strip()) if out.exists() else 0
@@ -116,6 +128,10 @@ def backfill_crec_speeches(
                     continue
                 issues += 1
                 mentions = bill_mentions(resp.text)
+                # Normalized identifiers (e.g. "hr-1478") for the *typed* member ->
+                # bill edges, resolved under the congress sitting that day.
+                normalized = _normalized_bill_mentions(resp.text)
+                congress = congress_for_date(day)
                 sha = hashlib.sha256(resp.text.encode("utf-8")).hexdigest()
                 provenance = floor_speech_provenance(
                     source_url=crec_package_url(day),
@@ -135,6 +151,18 @@ def backfill_crec_speeches(
                     record["bills_mentioned"] = mentions
                     handle.write(json.dumps(record) + "\n")
                     written += 1
+                    # Typed member -> bill edges: tie the floor appearance to the
+                    # specific congress bills debated that day so the graph store can
+                    # join speeches to bills (said-vs-voted, follow-the-money).
+                    for bill_edge in speech_bill_edges(
+                        member_canonical_id=member,
+                        speech=speech,
+                        congress=congress,
+                        bill_identifiers=normalized,
+                        provenance=provenance,
+                    ):
+                        handle.write(bill_edge.model_dump_json() + "\n")
+                        bill_edges_written += 1
     finally:
         if owns:
             http.close()
@@ -143,7 +171,8 @@ def backfill_crec_speeches(
         issues_found=issues,
         edges_written=written,
         members_unresolved=unresolved,
-        edges_total=existing + written,
+        edges_total=existing + written + bill_edges_written,
+        speech_bill_edges_written=bill_edges_written,
     )
 
 
@@ -155,17 +184,19 @@ def _main(argv: list[str] | None = None) -> int:  # pragma: no cover - CLI glue
     parser.add_argument("--end", default=date.today().isoformat())
     parser.add_argument("--out", default="data/exports/govinfo_bills/crec_edges.jsonl")
     parser.add_argument("--corpus", default="data/exports/contract_records")
+    parser.add_argument("--max-days", type=int, default=None, help="cap session days checked")
     args = parser.parse_args(argv)
     progress = backfill_crec_speeches(
         start=date.fromisoformat(args.start),
         end=date.fromisoformat(args.end),
         out_path=args.out,
         corpus_directory=args.corpus,
+        max_days=args.max_days,
     )
     print(
         f"days={progress.days_checked} issues={progress.issues_found} "
-        f"edges={progress.edges_written} unresolved={progress.members_unresolved} "
-        f"total={progress.edges_total}",
+        f"edges={progress.edges_written} speech_bill_edges={progress.speech_bill_edges_written} "
+        f"unresolved={progress.members_unresolved} total={progress.edges_total}",
         flush=True,
     )
     return 0

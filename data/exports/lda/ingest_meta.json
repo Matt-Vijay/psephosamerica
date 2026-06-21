@@ -1,0 +1,13 @@
+{
+  "api_url": "https://lda.senate.gov/api/v1",
+  "as_of": "2026-06-21T02:45:34.204070+00:00",
+  "bill_lobbying_edges": 19,
+  "clients": 345,
+  "deltas_written": 513,
+  "filings": 331,
+  "is_full_corpus": false,
+  "registrants": 187,
+  "retention_edges": 331,
+  "rows_scanned": 350,
+  "rows_skipped": 0
+}

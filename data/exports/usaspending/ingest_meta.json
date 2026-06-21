@@ -1,0 +1,14 @@
+{
+  "agencies": 25,
+  "api_url": "https://api.usaspending.gov/api/v2",
+  "appropriation_edges": 0,
+  "as_of": "2026-06-21T02:48:09.919588+00:00",
+  "award_edges": 2993,
+  "awards": 2993,
+  "dataset_url": "https://www.usaspending.gov/award",
+  "deltas_written": 959,
+  "is_full_corpus": false,
+  "recipients": 934,
+  "rows_scanned": 3000,
+  "rows_skipped": 7
+}

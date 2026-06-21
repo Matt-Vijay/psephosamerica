@@ -104,6 +104,16 @@ def _parse_one(record: dict[str, Any], *, first_observed_at: datetime) -> _Parse
     award = parse_federal_award(record)
     if award is None:
         return None
+    # Leakage guard: an award's known_at defaults to its action/start date. Some
+    # multi-year contracts report a period-of-performance start in the future
+    # relative to now; a fact cannot be knowable before it is observed, so the
+    # provenance envelope rejects known_at > first_observed_at. Skip such rows
+    # rather than crash the run (and never fabricate an earlier date).
+    award_known = datetime(
+        award.action_date.year, award.action_date.month, award.action_date.day, tzinfo=UTC
+    )
+    if award_known > first_observed_at:
+        return None
     provenance = award_provenance(
         award,
         source_url=_award_url(award),
@@ -191,17 +201,30 @@ def iter_award_records(
     max_awards: int | None,
     page_size: int = 100,
     client: Any | None = None,
+    since: str = "2024-10-01",
+    until: str | None = None,
 ) -> Iterator[dict[str, Any]]:  # pragma: no cover - network + pagination I/O
     """Stream award rows from the keyless USASpending search endpoint.
 
     Pages ``/search/spending_by_award/`` for both contract and assistance award
-    families, yielding each award row dict until ``max_awards`` is reached.
+    families, yielding each award row dict until ``max_awards`` is reached. Rows
+    are filtered to a recent ``time_period`` (``since``..``until``) and sorted by
+    award amount descending, so a bounded run captures the largest, most
+    meaningful recent awards across *several* agencies rather than the unsorted
+    default (which skews to a single agency).
     """
     import httpx
+    from datetime import date as _date
 
     http = client if client is not None else httpx.Client(timeout=60.0)
     owns = client is None
+    end_date = until or _date.today().isoformat()
     endpoint = f"{USASPENDING_API_URL}/search/spending_by_award/"
+    # NB: the /search/spending_by_award/ endpoint frequently returns a null
+    # "Action Date" for contract rows but reliably populates "Start Date" (the
+    # period-of-performance start). We request both so the adapter's date fallback
+    # (Action Date -> action_date -> Start Date) always has a parseable date; an
+    # award is dropped otherwise. "Start Date" is a real, citable award date.
     fields = [
         "Award ID",
         "Recipient Name",
@@ -211,6 +234,7 @@ def iter_award_records(
         "Award Type",
         "Award Amount",
         "Action Date",
+        "Start Date",
         "generated_internal_id",
     ]
     yielded = 0
@@ -222,9 +246,14 @@ def iter_award_records(
                     return
                 payload = {
                     "fields": fields,
-                    "filters": {"award_type_codes": award_group},
+                    "filters": {
+                        "award_type_codes": award_group,
+                        "time_period": [{"start_date": since, "end_date": end_date}],
+                    },
                     "page": page,
                     "limit": page_size,
+                    "sort": "Award Amount",
+                    "order": "desc",
                 }
                 resp = http.post(endpoint, json=payload)
                 if resp.status_code != 200:
