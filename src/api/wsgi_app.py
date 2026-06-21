@@ -27,6 +27,7 @@ from http import HTTPStatus
 from urllib.parse import parse_qs, unquote
 
 from src.api.explorer import render_dashboard_html, render_explorer_html
+from src.api.graph_http import GraphService
 from src.api.http import JsonHttpResponse
 from src.api.prediction_http import (
     PredictionApiError,
@@ -67,10 +68,14 @@ class PredictionWsgiApp:
         read_service: PredictionReadService,
         dashboard: CalibrationDashboard,
         clock: Callable[[], float] = time.monotonic,
+        graph_service: GraphService | None = None,
     ) -> None:
         self._read_service = read_service
         self._dashboard = dashboard
         self._clock = clock
+        # The connected-graph query API / GraphRAG / explorer. Lazily built so
+        # constructing the app stays cheap; the store loads on first graph hit.
+        self._graph = graph_service if graph_service is not None else GraphService()
 
     def __call__(
         self,
@@ -106,6 +111,35 @@ class PredictionWsgiApp:
         if path.startswith("/v1/prediction/"):
             return self._serve_prediction_path(path, environ)
 
+        if path.startswith("/v1/graph/") or path.startswith("/v1/explorer/"):
+            return self._route_graph(path, environ)
+
+        return _error_response(404, "not_found", f"no route for {path}")
+
+    def _route_graph(self, path: str, environ: dict[str, object]) -> JsonHttpResponse:
+        query = parse_qs(str(environ.get("QUERY_STRING", "")))
+        if path == "/v1/graph/entities":
+            return self._graph.serve_entities(query)
+        if path == "/v1/graph/votes":
+            return self._graph.serve_votes(query)
+        if path == "/v1/graph/policy_area":
+            return self._graph.serve_policy_area(query)
+        if path == "/v1/graph/path":
+            return self._graph.serve_path(query)
+        if path == "/v1/graph/jurisdictions":
+            return self._graph.serve_jurisdictions()
+        if path == "/v1/graph/ask":
+            return self._graph.serve_ask(query)
+        if path.startswith("/v1/explorer/official/"):
+            person = unquote(path[len("/v1/explorer/official/") :])
+            if not person:
+                return _error_response(400, "bad_request", "official id required")
+            return self._graph.serve_official_page(person)
+        if path.startswith("/v1/explorer/jurisdiction/"):
+            slug = unquote(path[len("/v1/explorer/jurisdiction/") :])
+            if not slug:
+                return _error_response(400, "bad_request", "jurisdiction slug required")
+            return self._graph.serve_jurisdiction_page(slug)
         return _error_response(404, "not_found", f"no route for {path}")
 
     def _serve_prediction_path(self, path: str, environ: dict[str, object]) -> JsonHttpResponse:
