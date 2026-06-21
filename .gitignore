@@ -39,3 +39,7 @@ data/exports/contract_records/deltas.jsonl
 data/exports/govinfo_bills/
 data/exports/markets/
 data/exports/municipal/
+# LOCUS-v1 ordinance corpus (large regenerable artifacts; sample+manifest tracked)
+data/exports/locus/records.jsonl
+data/exports/locus/deltas.jsonl
+data/exports/locus/ordinance_content.jsonl
