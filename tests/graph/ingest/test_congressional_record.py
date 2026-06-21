@@ -4,12 +4,15 @@ from datetime import UTC, date, datetime
 
 import pytest
 
+from src.graph.bills import BillRef
 from src.graph.ingest.congressional_record import (
     CrecSpeech,
+    bill_mentions,
     crec_package_url,
     floor_speech_edge,
     floor_speech_provenance,
     parse_crec_mods,
+    speech_bill_edges,
 )
 from src.graph.provenance import ProvenanceEnvelope
 
@@ -121,3 +124,61 @@ def test_floor_speech_edge_leakage_gate() -> None:
 def test_parse_rejects_blank() -> None:
     with pytest.raises(ValueError, match="mods"):
         parse_crec_mods("", issue_date=_ISSUE)
+
+
+# ── bill-mention linkage ───────────────────────────────────────────
+
+
+def test_bill_mentions_extracts_distinct_ids() -> None:
+    text = "The Senate debated H.R. 2471 and S. 4321, then returned to H.R. 2471."
+    assert bill_mentions(text) == ["hr-2471", "s-4321"]
+
+
+def test_bill_mentions_handles_joint_resolutions() -> None:
+    assert bill_mentions("Consider H.J.Res. 7 today.") == ["hjres-7"]
+
+
+def test_bill_mentions_empty_when_none() -> None:
+    assert bill_mentions("No legislation referenced here.") == []
+
+
+def test_bill_mentions_respects_limit() -> None:
+    text = " ".join(f"H.R. {n}" for n in range(1, 20))
+    assert len(bill_mentions(text, limit=5)) == 5
+
+
+def test_speech_bill_edges() -> None:
+    speech = parse_crec_mods(_MODS, issue_date=_ISSUE)[0]  # Schumer, chamber S
+    edges = speech_bill_edges(
+        member_canonical_id="ce-schumer",
+        speech=speech,
+        congress=118,
+        bill_identifiers=["hr-2471", "s-4321"],
+        provenance=_prov(),
+    )
+    assert len(edges) == 2
+    assert {e.dst_id for e in edges} == {
+        BillRef.for_congress(118, "H.R. 2471").canonical_id,
+        BillRef.for_congress(118, "S. 4321").canonical_id,
+    }
+    edge = edges[0]
+    assert edge.edge_type == "floor_speech"
+    assert edge.src_id == "ce-schumer"
+    assert edge.attributes["via"] == "floor_speech_mention"
+    assert edge.attributes["issue_date"] == "2024-01-08"
+    assert edge.attributes["chamber"] == "S"
+    assert edge.external_key.startswith("S000148:hr-2471:")
+
+
+def test_speech_bill_edges_empty_without_mentions() -> None:
+    speech = parse_crec_mods(_MODS, issue_date=_ISSUE)[0]
+    assert (
+        speech_bill_edges(
+            member_canonical_id="ce-x",
+            speech=speech,
+            congress=118,
+            bill_identifiers=[],
+            provenance=_prov(),
+        )
+        == []
+    )

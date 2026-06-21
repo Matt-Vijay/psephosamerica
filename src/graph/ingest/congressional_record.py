@@ -19,12 +19,22 @@ import re
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
 
+from src.graph.bills import BillRef, parse_congress_bill_identifier
 from src.graph.edges import GraphEdge
 from src.graph.provenance import ProvenanceEnvelope
 
 _CONGMEMBER_RE = re.compile(r"<congMember\b([^>]*)>(.*?)</congMember>", re.S)
 _PARSED_NAME_RE = re.compile(r'<name type="parsed">([^<]+)</name>')
 _FNF_NAME_RE = re.compile(r'<name type="authority-fnf">([^<]+)</name>')
+
+# A congress bill citation mentioned anywhere in the Record's text/metadata, e.g.
+# "H.R. 2471", "S. 4321", "H.J.Res. 7". Used to tie a day's floor activity to the
+# bills debated, by bill-number mention (deliverable #3).
+_BILL_MENTION_RE = re.compile(
+    r"\b(H\.?\s?R\.?|S\.?|H\.?J\.?\s?Res\.?|S\.?J\.?\s?Res\.?|"
+    r"H\.?\s?Con\.?\s?Res\.?|S\.?\s?Con\.?\s?Res\.?|H\.?\s?Res\.?|S\.?\s?Res\.?)\s?(\d{1,5})\b",
+    re.IGNORECASE,
+)
 
 
 def crec_package_url(issue_date: date) -> str:
@@ -113,3 +123,62 @@ def floor_speech_edge(
         external_key=f"{speech.bioguide_id}:{iso}",
         provenance=provenance,
     )
+
+
+def bill_mentions(text: str, *, limit: int = 64) -> list[str]:
+    """Distinct normalized congress bill identifiers cited in ``text`` (order-stable).
+
+    Parses citations like ``H.R. 2471`` / ``S.J.Res. 7`` into the repo's normalized
+    bill identifier (``hr-2471`` / ``sjres-7``) via
+    :func:`~src.graph.bills.parse_congress_bill_identifier`. Capped at ``limit``
+    distinct ids so a pathological issue cannot blow up the edge fan-out.
+    """
+    seen: list[str] = []
+    for match in _BILL_MENTION_RE.finditer(text):
+        token = re.sub(r"[.\s]", "", match.group(1)).lower()
+        try:
+            identifier = parse_congress_bill_identifier(f"{token} {match.group(2)}")
+        except ValueError:
+            continue
+        if identifier not in seen:
+            seen.append(identifier)
+        if len(seen) >= limit:
+            break
+    return seen
+
+
+def speech_bill_edges(
+    *,
+    member_canonical_id: str,
+    speech: CrecSpeech,
+    congress: int,
+    bill_identifiers: list[str],
+    provenance: ProvenanceEnvelope,
+) -> list[GraphEdge]:
+    """Build member -> bill ``floor_speech`` edges for the bills mentioned that day.
+
+    Ties a member's floor appearance to the specific congress bills debated in the
+    issue (deliverable #3's bill linkage), one edge per (member, bill), keyed by
+    bioguide + bill identifier + issue date so the same member on the same bill on
+    different days stays distinct. Bills resolve under ``congress``.
+    """
+    iso = speech.speech_date.isoformat()
+    edges: list[GraphEdge] = []
+    for identifier in bill_identifiers:
+        bill_ref = BillRef(
+            jurisdiction_id="us-congress", session_id=str(congress), identifier=identifier
+        )
+        attributes = {"via": "floor_speech_mention", "issue_date": iso}
+        if speech.chamber:
+            attributes["chamber"] = speech.chamber
+        edges.append(
+            GraphEdge(
+                edge_type="floor_speech",
+                src_id=member_canonical_id,
+                dst_id=bill_ref.canonical_id,
+                attributes=attributes,
+                external_key=f"{speech.bioguide_id}:{identifier}:{iso}",
+                provenance=provenance,
+            )
+        )
+    return edges
