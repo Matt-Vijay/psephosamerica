@@ -160,6 +160,24 @@ def test_explorer_jurisdiction_route() -> None:
     assert b"Rent Ordinance" in body
 
 
+def test_redundant_policy_areas_route() -> None:
+    # base graph has no policy_area edges; endpoint still returns 200 with empty set
+    status, _, body = _call(_app(), "/v1/graph/redundant_policy_areas", "min_bills=1")
+    assert status.startswith("200")
+    assert "policy_areas" in json.loads(body)
+
+
+def test_reauthorizations_route() -> None:
+    status, _, body = _call(_app(), "/v1/graph/reauthorizations")
+    assert status.startswith("200")
+    assert "clusters" in json.loads(body)
+
+
+def test_donor_paths_route_requires_term() -> None:
+    status, _, _ = _call(_app(), "/v1/graph/donor_paths")
+    assert status.startswith("400")
+
+
 def test_unknown_graph_route_404() -> None:
     status, _, _ = _call(_app(), "/v1/graph/nope")
     assert status.startswith("404")

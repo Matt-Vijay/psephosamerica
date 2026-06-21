@@ -157,3 +157,71 @@ def test_store_built_once() -> None:
     svc.serve_jurisdictions()
     svc.serve_entities({})
     assert calls["n"] == 1  # lazily built and cached
+
+
+def test_redundant_policy_areas_endpoint() -> None:
+    svc = _service()
+    data = _body(svc.serve_redundant_policy_areas({"min_bills": ["1"]}))
+    assert any(pa["policy_area"] == "Housing" for pa in data["policy_areas"])
+
+
+def test_reauthorizations_endpoint() -> None:
+    def factory() -> GraphStore:
+        store = GraphStore()
+        for cid, name in [
+            ("cb-1", "Older Americans Act Reauthorization of 2019"),
+            ("cb-2", "Older Americans Act Reauthorization of 2023"),
+        ]:
+            store.add_node(
+                Node(
+                    cid,
+                    "bill",
+                    name,
+                    (),
+                    "2026-06-01T00:00:00Z",
+                    (_prov("https://x/b"),),
+                    "us-congress",
+                )
+            )
+        return store
+
+    data = _body(GraphService(store_factory=factory).serve_reauthorizations({"min_count": ["2"]}))
+    assert data["count"] == 1
+    assert data["clusters"][0]["count"] == 2
+
+
+def test_duplicate_ordinances_endpoint() -> None:
+    def factory() -> GraphStore:
+        store = GraphStore()
+        text = "plastic bag ban single use"
+        for cid, juris in [("cb-oak", "oakland"), ("cb-sf", "sanfrancisco")]:
+            store.add_node(
+                Node(
+                    cid,
+                    "bill",
+                    "Bag Ban",
+                    (),
+                    "2026-06-01T00:00:00Z",
+                    (_prov("https://x/b"),),
+                    juris,
+                    dossier_embedding=_embed(text),
+                )
+            )
+        return store
+
+    data = _body(
+        GraphService(store_factory=factory).serve_duplicate_ordinances({"threshold": ["0.9"]})
+    )
+    assert data["count"] == 1
+    assert data["pairs"][0]["cross_jurisdiction"] is True
+
+
+def test_donor_paths_endpoint_requires_term() -> None:
+    assert _service().serve_donor_paths({}).status_code == 400
+
+
+def test_donor_paths_endpoint() -> None:
+    data = _body(_service().serve_donor_paths({"term": ["housing rent control"]}))
+    assert data["term"] == "housing rent control"
+    assert data["count"] >= 1
+    assert data["paths"][0]["official"]["canonical_id"] == "ce-a"

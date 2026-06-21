@@ -130,6 +130,14 @@ class PredictionWsgiApp:
             return self._graph.serve_jurisdictions()
         if path == "/v1/graph/ask":
             return self._graph.serve_ask(query)
+        if path == "/v1/graph/redundant_policy_areas":
+            return self._graph.serve_redundant_policy_areas(query)
+        if path == "/v1/graph/reauthorizations":
+            return self._graph.serve_reauthorizations(query)
+        if path == "/v1/graph/duplicate_ordinances":
+            return self._graph.serve_duplicate_ordinances(query)
+        if path == "/v1/graph/donor_paths":
+            return self._graph.serve_donor_paths(query)
         if path.startswith("/v1/explorer/official/"):
             person = unquote(path[len("/v1/explorer/official/") :])
             if not person:

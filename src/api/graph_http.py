@@ -30,6 +30,7 @@ from dataclasses import dataclass, field
 
 from src.api.http import JsonHttpResponse
 from src.query import graph_query as gq
+from src.query import redundancy
 from src.query.graph_rag import GraphRagAnswerer
 from src.query.graph_store import GraphStore, Node, build_store
 
@@ -163,6 +164,84 @@ class GraphService:
         result = self.answerer.answer(question)
         return _json_response(result.as_dict())
 
+    # -- #4/#5 redundancy / waste applications --------------------------
+
+    def serve_redundant_policy_areas(self, query: dict[str, list[str]]) -> JsonHttpResponse:
+        min_bills = _int(query, "min_bills", default=5, maximum=1000)
+        findings = redundancy.redundant_bills_by_policy_area(self.store, min_bills=min_bills)
+        return _json_response(
+            {
+                "count": len(findings),
+                "policy_areas": [
+                    {
+                        "policy_area": f.policy_area,
+                        "bill_count": f.bill_count,
+                        "bills": list(f.bills),
+                    }
+                    for f in findings
+                ],
+            }
+        )
+
+    def serve_reauthorizations(self, query: dict[str, list[str]]) -> JsonHttpResponse:
+        min_count = _int(query, "min_count", default=2, maximum=100)
+        clusters = redundancy.reauthorization_clusters(self.store, min_count=min_count)
+        return _json_response(
+            {
+                "count": len(clusters),
+                "clusters": [
+                    {
+                        "normalized_title": c.normalized_title,
+                        "count": c.count,
+                        "measures": list(c.measures),
+                    }
+                    for c in clusters
+                ],
+            }
+        )
+
+    def serve_duplicate_ordinances(self, query: dict[str, list[str]]) -> JsonHttpResponse:
+        threshold = _float(query, "threshold", default=0.92)
+        cross_only = _first(query, "cross_jurisdiction_only") != "false"
+        pairs = redundancy.near_duplicate_ordinances(
+            self.store, threshold=threshold, cross_jurisdiction_only=cross_only
+        )
+        return _json_response(
+            {
+                "count": len(pairs),
+                "threshold": threshold,
+                "pairs": [
+                    {
+                        "similarity": round(p.similarity, 4),
+                        "cross_jurisdiction": p.cross_jurisdiction,
+                        "a": p.a,
+                        "b": p.b,
+                    }
+                    for p in pairs
+                ],
+            }
+        )
+
+    def serve_donor_paths(self, query: dict[str, list[str]]) -> JsonHttpResponse:
+        term = _first(query, "term")
+        if not term:
+            return _error(400, "bad_request", "term (donor employer/occupation) is required")
+        paths = redundancy.donor_to_vote_paths(self.store, term)
+        return _json_response(
+            {
+                "term": term,
+                "count": len(paths),
+                "paths": [
+                    {
+                        "official": p.official,
+                        "match_score": round(p.match_score, 4),
+                        "votes": list(p.votes),
+                    }
+                    for p in paths
+                ],
+            }
+        )
+
     # -- explorer (HTML) ------------------------------------------------
 
     def serve_official_page(self, person_id: str) -> JsonHttpResponse:
@@ -200,6 +279,16 @@ def _int(query: dict[str, list[str]], key: str, default: int, maximum: int) -> i
     except ValueError:
         return default
     return max(1, min(value, maximum))
+
+
+def _float(query: dict[str, list[str]], key: str, default: float) -> float:
+    raw = _first(query, key)
+    if raw is None:
+        return default
+    try:
+        return max(0.0, min(float(raw), 1.0))
+    except ValueError:
+        return default
 
 
 def node_brief(node: Node) -> dict[str, object]:
