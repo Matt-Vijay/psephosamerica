@@ -17,9 +17,16 @@ output directory:
 * an ``ingest_meta.json`` honest-cap record (rows scanned/skipped, award count,
   whether the corpus is the full set or a bounded slice).
 
-Honest cap: USASpending exposes tens of millions of awards; ``max_awards`` bounds
-a representative slice for a constrained run and is recorded in the meta. The full
-set drops in by raising/removing the cap. All network + pagination I/O lives in
+Comprehensive coverage: USASpending exposes ~35M awards for FY2023-2026, the long
+tail of which is small micro purchase-card lines carrying a negligible share of
+total dollars. The runner therefore applies a ``min_amount`` threshold
+(default $1M, recorded in the meta) to capture the dollar-meaningful universe
+across *all* award families (contracts, grants, direct payments, loans, other)
+and *all* awarding agencies. The fetch is **resumable**: every page is streamed to
+``raw_awards.jsonl`` and checkpointed in ``fetch_state.json`` (cursor pagination
+breaks the search endpoint's 10k-record numeric-page ceiling), so a stall resumes
+mid-family instead of restarting. ``max_awards`` still bounds a constrained run.
+All network + pagination I/O lives in :func:`fetch_raw_records` /
 :func:`iter_award_records` (``pragma: no cover``), keeping the build logic pure
 and unit-testable from an in-memory stream.
 """
@@ -46,6 +53,7 @@ from src.graph.export import (
     write_delta_feed,
 )
 from src.graph.ingest.usaspending import (
+    AWARD_TYPE_GROUPS,
     USASPENDING_API_URL,
     USASPENDING_BASE_URL,
     FederalAward,
@@ -60,6 +68,25 @@ from src.graph.provenance import ProvenanceEnvelope
 
 AWARD_EDGES_FILENAME = "award_edges.jsonl"
 INGEST_META_FILENAME = "ingest_meta.json"
+#: Resumable raw fetch cache. The network phase streams every award row here
+#: (one JSON object per line) so a stall/crash never loses fetched pages; the
+#: build phase then reads it back. Gitignored (large); kept across runs.
+RAW_RECORDS_FILENAME = "raw_awards.jsonl"
+#: Per-family fetch progress, so a resumed run skips already-drained families and
+#: continues mid-family from the last cursor instead of refetching from page 1.
+FETCH_STATE_FILENAME = "fetch_state.json"
+
+#: Default minimum award amount. Federal award dollars are extremely top-heavy:
+#: of ~35.4M FY2023-2026 awards, only ~1.14M are >= $1M yet they carry the large
+#: majority of total obligated dollars. $1M therefore captures the
+#: dollar-meaningful universe across all families/agencies while keeping the row
+#: count (and the resumable run) tractable, rather than chasing tens of millions
+#: of micro purchase-card lines. Lower it (e.g. --min-amount 250000, ~2.19M rows)
+#: for a deeper multi-session backfill; the resumable cache accumulates either way.
+DEFAULT_MIN_AMOUNT = 1_000_000.0
+#: FY2023 begins 2023-10-01 in US federal fiscal terms; we span FY2023..FY2026 by
+#: calendar action date 2022-10-01 (FY2023 start) through "today".
+DEFAULT_SINCE = "2022-10-01"
 
 
 @dataclass(frozen=True)
@@ -78,6 +105,15 @@ class UsaSpendingIngestReport:
     appropriation_edges: int
     deltas_written: int
     is_full_corpus: bool
+    # Honest filter + coverage provenance (the "what did we actually fetch" record).
+    since: str = ""
+    until: str = ""
+    min_amount: float = 0.0
+    award_type_groups: tuple[str, ...] = ()
+    total_dollars_covered: str = "0.00"
+    raw_rows_fetched: int = 0
+    families_completed: tuple[str, ...] = ()
+    notes: tuple[str, ...] = ()
 
 
 def _award_url(award: FederalAward) -> str:
@@ -196,69 +232,248 @@ def build_award_graph(
     return list(rows_by_id.values()), list(edges_by_id.values()), scanned, skipped
 
 
+#: The award fields requested from the search endpoint. NB: the endpoint
+#: frequently returns a null "Action Date" for contract rows but reliably
+#: populates "Start Date" (the period-of-performance start). We request both so
+#: the adapter's date fallback (Action Date -> action_date -> Start Date) always
+#: has a parseable date; an award is dropped otherwise. "Start Date" is a real,
+#: citable award date.
+_AWARD_FIELDS = [
+    "Award ID",
+    "Recipient Name",
+    "Recipient UEI",
+    "Awarding Agency",
+    "Awarding Sub Agency",
+    "Award Type",
+    "Award Amount",
+    "Action Date",
+    "Start Date",
+    "generated_internal_id",
+]
+
+
+def _search_filters(
+    award_type_codes: tuple[str, ...], *, since: str, until: str, min_amount: float
+) -> dict[str, Any]:
+    filters: dict[str, Any] = {
+        "award_type_codes": list(award_type_codes),
+        "time_period": [{"start_date": since, "end_date": until}],
+    }
+    if min_amount > 0:
+        filters["award_amounts"] = [{"lower_bound": min_amount}]
+    return filters
+
+
+def _post_with_backoff(
+    http: Any, endpoint: str, payload: dict[str, Any], *, max_retries: int = 6
+) -> dict[str, Any] | None:  # pragma: no cover - network I/O
+    """POST with exponential backoff on 429/5xx/transport errors.
+
+    Returns the decoded body, or ``None`` once retries are exhausted (the caller
+    records the gap honestly rather than crashing the whole run).
+    """
+    import time
+
+    import httpx
+
+    delay = 2.0
+    for attempt in range(max_retries):
+        try:
+            resp = http.post(endpoint, json=payload)
+        except httpx.TransportError:
+            time.sleep(delay)
+            delay = min(delay * 2, 60.0)
+            continue
+        if resp.status_code == 200:
+            return resp.json()  # type: ignore[no-any-return]
+        if resp.status_code in (429, 500, 502, 503, 504):
+            retry_after = resp.headers.get("Retry-After")
+            wait = float(retry_after) if retry_after and retry_after.isdigit() else delay
+            time.sleep(wait)
+            delay = min(delay * 2, 60.0)
+            continue
+        # A non-retryable client error (e.g. 422): stop paging this family.
+        return None
+    return None
+
+
+def fetch_raw_records(
+    *,
+    out_dir: Path,
+    since: str,
+    until: str,
+    min_amount: float,
+    award_type_groups: dict[str, tuple[str, ...]],
+    max_awards: int | None = None,
+    client: Any | None = None,
+    page_size: int = 100,
+) -> tuple[int, list[str], list[str]]:  # pragma: no cover - network + pagination I/O
+    """Drain every matching award to ``raw_awards.jsonl``; resumable + backoff.
+
+    Pages each award family separately with the search endpoint's cursor
+    pagination (``last_record_unique_id`` + ``last_record_sort_value``), which —
+    unlike numeric ``page`` — is not capped at the 10,000-record ceiling, so a
+    family with millions of awards is fully drained. Progress is checkpointed to
+    ``fetch_state.json`` after every page: a resumed run skips families already
+    marked complete and continues an in-progress family from its saved cursor,
+    appending to the existing raw cache rather than refetching.
+
+    Returns ``(rows_written_this_run, families_completed, notes)``. ``notes``
+    captures any family that hit the retry ceiling (a recorded, honest gap).
+    """
+    import httpx
+
+    http = client if client is not None else httpx.Client(timeout=120.0)
+    owns = client is None
+    endpoint = f"{USASPENDING_API_URL}/search/spending_by_award/"
+    raw_path = out_dir / RAW_RECORDS_FILENAME
+    state_path = out_dir / FETCH_STATE_FILENAME
+
+    state: dict[str, Any] = {}
+    if state_path.exists():
+        state = json.loads(state_path.read_text(encoding="utf-8"))
+    completed: list[str] = list(state.get("completed", []))
+    cursor: dict[str, Any] = state.get("cursor", {})
+    total_written = int(state.get("rows_written", 0))
+    notes: list[str] = list(state.get("notes", []))
+
+    # Append (resume) vs truncate (fresh start) the raw cache to match the state.
+    mode = "a" if (state and raw_path.exists()) else "w"
+    written_this_run = 0
+    try:
+        with raw_path.open(mode, encoding="utf-8") as sink:
+
+            def checkpoint(family: str, last_id: Any, last_sort: Any) -> None:
+                cursor[family] = {"last_id": last_id, "last_sort": last_sort}
+                state_path.write_text(
+                    json.dumps(
+                        {
+                            "completed": completed,
+                            "cursor": cursor,
+                            "rows_written": total_written,
+                            "notes": notes,
+                            "since": since,
+                            "until": until,
+                            "min_amount": min_amount,
+                        },
+                        indent=2,
+                    ),
+                    encoding="utf-8",
+                )
+
+            for family, codes in award_type_groups.items():
+                if family in completed:
+                    continue
+                if max_awards is not None and total_written >= max_awards:
+                    break
+                filters = _search_filters(codes, since=since, until=until, min_amount=min_amount)
+                resume = cursor.get(family, {})
+                last_id = resume.get("last_id")
+                last_sort = resume.get("last_sort")
+                while True:
+                    if max_awards is not None and total_written >= max_awards:
+                        break
+                    payload: dict[str, Any] = {
+                        "fields": _AWARD_FIELDS,
+                        "filters": filters,
+                        "page": 1,
+                        "limit": page_size,
+                        "sort": "Award Amount",
+                        "order": "desc",
+                    }
+                    if last_id is not None:
+                        payload["last_record_unique_id"] = last_id
+                        payload["last_record_sort_value"] = last_sort
+                    body = _post_with_backoff(http, endpoint, payload)
+                    if body is None:
+                        notes.append(f"{family}: retries exhausted, partial coverage")
+                        checkpoint(family, last_id, last_sort)
+                        break
+                    rows = body.get("results", [])
+                    if not rows:
+                        completed.append(family)
+                        checkpoint(family, last_id, last_sort)
+                        break
+                    for row in rows:
+                        if max_awards is not None and total_written >= max_awards:
+                            break
+                        sink.write(json.dumps(row) + "\n")
+                        total_written += 1
+                        written_this_run += 1
+                    sink.flush()
+                    meta = body.get("page_metadata", {})
+                    last_id = meta.get("last_record_unique_id")
+                    last_sort = meta.get("last_record_sort_value")
+                    checkpoint(family, last_id, last_sort)
+                    if not meta.get("hasNext") or last_id is None:
+                        if family not in completed:
+                            completed.append(family)
+                        checkpoint(family, last_id, last_sort)
+                        break
+    finally:
+        if owns:
+            http.close()
+    return written_this_run, completed, notes
+
+
+def _iter_raw_cache(out_dir: Path) -> Iterator[dict[str, Any]]:
+    raw_path = out_dir / RAW_RECORDS_FILENAME
+    if not raw_path.exists():
+        return
+    with raw_path.open(encoding="utf-8") as handle:
+        for line in handle:
+            line = line.strip()
+            if line:
+                yield json.loads(line)
+
+
 def iter_award_records(
     *,
     max_awards: int | None,
     page_size: int = 100,
     client: Any | None = None,
-    since: str = "2024-10-01",
+    since: str = DEFAULT_SINCE,
     until: str | None = None,
+    min_amount: float = 0.0,
+    award_type_groups: dict[str, tuple[str, ...]] | None = None,
 ) -> Iterator[dict[str, Any]]:  # pragma: no cover - network + pagination I/O
-    """Stream award rows from the keyless USASpending search endpoint.
+    """Stream award rows directly from the search endpoint (no disk cache).
 
-    Pages ``/search/spending_by_award/`` for both contract and assistance award
-    families, yielding each award row dict until ``max_awards`` is reached. Rows
-    are filtered to a recent ``time_period`` (``since``..``until``) and sorted by
-    award amount descending, so a bounded run captures the largest, most
-    meaningful recent awards across *several* agencies rather than the unsorted
-    default (which skews to a single agency).
+    A thin, in-memory wrapper over the same cursor pagination as
+    :func:`fetch_raw_records`, kept for callers/tests that want a record stream
+    without the resumable raw cache. The comprehensive runner uses
+    :func:`fetch_raw_records` instead so a stall never loses progress.
     """
     import httpx
     from datetime import date as _date
 
-    http = client if client is not None else httpx.Client(timeout=60.0)
+    http = client if client is not None else httpx.Client(timeout=120.0)
     owns = client is None
     end_date = until or _date.today().isoformat()
     endpoint = f"{USASPENDING_API_URL}/search/spending_by_award/"
-    # NB: the /search/spending_by_award/ endpoint frequently returns a null
-    # "Action Date" for contract rows but reliably populates "Start Date" (the
-    # period-of-performance start). We request both so the adapter's date fallback
-    # (Action Date -> action_date -> Start Date) always has a parseable date; an
-    # award is dropped otherwise. "Start Date" is a real, citable award date.
-    fields = [
-        "Award ID",
-        "Recipient Name",
-        "Recipient UEI",
-        "Awarding Agency",
-        "Awarding Sub Agency",
-        "Award Type",
-        "Award Amount",
-        "Action Date",
-        "Start Date",
-        "generated_internal_id",
-    ]
+    groups = award_type_groups or {k: AWARD_TYPE_GROUPS[k] for k in ("contracts", "grants")}
     yielded = 0
     try:
-        for award_group in (["A", "B", "C", "D"], ["02", "03", "04", "05"]):
-            page = 1
+        for codes in groups.values():
+            filters = _search_filters(codes, since=since, until=end_date, min_amount=min_amount)
+            last_id = last_sort = None
             while True:
                 if max_awards is not None and yielded >= max_awards:
                     return
-                payload = {
-                    "fields": fields,
-                    "filters": {
-                        "award_type_codes": award_group,
-                        "time_period": [{"start_date": since, "end_date": end_date}],
-                    },
-                    "page": page,
+                payload: dict[str, Any] = {
+                    "fields": _AWARD_FIELDS,
+                    "filters": filters,
+                    "page": 1,
                     "limit": page_size,
                     "sort": "Award Amount",
                     "order": "desc",
                 }
-                resp = http.post(endpoint, json=payload)
-                if resp.status_code != 200:
+                if last_id is not None:
+                    payload["last_record_unique_id"] = last_id
+                    payload["last_record_sort_value"] = last_sort
+                body = _post_with_backoff(http, endpoint, payload)
+                if body is None:
                     break
-                body = resp.json()
                 rows = body.get("results", [])
                 if not rows:
                     break
@@ -267,12 +482,31 @@ def iter_award_records(
                         return
                     yield row
                     yielded += 1
-                if not body.get("page_metadata", {}).get("hasNext"):
+                meta = body.get("page_metadata", {})
+                last_id = meta.get("last_record_unique_id")
+                last_sort = meta.get("last_record_sort_value")
+                if not meta.get("hasNext") or last_id is None:
                     break
-                page += 1
     finally:
         if owns:
             http.close()
+
+
+def _sum_award_dollars(edges: Iterable[GraphEdge]) -> str:
+    """Sum the ``amount`` attribute over ``federal_award`` edges (cents-safe)."""
+    from decimal import Decimal
+
+    total = Decimal("0")
+    for edge in edges:
+        if edge.edge_type != "federal_award":
+            continue
+        raw = edge.attributes.get("amount")
+        if raw:
+            try:
+                total += Decimal(raw)
+            except (ArithmeticError, ValueError):
+                continue
+    return f"{total:.2f}"
 
 
 def export_usaspending(
@@ -281,13 +515,52 @@ def export_usaspending(
     max_awards: int | None = None,
     as_of: datetime | None = None,
     client: Any | None = None,
+    since: str = DEFAULT_SINCE,
+    until: str | None = None,
+    min_amount: float = DEFAULT_MIN_AMOUNT,
+    award_type_groups: dict[str, tuple[str, ...]] | None = None,
+    fetch: bool = True,
 ) -> UsaSpendingIngestReport:  # pragma: no cover - orchestrates network I/O
-    """Run the full USASpending ingest: org corpus + award edges + CDC + meta."""
+    """Run the comprehensive USASpending ingest: fetch -> build -> corpus + meta.
+
+    Phase 1 (resumable): :func:`fetch_raw_records` drains every matching award to
+    ``raw_awards.jsonl``, checkpointing after each page so a stall resumes instead
+    of restarting. Pass ``fetch=False`` to rebuild from an already-fetched cache.
+    Phase 2: :func:`build_award_graph` resolves recipients + agencies and emits
+    the org corpus, CDC deltas, award edges, and an honest ``ingest_meta.json``
+    recording the exact filters, threshold, date range, totals, and any gaps.
+    """
+    from datetime import date as _date
+
     out_dir = Path(out_directory)
+    out_dir.mkdir(parents=True, exist_ok=True)
     observed = as_of if as_of is not None else datetime.now(tz=UTC)
+    end_date = until or _date.today().isoformat()
+    groups = award_type_groups or AWARD_TYPE_GROUPS
+
+    completed: list[str] = []
+    notes: list[str] = []
+    raw_fetched = 0
+    if fetch:
+        raw_fetched, completed, notes = fetch_raw_records(
+            out_dir=out_dir,
+            since=since,
+            until=end_date,
+            min_amount=min_amount,
+            award_type_groups=groups,
+            max_awards=max_awards,
+            client=client,
+        )
+    else:
+        state_path = out_dir / FETCH_STATE_FILENAME
+        if state_path.exists():
+            state = json.loads(state_path.read_text(encoding="utf-8"))
+            completed = list(state.get("completed", []))
+            notes = list(state.get("notes", []))
+            raw_fetched = int(state.get("rows_written", 0))
+
     rows, edges, scanned, skipped = build_award_graph(
-        iter_award_records(max_awards=max_awards, client=client),
-        first_observed_at=observed,
+        _iter_raw_cache(out_dir), first_observed_at=observed
     )
 
     write_contract_corpus(rows, directory=out_dir, as_of=observed)
@@ -306,6 +579,7 @@ def export_usaspending(
     )
     agencies = sum(1 for r in rows if any(k.startswith("usa_agency:") for k in r.external_ids))
     appropriation_edges = sum(1 for e in edges if e.edge_type == "funded_by")
+    all_families_done = set(groups) <= set(completed) and not notes
     report = UsaSpendingIngestReport(
         dataset_url=USASPENDING_BASE_URL,
         api_url=USASPENDING_API_URL,
@@ -318,7 +592,15 @@ def export_usaspending(
         award_edges=len(edges),
         appropriation_edges=appropriation_edges,
         deltas_written=deltas_written,
-        is_full_corpus=(max_awards is None),
+        is_full_corpus=(max_awards is None and all_families_done),
+        since=since,
+        until=end_date,
+        min_amount=min_amount,
+        award_type_groups=tuple(groups),
+        total_dollars_covered=_sum_award_dollars(edges),
+        raw_rows_fetched=raw_fetched,
+        families_completed=tuple(completed),
+        notes=tuple(notes),
     )
     (out_dir / INGEST_META_FILENAME).write_text(
         json.dumps(asdict(report), indent=2, sort_keys=True) + "\n", encoding="utf-8"
@@ -331,14 +613,33 @@ def _main(argv: list[str] | None = None) -> int:  # pragma: no cover - CLI glue
 
     parser = argparse.ArgumentParser(description="Ingest USASpending.gov federal awards")
     parser.add_argument("--out", default="data/exports/usaspending")
-    parser.add_argument("--max-awards", type=int, default=2000, help="cap awards (None = full)")
+    parser.add_argument(
+        "--max-awards", type=int, default=None, help="cap awards (omit/None = comprehensive)"
+    )
+    parser.add_argument("--since", default=DEFAULT_SINCE, help="action-date lower bound")
+    parser.add_argument("--until", default=None, help="action-date upper bound (default today)")
+    parser.add_argument(
+        "--min-amount", type=float, default=DEFAULT_MIN_AMOUNT, help="minimum award $ threshold"
+    )
+    parser.add_argument(
+        "--no-fetch", action="store_true", help="rebuild from existing raw cache only"
+    )
     args = parser.parse_args(argv)
-    report = export_usaspending(out_directory=args.out, max_awards=args.max_awards)
+    report = export_usaspending(
+        out_directory=args.out,
+        max_awards=args.max_awards,
+        since=args.since,
+        until=args.until,
+        min_amount=args.min_amount,
+        fetch=not args.no_fetch,
+    )
     print(
         f"USASpending: awards={report.awards} recipients={report.recipients} "
         f"agencies={report.agencies} edges={report.award_edges} "
+        f"$covered={report.total_dollars_covered} "
+        f"min=${report.min_amount:,.0f} range={report.since}..{report.until} "
         f"scanned={report.rows_scanned} skipped={report.rows_skipped} "
-        f"full={report.is_full_corpus}",
+        f"full={report.is_full_corpus} notes={list(report.notes)}",
         flush=True,
     )
     return 0

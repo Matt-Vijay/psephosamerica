@@ -15,8 +15,12 @@ from src.graph.export import (
 )
 from src.graph.ingest.usaspending_export import (
     AWARD_EDGES_FILENAME,
+    FETCH_STATE_FILENAME,
     INGEST_META_FILENAME,
+    RAW_RECORDS_FILENAME,
+    _sum_award_dollars,
     build_award_graph,
+    fetch_raw_records,
 )
 
 _OBSERVED = datetime(2026, 6, 20, tzinfo=UTC)
@@ -111,3 +115,121 @@ def test_export_writes_corpus_edges_cdc(tmp_path: Path) -> None:
 def test_artifact_filename_constants() -> None:
     assert AWARD_EDGES_FILENAME == "award_edges.jsonl"
     assert INGEST_META_FILENAME == "ingest_meta.json"
+
+
+class _FakeResponse:
+    def __init__(self, body: dict[str, object]) -> None:
+        self.status_code = 200
+        self.headers: dict[str, str] = {}
+        self._body = body
+
+    def json(self) -> dict[str, object]:
+        return self._body
+
+
+class _FakeClient:
+    """Replays scripted pages keyed by (family-first-code, cursor) for one family."""
+
+    def __init__(self, pages: list[dict[str, object]]) -> None:
+        self._pages = pages
+        self.calls = 0
+
+    def post(self, _endpoint: str, json: dict[str, object]) -> _FakeResponse:  # noqa: A002
+        idx = self.calls
+        self.calls += 1
+        if idx < len(self._pages):
+            return _FakeResponse(self._pages[idx])
+        return _FakeResponse({"results": [], "page_metadata": {"hasNext": False}})
+
+
+def _row(award_id: str, amount: float) -> dict[str, object]:
+    return {
+        "generated_internal_id": award_id,
+        "Recipient Name": f"Recipient {award_id}",
+        "Recipient UEI": "ABC123DEF456",
+        "Awarding Agency": "Department of Defense",
+        "Award Type": "C",
+        "Award Amount": amount,
+        "Action Date": "2024-01-01",
+    }
+
+
+def test_fetch_raw_records_cursor_paginates_and_checkpoints(tmp_path: Path) -> None:
+    # Two pages then exhaustion: cursor carries last_record_unique_id forward.
+    pages: list[dict[str, object]] = [
+        {
+            "results": [_row("A1", 9.0), _row("A2", 8.0)],
+            "page_metadata": {
+                "hasNext": True,
+                "last_record_unique_id": 100,
+                "last_record_sort_value": "8",
+            },
+        },
+        {
+            "results": [_row("A3", 7.0)],
+            "page_metadata": {
+                "hasNext": False,
+                "last_record_unique_id": None,
+                "last_record_sort_value": None,
+            },
+        },
+    ]
+    client = _FakeClient(pages)
+    written, completed, notes = fetch_raw_records(
+        out_dir=tmp_path,
+        since="2022-10-01",
+        until="2026-06-21",
+        min_amount=250000.0,
+        award_type_groups={"contracts": ("A", "B", "C", "D")},
+        client=client,
+    )
+    assert written == 3
+    assert "contracts" in completed
+    assert notes == []
+    raw = (tmp_path / RAW_RECORDS_FILENAME).read_text().strip().splitlines()
+    assert len(raw) == 3
+    # The second page must have been requested with the prior page's cursor.
+    state = json.loads((tmp_path / FETCH_STATE_FILENAME).read_text())
+    assert state["rows_written"] == 3
+    assert state["min_amount"] == 250000.0
+
+
+def test_fetch_raw_records_resumes_completed_family(tmp_path: Path) -> None:
+    pages: list[dict[str, object]] = [
+        {
+            "results": [_row("A1", 9.0)],
+            "page_metadata": {"hasNext": False, "last_record_unique_id": None},
+        }
+    ]
+    fetch_raw_records(
+        out_dir=tmp_path,
+        since="2022-10-01",
+        until="2026-06-21",
+        min_amount=0.0,
+        award_type_groups={"contracts": ("A",)},
+        client=_FakeClient(pages),
+    )
+    # A second run with the family already complete fetches nothing more.
+    second = _FakeClient([{"results": [_row("A2", 1.0)], "page_metadata": {"hasNext": False}}])
+    written, completed, _notes = fetch_raw_records(
+        out_dir=tmp_path,
+        since="2022-10-01",
+        until="2026-06-21",
+        min_amount=0.0,
+        award_type_groups={"contracts": ("A",)},
+        client=second,
+    )
+    assert written == 0
+    assert second.calls == 0
+    assert "contracts" in completed
+    assert len((tmp_path / RAW_RECORDS_FILENAME).read_text().strip().splitlines()) == 1
+
+
+def test_sum_award_dollars_is_cents_safe() -> None:
+    records = [
+        _award(total_obligation=1000000.10),
+        _award(generated_internal_id="X2", total_obligation=2000000.20),
+    ]
+    _rows, edges, _scanned, _skipped = build_award_graph(records, first_observed_at=_OBSERVED)
+    # Two awards, same recipient/agency pair -> two federal_award edges.
+    assert _sum_award_dollars(edges) == "3000000.30"

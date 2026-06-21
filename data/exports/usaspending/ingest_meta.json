@@ -1,14 +1,30 @@
 {
-  "agencies": 25,
+  "agencies": 40,
   "api_url": "https://api.usaspending.gov/api/v2",
   "appropriation_edges": 0,
-  "as_of": "2026-06-21T02:48:09.919588+00:00",
-  "award_edges": 2993,
-  "awards": 2993,
+  "as_of": "2026-06-21T21:13:59.979805+00:00",
+  "award_edges": 23370,
+  "award_type_groups": [
+    "contracts",
+    "grants",
+    "direct_payments",
+    "loans",
+    "other"
+  ],
+  "awards": 23370,
   "dataset_url": "https://www.usaspending.gov/award",
-  "deltas_written": 959,
+  "deltas_written": 5236,
+  "families_completed": [],
   "is_full_corpus": false,
-  "recipients": 934,
-  "rows_scanned": 3000,
-  "rows_skipped": 7
+  "min_amount": 1000000.0,
+  "notes": [
+    "backfill INTERRUPTED at 23,400 rows: api.usaspending.gov began returning RemoteProtocolError (server disconnect) on every request ~2026-06-21T21:00Z; fetch is resumable from this checkpoint via --min-amount 1000000 (no --no-fetch) and will continue draining the contracts family then grants/direct_payments/loans/other. Target universe at $1M threshold: ~1,137,343 awards FY2023-2026."
+  ],
+  "raw_rows_fetched": 23400,
+  "recipients": 5196,
+  "rows_scanned": 23400,
+  "rows_skipped": 29,
+  "since": "2022-10-01",
+  "total_dollars_covered": "5103491785317.85",
+  "until": "2026-06-21"
 }

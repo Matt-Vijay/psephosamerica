@@ -35,8 +35,13 @@ data/real/
 # Track A contract-corpus exports (large regenerable artifacts)
 data/exports/contract_records/records.jsonl
 data/exports/contract_records/deltas.jsonl
-# govinfo BILLSTATUS bill corpus (~106K bills for 113-119, regenerable)
-data/exports/govinfo_bills/
+# govinfo BILLSTATUS bill corpus + federal vote/speech edge feeds (~106K bills +
+# floor-speech and roll-call edge JSONL for 113-119; large + regenerable). The
+# run's provenance (manifest.json, ingest_meta.json) is tracked; the heavy
+# artifacts (*.jsonl, *.log, donor_profiles.json) are not.
+data/exports/govinfo_bills/*.jsonl
+data/exports/govinfo_bills/*.log
+data/exports/govinfo_bills/donor_profiles.json
 data/exports/markets/
 data/exports/municipal/
 # LOCUS-v1 ordinance corpus (large regenerable artifacts; sample+manifest tracked)
@@ -49,6 +54,10 @@ data/exports/locus/release/locus_ordinances.parquet
 data/exports/usaspending/records.jsonl
 data/exports/usaspending/deltas.jsonl
 data/exports/usaspending/award_edges.jsonl
+data/exports/usaspending/raw_awards.jsonl
+data/exports/usaspending/fetch_state.json
 data/exports/lda/records.jsonl
 data/exports/lda/deltas.jsonl
 data/exports/lda/lobbying_edges.jsonl
+data/exports/lda/years/
+data/exports/lda/backfill_state.json

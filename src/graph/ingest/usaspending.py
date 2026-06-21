@@ -53,6 +53,19 @@ USASPENDING_API_URL = "https://api.usaspending.gov/api/v2"
 _CONTRACT_TYPES = frozenset({"A", "B", "C", "D"})  # definitive / IDV contract codes
 _ASSISTANCE_TYPES = frozenset({"02", "03", "04", "05", "06", "07", "08", "09", "10", "11"})
 
+#: The award ``type`` codes grouped into the named families USASpending uses for
+#: its ``award_type_codes`` filter. Each family is paged separately (the search
+#: endpoint requires a homogeneous prefix grouping) and together they cover the
+#: whole federal award universe: contracts (procurement), grants, direct
+#: payments, loans, and the residual "other financial assistance" codes.
+AWARD_TYPE_GROUPS: dict[str, tuple[str, ...]] = {
+    "contracts": ("A", "B", "C", "D"),
+    "grants": ("02", "03", "04", "05"),
+    "direct_payments": ("06", "10"),
+    "loans": ("07", "08"),
+    "other": ("09", "11"),
+}
+
 _UEI_RE = re.compile(r"^[A-Z0-9]{12}$")
 _DUNS_RE = re.compile(r"^\d{9}$")
 # A bill citation embedded in an appropriation title, e.g. "Public Law 117-103"
