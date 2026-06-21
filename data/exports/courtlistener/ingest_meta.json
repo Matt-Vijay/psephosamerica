@@ -1,0 +1,31 @@
+{
+  "api_url": "https://www.courtlistener.com/api/rest/v4",
+  "as_of": "2026-06-21T21:23:50.832036+00:00",
+  "authored_edges": 33,
+  "cites_opinion_edges": 0,
+  "cites_statute_edges": 0,
+  "courts": 2,
+  "courts_completed": [
+    "scotus",
+    "ca9"
+  ],
+  "courts_scope": [
+    "scotus",
+    "ca9"
+  ],
+  "dataset_url": "https://www.courtlistener.com",
+  "decided_by_edges": 80,
+  "deltas_written": 11,
+  "is_full_corpus": false,
+  "joined_edges": 0,
+  "judges": 9,
+  "keyless": true,
+  "max_opinions_per_court": 40,
+  "notes": [],
+  "opinions": 80,
+  "opinions_scanned": 80,
+  "opinions_skipped": 0,
+  "raw_opinions_fetched": 80,
+  "since": "2024-01-01",
+  "total_edges": 113
+}

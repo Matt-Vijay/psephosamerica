@@ -61,3 +61,14 @@ data/exports/lda/deltas.jsonl
 data/exports/lda/lobbying_edges.jsonl
 data/exports/lda/years/
 data/exports/lda/backfill_state.json
+# CourtListener (Free Law Project) judicial-records corpus: court/judge org+person
+# rows, opinion-node + edge sidecars, and resumable raw caches are regenerable; the
+# run's provenance (ingest_meta.json + manifest.json) is tracked.
+data/exports/courtlistener/records.jsonl
+data/exports/courtlistener/deltas.jsonl
+data/exports/courtlistener/court_edges.jsonl
+data/exports/courtlistener/court_opinions.jsonl
+data/exports/courtlistener/raw_opinions.jsonl
+data/exports/courtlistener/raw_courts.jsonl
+data/exports/courtlistener/raw_judges.jsonl
+data/exports/courtlistener/fetch_state.json
