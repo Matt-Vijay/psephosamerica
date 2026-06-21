@@ -61,6 +61,17 @@ data/exports/lda/deltas.jsonl
 data/exports/lda/lobbying_edges.jsonl
 data/exports/lda/years/
 data/exports/lda/backfill_state.json
+# OpenStates / Plural 50-state legislatures: resolved legislator+bill corpus,
+# per-legislator state roll-call vote-edge sidecar, and resumable raw caches are
+# large + regenerable; the run's provenance (ingest_meta.json + manifest.json) is tracked.
+data/exports/openstates/records.jsonl
+data/exports/openstates/deltas.jsonl
+data/exports/openstates/state_vote_edges.jsonl
+data/exports/openstates/state_legislators.jsonl
+data/exports/openstates/state_bills.jsonl
+data/exports/openstates/raw_bills.jsonl
+data/exports/openstates/raw_people.jsonl
+data/exports/openstates/fetch_state.json
 # CourtListener (Free Law Project) judicial-records corpus: court/judge org+person
 # rows, opinion-node + edge sidecars, and resumable raw caches are regenerable; the
 # run's provenance (ingest_meta.json + manifest.json) is tracked.
