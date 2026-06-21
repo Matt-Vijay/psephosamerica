@@ -99,6 +99,12 @@ API_MIN_INTERVAL_S = 1.1
 #: The v3 ``/bills`` endpoint caps ``per_page`` at 20.
 BILLS_PER_PAGE = 20
 
+#: Breadth mode: pages of recent bills to fetch per state before moving on. Small
+#: by design — enough to surface a handful of recent named-voter roll calls (and
+#: to tell a vote-recording state from a tally-only one) without draining the
+#: budget on any single state. 3 pages = up to 60 recent bills per state.
+BREADTH_PAGES_PER_STATE = 3
+
 #: Broad-but-bounded default slice: prioritize states that record *named* roll
 #: calls (so we actually get vote edges), recent sessions first. Vote-rich states
 #: lead the list; the runner walks it until the API-call cap is hit, so the high
@@ -186,6 +192,11 @@ class OpenStatesIngestReport:
     api_call_cap: int
     bulk_csv_fetches: int
     is_full_corpus: bool
+    # Breadth-mode coverage of the vote signal across distinct states.
+    states_with_votes: tuple[str, ...] = ()
+    distinct_states_with_votes: int = 0
+    tally_only_states: tuple[str, ...] = ()
+    states_needing_votes: tuple[str, ...] = ()
     per_state: tuple[dict[str, Any], ...] = ()
     notes: tuple[str, ...] = ()
 
@@ -307,12 +318,15 @@ def build_graph(
     n_rollcalls = 0
     n_bills = 0
     for bill in bills:
+        # Leakage guard, checked BEFORE building the envelope (which would itself
+        # reject a future-dated fact): a bill prefiled for a future session can
+        # carry a latest-action date after the observation instant. Skip it —
+        # never fabricate an earlier date.
+        if bill.action_date > first_observed_at.date():
+            continue
         prov = bill_provenance(
             bill, content_sha256=_bill_sha(bill), first_observed_at=first_observed_at
         )
-        # Leakage guard: a fact cannot be observed before it is knowable.
-        if prov.known_at > prov.first_observed_at:
-            continue
         ref = state_bill_ref(bill)
         bill_cid = ref.canonical_id
         if bill_cid not in rows_by_id:
@@ -333,8 +347,12 @@ def build_graph(
                 external_ids=bill_external_keys(bill),
             )
         n_bills += 1
-        n_rollcalls += len(bill.rollcalls)
         for rollcall in bill.rollcalls:
+            # Leakage guard before envelope construction (same reason as bills):
+            # skip a roll call dated after the observation instant.
+            if rollcall.start_date > first_observed_at.date():
+                continue
+            n_rollcalls += 1
             for vote in rollcall.votes:
                 if vote.voter_ocd_id is None:
                     continue
@@ -352,8 +370,6 @@ def build_graph(
                     ),
                     first_observed_at=first_observed_at,
                 )
-                if prov.known_at > prov.first_observed_at:
-                    continue
                 edge = state_vote_edge(
                     voter_canonical_id=voter_cid,
                     bill_canonical_id=ref.canonical_id,
@@ -483,15 +499,28 @@ def export_openstates(
     api_call_cap: int = DEFAULT_API_CALL_CAP,
     as_of: datetime | None = None,
     client: Any | None = None,
+    breadth: bool = False,
 ) -> OpenStatesIngestReport:  # pragma: no cover - orchestrates network I/O
     """Run the OpenStates ingest: bulk rosters + capped API bill/vote sweep.
 
     Phase 1 (free): pull every ``roster_states`` legislator roster from the bulk
-    people CSV — no API cost. Phase 2 (capped): walk ``state_priority`` pulling
-    recent bills+votes from the API until the call cap is reached, so votes for
-    several states land before any one state is drained. Resumable per-state via
-    ``fetch_state.json`` (completed states + the day's accumulated API count).
-    Phase 3: resolve + write the corpus, CDC, vote-edge sidecar, and meta.
+    people CSV — no API cost. Phase 2 (capped): walk the bill states pulling
+    recent bills+votes from the API until the call cap is reached, persisting the
+    day's accumulated API count + completed states so a resumed run continues
+    where it stopped. Phase 3: resolve + write the corpus, CDC, vote-edge
+    sidecar, and meta.
+
+    Two phase-2 modes:
+
+    * **depth** (default): walk ``state_priority`` with ``max_pages_per_state``
+      pages each — deep coverage of a few vote-rich states.
+    * **breadth** (``breadth=True``): the moat-thesis transfer test needs vote
+      samples from *many diverse* states, so cycle through **all** of
+      ``roster_states`` spending only :data:`BREADTH_PAGES_PER_STATE` pages each
+      (a handful of recent roll calls), moving on the moment a state yields
+      named-voter edges. States that expose only tallies (no named voters) are
+      detected and recorded as ``tally_only`` so a future daily run skips them
+      and spends its budget on states that still need votes.
     """
     import httpx
 
@@ -506,9 +535,21 @@ def export_openstates(
     state = _load_state(out_dir)
     completed_bill_states: list[str] = list(state.get("completed_bill_states", []))
     completed_roster_states: list[str] = list(state.get("completed_roster_states", []))
-    api_calls_today = int(state.get("api_calls_used", 0))
+    tally_only_states: list[str] = list(state.get("tally_only_states", []))
     notes: list[str] = list(state.get("notes", []))
     coverage: dict[str, dict[str, Any]] = dict(state.get("coverage", {}))
+
+    # The OpenStates key budget is per *day*. The persisted call counter only
+    # constrains runs *within the same UTC day*; a new calendar day resets it so
+    # a daily resumption gets its fresh budget automatically (and a clamp from a
+    # prior day's server-side 429 does not permanently block the next run). The
+    # "mid-state at cap" note is also cleared so it reflects only today.
+    today = observed.date().isoformat()
+    if state.get("api_calls_date") == today:
+        api_calls_today = int(state.get("api_calls_used", 0))
+    else:
+        api_calls_today = 0
+        notes = [n for n in notes if "stopped mid-state at API cap" not in n]
 
     session = RateLimitedSession(
         client=http, api_key=api_key or "", call_cap=api_call_cap, calls_used=api_calls_today
@@ -540,11 +581,21 @@ def export_openstates(
             legislator_records = _reload_people(people_path)
 
         # ── Phase 2: capped API bill+vote sweep ──
+        # Pick the state walk + per-state page budget for the chosen mode. In
+        # breadth mode we cycle every state (skipping ones already done or known
+        # tally-only) spending only a few pages each, so a vote sample lands from
+        # the widest possible set of states before any one is drained.
+        if breadth:
+            pages_budget = BREADTH_PAGES_PER_STATE
+            bill_walk = tuple(s for s in roster_states if s not in tally_only_states)
+        else:
+            pages_budget = max_pages_per_state
+            bill_walk = state_priority
         all_bills: list[StateBill] = []
         bills_path = out_dir / RAW_BILLS_FILENAME
         bills_mode = "a" if (state and bills_path.exists()) else "w"
         with bills_path.open(bills_mode, encoding="utf-8") as bsink:
-            for st in state_priority:
+            for st in bill_walk:
                 if session.exhausted:
                     break
                 if st in completed_bill_states:
@@ -552,22 +603,60 @@ def export_openstates(
                 bills, pages = fetch_state_bills(
                     state=st,
                     session=session,
-                    max_pages=max_pages_per_state,
+                    max_pages=pages_budget,
                     sink=bsink,
                 )
                 all_bills.extend(bills)
                 n_rc = sum(len(b.rollcalls) for b in bills)
                 n_ve = sum(len(rc.votes) for b in bills for rc in b.rollcalls)
+                # Named-voter edges this state actually exposed (voter has an OCD id).
+                n_named = sum(
+                    1
+                    for b in bills
+                    for rc in b.rollcalls
+                    for v in rc.votes
+                    if v.voter_ocd_id is not None
+                )
                 cov = coverage.setdefault(st, {})
                 cov["bills"] = cov.get("bills", 0) + len(bills)
                 cov["bills_pages_fetched"] = cov.get("bills_pages_fetched", 0) + pages
                 cov["rollcalls"] = cov.get("rollcalls", 0) + n_rc
                 cov["raw_vote_records"] = cov.get("raw_vote_records", 0) + n_ve
-                # Mark complete only if we did not stop because of the cap.
-                if not session.exhausted:
-                    completed_bill_states.append(st)
-                else:
+                cov["named_vote_records"] = cov.get("named_vote_records", 0) + n_named
+                if session.exhausted:
+                    # The cap cut this state short — leave it un-completed so the
+                    # next daily run resumes it from page 1 of fresh recent bills.
                     notes.append(f"{st}: stopped mid-state at API cap; resume next run")
+                    break
+                # We fully scanned this state's recent slice within budget.
+                if n_named > 0:
+                    # Yielded named-voter votes: done for breadth purposes.
+                    if st not in completed_bill_states:
+                        completed_bill_states.append(st)
+                elif pages > 0 and breadth:
+                    # Fetched recent bills but found no named voters in any roll
+                    # call: this state reports only tallies. Record it so future
+                    # runs skip it and spend the budget on vote-recording states.
+                    if st not in tally_only_states:
+                        tally_only_states.append(st)
+                    notes.append(f"{st}: tally-only (no named-voter roll calls in recent slice)")
+                elif not breadth:
+                    completed_bill_states.append(st)
+                # Checkpoint after every state so a crash in the later build phase
+                # never loses the day's API-call count or per-state progress (the
+                # call count must survive to keep the daily budget honest).
+                _save_state(
+                    out_dir,
+                    {
+                        "completed_bill_states": completed_bill_states,
+                        "completed_roster_states": completed_roster_states,
+                        "tally_only_states": tally_only_states,
+                        "api_calls_used": session.calls_used,
+                        "api_calls_date": today,
+                        "notes": list(dict.fromkeys(notes)),
+                        "coverage": coverage,
+                    },
+                )
 
         # Always rebuild bills from the full raw cache so a resumed run includes
         # prior days' fetches in the corpus.
@@ -601,6 +690,15 @@ def export_openstates(
         completed_roster=set(completed_roster_states),
     )
 
+    states_with_votes = tuple(sorted(s for s, n in edge_state_counts.items() if n > 0))
+    # States we still owe vote samples: every roster state that has not yielded
+    # an edge and is not known tally-only — the clean to-do list for tomorrow.
+    states_needing_votes = tuple(
+        s
+        for s in roster_states
+        if s not in set(states_with_votes) and s not in set(tally_only_states)
+    )
+
     report = OpenStatesIngestReport(
         dataset_url=OPENSTATES_BASE_URL,
         api_url=OPENSTATES_API_URL,
@@ -618,6 +716,10 @@ def export_openstates(
         api_call_cap=api_call_cap,
         bulk_csv_fetches=bulk_fetches,
         is_full_corpus=False,  # always a bounded-but-broad slice
+        states_with_votes=states_with_votes,
+        distinct_states_with_votes=len(states_with_votes),
+        tally_only_states=tuple(sorted(tally_only_states)),
+        states_needing_votes=states_needing_votes,
         per_state=tuple(per_state),
         notes=tuple(dict.fromkeys(notes)),
     )
@@ -630,7 +732,9 @@ def export_openstates(
         {
             "completed_bill_states": completed_bill_states,
             "completed_roster_states": completed_roster_states,
+            "tally_only_states": tally_only_states,
             "api_calls_used": session.calls_used,
+            "api_calls_date": today,
             "notes": list(dict.fromkeys(notes)),
             "coverage": coverage,
         },
@@ -757,6 +861,12 @@ def _main(argv: list[str] | None = None) -> int:  # pragma: no cover - CLI glue
         default="",
         help="comma-separated USPS priority order for bills (default: built-in)",
     )
+    parser.add_argument(
+        "--breadth",
+        action="store_true",
+        help="cycle every state with a small per-state page budget, prioritizing "
+        "vote samples from as many distinct states as possible (transfer-test mode)",
+    )
     args = parser.parse_args(argv)
     priority = (
         tuple(s.strip().lower() for s in args.states.split(",") if s.strip())
@@ -768,13 +878,17 @@ def _main(argv: list[str] | None = None) -> int:  # pragma: no cover - CLI glue
         state_priority=priority,
         max_pages_per_state=args.max_pages_per_state,
         api_call_cap=args.api_call_cap,
+        breadth=args.breadth,
     )
     print(
         f"OpenStates: states={len(report.states_covered)} "
         f"legislators={report.total_legislators} bills={report.total_bills} "
         f"vote_edges={report.total_vote_edges} rollcalls={report.total_rollcalls} "
+        f"distinct_vote_states={report.distinct_states_with_votes} "
+        f"tally_only={list(report.tally_only_states)} "
+        f"still_need_votes={len(report.states_needing_votes)} "
         f"api_calls={report.api_calls_used}/{report.api_call_cap} "
-        f"bulk_fetches={report.bulk_csv_fetches} notes={list(report.notes)}",
+        f"bulk_fetches={report.bulk_csv_fetches}",
         flush=True,
     )
     return 0

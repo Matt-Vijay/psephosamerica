@@ -1,20 +1,23 @@
 {
-  "api_call_cap": 30,
-  "api_calls_used": 30,
+  "api_call_cap": 400,
+  "api_calls_used": 400,
   "api_url": "https://v3.openstates.org",
-  "as_of": "2026-06-21T21:26:35.238002+00:00",
-  "bulk_csv_fetches": 52,
+  "as_of": "2026-06-21T21:35:00.525984+00:00",
+  "bulk_csv_fetches": 0,
   "dataset_url": "https://openstates.org",
-  "deltas_written": 7590,
+  "deltas_written": 7741,
+  "distinct_states_with_votes": 3,
   "is_full_corpus": false,
   "notes": [
-    "ca: stopped mid-state at API cap; resume next run"
+    "al: tally-only (no named-voter roll calls in recent slice)",
+    "ak: tally-only (no named-voter roll calls in recent slice)",
+    "ar: stopped mid-state at API cap; resume next run"
   ],
   "people_csv_url": "https://data.openstates.org/people/current",
   "per_state": [
     {
-      "bills": 0,
-      "bills_pages_fetched": 0,
+      "bills": 60,
+      "bills_pages_fetched": 3,
       "legislators": 60,
       "legislators_via": "bulk_csv",
       "note": "",
@@ -23,8 +26,8 @@
       "vote_edges": 0
     },
     {
-      "bills": 0,
-      "bills_pages_fetched": 0,
+      "bills": 60,
+      "bills_pages_fetched": 3,
       "legislators": 140,
       "legislators_via": "bulk_csv",
       "note": "",
@@ -33,8 +36,8 @@
       "vote_edges": 0
     },
     {
-      "bills": 0,
-      "bills_pages_fetched": 0,
+      "bills": 20,
+      "bills_pages_fetched": 1,
       "legislators": 134,
       "legislators_via": "bulk_csv",
       "note": "",
@@ -43,14 +46,14 @@
       "vote_edges": 0
     },
     {
-      "bills": 0,
-      "bills_pages_fetched": 0,
+      "bills": 60,
+      "bills_pages_fetched": 3,
       "legislators": 90,
       "legislators_via": "bulk_csv",
       "note": "",
-      "rollcalls": 0,
+      "rollcalls": 51,
       "state": "az",
-      "vote_edges": 0
+      "vote_edges": 1773
     },
     {
       "bills": 40,
@@ -587,8 +590,66 @@
     "wv",
     "wy"
   ],
-  "total_bills": 137,
+  "states_needing_votes": [
+    "ar",
+    "co",
+    "ct",
+    "de",
+    "fl",
+    "ga",
+    "hi",
+    "id",
+    "il",
+    "in",
+    "ia",
+    "ks",
+    "ky",
+    "la",
+    "me",
+    "md",
+    "ma",
+    "mi",
+    "mn",
+    "ms",
+    "mo",
+    "mt",
+    "ne",
+    "nv",
+    "nh",
+    "nj",
+    "nm",
+    "ny",
+    "nc",
+    "nd",
+    "oh",
+    "ok",
+    "or",
+    "pa",
+    "ri",
+    "sc",
+    "sd",
+    "tn",
+    "ut",
+    "vt",
+    "va",
+    "wa",
+    "wv",
+    "wi",
+    "wy",
+    "dc",
+    "pr"
+  ],
+  "states_with_votes": [
+    "az",
+    "ca",
+    "tx"
+  ],
+  "tally_only_states": [
+    "ak",
+    "al"
+  ],
+  "total_bills": 288,
   "total_legislators": 7453,
-  "total_rollcalls": 214,
-  "total_vote_edges": 12410
+  "total_rollcalls": 253,
+  "total_vote_edges": 14183
 }

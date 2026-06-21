@@ -9,7 +9,11 @@ from src.graph.ingest.openstates import (
     parse_legislator_csv_row,
     state_bill_ref,
 )
-from src.graph.ingest.openstates_export import build_graph
+from src.graph.ingest.openstates_export import (
+    BILLS_PER_PAGE,
+    build_graph,
+    fetch_state_bills,
+)
 from src.graph.provenance import ProvenanceEnvelope
 
 _OBS = datetime(2026, 6, 10, tzinfo=UTC)
@@ -113,3 +117,113 @@ def test_build_graph_dedupes_vote_edges_on_rerun() -> None:
     # Bill de-duped to one row; edges de-duped by identity to two.
     assert len([r for r in built.rows if r.entity_type == "bill"]) == 1
     assert len(built.vote_edges) == 2
+
+
+def test_build_graph_skips_future_dated_bill_and_rollcall() -> None:
+    """Leakage guard: a fact dated after the observation instant is skipped, not raised."""
+    future_rc = StateRollCall(
+        ocd_vote_id="ocd-vote/future",
+        motion_text="Prefiled vote",
+        result=None,
+        start_date=date(2030, 1, 1),
+        source_url="https://x/y",
+        votes=(StateVote(voter_ocd_id=_JANE, voter_name="Jane", choice="yea", voter_state="tx"),),
+    )
+    future_bill = StateBill(
+        ocd_bill_id="ocd-bill/future",
+        state="tx",
+        session="91",
+        identifier="HB 999",
+        title="Prefiled",
+        chamber="lower",
+        action_date=date(2030, 1, 1),  # after _OBS (2026)
+        source_url="https://x/y",
+        rollcalls=(future_rc,),
+    )
+    built = build_graph(
+        legislator_records=_legislators(), bills=[future_bill, _bill()], first_observed_at=_OBS
+    )
+    # Only the present-dated bill survives; the future one is dropped without error.
+    assert built.bills == 1
+    assert all(r.entity_type != "bill" or "HB 999" not in r.display_name for r in built.rows)
+    # All edges come from the present bill's roll call.
+    assert all(e.known_at.year == 2026 for e in built.vote_edges)
+
+
+class _FakeSession:
+    """A RateLimitedSession stand-in returning canned /bills pages, counting calls."""
+
+    def __init__(self, pages: list[dict], cap: int = 100) -> None:
+        self._pages = pages
+        self.call_cap = cap
+        self.calls_used = 0
+        self.requested: list[int] = []
+
+    @property
+    def exhausted(self) -> bool:
+        return self.calls_used >= self.call_cap
+
+    def get(self, path: str, params: dict) -> dict | None:
+        if self.exhausted:
+            return None
+        page = int(params["page"])
+        self.requested.append(page)
+        self.calls_used += 1
+        idx = page - 1
+        if idx >= len(self._pages):
+            return {"results": [], "pagination": {"max_page": len(self._pages)}}
+        return self._pages[idx]
+
+
+class _Sink:
+    def __init__(self) -> None:
+        self.lines: list[str] = []
+
+    def write(self, s: str) -> None:
+        self.lines.append(s)
+
+
+def _page_with_named_vote(page_no: int, total: int) -> dict:
+    bill = {
+        "id": f"ocd-bill/p{page_no}",
+        "identifier": f"HB {page_no}",
+        "session": "89",
+        "jurisdiction": {"id": "ocd-jurisdiction/country:us/state:tx/government"},
+        "latest_action_date": "2026-05-01",
+        "votes": [
+            {
+                "id": f"ocd-vote/p{page_no}",
+                "motion_text": "passage",
+                "start_date": "2026-05-01",
+                "votes": [
+                    {
+                        "option": "yes",
+                        "voter": {"id": "ocd-person/" + "1" * 8 + "-1111-1111-1111-111111111111"},
+                    }
+                ],
+            }
+        ],
+    }
+    return {"results": [bill], "pagination": {"max_page": total}}
+
+
+def test_fetch_state_bills_caps_pages_in_breadth() -> None:
+    # 10 pages available, but breadth budget of 3 should fetch exactly 3.
+    pages = [_page_with_named_vote(i, 10) for i in range(1, 11)]
+    session = _FakeSession(pages)
+    sink = _Sink()
+    bills, n = fetch_state_bills(state="tx", session=session, max_pages=3, sink=sink)  # type: ignore[arg-type]
+    assert n == 3
+    assert session.requested == [1, 2, 3]
+    assert len(bills) == 3
+    assert BILLS_PER_PAGE == 20
+
+
+def test_fetch_state_bills_stops_on_empty_page() -> None:
+    pages = [_page_with_named_vote(1, 5)]  # page 2 onward empty
+    session = _FakeSession(pages)
+    sink = _Sink()
+    bills, n = fetch_state_bills(state="tx", session=session, max_pages=5, sink=sink)  # type: ignore[arg-type]
+    # Stops after the empty page-2 response.
+    assert len(bills) == 1
+    assert n == 2
