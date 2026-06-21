@@ -43,3 +43,4 @@ data/exports/municipal/
 data/exports/locus/records.jsonl
 data/exports/locus/deltas.jsonl
 data/exports/locus/ordinance_content.jsonl
+data/exports/locus/release/locus_ordinances.parquet

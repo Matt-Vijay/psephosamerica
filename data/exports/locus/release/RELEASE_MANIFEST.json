@@ -1,0 +1,71 @@
+{
+  "attribution": "LOCUS v1.0 (LocalLaws/LOCUS-v1), Peskoff, Barrow, Vu & Davenport, arXiv:2606.19334, licensed CC-BY-NC-4.0 (non-commercial).",
+  "content_sha256": "6cf59179faa3015223481293943b62e98568d578014f8e0dee22e8ca1cccb020",
+  "dataset_url": "https://huggingface.co/datasets/LocalLaws/LOCUS-v1",
+  "license": "cc-by-nc-4.0",
+  "parquet_filename": "locus_ordinances.parquet",
+  "row_count": 2207679,
+  "schema": [
+    [
+      "canonical_id",
+      "string"
+    ],
+    [
+      "jurisdiction_id",
+      "string"
+    ],
+    [
+      "jurisdiction_level",
+      "string"
+    ],
+    [
+      "display_name",
+      "string"
+    ],
+    [
+      "function",
+      "string"
+    ],
+    [
+      "topic",
+      "string"
+    ],
+    [
+      "is_substantive",
+      "bool"
+    ],
+    [
+      "opacity",
+      "float64"
+    ],
+    [
+      "paternalism",
+      "float64"
+    ],
+    [
+      "enforcement_discretion",
+      "float64"
+    ],
+    [
+      "problem_salience",
+      "float64"
+    ],
+    [
+      "known_at",
+      "string"
+    ],
+    [
+      "source_url",
+      "string"
+    ],
+    [
+      "content_sha256",
+      "string"
+    ],
+    [
+      "license",
+      "string"
+    ]
+  ],
+  "version": "v1.0"
+}
