@@ -44,6 +44,11 @@ MUNICIPAL_PERSONS = Path("data/exports/municipal/municipal_persons.jsonl")
 MUNICIPAL_VOTES = Path("data/exports/municipal/municipal_vote_edges.jsonl")
 SENATE_VOTES = Path("data/exports/govinfo_bills/senate_vote_edges.jsonl")
 BILL_EDGES = Path("data/exports/govinfo_bills/bill_edges.jsonl")
+# Optional, heavier edge sets (floor speeches, news mentions). Not loaded by
+# default — they make the "said vs voted" and accountability-voice lenses light
+# up. Pass them explicitly via ``edge_paths`` when you want them.
+SPEECH_EDGES = Path("data/exports/govinfo_bills/crec_edges.jsonl")
+NEWS_EDGES = Path("data/exports/govinfo_bills/gdelt_edges.jsonl")
 
 
 @dataclass(frozen=True)
@@ -308,4 +313,6 @@ __all__ = [
     "MUNICIPAL_VOTES",
     "SENATE_VOTES",
     "BILL_EDGES",
+    "SPEECH_EDGES",
+    "NEWS_EDGES",
 ]
