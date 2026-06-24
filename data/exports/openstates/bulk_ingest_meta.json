@@ -1,0 +1,479 @@
+{
+  "api_vote_edges": 14183,
+  "as_of": "2026-06-24T23:40:40.306472+00:00",
+  "bulk_vote_edges": 39247051,
+  "deltas_written": 354220,
+  "distinct_states_with_votes": 51,
+  "notes": [],
+  "per_state": [
+    {
+      "bills": 228,
+      "legislators": 59,
+      "rollcalls": 445,
+      "sessions": 1,
+      "state": "ak",
+      "vote_edges": 12862
+    },
+    {
+      "bills": 4217,
+      "legislators": 214,
+      "rollcalls": 12395,
+      "sessions": 11,
+      "state": "al",
+      "vote_edges": 794038
+    },
+    {
+      "bills": 4003,
+      "legislators": 193,
+      "rollcalls": 8334,
+      "sessions": 9,
+      "state": "ar",
+      "vote_edges": 433754
+    },
+    {
+      "bills": 6341,
+      "legislators": 216,
+      "rollcalls": 11588,
+      "sessions": 10,
+      "state": "az",
+      "vote_edges": 517367
+    },
+    {
+      "bills": 52831,
+      "legislators": 339,
+      "rollcalls": 242911,
+      "sessions": 42,
+      "state": "ca",
+      "vote_edges": 5373147
+    },
+    {
+      "bills": 5944,
+      "legislators": 226,
+      "rollcalls": 19581,
+      "sessions": 15,
+      "state": "co",
+      "vote_edges": 697547
+    },
+    {
+      "bills": 1119,
+      "legislators": 212,
+      "rollcalls": 2270,
+      "sessions": 3,
+      "state": "ct",
+      "vote_edges": 202584
+    },
+    {
+      "bills": 7891,
+      "legislators": 20,
+      "rollcalls": 10246,
+      "sessions": 5,
+      "state": "dc",
+      "vote_edges": 107526
+    },
+    {
+      "bills": 4058,
+      "legislators": 107,
+      "rollcalls": 6671,
+      "sessions": 5,
+      "state": "de",
+      "vote_edges": 190854
+    },
+    {
+      "bills": 14370,
+      "legislators": 341,
+      "rollcalls": 30171,
+      "sessions": 22,
+      "state": "fl",
+      "vote_edges": 762090
+    },
+    {
+      "bills": 5445,
+      "legislators": 393,
+      "rollcalls": 8277,
+      "sessions": 8,
+      "state": "ga",
+      "vote_edges": 859732
+    },
+    {
+      "bills": 24414,
+      "legislators": 134,
+      "rollcalls": 61419,
+      "sessions": 10,
+      "state": "hi",
+      "vote_edges": 424508
+    },
+    {
+      "bills": 2779,
+      "legislators": 294,
+      "rollcalls": 6391,
+      "sessions": 5,
+      "state": "ia",
+      "vote_edges": 451259
+    },
+    {
+      "bills": 4454,
+      "legislators": 202,
+      "rollcalls": 8237,
+      "sessions": 12,
+      "state": "id",
+      "vote_edges": 363549
+    },
+    {
+      "bills": 29425,
+      "legislators": 465,
+      "rollcalls": 58504,
+      "sessions": 14,
+      "state": "il",
+      "vote_edges": 3496385
+    },
+    {
+      "bills": 2784,
+      "legislators": 237,
+      "rollcalls": 4982,
+      "sessions": 11,
+      "state": "in",
+      "vote_edges": 347827
+    },
+    {
+      "bills": 1406,
+      "legislators": 266,
+      "rollcalls": 3134,
+      "sessions": 6,
+      "state": "ks",
+      "vote_edges": 232385
+    },
+    {
+      "bills": 2709,
+      "legislators": 186,
+      "rollcalls": 5509,
+      "sessions": 9,
+      "state": "ky",
+      "vote_edges": 245335
+    },
+    {
+      "bills": 9580,
+      "legislators": 247,
+      "rollcalls": 21922,
+      "sessions": 22,
+      "state": "la",
+      "vote_edges": 1255540
+    },
+    {
+      "bills": 48,
+      "legislators": 158,
+      "rollcalls": 189,
+      "sessions": 1,
+      "state": "ma",
+      "vote_edges": 28819
+    },
+    {
+      "bills": 10726,
+      "legislators": 293,
+      "rollcalls": 21874,
+      "sessions": 9,
+      "state": "md",
+      "vote_edges": 1835617
+    },
+    {
+      "bills": 1817,
+      "legislators": 266,
+      "rollcalls": 3864,
+      "sessions": 3,
+      "state": "me",
+      "vote_edges": 318640
+    },
+    {
+      "bills": 5340,
+      "legislators": 303,
+      "rollcalls": 9226,
+      "sessions": 5,
+      "state": "mi",
+      "vote_edges": 567311
+    },
+    {
+      "bills": 921,
+      "legislators": 298,
+      "rollcalls": 2387,
+      "sessions": 5,
+      "state": "mn",
+      "vote_edges": 286034
+    },
+    {
+      "bills": 1,
+      "legislators": 30,
+      "rollcalls": 1,
+      "sessions": 1,
+      "state": "mo",
+      "vote_edges": 30
+    },
+    {
+      "bills": 8777,
+      "legislators": 246,
+      "rollcalls": 16802,
+      "sessions": 15,
+      "state": "ms",
+      "vote_edges": 1189073
+    },
+    {
+      "bills": 2680,
+      "legislators": 220,
+      "rollcalls": 14310,
+      "sessions": 2,
+      "state": "mt",
+      "vote_edges": 751514
+    },
+    {
+      "bills": 10303,
+      "legislators": 445,
+      "rollcalls": 17941,
+      "sessions": 27,
+      "state": "nc",
+      "vote_edges": 1113411
+    },
+    {
+      "bills": 2806,
+      "legislators": 212,
+      "rollcalls": 5937,
+      "sessions": 3,
+      "state": "nd",
+      "vote_edges": 385437
+    },
+    {
+      "bills": 1864,
+      "legislators": 106,
+      "rollcalls": 7006,
+      "sessions": 6,
+      "state": "ne",
+      "vote_edges": 334553
+    },
+    {
+      "bills": 2209,
+      "legislators": 905,
+      "rollcalls": 3978,
+      "sessions": 10,
+      "state": "nh",
+      "vote_edges": 798099
+    },
+    {
+      "bills": 5200,
+      "legislators": 168,
+      "rollcalls": 11069,
+      "sessions": 3,
+      "state": "nj",
+      "vote_edges": 285400
+    },
+    {
+      "bills": 1196,
+      "legislators": 166,
+      "rollcalls": 1587,
+      "sessions": 9,
+      "state": "nm",
+      "vote_edges": 77801
+    },
+    {
+      "bills": 2156,
+      "legislators": 106,
+      "rollcalls": 4119,
+      "sessions": 4,
+      "state": "nv",
+      "vote_edges": 111204
+    },
+    {
+      "bills": 21060,
+      "legislators": 370,
+      "rollcalls": 47695,
+      "sessions": 5,
+      "state": "ny",
+      "vote_edges": 2538632
+    },
+    {
+      "bills": 2283,
+      "legislators": 280,
+      "rollcalls": 7742,
+      "sessions": 6,
+      "state": "oh",
+      "vote_edges": 293780
+    },
+    {
+      "bills": 7936,
+      "legislators": 275,
+      "rollcalls": 24941,
+      "sessions": 7,
+      "state": "ok",
+      "vote_edges": 886236
+    },
+    {
+      "bills": 7013,
+      "legislators": 185,
+      "rollcalls": 21286,
+      "sessions": 18,
+      "state": "or",
+      "vote_edges": 525262
+    },
+    {
+      "bills": 3966,
+      "legislators": 335,
+      "rollcalls": 13861,
+      "sessions": 4,
+      "state": "pa",
+      "vote_edges": 988711
+    },
+    {
+      "bills": 6807,
+      "legislators": 181,
+      "rollcalls": 10161,
+      "sessions": 10,
+      "state": "ri",
+      "vote_edges": 513064
+    },
+    {
+      "bills": 1791,
+      "legislators": 228,
+      "rollcalls": 7999,
+      "sessions": 4,
+      "state": "sc",
+      "vote_edges": 730115
+    },
+    {
+      "bills": 4591,
+      "legislators": 229,
+      "rollcalls": 13645,
+      "sessions": 15,
+      "state": "sd",
+      "vote_edges": 318381
+    },
+    {
+      "bills": 25194,
+      "legislators": 252,
+      "rollcalls": 55614,
+      "sessions": 11,
+      "state": "tn",
+      "vote_edges": 2503131
+    },
+    {
+      "bills": 4596,
+      "legislators": 252,
+      "rollcalls": 8666,
+      "sessions": 4,
+      "state": "tx",
+      "vote_edges": 902546
+    },
+    {
+      "bills": 2863,
+      "legislators": 129,
+      "rollcalls": 14226,
+      "sessions": 13,
+      "state": "ut",
+      "vote_edges": 390314
+    },
+    {
+      "bills": 12983,
+      "legislators": 253,
+      "rollcalls": 54904,
+      "sessions": 11,
+      "state": "va",
+      "vote_edges": 2020453
+    },
+    {
+      "bills": 442,
+      "legislators": 354,
+      "rollcalls": 1076,
+      "sessions": 7,
+      "state": "vt",
+      "vote_edges": 89166
+    },
+    {
+      "bills": 5379,
+      "legislators": 252,
+      "rollcalls": 12292,
+      "sessions": 5,
+      "state": "wa",
+      "vote_edges": 881254
+    },
+    {
+      "bills": 828,
+      "legislators": 192,
+      "rollcalls": 1291,
+      "sessions": 6,
+      "state": "wi",
+      "vote_edges": 81426
+    },
+    {
+      "bills": 3935,
+      "legislators": 240,
+      "rollcalls": 6991,
+      "sessions": 22,
+      "state": "wv",
+      "vote_edges": 467826
+    },
+    {
+      "bills": 2511,
+      "legislators": 187,
+      "rollcalls": 10312,
+      "sessions": 9,
+      "state": "wy",
+      "vote_edges": 265522
+    }
+  ],
+  "raw_dir": "data/raw/openstates_bulk",
+  "runtime_seconds": 500.9,
+  "states_with_votes": [
+    "ak",
+    "al",
+    "ar",
+    "az",
+    "ca",
+    "co",
+    "ct",
+    "dc",
+    "de",
+    "fl",
+    "ga",
+    "hi",
+    "ia",
+    "id",
+    "il",
+    "in",
+    "ks",
+    "ky",
+    "la",
+    "ma",
+    "md",
+    "me",
+    "mi",
+    "mn",
+    "mo",
+    "ms",
+    "mt",
+    "nc",
+    "nd",
+    "ne",
+    "nh",
+    "nj",
+    "nm",
+    "nv",
+    "ny",
+    "oh",
+    "ok",
+    "or",
+    "pa",
+    "ri",
+    "sc",
+    "sd",
+    "tn",
+    "tx",
+    "ut",
+    "va",
+    "vt",
+    "wa",
+    "wi",
+    "wv",
+    "wy"
+  ],
+  "total_bills": 354220,
+  "total_legislators": 12467,
+  "total_rollcalls": 955979,
+  "total_vote_edges": 39261234,
+  "zips_processed": 680,
+  "zips_total": 680
+}

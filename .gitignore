@@ -72,6 +72,14 @@ data/exports/openstates/state_bills.jsonl
 data/exports/openstates/raw_bills.jsonl
 data/exports/openstates/raw_people.jsonl
 data/exports/openstates/fetch_state.json
+# OpenStates bulk session-CSV ingest: combined (API+bulk) vote-edge sidecar, the
+# bulk legislator+bill record corpus, and the CDC announce feed are large +
+# regenerable from the raw ZIPs; bulk_ingest_meta.json (provenance + per-state
+# table) is tracked. The per-ZIP resume checkpoint is runtime state, untracked.
+data/exports/openstates/state_vote_edges_combined.jsonl
+data/exports/openstates/bulk_records.jsonl
+data/exports/openstates/bulk_deltas.jsonl
+data/exports/openstates/bulk_fetch_state.json
 # CourtListener (Free Law Project) judicial-records corpus: court/judge org+person
 # rows, opinion-node + edge sidecars, and resumable raw caches are regenerable; the
 # run's provenance (ingest_meta.json + manifest.json) is tracked.
