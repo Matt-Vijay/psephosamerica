@@ -91,3 +91,4 @@ data/exports/courtlistener/raw_opinions.jsonl
 data/exports/courtlistener/raw_courts.jsonl
 data/exports/courtlistener/raw_judges.jsonl
 data/exports/courtlistener/fetch_state.json
+data/exports/openstates/state_vote_edges_index.jsonl
