@@ -1,6 +1,6 @@
 {
-  "as_of": "2026-06-21T02:45:34.204070+00:00",
-  "content_sha256": "586827c653402bcb66692e0c278dc2a29a93435cc28a133cdcf2155897befbda",
-  "record_count": 513,
+  "as_of": "2026-06-24T23:59:02.613699+00:00",
+  "content_sha256": "96850a7fa5b24d4882f4af6fa4d11ad24708d6982d2fd2ed7b850723560aabb5",
+  "record_count": 14210,
   "records_path": "data/exports/lda/records.jsonl"
 }

@@ -1,13 +1,221 @@
 {
-  "api_url": "https://lda.senate.gov/api/v1",
-  "as_of": "2026-06-21T02:45:34.204070+00:00",
-  "bill_lobbying_edges": 19,
-  "clients": 345,
-  "deltas_written": 513,
-  "filings": 331,
-  "is_full_corpus": false,
-  "registrants": 187,
-  "retention_edges": 331,
-  "rows_scanned": 350,
-  "rows_skipped": 0
+  "archives_used": [
+    "2008_1.zip",
+    "2008_2.zip",
+    "2008_3.zip",
+    "2017_1.zip",
+    "2017_3.zip",
+    "2017_4.zip",
+    "2018_1.zip",
+    "2018_2.zip",
+    "2018_3.zip",
+    "2018_4.zip",
+    "2019_1.zip",
+    "2019_2.zip",
+    "2019_3.zip",
+    "2020_1.zip",
+    "2020_3.zip",
+    "2020_4.zip"
+  ],
+  "as_of": "2026-06-24T23:59:02.613699+00:00",
+  "bill_lobbying_edges": 742408,
+  "bulk_filings_duplicate": 0,
+  "bulk_filings_new": 327577,
+  "bulk_filings_scanned": 327577,
+  "clients": 5685,
+  "deltas_written": 14210,
+  "per_year": [
+    {
+      "activities": 4,
+      "activities_with_description": 0,
+      "bill_lobbying_edges": 0,
+      "filings": 5,
+      "filings_with_bill": 0,
+      "retention_edges": 5,
+      "year": 1999
+    },
+    {
+      "activities": 6,
+      "activities_with_description": 0,
+      "bill_lobbying_edges": 0,
+      "filings": 7,
+      "filings_with_bill": 0,
+      "retention_edges": 7,
+      "year": 2000
+    },
+    {
+      "activities": 40,
+      "activities_with_description": 0,
+      "bill_lobbying_edges": 0,
+      "filings": 14,
+      "filings_with_bill": 0,
+      "retention_edges": 14,
+      "year": 2001
+    },
+    {
+      "activities": 122,
+      "activities_with_description": 79,
+      "bill_lobbying_edges": 0,
+      "filings": 44,
+      "filings_with_bill": 0,
+      "retention_edges": 44,
+      "year": 2002
+    },
+    {
+      "activities": 86,
+      "activities_with_description": 28,
+      "bill_lobbying_edges": 0,
+      "filings": 41,
+      "filings_with_bill": 0,
+      "retention_edges": 41,
+      "year": 2003
+    },
+    {
+      "activities": 295,
+      "activities_with_description": 270,
+      "bill_lobbying_edges": 309,
+      "filings": 103,
+      "filings_with_bill": 18,
+      "retention_edges": 103,
+      "year": 2004
+    },
+    {
+      "activities": 527,
+      "activities_with_description": 493,
+      "bill_lobbying_edges": 563,
+      "filings": 232,
+      "filings_with_bill": 48,
+      "retention_edges": 232,
+      "year": 2005
+    },
+    {
+      "activities": 997,
+      "activities_with_description": 802,
+      "bill_lobbying_edges": 1192,
+      "filings": 589,
+      "filings_with_bill": 77,
+      "retention_edges": 589,
+      "year": 2006
+    },
+    {
+      "activities": 39391,
+      "activities_with_description": 38132,
+      "bill_lobbying_edges": 52180,
+      "filings": 22843,
+      "filings_with_bill": 7282,
+      "retention_edges": 22843,
+      "year": 2007
+    },
+    {
+      "activities": 80932,
+      "activities_with_description": 80893,
+      "bill_lobbying_edges": 112354,
+      "filings": 46439,
+      "filings_with_bill": 13406,
+      "retention_edges": 46439,
+      "year": 2008
+    },
+    {
+      "activities": 10,
+      "activities_with_description": 10,
+      "bill_lobbying_edges": 0,
+      "filings": 6,
+      "filings_with_bill": 0,
+      "retention_edges": 6,
+      "year": 2009
+    },
+    {
+      "activities": 8,
+      "activities_with_description": 8,
+      "bill_lobbying_edges": 4,
+      "filings": 7,
+      "filings_with_bill": 2,
+      "retention_edges": 7,
+      "year": 2011
+    },
+    {
+      "activities": 53,
+      "activities_with_description": 53,
+      "bill_lobbying_edges": 88,
+      "filings": 36,
+      "filings_with_bill": 10,
+      "retention_edges": 36,
+      "year": 2012
+    },
+    {
+      "activities": 235,
+      "activities_with_description": 235,
+      "bill_lobbying_edges": 206,
+      "filings": 129,
+      "filings_with_bill": 39,
+      "retention_edges": 129,
+      "year": 2013
+    },
+    {
+      "activities": 629,
+      "activities_with_description": 629,
+      "bill_lobbying_edges": 1074,
+      "filings": 344,
+      "filings_with_bill": 96,
+      "retention_edges": 344,
+      "year": 2014
+    },
+    {
+      "activities": 1429,
+      "activities_with_description": 1429,
+      "bill_lobbying_edges": 1976,
+      "filings": 639,
+      "filings_with_bill": 182,
+      "retention_edges": 639,
+      "year": 2015
+    },
+    {
+      "activities": 35554,
+      "activities_with_description": 35554,
+      "bill_lobbying_edges": 52370,
+      "filings": 18151,
+      "filings_with_bill": 5963,
+      "retention_edges": 18151,
+      "year": 2016
+    },
+    {
+      "activities": 117651,
+      "activities_with_description": 117651,
+      "bill_lobbying_edges": 106157,
+      "filings": 59053,
+      "filings_with_bill": 16274,
+      "retention_edges": 59053,
+      "year": 2017
+    },
+    {
+      "activities": 154428,
+      "activities_with_description": 154428,
+      "bill_lobbying_edges": 192532,
+      "filings": 77951,
+      "filings_with_bill": 23665,
+      "retention_edges": 77951,
+      "year": 2018
+    },
+    {
+      "activities": 115592,
+      "activities_with_description": 115592,
+      "bill_lobbying_edges": 106402,
+      "filings": 59384,
+      "filings_with_bill": 14525,
+      "retention_edges": 59384,
+      "year": 2019
+    },
+    {
+      "activities": 83694,
+      "activities_with_description": 83694,
+      "bill_lobbying_edges": 115001,
+      "filings": 41560,
+      "filings_with_bill": 12912,
+      "retention_edges": 41560,
+      "year": 2020
+    }
+  ],
+  "registrants": 8126,
+  "retention_edges": 327577,
+  "source": "Senate LDA bulk quarterly XML archives (soprweb.senate.gov/downloads/<year>_<quarter>.zip) recovered from the Internet Archive Wayback Machine; the legacy bulk host was retired and the modern LDA.gov exposes no public bulk file, only the page-25-capped REST API."
 }
