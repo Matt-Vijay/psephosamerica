@@ -116,6 +116,44 @@ Every JSON payload that asserts a fact includes a `citation`
 
 ---
 
+## 3a. State legislator votes at scale (39M edges, lazy & cited)
+
+The 50-state + DC per-legislator vote corpus
+(`data/exports/openstates/state_vote_edges_combined.jsonl`) is **39,261,234
+edges / 22GB** — far too large to fold into the in-memory `GraphStore` that serves
+the explorer, so it is deliberately **not** in `build_store`'s default
+`edge_paths`. Instead a compact **byte-offset index** lets the query layer answer
+state-legislator vote questions *lazily*: seek straight to one entity's edge lines
+in the big file and parse only those.
+
+```bash
+# Build the index once (single streaming pass; ~957MB sidecar, 23x smaller than
+# the corpus). Records each edge line's byte offset keyed by person id + bill id.
+/tmp/opvenv/bin/python -m src.query.state_vote_index
+# -> indexed 39,261,234 edges across 12,467 persons and 353,808 bills
+```
+
+```python
+from src.query.state_vote_index import StateVoteIndex
+
+idx = StateVoteIndex.load()          # loads only the offset table (~4s), not the 22GB
+idx.vote_count_for_person("ce-oevmujkhtk3yagqm")   # 46,261  (legislator "Bates", CA)
+votes = idx.votes_for_person("ce-oevmujkhtk3yagqm", limit=3)  # 0.6ms — seeks, never scans
+votes[0].as_citation()
+# {'bill_id': 'cb-wwgdypefilohb5bo', 'choice': 'yea',
+#  'motion': 'Consent Calendar SB629',
+#  'source_url': 'https://openstates.org/ca/?session=California_2021_2022_Regular_Session',
+#  'content_sha256': 'bf1dfbfbf604...', 'known_at': '2021-05-13T00:00:00Z', ...}
+```
+
+Every returned vote keeps full provenance (`source_url` + `content_sha256` +
+`known_at` + `valid_from`), so state-vote facts stay citable exactly like the
+in-memory store's. The in-memory store still serves browse/ranking over the
+federal + municipal + bounded slices; this index is the query-on-demand path for
+"show me state legislator X's full voting record" without paying the 22GB RAM cost.
+
+---
+
 ## 4. Example questions + answers
 
 **Q:** `What did the budget reconciliation bill cover?`

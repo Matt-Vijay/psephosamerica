@@ -1,0 +1,7 @@
+{
+  "slice": "national-federal-to-state-zero-shot",
+  "jurisdictions_evaluated": 50,
+  "aggregate_zero_shot_auc_sample_weighted": 0.6999760807654271,
+  "aggregate_zero_shot_auc_macro": 0.7049151900461724,
+  "tolerance": 0.01
+}
