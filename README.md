@@ -4,8 +4,6 @@
 
 The name is from the Greek *psêphos* (ψῆφος), the pebble Athenians dropped to cast a vote — the root of *psephology*, the science of elections. ψ is also the wavefunction in physics: a probability amplitude. One glyph for *the vote* and *the probability* — which is exactly what this is: **a calibrated probability on every official's vote, everywhere, grounded in public record.**
 
-> Formerly "OpenPact." The original narrow v1 (deterministic conflict-of-interest scoring for current Members of Congress) is now one small corner of a much larger substrate.
-
 ---
 
 ## What it is
@@ -81,7 +79,7 @@ GraphRAG uses an **OpenAI-compatible endpoint (OpenRouter by default)**, configu
 | `OPENROUTER_API_KEY` / `OPENROUTER_BASE_URL` | Endpoint + key |
 | `ANTHROPIC_API_KEY` | Optional alternate backend |
 
-Legacy `OPENPACT_*` names are still read as a fallback. Rate-limited models retry with backoff, fall through the chain, then degrade to the grounded stub — never crash, never hallucinate.
+Rate-limited models retry with backoff, fall through the chain, then degrade to the grounded stub — never crash, never hallucinate.
 
 ## Data sources & ingestion
 
