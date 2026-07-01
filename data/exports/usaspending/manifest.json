@@ -1,6 +1,6 @@
 {
-  "as_of": "2026-06-21T21:13:59.979805+00:00",
-  "content_sha256": "a810106b46166a69d3d91d021194084cb5afbd5a79a36a30a86667f7a87ba450",
-  "record_count": 5236,
+  "as_of": "2026-06-21T21:14:06.078290+00:00",
+  "content_sha256": "c2b9f9f936fa2eb2132d422d41d27620678c085f586a2c2cff7f45d5e5de5a6c",
+  "record_count": 11385,
   "records_path": "data/exports/usaspending/records.jsonl"
 }

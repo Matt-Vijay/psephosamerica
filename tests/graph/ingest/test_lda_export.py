@@ -17,7 +17,9 @@ from src.graph.export import (
 from src.graph.ingest.lda_export import (
     INGEST_META_FILENAME,
     LOBBYING_EDGES_FILENAME,
+    YearStats,
     build_lobbying_graph,
+    year_coverage_stats,
 )
 
 _OBSERVED = datetime(2026, 6, 20, tzinfo=UTC)
@@ -111,3 +113,62 @@ def test_export_writes_corpus_edges_cdc(tmp_path: Path) -> None:
 def test_artifact_filename_constants() -> None:
     assert LOBBYING_EDGES_FILENAME == "lobbying_edges.jsonl"
     assert INGEST_META_FILENAME == "ingest_meta.json"
+
+
+def test_year_coverage_stats_counts_null_descriptions_and_bills() -> None:
+    records = [
+        _filing(),  # one activity, has description + H.R. 2471 bill
+        _filing(
+            filing_uuid="33333333-3333-3333-3333-333333333333",
+            lobbying_activities=[
+                {"general_issue_area_code": "TAX", "description": None},  # null desc, real
+                {"general_issue_area_code": "ENV", "description": "no bill cited here"},
+            ],
+        ),
+    ]
+    stats = year_coverage_stats(records, year=2024)
+    assert stats["year"] == 2024
+    assert stats["filings"] == 2
+    assert stats["activities"] == 3
+    # Two of three activity lines carry a non-empty description; one is genuinely null.
+    assert stats["activities_with_description"] == 2
+    # Only the first filing names a congress bill.
+    assert stats["filings_with_bill"] == 1
+
+
+def test_year_stats_fill_rates_and_serialization() -> None:
+    stats = YearStats(
+        year=2020,
+        filings=10,
+        filings_skipped=0,
+        activities=8,
+        activities_with_description=6,
+        filings_with_bill=2,
+        registrants=0,
+        clients=0,
+        retention_edges=10,
+        bill_lobbying_edges=3,
+    )
+    assert stats.description_fill_rate == 0.75
+    assert stats.bill_fill_rate == 0.2
+    payload = stats.as_dict()
+    assert payload["description_fill_rate"] == 0.75
+    assert payload["bill_fill_rate"] == 0.2
+    assert payload["year"] == 2020
+
+
+def test_year_stats_empty_fill_rates_do_not_divide_by_zero() -> None:
+    stats = YearStats(
+        year=2019,
+        filings=0,
+        filings_skipped=0,
+        activities=0,
+        activities_with_description=0,
+        filings_with_bill=0,
+        registrants=0,
+        clients=0,
+        retention_edges=0,
+        bill_lobbying_edges=0,
+    )
+    assert stats.description_fill_rate == 0.0
+    assert stats.bill_fill_rate == 0.0

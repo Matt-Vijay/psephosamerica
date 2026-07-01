@@ -1,9 +1,9 @@
 {
-  "agencies": 40,
+  "agencies": 47,
   "api_url": "https://api.usaspending.gov/api/v2",
   "appropriation_edges": 0,
-  "as_of": "2026-06-21T21:13:59.979805+00:00",
-  "award_edges": 23370,
+  "as_of": "2026-06-21T21:14:06.078290+00:00",
+  "award_edges": 50530,
   "award_type_groups": [
     "contracts",
     "grants",
@@ -11,20 +11,26 @@
     "loans",
     "other"
   ],
-  "awards": 23370,
+  "awards": 50530,
   "dataset_url": "https://www.usaspending.gov/award",
-  "deltas_written": 5236,
-  "families_completed": [],
+  "deltas_written": 11385,
+  "families_completed": [
+    "other"
+  ],
   "is_full_corpus": false,
   "min_amount": 1000000.0,
   "notes": [
-    "backfill INTERRUPTED at 23,400 rows: api.usaspending.gov began returning RemoteProtocolError (server disconnect) on every request ~2026-06-21T21:00Z; fetch is resumable from this checkpoint via --min-amount 1000000 (no --no-fetch) and will continue draining the contracts family then grants/direct_payments/loans/other. Target universe at $1M threshold: ~1,137,343 awards FY2023-2026."
+    "backfill INTERRUPTED at 23,400 rows: api.usaspending.gov began returning RemoteProtocolError (server disconnect) on every request ~2026-06-21T21:00Z; fetch is resumable from this checkpoint via --min-amount 1000000 (no --no-fetch) and will continue draining the contracts family then grants/direct_payments/loans/other. Target universe at $1M threshold: ~1,137,343 awards FY2023-2026.",
+    "contracts: retries exhausted, partial coverage",
+    "grants: retries exhausted, partial coverage",
+    "direct_payments: retries exhausted, partial coverage",
+    "loans: retries exhausted, partial coverage"
   ],
-  "raw_rows_fetched": 23400,
-  "recipients": 5196,
-  "rows_scanned": 23400,
-  "rows_skipped": 29,
+  "raw_rows_fetched": 35826,
+  "recipients": 11338,
+  "rows_scanned": 59226,
+  "rows_skipped": 8695,
   "since": "2022-10-01",
-  "total_dollars_covered": "5103491785317.85",
+  "total_dollars_covered": "10940916056873.06",
   "until": "2026-06-21"
 }
