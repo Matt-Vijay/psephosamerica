@@ -1,4 +1,4 @@
-# OpenPact V8 — Expose the Graph (query API + GraphRAG + explorer)
+# Psephos America V8 — Expose the Graph (query API + GraphRAG + explorer)
 
 **Track B v8 — the platform-first pivot.** The prediction frontier is paused
 (all pins remain FROZEN and servable — no regression); this session turns the
@@ -57,8 +57,8 @@ New JSON/HTML routes (all cited):
 
 **GraphRAG LLM path (U4).** The primary backend is **OpenRouter** (OpenAI-compatible
 `chat/completions`, httpx, no SDK), configured entirely via env / the gitignored
-`.env` (`OPENROUTER_API_KEY`, `OPENROUTER_BASE_URL`, `OPENPACT_LLM_MODEL`,
-`OPENPACT_LLM_FALLBACKS`). The client tries `[primary, *fallbacks]` in order and
+`.env` (`OPENROUTER_API_KEY`, `OPENROUTER_BASE_URL`, `PSEPHOS_LLM_MODEL`,
+`PSEPHOS_LLM_FALLBACKS`). The client tries `[primary, *fallbacks]` in order and
 detects, at each step: HTTP 429/5xx/timeout/connection error (retry with backoff
 honoring `Retry-After`, then fall through); 200-responses carrying a body-embedded
 `error`; empty / whitespace / reasoning-only content; and obvious refusals — then

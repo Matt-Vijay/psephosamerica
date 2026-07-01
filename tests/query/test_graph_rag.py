@@ -190,8 +190,8 @@ def test_answer_degrades_to_stub_when_live_backend_fails(monkeypatch) -> None:
 def test_openrouter_models_primary_then_fallbacks(monkeypatch) -> None:
     from src.query.graph_rag import _openrouter_models
 
-    monkeypatch.setenv("OPENPACT_LLM_MODEL", "primary/model")
-    monkeypatch.setenv("OPENPACT_LLM_FALLBACKS", "fb/one, fb/two ,fb/one")
+    monkeypatch.setenv("PSEPHOS_LLM_MODEL", "primary/model")
+    monkeypatch.setenv("PSEPHOS_LLM_FALLBACKS", "fb/one, fb/two ,fb/one")
     assert _openrouter_models() == ["primary/model", "fb/one", "fb/two"]
 
 
@@ -254,8 +254,8 @@ def _ok_body(text: str) -> dict:
 
 def _fallback_env(monkeypatch) -> None:
     monkeypatch.setenv("OPENROUTER_API_KEY", "or-test")
-    monkeypatch.setenv("OPENPACT_LLM_MODEL", "primary/model")
-    monkeypatch.setenv("OPENPACT_LLM_FALLBACKS", "fb/one,fb/two")
+    monkeypatch.setenv("PSEPHOS_LLM_MODEL", "primary/model")
+    monkeypatch.setenv("PSEPHOS_LLM_FALLBACKS", "fb/one,fb/two")
     # No real sleeping during backoff tests.
     monkeypatch.setattr("src.query.graph_rag.time.sleep", lambda *_a, **_k: None)
 

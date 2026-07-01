@@ -82,7 +82,7 @@ def main() -> None:
     import sys
     import tempfile
 
-    with tempfile.TemporaryDirectory(prefix="openpact_publish_demo_") as tmp:
+    with tempfile.TemporaryDirectory(prefix="psephosamerica_publish_demo_") as tmp:
         result = run_publish_demo(Path(tmp))
 
     summary = {

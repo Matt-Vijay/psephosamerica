@@ -384,7 +384,7 @@ def test_verify_local_ontology_edges_rejects_frontend_client_without_version(
 ) -> None:
     file = PlannedFile.from_bytes(
         ontology_frontend_client_path(),
-        b"export class OpenPactOntologyClient {}\n",
+        b"export class PsephosAmericaOntologyClient {}\n",
     )
     write_planned_files([file], tmp_path)
     manifest = _manifest([file])

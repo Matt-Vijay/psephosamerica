@@ -1,4 +1,4 @@
-# OpenPact Track B v7 — price the journey, not just the vote
+# Psephos America Track B v7 — price the journey, not just the vote
 
 Mission: markets price compound events (committee → floor → House → Senate
 cloture → signature, by a deadline); Track B previously priced one link. v7

@@ -96,8 +96,8 @@ from src.runtime.cli.operator import (
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="openpact",
-        description="Open Pact operator runtime.",
+        prog="psephosamerica",
+        description="Psephos America operator runtime.",
     )
     sub = parser.add_subparsers(dest="command", metavar="COMMAND")
     sub.required = True

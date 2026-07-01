@@ -90,7 +90,7 @@ def fetch_senate_rollcalls(
     """Fetch all roll-calls for a (congress, session) via the vote menu."""
     owns = client is None
     http = client or httpx.Client(
-        timeout=30.0, headers={"User-Agent": "openpact-research/0.1 (public-record)"}
+        timeout=30.0, headers={"User-Agent": "psephosamerica-research/0.1 (public-record)"}
     )
     rows: list[dict[str, object]] = []
     try:

@@ -140,9 +140,9 @@ def render_html(report: dict[str, Any]) -> str:
     body = rows or "<tr><td colspan='7' class='muted'>No marginal votes.</td></tr>"
     return (
         "<!doctype html><html lang='en'><head><meta charset='utf-8'>"
-        "<title>OpenPact — Marginal Votes Brief</title>"
+        "<title>Psephos America — Marginal Votes Brief</title>"
         f"<style>{style}</style></head><body>"
-        "<h1>OpenPact — Weekly Marginal-Votes Brief</h1>"
+        "<h1>Psephos America — Weekly Marginal-Votes Brief</h1>"
         f"<p class='muted'>Top {report['top_n']} flippable votes for "
         f"{escape(report['generated_for_window'])} — who to persuade, why, and the venue's "
         "pass rate. Model trained strictly on pre-window votes.</p>"

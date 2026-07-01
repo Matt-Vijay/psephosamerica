@@ -1,4 +1,4 @@
-"""Keyword tagger mapping a bill's question text to OpenPact sectors.
+"""Keyword tagger mapping a bill's question text to Psephos America sectors.
 
 The cross-pressured experiment needs a per-(member, sector) signal, which needs
 each bill assigned to sector(s). House roll-call question text usually names the

@@ -1,6 +1,6 @@
 # Scoring Formulas
 
-OpenPact's v1 launch dimension is `conflict_of_interest_risk`. Scoring is
+Psephos America's v1 launch dimension is `conflict_of_interest_risk`. Scoring is
 deterministic and decomposable: a member's score is the baseline minus the
 sum of explicit `rule_fire` deltas. This page is the public, authoritative
 source for the formulas; the values it cites live in `src/scoring/semantics.py`

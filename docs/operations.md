@@ -1,6 +1,6 @@
 # Operator Guide
 
-OpenPact is a **batch publishing system**, not a live service: operators load
+Psephos America is a **batch publishing system**, not a live service: operators load
 official source data into Postgres, run a deterministic recompute, and publish
 immutable, manifest-verified snapshots that the public read API serves. This
 guide documents the operator-facing CLI (`python -m src.runtime.main <command>`)
@@ -8,15 +8,15 @@ and the end-to-end run order.
 
 ## Configuration
 
-Settings come from environment variables with the `OPENPACT_` prefix
+Settings come from environment variables with the `PSEPHOS_` prefix
 (`src/core/settings.py`):
 
 | Variable | Purpose |
 |---|---|
-| `OPENPACT_POSTGRES_DSN` | Canonical Postgres connection string |
-| `OPENPACT_CONGRESS_API_KEY` | Congress.gov API key (ingestion) |
-| `OPENPACT_FEC_API_KEY` | FEC API key (ingestion) |
-| `OPENPACT_SNAPSHOT_PREFIX` | Object-storage key prefix for published snapshots |
+| `PSEPHOS_POSTGRES_DSN` | Canonical Postgres connection string |
+| `PSEPHOS_CONGRESS_API_KEY` | Congress.gov API key (ingestion) |
+| `PSEPHOS_FEC_API_KEY` | FEC API key (ingestion) |
+| `PSEPHOS_SNAPSHOT_PREFIX` | Object-storage key prefix for published snapshots |
 
 Every command emits a single JSON result object (`{"ok": true, ...}`) so runs
 are scriptable and auditable.

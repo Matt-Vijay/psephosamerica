@@ -1,6 +1,6 @@
 # Architecture: the three working domains
 
-OpenPact's `src/` tree is developed along three parallel domains. Each domain
+Psephos America's `src/` tree is developed along three parallel domains. Each domain
 has a clear owner-track so concurrent work does not collide; the layering rules
 in `tests/architecture/test_layering.py` enforce the hard boundaries.
 

@@ -46,7 +46,7 @@ class PredictionEvalWindowPayload(BaseModel):
 class PredictionEvalWindowPlanPayload(BaseModel):
     """Repeatable annual cutoff plan for prediction eval/report runs."""
 
-    plan_version: str = "openpact-prediction-eval-window-plan-v1"
+    plan_version: str = "psephosamerica-prediction-eval-window-plan-v1"
     start_label_year: int
     end_label_year: int
     train_years: int = Field(default=2, ge=1)

@@ -1,6 +1,6 @@
 # Methodology
 
-This page describes the launch methodology for Open Pact. It follows `ENGINEERING_SPEC_V1.md` and only covers the v1 system.
+This page describes the launch methodology for Psephos America. It follows `ENGINEERING_SPEC_V1.md` and only covers the v1 system.
 
 ## Source Set
 
@@ -15,7 +15,7 @@ Launch scoring uses a narrow set of official or supporting sources:
 - SEC company ticker and EDGAR data for issuer normalization
 - Census ZIP and district crosswalk artifacts for ZIP entry support
 
-Open Pact does not use unofficial sources in the scoring path.
+Psephos America does not use unofficial sources in the scoring path.
 
 ## Current Runtime Shape
 
@@ -38,7 +38,7 @@ Each rule must define its inputs, conditions, parameters, severity, source types
 
 ## Fact, Inference, Judgment
 
-Open Pact keeps three layers separate:
+Psephos America keeps three layers separate:
 
 - Fact: a sourced record or directly observable field
 - Inference: a derived value produced from rules, matching, or normalization
@@ -62,7 +62,7 @@ Launch limitations are intentional:
 
 ## Correction Policy
 
-Open Pact includes a public correction channel because the product is built from public records and deterministic joins, not from perfect data.
+Psephos America includes a public correction channel because the product is built from public records and deterministic joins, not from perfect data.
 
 Corrections should be narrow and source-based. When a sourced error is confirmed, the record is corrected at the data or mapping layer, the affected recompute is rerun, and the change is reflected in a new published snapshot and changelog entry. The goal is to fix the record, not to reinterpret the rule after the fact.
 
@@ -79,7 +79,7 @@ Public traffic should read from precomputed artifacts rather than the canonical 
 
 ## Operator Model
 
-Open Pact is built as a batch publishing system, not a live scoring dashboard.
+Psephos America is built as a batch publishing system, not a live scoring dashboard.
 
 - the runtime layer loads source data into canonical Postgres tables
 - recompute creates deterministic rule fires, evidence rows, and score snapshots

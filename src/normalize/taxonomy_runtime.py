@@ -1,4 +1,4 @@
-"""Runtime loaders and access helpers for Open Pact taxonomy artifacts."""
+"""Runtime loaders and access helpers for Psephos America taxonomy artifacts."""
 
 from __future__ import annotations
 

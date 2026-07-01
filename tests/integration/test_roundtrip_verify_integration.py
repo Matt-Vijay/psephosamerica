@@ -7,7 +7,7 @@ Published files are verified both by SHA-256 (publish pipeline's own verify
 stage) and by deserializing back into Pydantic models and comparing field
 values against the recompute output.
 
-Requires OPENPACT_TEST_POSTGRES_DSN in the environment.
+Requires PSEPHOS_TEST_POSTGRES_DSN in the environment.
 """
 
 from __future__ import annotations
@@ -42,8 +42,8 @@ from src.rules.models import (
 )
 
 pytestmark = pytest.mark.skipif(
-    not os.environ.get("OPENPACT_TEST_POSTGRES_DSN"),
-    reason="OPENPACT_TEST_POSTGRES_DSN not set",
+    not os.environ.get("PSEPHOS_TEST_POSTGRES_DSN"),
+    reason="PSEPHOS_TEST_POSTGRES_DSN not set",
 )
 
 

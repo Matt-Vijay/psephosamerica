@@ -1,4 +1,4 @@
-# OpenPact Track B — Overnight MAX: final report
+# Psephos America Track B — Overnight MAX: final report
 
 First real metrics on real federal data, end to end, all numpy (no torch).
 Data: **1.28M real House votes** from the House Clerk public roll-call feed

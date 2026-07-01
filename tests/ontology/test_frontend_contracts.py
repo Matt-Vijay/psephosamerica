@@ -13,7 +13,7 @@ from src.ontology.frontend_contracts import (
 def test_build_ontology_frontend_contract_exports_json_schemas_for_public_artifacts() -> None:
     contract = build_ontology_frontend_contract()
 
-    assert contract.schema_version == "openpact-ontology-contract-v1"
+    assert contract.schema_version == "psephosamerica-ontology-contract-v1"
     assert contract.artifact_paths == {
         "agent_tools": "ontology/agent-tools.json",
         "frontend_client": "ontology/client.ts",
@@ -50,7 +50,7 @@ def test_build_ontology_frontend_contract_exports_json_schemas_for_public_artifa
 def test_build_ontology_typescript_declarations_exports_stable_frontend_surface() -> None:
     declarations = build_ontology_typescript_declarations()
 
-    assert declarations.startswith("// Generated from OpenPact ontology Pydantic contracts.")
+    assert declarations.startswith("// Generated from Psephos America ontology Pydantic contracts.")
     assert (
         f'export const ONTOLOGY_FRONTEND_CONTRACT_VERSION = "{ONTOLOGY_FRONTEND_CONTRACT_VERSION}" as const;'
         in declarations
@@ -78,12 +78,12 @@ def test_build_ontology_typescript_declarations_exports_stable_frontend_surface(
 def test_build_ontology_typescript_client_exports_static_fetch_surface() -> None:
     client = build_ontology_typescript_client()
 
-    assert client.startswith("// Generated from OpenPact ontology Pydantic contracts.")
+    assert client.startswith("// Generated from Psephos America ontology Pydantic contracts.")
     assert (
         f'export const ONTOLOGY_FRONTEND_CLIENT_VERSION = "{ONTOLOGY_FRONTEND_CLIENT_VERSION}" as const;'
         in client
     )
-    assert "export class OpenPactOntologyClient" in client
+    assert "export class PsephosAmericaOntologyClient" in client
     assert "ONTOLOGY_FRONTEND_ARTIFACT_PATHS" in client
     assert 'agent_tools: "ontology/agent-tools.json"' in client
     assert 'frontend_contract: "ontology/contracts.json"' in client

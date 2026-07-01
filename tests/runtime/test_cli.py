@@ -26,7 +26,7 @@ def test_build_parser_returns_argument_parser():
 
 
 def test_parser_prog_name():
-    assert build_parser().prog == "openpact"
+    assert build_parser().prog == "psephosamerica"
 
 
 def _subcommand_parser(name: str):
@@ -84,21 +84,21 @@ def test_runtime_env_preflight_accepts_sanitized_env_check_args():
             "--require-env",
             "OPENAI_API_KEY",
             "--require-env",
-            "OPENPACT_POSTGRES_DSN",
+            "PSEPHOS_POSTGRES_DSN",
             "--dotenv",
-            "/tmp/openpact.env",
+            "/tmp/psephosamerica.env",
             "--output",
             "/tmp/env-preflight.json",
             "--template-output",
-            "/tmp/openpact.env.example",
+            "/tmp/psephosamerica.env.example",
         ]
     )
 
     assert ns.command == "runtime-env-preflight"
-    assert ns.require_env == ["OPENAI_API_KEY", "OPENPACT_POSTGRES_DSN"]
-    assert ns.dotenv == "/tmp/openpact.env"
+    assert ns.require_env == ["OPENAI_API_KEY", "PSEPHOS_POSTGRES_DSN"]
+    assert ns.dotenv == "/tmp/psephosamerica.env"
     assert ns.output == "/tmp/env-preflight.json"
-    assert ns.template_output == "/tmp/openpact.env.example"
+    assert ns.template_output == "/tmp/psephosamerica.env.example"
 
 
 def test_verify_runtime_env_preflight_accepts_artifact_gates():
@@ -2744,7 +2744,7 @@ def test_prediction_operator_resume_plan_accepts_packet_dir():
             "--packet-dir",
             "/tmp/operator-packet",
             "--dotenv",
-            "/tmp/openpact.env",
+            "/tmp/psephosamerica.env",
             "--require-verified-packet",
             "--require-no-secret-literals",
             "--output",
@@ -2754,7 +2754,7 @@ def test_prediction_operator_resume_plan_accepts_packet_dir():
 
     assert ns.command == "prediction-operator-resume-plan"
     assert ns.packet_dir == "/tmp/operator-packet"
-    assert ns.dotenv == "/tmp/openpact.env"
+    assert ns.dotenv == "/tmp/psephosamerica.env"
     assert ns.require_verified_packet is True
     assert ns.require_no_secret_literals is True
     assert ns.output == "/tmp/operator-resume-plan.json"
@@ -2791,7 +2791,7 @@ def test_verify_prediction_operator_resume_run_accepts_packet_and_artifact():
             "--artifact",
             "/tmp/run-resume-dry-run.json",
             "--dotenv",
-            "/tmp/openpact.env",
+            "/tmp/psephosamerica.env",
             "--require-run-metadata",
             "--require-ok",
             "--require-dry-run",
@@ -2807,7 +2807,7 @@ def test_verify_prediction_operator_resume_run_accepts_packet_and_artifact():
     assert ns.command == "verify-prediction-operator-resume-run"
     assert ns.packet_dir == "/tmp/operator-packet"
     assert ns.artifact == "/tmp/run-resume-dry-run.json"
-    assert ns.dotenv == "/tmp/openpact.env"
+    assert ns.dotenv == "/tmp/psephosamerica.env"
     assert ns.require_run_metadata is True
     assert ns.require_ok is True
     assert ns.require_dry_run is True

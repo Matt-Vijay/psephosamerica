@@ -578,11 +578,11 @@ def test_plan_snapshot_emits_ontology_static_schema_and_frontend_index():
         next(f.content for f in plan if f.path == ontology_frontend_index_path())
     )
 
-    assert schema_payload["schema_version"] == "openpact-ontology-v1"
+    assert schema_payload["schema_version"] == "psephosamerica-ontology-v1"
     assert "member" in {item["object_type"] for item in schema_payload["object_types"]}
     assert "predict_member_vote" in {item["action_type"] for item in schema_payload["action_types"]}
     assert frontend_index_payload["snapshot_id"] == SNAPSHOT_ID
-    assert frontend_index_payload["schema_version"] == "openpact-ontology-frontend-index-v1"
+    assert frontend_index_payload["schema_version"] == "psephosamerica-ontology-frontend-index-v1"
     assert frontend_index_payload["edge_count"] == 2
     assert frontend_index_payload["member_ids"] == ["S000148"]
     assert frontend_index_payload["by_member"]["S000148"]["linked_object_ids_by_type"] == {
@@ -610,7 +610,7 @@ def test_plan_snapshot_emits_ontology_frontend_contract_artifacts():
     )
     types_payload = next(f.content for f in plan if f.path == ontology_frontend_types_path())
 
-    assert contract_payload["schema_version"] == "openpact-ontology-contract-v1"
+    assert contract_payload["schema_version"] == "psephosamerica-ontology-contract-v1"
     assert contract_payload["artifact_paths"]["agent_tools"] == "ontology/agent-tools.json"
     assert contract_payload["artifact_paths"]["frontend_client"] == "ontology/client.ts"
     assert contract_payload["artifact_paths"]["frontend_contract"] == ("ontology/contracts.json")
@@ -622,10 +622,10 @@ def test_plan_snapshot_emits_ontology_frontend_contract_artifacts():
     assert b"OntologyFrontendIndexPayload: JsonSchema;" in types_payload
     client_payload = next(f.content for f in plan if f.path == ontology_frontend_client_path())
     assert b"ONTOLOGY_FRONTEND_CLIENT_VERSION" in client_payload
-    assert b"export class OpenPactOntologyClient" in client_payload
+    assert b"export class PsephosAmericaOntologyClient" in client_payload
     assert b'agent_tools: "ontology/agent-tools.json"' in client_payload
     assert b'frontend_contract: "ontology/contracts.json"' in client_payload
-    assert agent_tools_payload["schema_version"] == "openpact-ontology-agent-tools-v1"
+    assert agent_tools_payload["schema_version"] == "psephosamerica-ontology-agent-tools-v1"
     assert agent_tools_payload["tools"][0]["tool_name"] == "audit_ontology_claim_sources"
 
 

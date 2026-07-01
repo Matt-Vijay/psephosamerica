@@ -60,7 +60,7 @@ def _make_staging_dir(target_dir: Path, snapshot_id: str) -> Path:
     target_dir.parent.mkdir(parents=True, exist_ok=True)
     return Path(
         tempfile.mkdtemp(
-            prefix=f".openpact-publish-{snapshot_id}-",
+            prefix=f".psephosamerica-publish-{snapshot_id}-",
             dir=target_dir.parent,
         )
     )
@@ -69,7 +69,7 @@ def _make_staging_dir(target_dir: Path, snapshot_id: str) -> Path:
 def _promote_staging_dir(staging_dir: Path, target_dir: Path, snapshot_id: str) -> None:
     backup_dir: Path | None = None
     if target_dir.exists():
-        backup_dir = target_dir.parent / f".openpact-backup-{snapshot_id}-{uuid4().hex}"
+        backup_dir = target_dir.parent / f".psephosamerica-backup-{snapshot_id}-{uuid4().hex}"
         target_dir.rename(backup_dir)
 
     try:

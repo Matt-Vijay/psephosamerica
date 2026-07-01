@@ -70,7 +70,7 @@ class TestCIJobs:
         data = _load_ci()
         job = data["jobs"]["test-integration"]
         env = job.get("env", {})
-        assert "OPENPACT_TEST_POSTGRES_DSN" in env
+        assert "PSEPHOS_TEST_POSTGRES_DSN" in env
 
     def test_integration_runs_pytest(self) -> None:
         data = _load_ci()
@@ -82,20 +82,20 @@ class TestCIJobs:
 
 class TestIntegrationConftestContract:
     def test_promotes_app_dsn_to_test_dsn(self, monkeypatch) -> None:
-        dsn = "postgresql://openpact:openpact@localhost:5432/openpact_test"
-        monkeypatch.delenv("OPENPACT_TEST_POSTGRES_DSN", raising=False)
-        monkeypatch.setenv("OPENPACT_POSTGRES_DSN", dsn)
+        dsn = "postgresql://psephosamerica:psephosamerica@localhost:5432/psephosamerica_test"
+        monkeypatch.delenv("PSEPHOS_TEST_POSTGRES_DSN", raising=False)
+        monkeypatch.setenv("PSEPHOS_POSTGRES_DSN", dsn)
 
         data = runpy.run_path(str(INTEGRATION_CONFTEST_PATH))
 
         assert data["_DSN"] == dsn
-        assert os.environ["OPENPACT_TEST_POSTGRES_DSN"] == dsn
+        assert os.environ["PSEPHOS_TEST_POSTGRES_DSN"] == dsn
 
     def test_keeps_integration_tests_skippable_without_any_dsn(self, monkeypatch) -> None:
-        monkeypatch.delenv("OPENPACT_TEST_POSTGRES_DSN", raising=False)
-        monkeypatch.delenv("OPENPACT_POSTGRES_DSN", raising=False)
+        monkeypatch.delenv("PSEPHOS_TEST_POSTGRES_DSN", raising=False)
+        monkeypatch.delenv("PSEPHOS_POSTGRES_DSN", raising=False)
 
         data = runpy.run_path(str(INTEGRATION_CONFTEST_PATH))
 
         assert data["_DSN"] is None
-        assert "OPENPACT_TEST_POSTGRES_DSN" not in os.environ
+        assert "PSEPHOS_TEST_POSTGRES_DSN" not in os.environ

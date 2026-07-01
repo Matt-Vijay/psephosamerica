@@ -24,7 +24,7 @@ class OntologyPropertyDefinitionPayload(ExportContractModel):
 
 
 class OntologyObjectTypeDefinitionPayload(ExportContractModel):
-    """Palantir-style object type definition for public OpenPact artifacts."""
+    """Palantir-style object type definition for public Psephos America artifacts."""
 
     object_type: str
     label: str
@@ -238,7 +238,7 @@ def build_ontology_static_schema(
     *,
     schema_version: str = ONTOLOGY_STATIC_SCHEMA_VERSION,
 ) -> OntologyStaticSchemaPayload:
-    """Build the deterministic OpenPact ontology object/link/action contract."""
+    """Build the deterministic Psephos America ontology object/link/action contract."""
     return OntologyStaticSchemaPayload(
         schema_version=schema_version,
         object_types=sorted(_object_types(), key=lambda item: item.object_type),

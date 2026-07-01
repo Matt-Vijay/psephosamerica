@@ -1,4 +1,4 @@
-# Pre-commit hooks for openpact.
+# Pre-commit hooks for psephosamerica.
 # Gates match the dev toolchain in pyproject.toml: ruff, mypy.
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit

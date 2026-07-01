@@ -1256,7 +1256,7 @@ def _prediction_operator_packet_export_readme(
     lines = [
         "# Prediction Operator Packet",
         "",
-        "This directory is a copied OpenPact prediction operator handoff packet.",
+        "This directory is a copied Psephos America prediction operator handoff packet.",
         "It is secret-free by construction; set real environment values outside this packet.",
         "",
         f"- Exported files: {len(exported_files)}",
@@ -1266,14 +1266,14 @@ def _prediction_operator_packet_export_readme(
         "",
         "## Verify This Packet",
         "",
-        "From an OpenPact checkout with the runtime installed, run:",
+        "From an Psephos America checkout with the runtime installed, run:",
         "",
         "```bash",
         "python3 -m src.runtime.main verify-prediction-operator-packet-directory --packet-dir /path/to/packet --require-readme --require-checksums --require-exported-files --require-no-secret-literals --output packet-directory-verify.json",
         "python3 -m src.runtime.main prediction-operator-resume-plan --packet-dir /path/to/packet --require-verified-packet --require-no-secret-literals --output packet-resume-plan.json",
-        "python3 -m src.runtime.main prediction-operator-resume-plan --packet-dir /path/to/packet --dotenv /path/to/openpact.env --require-verified-packet --require-no-secret-literals --output packet-resume-plan-with-env.json",
+        "python3 -m src.runtime.main prediction-operator-resume-plan --packet-dir /path/to/packet --dotenv /path/to/psephosamerica.env --require-verified-packet --require-no-secret-literals --output packet-resume-plan-with-env.json",
         "python3 -m src.runtime.main verify-prediction-operator-resume-plan --artifact packet-resume-plan.json --require-run-metadata --require-matches-current-packet --require-no-secret-literals --output packet-resume-plan-verify.json",
-        "python3 -m src.runtime.main verify-prediction-operator-resume-run --packet-dir /path/to/packet --artifact /path/to/packet/run-resume-dry-run.json --dotenv /path/to/openpact.env --require-run-metadata --require-ok --require-dry-run --require-no-secret-literals --require-congress-prediction-inputs --require-strict-eval-window-run --require-selected-source-artifact-hashes --output packet-resume-run-verify.json",
+        "python3 -m src.runtime.main verify-prediction-operator-resume-run --packet-dir /path/to/packet --artifact /path/to/packet/run-resume-dry-run.json --dotenv /path/to/psephosamerica.env --require-run-metadata --require-ok --require-dry-run --require-no-secret-literals --require-congress-prediction-inputs --require-strict-eval-window-run --require-selected-source-artifact-hashes --output packet-resume-run-verify.json",
         "```",
         "",
         "From this packet directory, verify file checksums with:",
@@ -1288,11 +1288,11 @@ def _prediction_operator_packet_export_readme(
         "python3 verify_packet.py",
         "python3 resume_plan.py",
         "python3 resume_plan.py --require-verified-packet",
-        "python3 resume_plan.py --dotenv /path/to/openpact.env",
-        "python3 run_resume.py --dotenv /path/to/openpact.env --repo-root /path/to/openpact --dry-run --output run-resume-dry-run.json",
-        "python3 run_resume.py --dotenv /path/to/openpact.env --repo-root /path/to/openpact --phase 1 --dry-run --output run-resume-phase-1-dry-run.json",
-        "python3 verify_run_resume.py --artifact run-resume-dry-run.json --dotenv /path/to/openpact.env --require-ok --require-strict-eval-window-run --require-selected-source-artifact-hashes",
-        "python3 run_resume.py --dotenv /path/to/openpact.env --repo-root /path/to/openpact",
+        "python3 resume_plan.py --dotenv /path/to/psephosamerica.env",
+        "python3 run_resume.py --dotenv /path/to/psephosamerica.env --repo-root /path/to/psephosamerica --dry-run --output run-resume-dry-run.json",
+        "python3 run_resume.py --dotenv /path/to/psephosamerica.env --repo-root /path/to/psephosamerica --phase 1 --dry-run --output run-resume-phase-1-dry-run.json",
+        "python3 verify_run_resume.py --artifact run-resume-dry-run.json --dotenv /path/to/psephosamerica.env --require-ok --require-strict-eval-window-run --require-selected-source-artifact-hashes",
+        "python3 run_resume.py --dotenv /path/to/psephosamerica.env --repo-root /path/to/psephosamerica",
         "```",
         "",
         "The run-resume verifiers validate recorded SHA-256 hash shape, recompute packet file "
@@ -1481,7 +1481,7 @@ def _prediction_operator_packet_export_status_path(
 
 def _prediction_operator_packet_standalone_verifier() -> str:
     return '''#!/usr/bin/env python3
-"""Verify an exported OpenPact prediction operator packet using only stdlib."""
+"""Verify an exported Psephos America prediction operator packet using only stdlib."""
 
 from __future__ import annotations
 
@@ -1720,7 +1720,7 @@ if __name__ == "__main__":
 
 def _prediction_operator_packet_standalone_resume_planner() -> str:
     return '''#!/usr/bin/env python3
-"""Dry-run an exported OpenPact prediction operator resume script."""
+"""Dry-run an exported Psephos America prediction operator resume script."""
 
 from __future__ import annotations
 

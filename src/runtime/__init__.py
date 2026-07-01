@@ -6,7 +6,7 @@ modules wrap ingest/recompute/publish flows with provenance tracking.
 """
 
 # App surface
-from .app import OpenPactRuntime, build_runtime, open_runtime_connection
+from .app import PsephosAmericaRuntime, build_runtime, open_runtime_connection
 from .bootstrap import bootstrap_database, load_initial_migration_sql, load_schema_sql
 
 # Context surface
@@ -240,7 +240,7 @@ def __getattr__(name: str) -> object:
 
 __all__ = [
     # app
-    "OpenPactRuntime",
+    "PsephosAmericaRuntime",
     "bootstrap_database",
     "build_runtime",
     "load_initial_migration_sql",

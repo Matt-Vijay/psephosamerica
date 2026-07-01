@@ -45,7 +45,7 @@ def extract_text_pages(data: bytes) -> list[str]:
     """
     if _pypdf is None:
         raise ImportError(
-            "pypdf is required for PDF text extraction; install with: pip install 'openpact[pdf]'"
+            "pypdf is required for PDF text extraction; install with: pip install 'psephosamerica[pdf]'"
         )
     reader = _pypdf.PdfReader(io.BytesIO(data))
     return [page.extract_text() or "" for page in reader.pages]

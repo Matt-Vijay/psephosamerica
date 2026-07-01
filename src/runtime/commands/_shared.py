@@ -185,8 +185,8 @@ def _plain_int_or_zero(value: object) -> int:
 
 
 _DEFAULT_RUNTIME_ENV_REQUIREMENTS = (
-    "OPENPACT_POSTGRES_DSN",
-    "OPENPACT_CONGRESS_API_KEY",
+    "PSEPHOS_POSTGRES_DSN",
+    "PSEPHOS_CONGRESS_API_KEY",
     "OPENAI_API_KEY",
 )
 

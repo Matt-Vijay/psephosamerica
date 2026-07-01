@@ -1,6 +1,6 @@
 # Corrections
 
-OpenPact is built from official public records and deterministic joins, not
+Psephos America is built from official public records and deterministic joins, not
 from perfect data. We accept and act on sourced corrections to the underlying
 records. See `METHODOLOGY.md` for the policy rationale.
 

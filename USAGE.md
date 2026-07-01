@@ -1,6 +1,6 @@
-# OpenPact — Usage (ask anything + run the explorer)
+# Psephos America — Usage (ask anything + run the explorer)
 
-OpenPact is a public-interest governance-intelligence tool: a cited, queryable
+Psephos America is a public-interest governance-intelligence tool: a cited, queryable
 knowledge graph of US public officials, bills/ordinances, roll-call votes, and
 policy topics. **Every served fact carries its source URL, content hash, and
 `known_at` timestamp.** This page is the canonical run reference.
@@ -31,8 +31,8 @@ LLM backend (primary = **OpenRouter**, OpenAI-compatible):
 |---|---|
 | `OPENROUTER_API_KEY` | Secret bearer key (read from env / `.env`; never committed). |
 | `OPENROUTER_BASE_URL` | Default `https://openrouter.ai/api/v1`. |
-| `OPENPACT_LLM_MODEL` | Primary model, e.g. `openai/gpt-oss-120b:free`. |
-| `OPENPACT_LLM_FALLBACKS` | Comma-separated fallback models, tried in order on 429/5xx. |
+| `PSEPHOS_LLM_MODEL` | Primary model, e.g. `openai/gpt-oss-120b:free`. |
+| `PSEPHOS_LLM_FALLBACKS` | Comma-separated fallback models, tried in order on 429/5xx. |
 | `ANTHROPIC_API_KEY` | Optional alternate backend (`claude-opus-4-8`, adaptive thinking). |
 
 Free models rate-limit intermittently: each model is retried with backoff

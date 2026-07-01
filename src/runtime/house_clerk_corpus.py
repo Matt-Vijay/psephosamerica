@@ -147,7 +147,7 @@ def fetch_house_rollcalls(
     year: int,
     numbers: Iterable[int],
     client: httpx.Client | None = None,
-    user_agent: str = "openpact-research/0.1 (public-record roll-call ingest)",
+    user_agent: str = "psephosamerica-research/0.1 (public-record roll-call ingest)",
 ) -> list[RollCall]:
     """Fetch and parse a set of real House roll-calls (skips 404s and non-votes)."""
     owns_client = client is None

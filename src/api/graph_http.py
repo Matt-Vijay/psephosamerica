@@ -529,7 +529,7 @@ def render_official_page(brief: dict[str, object], votes: list[gq.QueryResult]) 
         else "<p>No roll-call votes on record in the graph yet.</p>"
     )
     return (
-        f"<!doctype html><html><head><meta charset='utf-8'><title>{name} — OpenPact</title>"
+        f"<!doctype html><html><head><meta charset='utf-8'><title>{name} — Psephos America</title>"
         f"<style>{_PAGE_CSS}</style></head><body>"
         f"<h1>{name}</h1>"
         f"<p>Jurisdiction: <strong>{juris}</strong> · {_cite_link(brief['citation'])}</p>"  # type: ignore[arg-type]
@@ -558,7 +558,7 @@ def render_jurisdiction_page(
     )
     return (
         f"<!doctype html><html><head><meta charset='utf-8'>"
-        f"<title>{slug_e} — OpenPact</title><style>{_PAGE_CSS}</style></head><body>"
+        f"<title>{slug_e} — Psephos America</title><style>{_PAGE_CSS}</style></head><body>"
         f"<h1>Jurisdiction: {slug_e}</h1>"
         f"<h2>Officials ({len(officials)})</h2>"
         f"<table><tr><th>Official</th><th>Citation</th></tr>{official_rows}</table>"
@@ -588,7 +588,7 @@ def _page(title: str, body: str) -> str:
     return (
         f"<!doctype html><html><head><meta charset='utf-8'>"
         f"<meta name='viewport' content='width=device-width, initial-scale=1'>"
-        f"<title>{html.escape(title)} — OpenPact</title><style>{_PAGE_CSS}"
+        f"<title>{html.escape(title)} — Psephos America</title><style>{_PAGE_CSS}"
         ".box{display:flex;gap:.5rem;margin:1rem 0}.box input{flex:1;padding:.5rem;"
         "font-size:1rem;border:1px solid #bbb;border-radius:4px}"
         ".box button,.box select{padding:.5rem .8rem;font-size:1rem}"
@@ -604,7 +604,7 @@ def render_home_page(jurisdictions: list[tuple[str, int]]) -> str:
         for slug, count in jurisdictions[:40]
     )
     body = (
-        "<h1>OpenPact — explore the governance graph</h1>"
+        "<h1>Psephos America — explore the governance graph</h1>"
         "<p class='muted'>A cited, queryable graph of US public officials, bills/ordinances, "
         "roll-call votes, and policy topics. Every fact shows its source URL and "
         "<code>known_at</code> timestamp.</p>"

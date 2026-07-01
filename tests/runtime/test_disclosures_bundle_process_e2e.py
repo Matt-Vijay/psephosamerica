@@ -61,7 +61,7 @@ _LOAD_UNPARSED = "src.runtime.disclosures_parse.load_unparsed_disclosure_artifac
 # Canonical inline fixture data — generated from deterministic stub bytes
 # ---------------------------------------------------------------------------
 
-_STUB_BYTES = b"%PDF-1.4 openpact-e2e-stub"
+_STUB_BYTES = b"%PDF-1.4 psephosamerica-e2e-stub"
 _SHA256 = hashlib.sha256(_STUB_BYTES).hexdigest()
 
 _HOUSE_SOURCE_RECORD_ID = "12345"

@@ -34,8 +34,8 @@ def _make_settings(**overrides):
     defaults = dict(
         db_host="localhost",
         db_port=5432,
-        db_name="openpact",
-        db_user="openpact_user",
+        db_name="psephosamerica",
+        db_user="psephosamerica_user",
         db_password="secret",
     )
     defaults.update(overrides)
@@ -130,13 +130,13 @@ class TestBuildConnectionKwargs:
         from src.core.settings import Settings
 
         settings = Settings(
-            postgres_dsn="postgresql://alice:secret@db.example.com:5433/openpact_prod"
+            postgres_dsn="postgresql://alice:secret@db.example.com:5433/psephosamerica_prod"
         )
         result = build_connection_kwargs(settings)
         assert result == {
             "host": "db.example.com",
             "port": 5433,
-            "dbname": "openpact_prod",
+            "dbname": "psephosamerica_prod",
             "user": "alice",
             "password": "secret",
         }

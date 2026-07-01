@@ -74,9 +74,9 @@ def render_registry_html(registry: dict[str, Any], *, top_n: int = 100) -> str:
     status = "SCORED" if registry.get("scored") else "FROZEN (pending outcomes)"
     return (
         "<!doctype html><html lang='en'><head><meta charset='utf-8'>"
-        "<title>OpenPact — Forward Prediction Registry</title>"
+        "<title>Psephos America — Forward Prediction Registry</title>"
         f"<style>{style}</style></head><body>"
-        "<h1>OpenPact — Forward Prediction Registry</h1>"
+        "<h1>Psephos America — Forward Prediction Registry</h1>"
         f'<p class="muted">Defection predictions frozen at cutoff '
         f"<strong>{escape(str(registry.get('frozen_at_cutoff')))}</strong> for the window "
         f"through <strong>{escape(str(registry.get('target_window_end')))}</strong> · "

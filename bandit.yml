@@ -1,4 +1,4 @@
-# Bandit security linter configuration for openpact.
+# Bandit security linter configuration for psephosamerica.
 # Minimal config: skip tests directory, disable noisy low-signal checks.
 skips:
   - B101  # assert used in test and validation code; harmless

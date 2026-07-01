@@ -687,7 +687,7 @@ def _add_verify_prediction_resume_script(sub: argparse._SubParsersAction) -> Non
     p.add_argument(
         "--require-safe-commands",
         action="store_true",
-        help="Return non-green if executable lines are not approved OpenPact runtime commands.",
+        help="Return non-green if executable lines are not approved Psephos America runtime commands.",
     )
     p.add_argument(
         "--output",

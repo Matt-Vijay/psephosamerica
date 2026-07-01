@@ -274,7 +274,7 @@ class TestFailIngestionRun:
 
     def test_preserves_full_error_message(self):
         conn = MagicMock()
-        msg = "Connection refused: postgresql://localhost:5432/openpact"
+        msg = "Connection refused: postgresql://localhost:5432/psephosamerica"
         with patch(_EXECUTE_ONE) as mock_exec:
             fail_ingestion_run(conn, run_id=21, error_message=msg)
 

@@ -103,7 +103,7 @@ def _handle_runtime_env_preflight(args: Any) -> dict[str, Any]:
 def _write_runtime_env_template(path: Path, required_env: list[str]) -> str:
     path.parent.mkdir(parents=True, exist_ok=True)
     lines = [
-        "# OpenPact runtime environment template.",
+        "# Psephos America runtime environment template.",
         "# Fill values locally; do not commit secrets.",
         *[f"{name}=" for name in sorted(dict.fromkeys(required_env))],
         "",

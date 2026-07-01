@@ -1,4 +1,4 @@
-# OpenPact Track B v5 — Session Report
+# Psephos America Track B v5 — Session Report
 
 **Goal:** semantic A/B + a forward track record, working a priority queue top-down,
 never blocking. numpy only (torch lives in Track A's enrichment; we consume vectors).

@@ -127,7 +127,7 @@ def _add_materialize_congress_archive(sub: argparse._SubParsersAction) -> None: 
         "--api-key",
         default=None,
         metavar="KEY",
-        help="Congress.gov API key. Falls back to OPENPACT_CONGRESS_API_KEY env var.",
+        help="Congress.gov API key. Falls back to PSEPHOS_CONGRESS_API_KEY env var.",
     )
     p.add_argument(
         "--include-votes",
@@ -198,7 +198,7 @@ def _add_materialize_history_backfill_inputs(sub: argparse._SubParsersAction) ->
         "--api-key",
         default=None,
         metavar="KEY",
-        help="Congress.gov API key. Falls back to OPENPACT_CONGRESS_API_KEY env var.",
+        help="Congress.gov API key. Falls back to PSEPHOS_CONGRESS_API_KEY env var.",
     )
     p.add_argument(
         "--include-votes",
@@ -308,7 +308,7 @@ def _add_run_history_launch_local(sub: argparse._SubParsersAction) -> None:  # t
         "--api-key",
         default=None,
         metavar="KEY",
-        help="Congress.gov API key. Falls back to OPENPACT_CONGRESS_API_KEY env var.",
+        help="Congress.gov API key. Falls back to PSEPHOS_CONGRESS_API_KEY env var.",
     )
     p.add_argument(
         "--include-votes",

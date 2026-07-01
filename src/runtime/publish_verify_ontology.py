@@ -439,7 +439,7 @@ def _verify_ontology_frontend_client(
         return
     if ONTOLOGY_FRONTEND_CLIENT_VERSION not in source:
         issues.append(_issue("ontology frontend client missing client version", path=path))
-    if "OpenPactOntologyClient" not in source:
+    if "PsephosAmericaOntologyClient" not in source:
         issues.append(_issue("ontology frontend client missing client class", path=path))
     if "ONTOLOGY_FRONTEND_ARTIFACT_PATHS" not in source:
         issues.append(_issue("ontology frontend client missing artifact paths", path=path))

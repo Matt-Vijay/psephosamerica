@@ -26,7 +26,7 @@ def test_all_names_are_importable():
 # ---------------------------------------------------------------------------
 
 _APP_SURFACE = {
-    "OpenPactRuntime",
+    "PsephosAmericaRuntime",
     "bootstrap_database",
     "build_runtime",
     "load_initial_migration_sql",

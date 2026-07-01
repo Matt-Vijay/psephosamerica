@@ -1,6 +1,6 @@
 """Integration test fixtures — real Postgres, no mocks.
 
-Accepts either OPENPACT_TEST_POSTGRES_DSN or OPENPACT_POSTGRES_DSN.
+Accepts either PSEPHOS_TEST_POSTGRES_DSN or PSEPHOS_POSTGRES_DSN.
 All tests in this directory skip cleanly when neither DSN is present.
 """
 
@@ -14,8 +14,8 @@ from typing import Any, Iterator
 
 import pytest
 
-_TEST_DSN_ENV = "OPENPACT_TEST_POSTGRES_DSN"
-_APP_DSN_ENV = "OPENPACT_POSTGRES_DSN"
+_TEST_DSN_ENV = "PSEPHOS_TEST_POSTGRES_DSN"
+_APP_DSN_ENV = "PSEPHOS_POSTGRES_DSN"
 _DSN = os.environ.get(_TEST_DSN_ENV) or os.environ.get(_APP_DSN_ENV)
 
 if _DSN:
@@ -25,10 +25,10 @@ if _DSN:
 # Skip the entire integration directory when no DSN is available.
 pytestmark = pytest.mark.skipif(
     not _DSN,
-    reason="OPENPACT_TEST_POSTGRES_DSN or OPENPACT_POSTGRES_DSN not set",
+    reason="PSEPHOS_TEST_POSTGRES_DSN or PSEPHOS_POSTGRES_DSN not set",
 )
 
-_SAVEPOINT_NAME = "openpact_test_guard"
+_SAVEPOINT_NAME = "psephosamerica_test_guard"
 _SCHEMA_PRIVILEGE_SQLSTATE = "42501"
 _LEADING_TX_WRAPPER_RE = re.compile(
     r"(?is)\A(?:\s*(?:--[^\n]*(?:\n|$)|/\*.*?\*/\s*)*)"
@@ -141,7 +141,7 @@ class _IsolatedConnection:
 
 
 def _new_schema_name() -> str:
-    return f"openpact_test_{uuid.uuid4().hex}"
+    return f"psephosamerica_test_{uuid.uuid4().hex}"
 
 
 def _normalize_sql_for_test_isolation(sql: Any, params: Any = None) -> Any:

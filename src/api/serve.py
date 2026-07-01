@@ -1,4 +1,4 @@
-"""One-command launcher for the OpenPact explorer + graph query API.
+"""One-command launcher for the Psephos America explorer + graph query API.
 
 Run:
 
@@ -63,7 +63,7 @@ def main(argv: list[str] | None = None) -> int:
 
     app = build_app()
     with make_server(args.host, args.port, app) as server:
-        print(f"OpenPact explorer running at http://{args.host}:{args.port}/")
+        print(f"Psephos America explorer running at http://{args.host}:{args.port}/")
         print("  landing page (search + ask):   /")
         print("  query API:                     /v1/graph/entities?q=...")
         print("  ask (GraphRAG):                /v1/graph/ask?q=...")

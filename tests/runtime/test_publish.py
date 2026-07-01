@@ -280,7 +280,7 @@ class TestPromoteStagingDirRollback:
             _promote_staging_dir(missing_staging, target_dir, _SNAP_ID)
 
         assert (target_dir / "old.json").read_text(encoding="utf-8") == "old"
-        backups = [p for p in tmp_path.iterdir() if p.name.startswith(".openpact-backup-")]
+        backups = [p for p in tmp_path.iterdir() if p.name.startswith(".psephosamerica-backup-")]
         assert backups == []
 
     def test_failed_promotion_without_previous_snapshot_propagates(self, tmp_path: Path) -> None:
@@ -305,5 +305,5 @@ class TestPromoteStagingDirRollback:
         assert (target_dir / "new.json").read_text(encoding="utf-8") == "new"
         assert not (target_dir / "old.json").exists()
         assert not staging_dir.exists()
-        backups = [p for p in tmp_path.iterdir() if p.name.startswith(".openpact-backup-")]
+        backups = [p for p in tmp_path.iterdir() if p.name.startswith(".psephosamerica-backup-")]
         assert backups == []

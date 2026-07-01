@@ -1,4 +1,4 @@
-# Open Pact Engineering Spec v1
+# Psephos America Engineering Spec v1
 
 Status: locked working spec for the first public release.
 
@@ -6,7 +6,7 @@ This document synthesizes `research/01` through `research/12` into one v1 plan. 
 
 ## 1. Product Definition
 
-Open Pact is an open-source, evidence-first public ledger of score-changing events for Members of Congress. It does not decide who is corrupt. It links official public records, applies deterministic rules, and publishes evidence cards and per-member profiles that show exactly what changed, why, and which records support the change.
+Psephos America is an open-source, evidence-first public ledger of score-changing events for Members of Congress. It does not decide who is corrupt. It links official public records, applies deterministic rules, and publishes evidence cards and per-member profiles that show exactly what changed, why, and which records support the change.
 
 Working line: **We make public records impossible to ignore.**
 
@@ -159,7 +159,7 @@ Rule: the model may propose; the system or reviewer decides.
 
 ## 7. Taxonomy and Committee Mapping
 
-Open Pact uses a public, versioned sector taxonomy with 15 canonical sectors. OpenSecrets categories are a crosswalk, not the canonical taxonomy.
+Psephos America uses a public, versioned sector taxonomy with 15 canonical sectors. OpenSecrets categories are a crosswalk, not the canonical taxonomy.
 
 Decision:
 
@@ -303,7 +303,7 @@ Virality is a launch requirement. Sensational breadth is not.
 
 ## 11. Batch Architecture and Deployment
 
-Open Pact is a batch-computed publishing system, not a live transactional app.
+Psephos America is a batch-computed publishing system, not a live transactional app.
 
 ### Recommended launch stack
 
@@ -389,7 +389,7 @@ Public claims must stay narrow:
 ## 14. Minimal Repo Shape
 
 ```text
-openpact/
+psephosamerica/
   ENGINEERING_SPEC_V1.md
   README.md
   METHODOLOGY.md

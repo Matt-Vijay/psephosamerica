@@ -284,7 +284,9 @@ class OpenAIBillSemanticExtractor:
             raise ValueError("OPENAI_API_KEY is required for OpenAI semantic extraction")
         return cls(
             api_key=api_key,
-            model=model or os.environ.get("OPENPACT_LLM_MODEL", "gpt-5.5"),
+            model=model
+            or os.environ.get("PSEPHOS_LLM_MODEL")
+            or os.environ.get("OPENPACT_LLM_MODEL", "gpt-5.5"),
         )
 
     def extract(self, bill: BillSemanticInput) -> BillSemanticPayload:

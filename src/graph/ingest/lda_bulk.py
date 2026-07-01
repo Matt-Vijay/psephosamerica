@@ -230,7 +230,7 @@ def fetch_bulk_archives(
     raw_dir.mkdir(parents=True, exist_ok=True)
     http = client if client is not None else httpx.Client(timeout=300.0, follow_redirects=True)
     owns = client is None
-    headers = {"User-Agent": "openpact-research (brianfeng31@gmail.com)"}
+    headers = {"User-Agent": "psephosamerica-research (brianfeng31@gmail.com)"}
     paths: list[Path] = []
     try:
         for ref in archives:

@@ -1,4 +1,4 @@
-# OpenPact Ontology Artifact Contract
+# Psephos America Ontology Artifact Contract
 
 This document defines the stable website and LLM-facing ontology surface. The
 implementation is intentionally static-file first: publish builds deterministic
@@ -7,7 +7,7 @@ need to understand internal database or pipeline modules.
 
 ## Design Rule
 
-OpenPact's ontology is the product boundary. Backend code may change, but these
+Psephos America's ontology is the product boundary. Backend code may change, but these
 artifacts are the compatibility layer for the website, offline analysis, and LLM
 context tooling.
 
@@ -19,12 +19,12 @@ and governed access through explicit artifacts instead of ad hoc prompt context.
 
 Reviewed against Palantir's current public Foundry docs on 2026-05-06:
 
-| Palantir pattern | OpenPact translation |
+| Palantir pattern | Psephos America translation |
 | --- | --- |
-| Ontology as semantic objects, properties, links, and kinetic actions/functions | Keep OpenPact ontology artifacts as typed object/link/action contracts, not loose prompt context. |
+| Ontology as semantic objects, properties, links, and kinetic actions/functions | Keep Psephos America ontology artifacts as typed object/link/action contracts, not loose prompt context. |
 | OSDK-generated access to object types, actions, functions, and AIP logic | Generate stable `ontology/client.ts`, command plans, and verifier artifacts from contracts instead of hand-maintained operator steps. |
 | Functions in TypeScript/Python that run in operational contexts | Treat runtime commands as the function layer: deterministic inputs, JSON outputs, source hashes, and explicit failure gates. |
-| AIP observability over functions, actions, models, automations, and ontology loads | Preserve detached verifier artifacts, SHA-256 links, `run_metadata`, and final run verifiers as OpenPact's local observability surface. |
+| AIP observability over functions, actions, models, automations, and ontology loads | Preserve detached verifier artifacts, SHA-256 links, `run_metadata`, and final run verifiers as Psephos America's local observability surface. |
 
 Useful sources:
 
@@ -34,7 +34,7 @@ Useful sources:
 - https://www.palantir.com/docs/foundry/functions/language-feature-support
 - https://www.palantir.com/docs/foundry/aip-observability/overview
 
-The practical decision is to stay artifact-first. OpenPact should not require a
+The practical decision is to stay artifact-first. Psephos America should not require a
 Foundry-like runtime, but it should keep the same separation of stable ontology
 contracts, typed generated access, operational functions, and execution
 evidence. The prediction eval-window plan follows that pattern: it is a typed
@@ -62,11 +62,11 @@ The following values are part of the public ABI and must be changed deliberately
 
 | Constant | Current value |
 | --- | --- |
-| `ONTOLOGY_STATIC_SCHEMA_VERSION` | `openpact-ontology-v1` |
-| `ONTOLOGY_AGENT_TOOL_MANIFEST_VERSION` | `openpact-ontology-agent-tools-v1` |
-| `ONTOLOGY_FRONTEND_CONTRACT_VERSION` | `openpact-ontology-contract-v1` |
-| `ONTOLOGY_FRONTEND_INDEX_VERSION` | `openpact-ontology-frontend-index-v1` |
-| `ONTOLOGY_FRONTEND_CLIENT_VERSION` | `openpact-ontology-client-v1` |
+| `ONTOLOGY_STATIC_SCHEMA_VERSION` | `psephosamerica-ontology-v1` |
+| `ONTOLOGY_AGENT_TOOL_MANIFEST_VERSION` | `psephosamerica-ontology-agent-tools-v1` |
+| `ONTOLOGY_FRONTEND_CONTRACT_VERSION` | `psephosamerica-ontology-contract-v1` |
+| `ONTOLOGY_FRONTEND_INDEX_VERSION` | `psephosamerica-ontology-frontend-index-v1` |
+| `ONTOLOGY_FRONTEND_CLIENT_VERSION` | `psephosamerica-ontology-client-v1` |
 
 Missing `schema_version` on legacy `ontology/frontend-index.json` is still
 accepted through the Pydantic default. Unknown explicit versions are rejected.
@@ -77,9 +77,9 @@ accepted through the Pydantic default. Unknown explicit versions are rejected.
 not hand-authored. It gives frontend code one canonical path and fetch layer:
 
 ```ts
-import { createOpenPactOntologyClient } from "./ontology/client";
+import { createPsephosAmericaOntologyClient } from "./ontology/client";
 
-const ontology = createOpenPactOntologyClient({ baseUrl: "/snapshots/latest" });
+const ontology = createPsephosAmericaOntologyClient({ baseUrl: "/snapshots/latest" });
 const index = await ontology.getFrontendIndex();
 const graph = await ontology.getMemberGraph("S000148");
 ```

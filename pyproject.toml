@@ -1,5 +1,5 @@
 [project]
-name = "openpact"
+name = "psephosamerica"
 version = "0.1.0"
 description = "Evidence-first public ledger of score-changing events for Members of Congress"
 requires-python = ">=3.12"

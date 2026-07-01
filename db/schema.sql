@@ -1,4 +1,4 @@
--- Open Pact canonical schema (v1, Congress-only, launch scope)
+-- Psephos America canonical schema (v1, Congress-only, launch scope)
 -- Source of truth: ENGINEERING_SPEC_V1.md §5
 
 -- ============================================================

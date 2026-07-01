@@ -19,8 +19,8 @@ from src.parse.disclosures.transform import (
 from src.pipeline.disclosures_load_run import run_disclosures_load
 
 pytestmark = pytest.mark.skipif(
-    not os.environ.get("OPENPACT_TEST_POSTGRES_DSN"),
-    reason="OPENPACT_TEST_POSTGRES_DSN not set",
+    not os.environ.get("PSEPHOS_TEST_POSTGRES_DSN"),
+    reason="PSEPHOS_TEST_POSTGRES_DSN not set",
 )
 
 

@@ -1,4 +1,4 @@
-"""Ask-anything CLI for the OpenPact connected graph (V8 deliverable #1).
+"""Ask-anything CLI for the Psephos America connected graph (V8 deliverable #1).
 
 A clean, dependency-free entrypoint over the GraphRAG reasoning layer and the
 analytical lenses. Run:
@@ -201,7 +201,7 @@ def _acct_dict(r: lenses.AccountabilityScore) -> dict[str, object]:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="python -m src.query",
-        description="Ask cited questions of the OpenPact connected graph and run analytical lenses.",
+        description="Ask cited questions of the Psephos America connected graph and run analytical lenses.",
     )
     sub = parser.add_subparsers(dest="command", required=True)
 

@@ -598,7 +598,7 @@ def test_load_ontology_agent_tools_roundtrip(tmp_path: Path) -> None:
 
     result = load_ontology_agent_tools(tmp_path)
 
-    assert result.schema_version == "openpact-ontology-agent-tools-v1"
+    assert result.schema_version == "psephosamerica-ontology-agent-tools-v1"
     assert result.tools[0].tool_name == "audit_ontology_claim_sources"
 
 
@@ -631,7 +631,7 @@ def test_load_ontology_static_schema_roundtrip(tmp_path: Path) -> None:
 
     result = load_ontology_static_schema(tmp_path)
 
-    assert result.schema_version == "openpact-ontology-v1"
+    assert result.schema_version == "psephosamerica-ontology-v1"
     assert "member" in {item.object_type for item in result.object_types}
 
 
@@ -647,7 +647,7 @@ def test_load_ontology_frontend_contract_roundtrip(tmp_path: Path) -> None:
 
     result = load_ontology_frontend_contract(tmp_path)
 
-    assert result.schema_version == "openpact-ontology-contract-v1"
+    assert result.schema_version == "psephosamerica-ontology-contract-v1"
     assert "OntologyFrontendIndexPayload" in result.model_names
 
 
@@ -679,7 +679,7 @@ def test_load_ontology_frontend_client_roundtrip(tmp_path: Path) -> None:
     result = load_ontology_frontend_client(tmp_path)
 
     assert result == content
-    assert "OpenPactOntologyClient" in result
+    assert "PsephosAmericaOntologyClient" in result
 
 
 def test_load_ontology_frontend_client_missing(tmp_path: Path) -> None:
@@ -700,7 +700,7 @@ def test_load_ontology_frontend_index_roundtrip(tmp_path: Path) -> None:
 
     assert isinstance(result, OntologyFrontendIndexPayload)
     assert result.snapshot_id == SNAPSHOT_ID
-    assert result.schema_version == "openpact-ontology-frontend-index-v1"
+    assert result.schema_version == "psephosamerica-ontology-frontend-index-v1"
     assert result.member_ids == ["S000148"]
     assert result.by_member["S000148"].edge_ids == ["ont-edge-local-001"]
 

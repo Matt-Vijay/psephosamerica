@@ -28,7 +28,7 @@ from src.runtime.recompute import (  # noqa: E402
 
 _SNAPSHOT_DATE = dt.date(2024, 6, 1)
 _RUN_ID = 7
-_DATA_SOURCE = {"id": 3, "slug": "recompute_internal", "name": "Open Pact Internal Recompute"}
+_DATA_SOURCE = {"id": 3, "slug": "recompute_internal", "name": "Psephos America Internal Recompute"}
 
 _MODULE = "src.runtime.recompute"
 

@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import httpx
 
-USER_AGENT = "openpact-research/0.1 (public-record ingest)"
+USER_AGENT = "psephosamerica-research/0.1 (public-record ingest)"
 DEFAULT_TIMEOUT_SECONDS = 60.0
 
 

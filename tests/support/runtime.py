@@ -13,7 +13,7 @@ _MOD = "src.runtime.main"
 
 
 def mock_runtime() -> MagicMock:
-    """Return a MagicMock shaped like OpenPactRuntime.
+    """Return a MagicMock shaped like PsephosAmericaRuntime.
 
     Has .context (MagicMock) and .publish_root (MagicMock) pre-set.
     """

@@ -76,7 +76,7 @@ from src.query.published_rows import (
     fetch_vote_prediction_statement_signal_rows as fetch_vote_prediction_statement_signal_rows,
 )
 from src.runtime.app import (
-    OpenPactRuntime as OpenPactRuntime,
+    PsephosAmericaRuntime as PsephosAmericaRuntime,
     build_runtime as build_runtime,
     open_runtime_connection as open_runtime_connection,
 )

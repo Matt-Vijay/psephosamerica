@@ -1,6 +1,6 @@
 # Development Guide
 
-This guide describes how to work on the OpenPact backend and the quality gates
+This guide describes how to work on the Psephos America backend and the quality gates
 every change must pass. It reflects the gates enforced in
 `.github/workflows/ci.yml`.
 
@@ -41,10 +41,10 @@ python -m coverage report --sort=cover --skip-covered
 ### Integration tests and Postgres
 
 Integration tests under `tests/integration/` are skipped unless
-`OPENPACT_TEST_POSTGRES_DSN` is set. CI provides a `postgres:16` service; locally:
+`PSEPHOS_TEST_POSTGRES_DSN` is set. CI provides a `postgres:16` service; locally:
 
 ```
-export OPENPACT_TEST_POSTGRES_DSN="postgresql://openpact:openpact@localhost:5432/openpact_test"
+export PSEPHOS_TEST_POSTGRES_DSN="postgresql://psephosamerica:psephosamerica@localhost:5432/psephosamerica_test"
 python -m pytest tests/integration/ -q
 ```
 

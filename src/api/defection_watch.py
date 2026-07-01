@@ -83,9 +83,9 @@ def render_defection_watch_html(
     )
     return (
         "<!doctype html><html lang='en'><head><meta charset='utf-8'>"
-        "<title>OpenPact — Defection Watch</title>"
+        "<title>Psephos America — Defection Watch</title>"
         f"<style>{_STYLE}</style></head><body>"
-        f"<h1>OpenPact — Defection Watch · Congress {escape(congress)}</h1>"
+        f"<h1>Psephos America — Defection Watch · Congress {escape(congress)}</h1>"
         '<p class="muted">Members most likely to break with their party, ranked by an '
         "ex-ante model (pre-cutoff loyalty + policy-area divergence). Factors show each "
         "driver's signed contribution; the counterfactual is what would move them off the "

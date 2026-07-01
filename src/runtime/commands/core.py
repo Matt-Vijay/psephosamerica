@@ -12,7 +12,7 @@ from dataclasses import replace
 from pathlib import Path
 from src.evidence.source_anchor_policy import is_official_source_url
 from src.pipeline.publish_snapshot_run import ZipBundleInputs
-from src.runtime.app import OpenPactRuntime, build_runtime, open_runtime_connection
+from src.runtime.app import PsephosAmericaRuntime, build_runtime, open_runtime_connection
 from src.runtime.bootstrap import bootstrap_database, describe_bootstrap_plan
 from src.runtime.congress import CongressLoadResult
 from src.runtime.congress_archive import run_congress_archive_load
@@ -153,7 +153,9 @@ def _snapshot_date_or_today(snapshot_date: dt.date | None) -> dt.date:
     return snapshot_date if snapshot_date is not None else dt.date.today()
 
 
-def _publish_target_or_default(target_dir: str | Path | None, runtime: OpenPactRuntime) -> Path:
+def _publish_target_or_default(
+    target_dir: str | Path | None, runtime: PsephosAmericaRuntime
+) -> Path:
     if target_dir is None:
         return runtime.publish_root
     return Path(target_dir)

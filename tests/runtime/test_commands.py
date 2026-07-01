@@ -153,14 +153,14 @@ def test_dispatch_runtime_env_preflight_reports_presence_without_secret_values(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv("OPENAI_API_KEY", "sk-secret-value")
-    monkeypatch.delenv("OPENPACT_POSTGRES_DSN", raising=False)
+    monkeypatch.delenv("PSEPHOS_POSTGRES_DSN", raising=False)
     dotenv = tmp_path / ".env"
     dotenv.write_text(
-        "OPENAI_API_KEY=sk-dotenv-secret\nOPENPACT_POSTGRES_DSN=postgresql://secret\n",
+        "OPENAI_API_KEY=sk-dotenv-secret\nPSEPHOS_POSTGRES_DSN=postgresql://secret\n",
         encoding="utf-8",
     )
     output = tmp_path / "env-preflight.json"
-    template_output = tmp_path / "openpact.env.example"
+    template_output = tmp_path / "psephosamerica.env.example"
     guarded_outputs = {output, template_output}
     seen_temp_targets: set[str] = set()
     original_open = Path.open
@@ -185,7 +185,7 @@ def test_dispatch_runtime_env_preflight_reports_presence_without_secret_values(
     result = dispatch_command(
         SimpleNamespace(
             command="runtime-env-preflight",
-            require_env=["OPENAI_API_KEY", "OPENPACT_POSTGRES_DSN"],
+            require_env=["OPENAI_API_KEY", "PSEPHOS_POSTGRES_DSN"],
             dotenv=str(dotenv),
             output=str(output),
             template_output=str(template_output),
@@ -195,10 +195,10 @@ def test_dispatch_runtime_env_preflight_reports_presence_without_secret_values(
     written = json.loads(output.read_text(encoding="utf-8"))
     template = template_output.read_text(encoding="utf-8")
     assert result["ok"] is False
-    assert result["missing_env"] == ["OPENPACT_POSTGRES_DSN"]
-    assert result["dotenv"]["dotenv_only"] == ["OPENPACT_POSTGRES_DSN"]
+    assert result["missing_env"] == ["PSEPHOS_POSTGRES_DSN"]
+    assert result["dotenv"]["dotenv_only"] == ["PSEPHOS_POSTGRES_DSN"]
     assert result["next_actions"] == [f"source_dotenv:{dotenv}"]
-    assert result["next_actions_by_env"] == {"OPENPACT_POSTGRES_DSN": [f"source_dotenv:{dotenv}"]}
+    assert result["next_actions_by_env"] == {"PSEPHOS_POSTGRES_DSN": [f"source_dotenv:{dotenv}"]}
     assert result["checks"] == [
         {
             "name": "OPENAI_API_KEY",
@@ -207,7 +207,7 @@ def test_dispatch_runtime_env_preflight_reports_presence_without_secret_values(
             "source": "process",
         },
         {
-            "name": "OPENPACT_POSTGRES_DSN",
+            "name": "PSEPHOS_POSTGRES_DSN",
             "visible_to_process": False,
             "present_in_dotenv": True,
             "source": "dotenv_only",
@@ -218,10 +218,10 @@ def test_dispatch_runtime_env_preflight_reports_presence_without_secret_values(
     assert "sk-dotenv-secret" not in serialized
     assert "postgresql://secret" not in serialized
     assert template == (
-        "# OpenPact runtime environment template.\n"
+        "# Psephos America runtime environment template.\n"
         "# Fill values locally; do not commit secrets.\n"
         "OPENAI_API_KEY=\n"
-        "OPENPACT_POSTGRES_DSN=\n"
+        "PSEPHOS_POSTGRES_DSN=\n"
     )
     assert result["template_output"] == str(template_output)
     assert (
@@ -245,7 +245,7 @@ def test_dispatch_runtime_env_preflight_reports_set_actions_for_absent_env(
             require_env=["OPENAI_API_KEY"],
             dotenv=str(dotenv),
             output=None,
-            template_output=str(tmp_path / "openpact.env.example"),
+            template_output=str(tmp_path / "psephosamerica.env.example"),
         )
     )
 
@@ -253,21 +253,21 @@ def test_dispatch_runtime_env_preflight_reports_set_actions_for_absent_env(
     assert result["missing_env"] == ["OPENAI_API_KEY"]
     assert result["issues"] == [f"dotenv file not found: {dotenv}"]
     assert result["next_actions"] == [
-        f"create_dotenv_from_template:{dotenv}:{tmp_path / 'openpact.env.example'}",
+        f"create_dotenv_from_template:{dotenv}:{tmp_path / 'psephosamerica.env.example'}",
         "set_env:OPENAI_API_KEY",
     ]
     assert result["next_actions_by_env"] == {"OPENAI_API_KEY": ["set_env:OPENAI_API_KEY"]}
     assert result["dotenv"]["create_from_template_action"] == (
-        f"create_dotenv_from_template:{dotenv}:{tmp_path / 'openpact.env.example'}"
+        f"create_dotenv_from_template:{dotenv}:{tmp_path / 'psephosamerica.env.example'}"
     )
 
 
 def test_dispatch_verify_runtime_env_preflight_accepts_sanitized_artifact(
     tmp_path: Path,
 ) -> None:
-    template = tmp_path / "openpact.env.example"
+    template = tmp_path / "psephosamerica.env.example"
     template.write_text(
-        "# OpenPact runtime environment template.\n"
+        "# Psephos America runtime environment template.\n"
         "# Fill values locally; do not commit secrets.\n"
         "OPENAI_API_KEY=\n",
         encoding="utf-8",
@@ -389,7 +389,7 @@ def test_dispatch_verify_runtime_env_preflight_rejects_weak_or_secret_artifact(
 def test_dispatch_verify_runtime_env_preflight_rejects_invalid_template_hash(
     tmp_path: Path,
 ) -> None:
-    template = tmp_path / "openpact.env.example"
+    template = tmp_path / "psephosamerica.env.example"
     template.write_text("OPENAI_API_KEY=\n", encoding="utf-8")
     artifact = tmp_path / "env-preflight.json"
     artifact.write_text(
@@ -16210,7 +16210,7 @@ class TestVerifyPredictionBenchmarkCommand:
 
         refresh_step = result["backfill_plan"]["steps"][0]
         assert refresh_step["action"] == "refresh_prediction_input_inventory"
-        assert refresh_step["runtime_requirements"] == ["env:OPENPACT_POSTGRES_DSN"]
+        assert refresh_step["runtime_requirements"] == ["env:PSEPHOS_POSTGRES_DSN"]
         assert refresh_step["source_requirements"] == [
             "Regenerate the inventory artifact from current DB rows so strict gates can evaluate official label, bill, and ontology source coverage."
         ]
@@ -16264,7 +16264,7 @@ class TestVerifyPredictionBenchmarkCommand:
 
         refresh_step = result["backfill_plan"]["steps"][0]
         assert refresh_step["action"] == "refresh_prediction_eval_report"
-        assert refresh_step["runtime_requirements"] == ["env:OPENPACT_POSTGRES_DSN"]
+        assert refresh_step["runtime_requirements"] == ["env:PSEPHOS_POSTGRES_DSN"]
         assert refresh_step["source_requirements"] == [
             "Regenerate the eval report and manifest so strict gates can evaluate official feature-source coverage fields."
         ]
@@ -16707,7 +16707,7 @@ class TestVerifyPredictionBenchmarkCommand:
             "Reload or repair feature-producing rows so every claim-bearing feature signal carries an official HTTPS source URL and every non-Congress sample has explicit legislative_body_id and legislative_session_id context."
         ]
         assert result["backfill_plan"]["steps"][0]["runtime_requirements"] == [
-            "env:OPENPACT_POSTGRES_DSN"
+            "env:PSEPHOS_POSTGRES_DSN"
         ]
         assert result["backfill_plan"]["steps"][0]["suggested_commands"] == [
             "python3 -m src.runtime.main prediction-source-url-audit "
@@ -16807,12 +16807,12 @@ class TestVerifyPredictionBenchmarkCommand:
             "python3 -m src.runtime.main load-congress --congress 118"
         ]
         assert metadata_step["runtime_requirements"] == [
-            "env:OPENPACT_POSTGRES_DSN",
-            "env:OPENPACT_CONGRESS_API_KEY",
+            "env:PSEPHOS_POSTGRES_DSN",
+            "env:PSEPHOS_CONGRESS_API_KEY",
         ]
         assert semantic_step["blocked_by"] == ["load_missing_bill_metadata"]
         assert semantic_step["runtime_requirements"] == [
-            "env:OPENPACT_POSTGRES_DSN",
+            "env:PSEPHOS_POSTGRES_DSN",
             "env:OPENAI_API_KEY",
             f"file:{report_path}",
         ]
@@ -16841,7 +16841,7 @@ class TestVerifyPredictionBenchmarkCommand:
         ]
         assert semantic_step["unsupported_target_bill_keys"] == ["state_ca:119-hr-9"]
         assert statement_step["runtime_requirements"] == [
-            "env:OPENPACT_POSTGRES_DSN",
+            "env:PSEPHOS_POSTGRES_DSN",
             "file:data/taxonomy/sectors.yaml",
         ]
         assert statement_step["suggested_commands"] == [
@@ -17339,8 +17339,8 @@ class TestVerifyPredictionBenchmarkCommand:
         ) = result["backfill_plan"]["steps"]
         assert bill_signal_step["action"] == "timestamp_bill_signal_availability"
         assert bill_signal_step["runtime_requirements"] == [
-            "env:OPENPACT_POSTGRES_DSN",
-            "env:OPENPACT_CONGRESS_API_KEY",
+            "env:PSEPHOS_POSTGRES_DSN",
+            "env:PSEPHOS_CONGRESS_API_KEY",
         ]
         assert bill_signal_step["source_requirements"] == [
             "Bill signal rows must include cutoff-safe bill availability dates and dated sponsor rows from official Congress.gov metadata."
@@ -17351,7 +17351,7 @@ class TestVerifyPredictionBenchmarkCommand:
         ]
         assert semantic_step["action"] == "timestamp_bill_semantic_availability"
         assert semantic_step["runtime_requirements"] == [
-            "env:OPENPACT_POSTGRES_DSN",
+            "env:PSEPHOS_POSTGRES_DSN",
             "env:OPENAI_API_KEY",
             f"file:{report_path}",
         ]
@@ -17367,11 +17367,11 @@ class TestVerifyPredictionBenchmarkCommand:
         ]
         assert semantic_step["unsupported_target_bill_keys"] == ["state_ca:119-hr-9"]
         assert ontology_step["action"] == "timestamp_ontology_edge_availability"
-        assert ontology_step["runtime_requirements"] == ["env:OPENPACT_POSTGRES_DSN"]
+        assert ontology_step["runtime_requirements"] == ["env:PSEPHOS_POSTGRES_DSN"]
         assert ontology_step["suggested_commands"] == ["python3 -m src.runtime.main recompute"]
         assert contribution_step["action"] == "timestamp_contribution_signal_availability"
         assert contribution_step["runtime_requirements"] == [
-            "env:OPENPACT_POSTGRES_DSN",
+            "env:PSEPHOS_POSTGRES_DSN",
             "file:data/fec/cm.txt",
             "file:data/fec/ccl.txt",
             "file:data/fec/itcont.txt",
@@ -17393,7 +17393,7 @@ class TestVerifyPredictionBenchmarkCommand:
         ]
         assert statement_step["action"] == "timestamp_statement_signal_availability"
         assert statement_step["runtime_requirements"] == [
-            "env:OPENPACT_POSTGRES_DSN",
+            "env:PSEPHOS_POSTGRES_DSN",
             "file:data/prepared/public-statement-sector-rows.jsonl",
         ]
         assert statement_step["suggested_commands"] == [
@@ -17550,7 +17550,7 @@ class TestVerifyPredictionBenchmarkCommand:
             encoding="utf-8",
         )
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
-        monkeypatch.setenv("OPENPACT_POSTGRES_DSN", "postgresql://example")
+        monkeypatch.setenv("PSEPHOS_POSTGRES_DSN", "postgresql://example")
 
         result = dispatch_command(
             SimpleNamespace(
@@ -17579,13 +17579,13 @@ class TestVerifyPredictionBenchmarkCommand:
                 "action": "materialize_missing_bill_semantics",
                 "runnable": False,
                 "runtime_requirements": [
-                    "env:OPENPACT_POSTGRES_DSN",
+                    "env:PSEPHOS_POSTGRES_DSN",
                     "env:OPENAI_API_KEY",
                     f"file:{report_path}",
                 ],
                 "missing_runtime_requirements": ["env:OPENAI_API_KEY"],
                 "satisfied_runtime_requirements": [
-                    "env:OPENPACT_POSTGRES_DSN",
+                    "env:PSEPHOS_POSTGRES_DSN",
                     f"file:{report_path}",
                 ],
             }
@@ -17878,7 +17878,7 @@ class TestVerifyPredictionBenchmarkCommand:
                     "ok": False,
                     "missing_runtime_requirements": [
                         "env:OPENAI_API_KEY",
-                        "env:OPENPACT_POSTGRES_DSN",
+                        "env:PSEPHOS_POSTGRES_DSN",
                     ],
                     "runtime_readiness_by_step": [
                         {
@@ -17942,20 +17942,20 @@ class TestVerifyPredictionBenchmarkCommand:
                     "checked": 2,
                     "missing_env": [
                         "OPENAI_API_KEY",
-                        "OPENPACT_POSTGRES_DSN",
+                        "PSEPHOS_POSTGRES_DSN",
                     ],
                     "missing_env_count": 2,
                     "next_actions": [
-                        "create_dotenv_from_template:/tmp/missing.env:/tmp/openpact.env.example",
+                        "create_dotenv_from_template:/tmp/missing.env:/tmp/psephosamerica.env.example",
                     ],
                     "next_actions_by_env": {
                         "OPENAI_API_KEY": ["set_env:OPENAI_API_KEY"],
-                        "OPENPACT_POSTGRES_DSN": ["source_dotenv:/tmp/missing.env"],
+                        "PSEPHOS_POSTGRES_DSN": ["source_dotenv:/tmp/missing.env"],
                     },
                     "issues": ["dotenv file not found: /tmp/missing.env"],
                     "issue_count": 1,
                     "dotenv": {
-                        "dotenv_only": ["OPENPACT_POSTGRES_DSN"],
+                        "dotenv_only": ["PSEPHOS_POSTGRES_DSN"],
                         "dotenv_only_count": 1,
                     },
                     "checks": [],
@@ -18198,21 +18198,21 @@ class TestVerifyPredictionBenchmarkCommand:
             "checked": 2,
             "missing_env": [
                 "OPENAI_API_KEY",
-                "OPENPACT_POSTGRES_DSN",
+                "PSEPHOS_POSTGRES_DSN",
             ],
             "missing_env_count": 2,
-            "dotenv_only": ["OPENPACT_POSTGRES_DSN"],
+            "dotenv_only": ["PSEPHOS_POSTGRES_DSN"],
             "dotenv_only_count": 1,
             "issues": ["dotenv file not found: /tmp/missing.env"],
             "issue_count": 1,
             "next_actions": [
-                "create_dotenv_from_template:/tmp/missing.env:/tmp/openpact.env.example",
+                "create_dotenv_from_template:/tmp/missing.env:/tmp/psephosamerica.env.example",
                 "set_env:OPENAI_API_KEY",
                 "source_dotenv:/tmp/missing.env",
             ],
             "next_actions_by_env": {
                 "OPENAI_API_KEY": ["set_env:OPENAI_API_KEY"],
-                "OPENPACT_POSTGRES_DSN": ["source_dotenv:/tmp/missing.env"],
+                "PSEPHOS_POSTGRES_DSN": ["source_dotenv:/tmp/missing.env"],
             },
         }
         assert result["env_consistency"] == {
@@ -18220,17 +18220,17 @@ class TestVerifyPredictionBenchmarkCommand:
             "mismatch": False,
             "runtime_missing_env": [
                 "OPENAI_API_KEY",
-                "OPENPACT_POSTGRES_DSN",
+                "PSEPHOS_POSTGRES_DSN",
             ],
             "preflight_missing_env": [
                 "OPENAI_API_KEY",
-                "OPENPACT_POSTGRES_DSN",
+                "PSEPHOS_POSTGRES_DSN",
             ],
             "only_runtime_missing": [],
             "only_preflight_missing": [],
         }
         assert "set:OPENAI_API_KEY" in result["next_live_actions"]
-        assert "set:OPENPACT_POSTGRES_DSN" in result["next_live_actions"]
+        assert "set:PSEPHOS_POSTGRES_DSN" in result["next_live_actions"]
         assert "materialize_bill_semantics_cache" in result["next_live_actions"]
         assert result["blocker_summary"] == {
             "total": 6,
@@ -18259,7 +18259,7 @@ class TestVerifyPredictionBenchmarkCommand:
         assert result["next_actions_by_kind"] == {
             "env_setup": [
                 "set:OPENAI_API_KEY",
-                "set:OPENPACT_POSTGRES_DSN",
+                "set:PSEPHOS_POSTGRES_DSN",
             ],
             "data_refresh": [],
             "semantic_materialization": ["materialize_bill_semantics_cache"],
@@ -18275,11 +18275,11 @@ class TestVerifyPredictionBenchmarkCommand:
             "benchmark_quality_gate_failure_count": 1,
             "missing_runtime_requirements": [
                 "env:OPENAI_API_KEY",
-                "env:OPENPACT_POSTGRES_DSN",
+                "env:PSEPHOS_POSTGRES_DSN",
             ],
             "env_preflight_missing_env": [
                 "OPENAI_API_KEY",
-                "OPENPACT_POSTGRES_DSN",
+                "PSEPHOS_POSTGRES_DSN",
             ],
             "env_preflight_issue_count": 1,
             "env_consistency": result["env_consistency"],
@@ -19337,8 +19337,8 @@ class TestVerifyPredictionBenchmarkCommand:
                     "ok": False,
                     "missing_runtime_requirements": [
                         "env:OPENAI_API_KEY",
-                        "env:OPENPACT_CONGRESS_API_KEY",
-                        "env:OPENPACT_POSTGRES_DSN",
+                        "env:PSEPHOS_CONGRESS_API_KEY",
+                        "env:PSEPHOS_POSTGRES_DSN",
                     ],
                     "runtime_readiness_by_step": [
                         {
@@ -19346,8 +19346,8 @@ class TestVerifyPredictionBenchmarkCommand:
                             "action": "load_missing_bill_metadata",
                             "runnable": False,
                             "missing_runtime_requirements": [
-                                "env:OPENPACT_CONGRESS_API_KEY",
-                                "env:OPENPACT_POSTGRES_DSN",
+                                "env:PSEPHOS_CONGRESS_API_KEY",
+                                "env:PSEPHOS_POSTGRES_DSN",
                             ],
                         },
                         {
@@ -19356,7 +19356,7 @@ class TestVerifyPredictionBenchmarkCommand:
                             "runnable": False,
                             "missing_runtime_requirements": [
                                 "env:OPENAI_API_KEY",
-                                "env:OPENPACT_POSTGRES_DSN",
+                                "env:PSEPHOS_POSTGRES_DSN",
                             ],
                         },
                         {
@@ -19364,7 +19364,7 @@ class TestVerifyPredictionBenchmarkCommand:
                             "action": "refresh_prediction_eval_report",
                             "runnable": False,
                             "missing_runtime_requirements": [
-                                "env:OPENPACT_POSTGRES_DSN",
+                                "env:PSEPHOS_POSTGRES_DSN",
                             ],
                         },
                     ],
@@ -24415,12 +24415,12 @@ class TestVerifyPredictionBenchmarkCommand:
                 {
                     "command": "runtime-env-preflight",
                     "ok": False,
-                    "template_output": str(tmp_path / "openpact.env.example"),
+                    "template_output": str(tmp_path / "psephosamerica.env.example"),
                 }
             ),
             encoding="utf-8",
         )
-        env_template = tmp_path / "openpact.env.example"
+        env_template = tmp_path / "psephosamerica.env.example"
         env_template.write_text("OPENAI_API_KEY=\n", encoding="utf-8")
         env_verify = tmp_path / "runtime-env-preflight-verify.json"
         env_verify.write_text(
@@ -25861,12 +25861,12 @@ class TestVerifyPredictionBenchmarkCommand:
         assert "verify-prediction-operator-resume-run" in readme
         assert "--require-strict-eval-window-run" in readme
         assert "--require-selected-source-artifact-hashes" in readme
-        assert "From an OpenPact checkout" in readme
+        assert "From an Psephos America checkout" in readme
         assert "python3 verify_packet.py" in readme
         assert "python3 resume_plan.py" in readme
-        assert "python3 resume_plan.py --dotenv /path/to/openpact.env" in readme
+        assert "python3 resume_plan.py --dotenv /path/to/psephosamerica.env" in readme
         assert "python3 resume_plan.py --require-verified-packet" in readme
-        assert "python3 run_resume.py --dotenv /path/to/openpact.env" in readme
+        assert "python3 run_resume.py --dotenv /path/to/psephosamerica.env" in readme
         assert "python3 verify_run_resume.py --artifact run-resume-dry-run.json" in readme
         assert "--output run-resume-dry-run.json" in readme
         assert "--phase 1 --dry-run --output run-resume-phase-1-dry-run.json" in readme
@@ -29839,8 +29839,8 @@ class TestVerifyPredictionBenchmarkCommand:
                                     "Load official Congress.gov bill metadata."
                                 ],
                                 "runtime_requirements": [
-                                    "env:OPENPACT_POSTGRES_DSN",
-                                    "env:OPENPACT_CONGRESS_API_KEY",
+                                    "env:PSEPHOS_POSTGRES_DSN",
+                                    "env:PSEPHOS_CONGRESS_API_KEY",
                                 ],
                                 "suggested_commands": [
                                     "python3 -m src.runtime.main load-congress --congress 118"
@@ -29857,7 +29857,7 @@ class TestVerifyPredictionBenchmarkCommand:
                                 "blocked_by": ["load_missing_bill_metadata"],
                                 "source_requirements": ["Use cutoff-available bill metadata."],
                                 "runtime_requirements": [
-                                    "env:OPENPACT_POSTGRES_DSN",
+                                    "env:PSEPHOS_POSTGRES_DSN",
                                     "env:OPENAI_API_KEY",
                                     "file:out/eval-report.json",
                                 ],
@@ -30044,7 +30044,7 @@ class TestVerifyPredictionBenchmarkCommand:
                                 "sample_vote_event_ids": [],
                                 "blocked_by": [],
                                 "source_requirements": ["Regenerate eval report."],
-                                "runtime_requirements": ["env:OPENPACT_POSTGRES_DSN"],
+                                "runtime_requirements": ["env:PSEPHOS_POSTGRES_DSN"],
                                 "suggested_commands": [
                                     "python3 -m src.runtime.main prediction-eval-report "
                                     "--feature-cutoff 2024-12-31"
@@ -30071,7 +30071,7 @@ class TestVerifyPredictionBenchmarkCommand:
                             "backfill_recommendation_count": 1,
                             "backfill_plan_step_count": 1,
                             "backfill_plan_missing_runtime_requirements": [
-                                "env:OPENPACT_POSTGRES_DSN"
+                                "env:PSEPHOS_POSTGRES_DSN"
                             ],
                             "component_source_states": {"eval_manifest": {}},
                         },
@@ -30178,7 +30178,7 @@ class TestVerifyPredictionBenchmarkCommand:
                                 "sample_vote_event_ids": [],
                                 "blocked_by": [],
                                 "source_requirements": ["Regenerate eval report."],
-                                "runtime_requirements": ["env:OPENPACT_POSTGRES_DSN"],
+                                "runtime_requirements": ["env:PSEPHOS_POSTGRES_DSN"],
                                 "suggested_commands": [
                                     "python3 -m src.runtime.main prediction-eval-report "
                                     "--feature-cutoff 2024-12-31"
@@ -30205,7 +30205,7 @@ class TestVerifyPredictionBenchmarkCommand:
                             "backfill_recommendation_count": 1,
                             "backfill_plan_step_count": 1,
                             "backfill_plan_missing_runtime_requirements": [
-                                "env:OPENPACT_POSTGRES_DSN"
+                                "env:PSEPHOS_POSTGRES_DSN"
                             ],
                             "eval_cutoff_unknown_availability_ontology_edge_count": True,
                             "eval_cutoff_excluded_future_ontology_edge_count": -1,
@@ -30266,7 +30266,7 @@ class TestVerifyPredictionBenchmarkCommand:
                                 "sample_vote_event_ids": [],
                                 "blocked_by": [],
                                 "source_requirements": ["Regenerate eval report."],
-                                "runtime_requirements": ["env:OPENPACT_POSTGRES_DSN"],
+                                "runtime_requirements": ["env:PSEPHOS_POSTGRES_DSN"],
                                 "suggested_commands": [
                                     "python3 -m src.runtime.main prediction-eval-report "
                                     "--feature-cutoff 2024-12-31"
@@ -30293,7 +30293,7 @@ class TestVerifyPredictionBenchmarkCommand:
                             "backfill_recommendation_count": 1,
                             "backfill_plan_step_count": 1,
                             "backfill_plan_missing_runtime_requirements": [
-                                "env:OPENPACT_POSTGRES_DSN"
+                                "env:PSEPHOS_POSTGRES_DSN"
                             ],
                             "eval_cutoff_bill_signal_row_count": 3,
                             "eval_cutoff_cutoff_bill_signal_row_count": 2,
@@ -30350,7 +30350,7 @@ class TestVerifyPredictionBenchmarkCommand:
                                 "sample_vote_event_ids": [],
                                 "blocked_by": [],
                                 "source_requirements": ["Regenerate eval report."],
-                                "runtime_requirements": ["env:OPENPACT_POSTGRES_DSN"],
+                                "runtime_requirements": ["env:PSEPHOS_POSTGRES_DSN"],
                                 "suggested_commands": [
                                     "python3 -m src.runtime.main prediction-eval-report "
                                     "--feature-cutoff 2024-12-31"
@@ -30377,7 +30377,7 @@ class TestVerifyPredictionBenchmarkCommand:
                             "backfill_recommendation_count": 1,
                             "backfill_plan_step_count": 1,
                             "backfill_plan_missing_runtime_requirements": [
-                                "env:OPENPACT_POSTGRES_DSN"
+                                "env:PSEPHOS_POSTGRES_DSN"
                             ],
                             "eval_cutoff_training_contribution_signal_row_count": 4,
                             "eval_cutoff_cutoff_training_contribution_signal_row_count": 1,
@@ -30434,7 +30434,7 @@ class TestVerifyPredictionBenchmarkCommand:
                                 "sample_vote_event_ids": [],
                                 "blocked_by": [],
                                 "source_requirements": ["Regenerate eval report."],
-                                "runtime_requirements": ["env:OPENPACT_POSTGRES_DSN"],
+                                "runtime_requirements": ["env:PSEPHOS_POSTGRES_DSN"],
                                 "suggested_commands": [
                                     "python3 -m src.runtime.main prediction-eval-report "
                                     "--feature-cutoff 2024-12-31"
@@ -30461,7 +30461,7 @@ class TestVerifyPredictionBenchmarkCommand:
                             "backfill_recommendation_count": 1,
                             "backfill_plan_step_count": 1,
                             "backfill_plan_missing_runtime_requirements": [
-                                "env:OPENPACT_POSTGRES_DSN"
+                                "env:PSEPHOS_POSTGRES_DSN"
                             ],
                             "inventory_training_feature_vote_history_member_count": True,
                             "inventory_training_feature_vote_history_source_member_count": -1,
@@ -30517,7 +30517,7 @@ class TestVerifyPredictionBenchmarkCommand:
                                 "sample_vote_event_ids": [],
                                 "blocked_by": [],
                                 "source_requirements": ["Regenerate eval report."],
-                                "runtime_requirements": ["env:OPENPACT_POSTGRES_DSN"],
+                                "runtime_requirements": ["env:PSEPHOS_POSTGRES_DSN"],
                                 "suggested_commands": [
                                     "python3 -m src.runtime.main prediction-eval-report "
                                     "--feature-cutoff 2024-12-31"
@@ -30544,7 +30544,7 @@ class TestVerifyPredictionBenchmarkCommand:
                             "backfill_recommendation_count": 1,
                             "backfill_plan_step_count": 1,
                             "backfill_plan_missing_runtime_requirements": [
-                                "env:OPENPACT_POSTGRES_DSN"
+                                "env:PSEPHOS_POSTGRES_DSN"
                             ],
                             "inventory_training_label_source_url_count": True,
                             "inventory_bill_source_url_count": -1,
@@ -30607,7 +30607,7 @@ class TestVerifyPredictionBenchmarkCommand:
                                     "Repair missing feature source URLs in prediction inputs."
                                 ],
                                 "runtime_requirements": [
-                                    "env:OPENPACT_POSTGRES_DSN",
+                                    "env:PSEPHOS_POSTGRES_DSN",
                                     "file:out/prediction-source-url-audit.json",
                                 ],
                                 "suggested_commands": [
@@ -30642,7 +30642,7 @@ class TestVerifyPredictionBenchmarkCommand:
                             "backfill_recommendation_count": 1,
                             "backfill_plan_step_count": 1,
                             "backfill_plan_missing_runtime_requirements": [
-                                "env:OPENPACT_POSTGRES_DSN"
+                                "env:PSEPHOS_POSTGRES_DSN"
                             ],
                             "source_url_audit_gap_count": True,
                             "source_url_audit_missing_url_sourced_prediction_count": -1,
@@ -30705,7 +30705,7 @@ class TestVerifyPredictionBenchmarkCommand:
                                     "Repair missing feature source URLs in prediction inputs."
                                 ],
                                 "runtime_requirements": [
-                                    "env:OPENPACT_POSTGRES_DSN",
+                                    "env:PSEPHOS_POSTGRES_DSN",
                                     "file:out/prediction-source-url-audit.json",
                                 ],
                                 "suggested_commands": [
@@ -30740,7 +30740,7 @@ class TestVerifyPredictionBenchmarkCommand:
                             "backfill_recommendation_count": 1,
                             "backfill_plan_step_count": 1,
                             "backfill_plan_missing_runtime_requirements": [
-                                "env:OPENPACT_POSTGRES_DSN"
+                                "env:PSEPHOS_POSTGRES_DSN"
                             ],
                             "source_url_audit_sample_case_count": 1,
                             "source_url_audit_sample_vote_event_ids": [True],
@@ -30805,7 +30805,7 @@ class TestVerifyPredictionBenchmarkCommand:
                                     "Repair missing feature source URLs in prediction inputs."
                                 ],
                                 "runtime_requirements": [
-                                    "env:OPENPACT_POSTGRES_DSN",
+                                    "env:PSEPHOS_POSTGRES_DSN",
                                     "file:out/prediction-source-url-audit.json",
                                 ],
                                 "suggested_commands": [
@@ -30840,7 +30840,7 @@ class TestVerifyPredictionBenchmarkCommand:
                             "backfill_recommendation_count": 1,
                             "backfill_plan_step_count": 1,
                             "backfill_plan_missing_runtime_requirements": [
-                                "env:OPENPACT_POSTGRES_DSN"
+                                "env:PSEPHOS_POSTGRES_DSN"
                             ],
                             "source_url_audit_sample_case_count": 1,
                             "source_url_audit_sample_vote_event_ids": [101],
@@ -30898,7 +30898,7 @@ class TestVerifyPredictionBenchmarkCommand:
                                 "sample_vote_event_ids": [],
                                 "blocked_by": [],
                                 "source_requirements": ["Regenerate eval report."],
-                                "runtime_requirements": ["env:OPENPACT_POSTGRES_DSN"],
+                                "runtime_requirements": ["env:PSEPHOS_POSTGRES_DSN"],
                                 "suggested_commands": [
                                     "python3 -m src.runtime.main prediction-eval-report "
                                     "--feature-cutoff 2024-12-31"
@@ -30925,7 +30925,7 @@ class TestVerifyPredictionBenchmarkCommand:
                             "backfill_recommendation_count": 1,
                             "backfill_plan_step_count": 1,
                             "backfill_plan_missing_runtime_requirements": [
-                                "env:OPENPACT_POSTGRES_DSN"
+                                "env:PSEPHOS_POSTGRES_DSN"
                             ],
                             "jurisdiction_count": 2,
                             "jurisdiction_ids": ["us_congress"],
@@ -30990,7 +30990,7 @@ class TestVerifyPredictionBenchmarkCommand:
                                 "sample_vote_event_ids": [],
                                 "blocked_by": [],
                                 "source_requirements": ["Regenerate eval report."],
-                                "runtime_requirements": ["env:OPENPACT_POSTGRES_DSN"],
+                                "runtime_requirements": ["env:PSEPHOS_POSTGRES_DSN"],
                                 "suggested_commands": [
                                     "python3 -m src.runtime.main prediction-eval-report "
                                     "--feature-cutoff 2024-12-31"
@@ -31017,7 +31017,7 @@ class TestVerifyPredictionBenchmarkCommand:
                             "backfill_recommendation_count": 1,
                             "backfill_plan_step_count": 1,
                             "backfill_plan_missing_runtime_requirements": [
-                                "env:OPENPACT_POSTGRES_DSN"
+                                "env:PSEPHOS_POSTGRES_DSN"
                             ],
                             "sample_case_count": 1,
                             "sample_vote_event_ids": [101],
@@ -31075,7 +31075,7 @@ class TestVerifyPredictionBenchmarkCommand:
                                 "sample_vote_event_ids": [],
                                 "blocked_by": [],
                                 "source_requirements": ["Regenerate eval report."],
-                                "runtime_requirements": ["env:OPENPACT_POSTGRES_DSN"],
+                                "runtime_requirements": ["env:PSEPHOS_POSTGRES_DSN"],
                                 "suggested_commands": [
                                     "python3 -m src.runtime.main prediction-eval-report "
                                     "--feature-cutoff 2024-12-31"
@@ -31102,7 +31102,7 @@ class TestVerifyPredictionBenchmarkCommand:
                             "backfill_recommendation_count": 1,
                             "backfill_plan_step_count": 1,
                             "backfill_plan_missing_runtime_requirements": [
-                                "env:OPENPACT_POSTGRES_DSN"
+                                "env:PSEPHOS_POSTGRES_DSN"
                             ],
                             "sample_case_count": 1,
                             "sample_vote_event_ids": [101],
@@ -31156,7 +31156,7 @@ class TestVerifyPredictionBenchmarkCommand:
                                 "sample_vote_event_ids": [],
                                 "blocked_by": [],
                                 "source_requirements": ["Regenerate eval report."],
-                                "runtime_requirements": ["env:OPENPACT_POSTGRES_DSN"],
+                                "runtime_requirements": ["env:PSEPHOS_POSTGRES_DSN"],
                                 "suggested_commands": [
                                     "python3 -m src.runtime.main prediction-eval-report "
                                     "--feature-cutoff 2024-12-31",
@@ -31238,7 +31238,7 @@ class TestVerifyPredictionBenchmarkCommand:
                                 "sample_vote_event_ids": [],
                                 "blocked_by": [],
                                 "source_requirements": ["Regenerate eval report."],
-                                "runtime_requirements": ["env:OPENPACT_POSTGRES_DSN"],
+                                "runtime_requirements": ["env:PSEPHOS_POSTGRES_DSN"],
                                 "suggested_commands": [
                                     "python3 -m src.runtime.main prediction-eval-report "
                                     "--feature-cutoff 2024-12-31 "
@@ -31317,7 +31317,7 @@ class TestVerifyPredictionBenchmarkCommand:
                                 "sample_vote_event_ids": [],
                                 "blocked_by": [],
                                 "source_requirements": ["Regenerate source inventory."],
-                                "runtime_requirements": ["env:OPENPACT_POSTGRES_DSN"],
+                                "runtime_requirements": ["env:PSEPHOS_POSTGRES_DSN"],
                                 "suggested_commands": [
                                     "python3 -m src.runtime.main prediction-input-inventory "
                                     "--feature-cutoff 2024-12-31 "
@@ -31397,7 +31397,7 @@ class TestVerifyPredictionBenchmarkCommand:
                                 "sample_vote_event_ids": [],
                                 "blocked_by": [],
                                 "source_requirements": ["Regenerate source inventory."],
-                                "runtime_requirements": ["env:OPENPACT_POSTGRES_DSN"],
+                                "runtime_requirements": ["env:PSEPHOS_POSTGRES_DSN"],
                                 "suggested_commands": [
                                     "python3 -m src.runtime.main "
                                     "prediction-input-inventory "
@@ -31496,7 +31496,7 @@ class TestVerifyPredictionBenchmarkCommand:
                                 "sample_vote_event_ids": [],
                                 "blocked_by": [],
                                 "source_requirements": ["Regenerate backtest."],
-                                "runtime_requirements": ["env:OPENPACT_POSTGRES_DSN"],
+                                "runtime_requirements": ["env:PSEPHOS_POSTGRES_DSN"],
                                 "suggested_commands": [
                                     "python3 -m src.runtime.main prediction-backtest "
                                     "--feature-cutoff 2024-12-31 "
@@ -31576,7 +31576,7 @@ class TestVerifyPredictionBenchmarkCommand:
                                 "sample_vote_event_ids": [],
                                 "blocked_by": [],
                                 "source_requirements": ["Regenerate backtest."],
-                                "runtime_requirements": ["env:OPENPACT_POSTGRES_DSN"],
+                                "runtime_requirements": ["env:PSEPHOS_POSTGRES_DSN"],
                                 "suggested_commands": [
                                     "python3 -m src.runtime.main prediction-backtest "
                                     "--feature-cutoff 2024-12-31",
@@ -31737,7 +31737,7 @@ class TestVerifyPredictionBenchmarkCommand:
                                 ],
                                 "blocked_by": [],
                                 "source_requirements": ["Use source audit gaps."],
-                                "runtime_requirements": ["env:OPENPACT_POSTGRES_DSN"],
+                                "runtime_requirements": ["env:PSEPHOS_POSTGRES_DSN"],
                                 "suggested_commands": [],
                             }
                         ],
@@ -31829,7 +31829,7 @@ class TestVerifyPredictionBenchmarkCommand:
                                 ],
                                 "blocked_by": [],
                                 "source_requirements": ["Use source audit gaps."],
-                                "runtime_requirements": ["env:OPENPACT_POSTGRES_DSN"],
+                                "runtime_requirements": ["env:PSEPHOS_POSTGRES_DSN"],
                                 "suggested_commands": [],
                             }
                         ],
@@ -31896,7 +31896,7 @@ class TestVerifyPredictionBenchmarkCommand:
                                 ],
                                 "blocked_by": [],
                                 "source_requirements": ["Regenerate eval report."],
-                                "runtime_requirements": ["env:OPENPACT_POSTGRES_DSN"],
+                                "runtime_requirements": ["env:PSEPHOS_POSTGRES_DSN"],
                                 "suggested_commands": [],
                             }
                         ],
@@ -31962,7 +31962,7 @@ class TestVerifyPredictionBenchmarkCommand:
                                 ],
                                 "blocked_by": [],
                                 "source_requirements": ["Use source audit gaps."],
-                                "runtime_requirements": ["env:OPENPACT_POSTGRES_DSN"],
+                                "runtime_requirements": ["env:PSEPHOS_POSTGRES_DSN"],
                                 "suggested_commands": [],
                             }
                         ],
@@ -32034,7 +32034,7 @@ class TestVerifyPredictionBenchmarkCommand:
                                 ],
                                 "blocked_by": [],
                                 "source_requirements": ["Use source audit gaps."],
-                                "runtime_requirements": ["env:OPENPACT_POSTGRES_DSN"],
+                                "runtime_requirements": ["env:PSEPHOS_POSTGRES_DSN"],
                                 "suggested_commands": [],
                             }
                         ],
@@ -32108,7 +32108,7 @@ class TestVerifyPredictionBenchmarkCommand:
                                 ],
                                 "blocked_by": [],
                                 "source_requirements": ["Use source audit gaps."],
-                                "runtime_requirements": ["env:OPENPACT_POSTGRES_DSN"],
+                                "runtime_requirements": ["env:PSEPHOS_POSTGRES_DSN"],
                                 "suggested_commands": [],
                             }
                         ],
@@ -32163,7 +32163,7 @@ class TestVerifyPredictionBenchmarkCommand:
                                 "sample_cases": [],
                                 "blocked_by": [],
                                 "source_requirements": ["Use source audit gaps."],
-                                "runtime_requirements": ["env:OPENPACT_POSTGRES_DSN"],
+                                "runtime_requirements": ["env:PSEPHOS_POSTGRES_DSN"],
                                 "suggested_commands": [],
                             }
                         ],
@@ -32228,7 +32228,7 @@ class TestVerifyPredictionBenchmarkCommand:
                                 ],
                                 "blocked_by": [],
                                 "source_requirements": ["Use source audit gaps."],
-                                "runtime_requirements": ["env:OPENPACT_POSTGRES_DSN"],
+                                "runtime_requirements": ["env:PSEPHOS_POSTGRES_DSN"],
                                 "suggested_commands": [],
                             }
                         ],
@@ -32289,7 +32289,7 @@ class TestVerifyPredictionBenchmarkCommand:
                                 "sample_cases": [sample_case, sample_case],
                                 "blocked_by": [],
                                 "source_requirements": ["Use source audit gaps."],
-                                "runtime_requirements": ["env:OPENPACT_POSTGRES_DSN"],
+                                "runtime_requirements": ["env:PSEPHOS_POSTGRES_DSN"],
                                 "suggested_commands": [],
                             }
                         ],
@@ -32360,7 +32360,7 @@ class TestVerifyPredictionBenchmarkCommand:
                                 ],
                                 "blocked_by": [],
                                 "source_requirements": ["Use source audit gaps."],
-                                "runtime_requirements": ["env:OPENPACT_POSTGRES_DSN"],
+                                "runtime_requirements": ["env:PSEPHOS_POSTGRES_DSN"],
                                 "suggested_commands": [],
                             }
                         ],
@@ -32429,7 +32429,7 @@ class TestVerifyPredictionBenchmarkCommand:
                                 ],
                                 "blocked_by": [],
                                 "source_requirements": ["Regenerate eval report."],
-                                "runtime_requirements": ["env:OPENPACT_POSTGRES_DSN"],
+                                "runtime_requirements": ["env:PSEPHOS_POSTGRES_DSN"],
                                 "suggested_commands": [],
                             }
                         ],
@@ -32490,7 +32490,7 @@ class TestVerifyPredictionBenchmarkCommand:
                                 "additional_reasons": "stale learned signal surface",
                                 "blocked_by": [],
                                 "source_requirements": ["Regenerate eval report."],
-                                "runtime_requirements": ["env:OPENPACT_POSTGRES_DSN"],
+                                "runtime_requirements": ["env:PSEPHOS_POSTGRES_DSN"],
                                 "suggested_commands": [],
                             }
                         ],
@@ -32542,7 +32542,7 @@ class TestVerifyPredictionBenchmarkCommand:
                                 "sample_vote_event_ids": [],
                                 "blocked_by": [],
                                 "source_requirements": ["Repair feature source URLs."],
-                                "runtime_requirements": ["env:OPENPACT_POSTGRES_DSN"],
+                                "runtime_requirements": ["env:PSEPHOS_POSTGRES_DSN"],
                                 "suggested_commands": [
                                     "python3 -m src.runtime.main prediction-source-url-audit "
                                     "--eval-report out/eval-report.json --fail-on-gaps "
@@ -32599,7 +32599,7 @@ class TestVerifyPredictionBenchmarkCommand:
                                 "sample_vote_event_ids": [],
                                 "blocked_by": [],
                                 "source_requirements": ["Load FEC inputs."],
-                                "runtime_requirements": ["env:OPENPACT_POSTGRES_DSN"],
+                                "runtime_requirements": ["env:PSEPHOS_POSTGRES_DSN"],
                                 "suggested_commands": [
                                     "python3 -m src.runtime.main materialize-fec-bulk-files "
                                     "--cycle 2024 --output-dir data/fec",
@@ -32973,7 +32973,7 @@ class TestVerifyPredictionBenchmarkCommand:
                                 "sample_vote_event_ids": [],
                                 "blocked_by": [False],
                                 "source_requirements": ["Use Congress.gov.", ""],
-                                "runtime_requirements": ["env:OPENPACT_POSTGRES_DSN", True],
+                                "runtime_requirements": ["env:PSEPHOS_POSTGRES_DSN", True],
                                 "suggested_commands": [
                                     "python3 -m src.runtime.main materialize-congress-archive",
                                     "",
@@ -33033,7 +33033,7 @@ class TestVerifyPredictionBenchmarkCommand:
                                 "blocked_by": [],
                                 "source_requirements": ["Use cutoff-available bill metadata."],
                                 "runtime_requirements": [
-                                    "env:OPENPACT_POSTGRES_DSN",
+                                    "env:PSEPHOS_POSTGRES_DSN",
                                     "env:OPENAI_API_KEY",
                                 ],
                                 "suggested_commands": ["curl https://example.com"],
@@ -33085,7 +33085,7 @@ class TestVerifyPredictionBenchmarkCommand:
                                 "blocked_by": [],
                                 "source_requirements": ["Use cutoff-available bill metadata."],
                                 "runtime_requirements": [
-                                    "env:OPENPACT_POSTGRES_DSN",
+                                    "env:PSEPHOS_POSTGRES_DSN",
                                     "env:OPENAI_API_KEY",
                                 ],
                                 "suggested_commands": [
@@ -33200,7 +33200,7 @@ class TestVerifyPredictionBenchmarkCommand:
                             "blocked_by": [],
                             "source_requirements": ["Use official source URLs."],
                             "runtime_requirements": [
-                                "env:OPENPACT_POSTGRES_DSN",
+                                "env:PSEPHOS_POSTGRES_DSN",
                                 f"file:{input_file}",
                                 "file:missing.jsonl",
                             ],
@@ -33215,7 +33215,7 @@ class TestVerifyPredictionBenchmarkCommand:
             ),
             encoding="utf-8",
         )
-        monkeypatch.delenv("OPENPACT_POSTGRES_DSN", raising=False)
+        monkeypatch.delenv("PSEPHOS_POSTGRES_DSN", raising=False)
 
         result = dispatch_command(
             SimpleNamespace(
@@ -33231,7 +33231,7 @@ class TestVerifyPredictionBenchmarkCommand:
 
         assert result["ok"] is False
         assert result["missing_runtime_requirements"] == [
-            "env:OPENPACT_POSTGRES_DSN",
+            "env:PSEPHOS_POSTGRES_DSN",
             "file:missing.jsonl",
         ]
         assert result["missing_runtime_requirements_by_step"] == [
@@ -33239,7 +33239,7 @@ class TestVerifyPredictionBenchmarkCommand:
                 "index": 0,
                 "action": "load_source_backed_public_statement_signals",
                 "missing_runtime_requirements": [
-                    "env:OPENPACT_POSTGRES_DSN",
+                    "env:PSEPHOS_POSTGRES_DSN",
                     "file:missing.jsonl",
                 ],
             }
@@ -33250,12 +33250,12 @@ class TestVerifyPredictionBenchmarkCommand:
                 "action": "load_source_backed_public_statement_signals",
                 "runnable": False,
                 "runtime_requirements": [
-                    "env:OPENPACT_POSTGRES_DSN",
+                    "env:PSEPHOS_POSTGRES_DSN",
                     f"file:{input_file}",
                     "file:missing.jsonl",
                 ],
                 "missing_runtime_requirements": [
-                    "env:OPENPACT_POSTGRES_DSN",
+                    "env:PSEPHOS_POSTGRES_DSN",
                     "file:missing.jsonl",
                 ],
                 "satisfied_runtime_requirements": [f"file:{input_file}"],
@@ -33485,7 +33485,7 @@ class TestPredictionEvalReportCommand:
         ]
 
     def test_run_prediction_eval_report_command_loads_bill_semantics_cache(self) -> None:
-        bill_semantics_root = Path("/tmp/openpact-bill-semantics")
+        bill_semantics_root = Path("/tmp/psephosamerica-bill-semantics")
         training_feature_cutoff = dt.date(2022, 12, 31)
         train_start = dt.date(2023, 1, 1)
         train_end = dt.date(2024, 12, 31)

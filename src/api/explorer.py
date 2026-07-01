@@ -101,9 +101,9 @@ def render_explorer_html(predictions: list[ServedPrediction], *, top_n: int = 50
     body = cards or '<p class="muted">No predictions available yet.</p>'
     return (
         "<!doctype html><html lang='en'><head><meta charset='utf-8'>"
-        "<title>OpenPact — Prediction Explorer</title>"
+        "<title>Psephos America — Prediction Explorer</title>"
         f"<style>{_STYLE}</style></head><body>"
-        "<h1>OpenPact — Prediction Explorer</h1>"
+        "<h1>Psephos America — Prediction Explorer</h1>"
         f'<p class="muted">Top {min(top_n, len(ordered))} of {len(predictions)} '
         "predictions, each with calibrated uncertainty and cited evidence.</p>"
         f"{body}</body></html>"
@@ -139,7 +139,7 @@ def render_dashboard_html(dashboard: CalibrationDashboard) -> str:
         sections.append(f"<h2>{escape(dimension)}</h2><div>{tiles}</div>")
     return (
         "<!doctype html><html lang='en'><head><meta charset='utf-8'>"
-        "<title>OpenPact — Calibration Dashboard</title>"
+        "<title>Psephos America — Calibration Dashboard</title>"
         f"<style>{_STYLE}</style></head><body>"
         f"<h1>Calibration — {escape(dashboard.model_name)}</h1>"
         "<div>"

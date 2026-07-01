@@ -1,4 +1,4 @@
-# OpenPact — Overall Goal
+# Psephos America — Overall Goal
 
 **The single, maximalist objective for this codebase.** Everything older in
 this repo (the v1 deterministic conflict-of-interest scoring, the

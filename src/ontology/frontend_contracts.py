@@ -82,7 +82,7 @@ def build_ontology_typescript_declarations() -> str:
     model_lines = "\n".join(f"  {name}: JsonSchema;" for name in contract.model_names)
     path_lines = "\n".join(f'  {key}: "{value}";' for key, value in contract.artifact_paths.items())
     return (
-        "// Generated from OpenPact ontology Pydantic contracts.\n"
+        "// Generated from Psephos America ontology Pydantic contracts.\n"
         "// Do not edit by hand; regenerate from src.ontology.frontend_contracts.\n\n"
         f'export const ONTOLOGY_FRONTEND_CONTRACT_VERSION = "{contract.schema_version}" as const;\n\n'
         "export type JsonSchema = Record<string, unknown>;\n\n"
@@ -110,7 +110,7 @@ def build_ontology_typescript_client() -> str:
     contract = build_ontology_frontend_contract()
     path_lines = "\n".join(f'  {key}: "{value}",' for key, value in contract.artifact_paths.items())
     return (
-        "// Generated from OpenPact ontology Pydantic contracts.\n"
+        "// Generated from Psephos America ontology Pydantic contracts.\n"
         "// Do not edit by hand; regenerate from src.ontology.frontend_contracts.\n\n"
         'import type { OntologyFrontendArtifactPath } from "./contracts";\n\n'
         f'export const ONTOLOGY_FRONTEND_CLIENT_VERSION = "{ONTOLOGY_FRONTEND_CLIENT_VERSION}" as const;\n'
@@ -119,14 +119,14 @@ def build_ontology_typescript_client() -> str:
         f"{path_lines}\n"
         "} as const;\n\n"
         "export type OntologyFrontendArtifactKey = keyof typeof ONTOLOGY_FRONTEND_ARTIFACT_PATHS;\n\n"
-        "export interface OpenPactOntologyClientOptions {\n"
+        "export interface PsephosAmericaOntologyClientOptions {\n"
         "  baseUrl?: string;\n"
         "  fetchImpl?: typeof fetch;\n"
         "}\n\n"
-        "export class OpenPactOntologyClient {\n"
+        "export class PsephosAmericaOntologyClient {\n"
         "  readonly baseUrl: string;\n"
         "  readonly fetchImpl: typeof fetch;\n\n"
-        "  constructor(options: OpenPactOntologyClientOptions = {}) {\n"
+        "  constructor(options: PsephosAmericaOntologyClientOptions = {}) {\n"
         '    this.baseUrl = options.baseUrl ?? "";\n'
         "    this.fetchImpl = options.fetchImpl ?? fetch;\n"
         "  }\n\n"
@@ -193,9 +193,9 @@ def build_ontology_typescript_client() -> str:
         "    throw new Error(`Invalid ontology member Bioguide ID: ${memberBioguideId}`);\n"
         "  }\n"
         "}\n\n"
-        "export function createOpenPactOntologyClient(\n"
-        "  options: OpenPactOntologyClientOptions = {},\n"
-        "): OpenPactOntologyClient {\n"
-        "  return new OpenPactOntologyClient(options);\n"
+        "export function createPsephosAmericaOntologyClient(\n"
+        "  options: PsephosAmericaOntologyClientOptions = {},\n"
+        "): PsephosAmericaOntologyClient {\n"
+        "  return new PsephosAmericaOntologyClient(options);\n"
         "}\n"
     )

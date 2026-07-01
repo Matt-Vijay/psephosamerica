@@ -57,7 +57,7 @@ def _add_load_congress(sub: argparse._SubParsersAction) -> None:  # type: ignore
         "--api-key",
         default=None,
         metavar="KEY",
-        help="Congress.gov API key. Falls back to OPENPACT_CONGRESS_API_KEY env var.",
+        help="Congress.gov API key. Falls back to PSEPHOS_CONGRESS_API_KEY env var.",
     )
     p.add_argument(
         "--include-votes",

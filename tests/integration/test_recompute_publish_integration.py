@@ -3,7 +3,7 @@
 Exercises the real path:
   DB rows → query → recompute_conflicts → plan_snapshot → run_publish → verify
 
-Requires OPENPACT_TEST_POSTGRES_DSN in the environment.
+Requires PSEPHOS_TEST_POSTGRES_DSN in the environment.
 """
 
 from __future__ import annotations
@@ -32,8 +32,8 @@ from src.rules.models import (
 from src.scoring.snapshots import build_snapshot_row
 
 pytestmark = pytest.mark.skipif(
-    not os.environ.get("OPENPACT_TEST_POSTGRES_DSN"),
-    reason="OPENPACT_TEST_POSTGRES_DSN not set",
+    not os.environ.get("PSEPHOS_TEST_POSTGRES_DSN"),
+    reason="PSEPHOS_TEST_POSTGRES_DSN not set",
 )
 
 

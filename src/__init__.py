@@ -1,1 +1,1 @@
-# openpact top-level package
+# psephosamerica top-level package

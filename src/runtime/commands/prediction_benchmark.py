@@ -2190,51 +2190,51 @@ def _prediction_benchmark_backfill_runtime_requirements(
 ) -> list[str]:
     requirements = {
         "load_missing_bill_metadata": [
-            "env:OPENPACT_POSTGRES_DSN",
-            "env:OPENPACT_CONGRESS_API_KEY",
+            "env:PSEPHOS_POSTGRES_DSN",
+            "env:PSEPHOS_CONGRESS_API_KEY",
         ],
         "materialize_missing_bill_semantics": [
-            "env:OPENPACT_POSTGRES_DSN",
+            "env:PSEPHOS_POSTGRES_DSN",
             "env:OPENAI_API_KEY",
             f"file:{report_path}" if report_path is not None else "file:<eval-report>",
         ],
-        "backfill_feature_source_urls": ["env:OPENPACT_POSTGRES_DSN"],
-        "backfill_cutoff_feature_members": ["env:OPENPACT_POSTGRES_DSN"],
+        "backfill_feature_source_urls": ["env:PSEPHOS_POSTGRES_DSN"],
+        "backfill_cutoff_feature_members": ["env:PSEPHOS_POSTGRES_DSN"],
         "load_source_backed_public_statement_signals": [
-            "env:OPENPACT_POSTGRES_DSN",
+            "env:PSEPHOS_POSTGRES_DSN",
             "file:data/taxonomy/sectors.yaml",
         ],
         "load_fec_donations_and_member_crosswalks": [
-            "env:OPENPACT_POSTGRES_DSN",
+            "env:PSEPHOS_POSTGRES_DSN",
             "file:data/crosswalks/member_fec.csv",
             "file:data/fec/cm.txt",
             "file:data/fec/ccl.txt",
             "file:data/fec/itcont.txt",
         ],
         "timestamp_bill_semantic_availability": [
-            "env:OPENPACT_POSTGRES_DSN",
+            "env:PSEPHOS_POSTGRES_DSN",
             "env:OPENAI_API_KEY",
             f"file:{report_path}" if report_path is not None else "file:<eval-report>",
         ],
         "timestamp_bill_signal_availability": [
-            "env:OPENPACT_POSTGRES_DSN",
-            "env:OPENPACT_CONGRESS_API_KEY",
+            "env:PSEPHOS_POSTGRES_DSN",
+            "env:PSEPHOS_CONGRESS_API_KEY",
         ],
         "timestamp_contribution_signal_availability": [
-            "env:OPENPACT_POSTGRES_DSN",
+            "env:PSEPHOS_POSTGRES_DSN",
             "file:data/fec/cm.txt",
             "file:data/fec/ccl.txt",
             "file:data/fec/itcont.txt",
             "file:data/crosswalks/member_fec.csv",
         ],
-        "timestamp_ontology_edge_availability": ["env:OPENPACT_POSTGRES_DSN"],
+        "timestamp_ontology_edge_availability": ["env:PSEPHOS_POSTGRES_DSN"],
         "timestamp_statement_signal_availability": [
-            "env:OPENPACT_POSTGRES_DSN",
+            "env:PSEPHOS_POSTGRES_DSN",
             "file:data/prepared/public-statement-sector-rows.jsonl",
         ],
-        "refresh_prediction_input_inventory": ["env:OPENPACT_POSTGRES_DSN"],
-        "refresh_prediction_backtest": ["env:OPENPACT_POSTGRES_DSN"],
-        "refresh_prediction_eval_report": ["env:OPENPACT_POSTGRES_DSN"],
+        "refresh_prediction_input_inventory": ["env:PSEPHOS_POSTGRES_DSN"],
+        "refresh_prediction_backtest": ["env:PSEPHOS_POSTGRES_DSN"],
+        "refresh_prediction_eval_report": ["env:PSEPHOS_POSTGRES_DSN"],
     }
     return requirements.get(action, [])
 

@@ -1,4 +1,4 @@
-# OpenPact Track B v4 — Session Report
+# Psephos America Track B v4 — Session Report
 
 **Goal:** crack the defection problem *honestly* — replace the tautological,
 label-defined cross-pressure slice with an ex-ante, feature-only slice, and

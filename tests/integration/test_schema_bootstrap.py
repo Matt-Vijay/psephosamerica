@@ -19,8 +19,8 @@ from tests.integration.conftest import (
 
 
 REAL_PG_REQUIRED = pytest.mark.skipif(
-    not os.environ.get("OPENPACT_TEST_POSTGRES_DSN"),
-    reason="OPENPACT_TEST_POSTGRES_DSN not set",
+    not os.environ.get("PSEPHOS_TEST_POSTGRES_DSN"),
+    reason="PSEPHOS_TEST_POSTGRES_DSN not set",
 )
 
 
@@ -109,7 +109,7 @@ class _FakeConn:
 class TestHarnessIsolationGuard:
     def test_commit_restarts_savepoint_without_committing_root_transaction(self):
         raw = _FakeConn()
-        conn = _IsolatedConnection(raw, schema_name="openpact_test_schema")
+        conn = _IsolatedConnection(raw, schema_name="psephosamerica_test_schema")
 
         conn.begin_test_scope()
         raw.commands.clear()
@@ -118,13 +118,13 @@ class TestHarnessIsolationGuard:
 
         assert raw.commit_calls == 0
         assert [sql for sql, _ in raw.commands] == [
-            "RELEASE SAVEPOINT openpact_test_guard",
-            "SAVEPOINT openpact_test_guard",
+            "RELEASE SAVEPOINT psephosamerica_test_guard",
+            "SAVEPOINT psephosamerica_test_guard",
         ]
 
     def test_statement_error_rolls_back_to_guard_savepoint(self):
         raw = _FakeConn(fail_on="SELECT broken")
-        conn = _IsolatedConnection(raw, schema_name="openpact_test_schema")
+        conn = _IsolatedConnection(raw, schema_name="psephosamerica_test_schema")
 
         conn.begin_test_scope()
 
@@ -134,14 +134,14 @@ class TestHarnessIsolationGuard:
 
         assert raw.rollback_calls == 0
         assert [sql for sql, _ in raw.commands][-3:] == [
-            "ROLLBACK TO SAVEPOINT openpact_test_guard",
-            "RELEASE SAVEPOINT openpact_test_guard",
-            "SAVEPOINT openpact_test_guard",
+            "ROLLBACK TO SAVEPOINT psephosamerica_test_guard",
+            "RELEASE SAVEPOINT psephosamerica_test_guard",
+            "SAVEPOINT psephosamerica_test_guard",
         ]
 
     def test_outer_begin_commit_wrapper_is_stripped_before_execute(self):
         raw = _FakeConn()
-        conn = _IsolatedConnection(raw, schema_name="openpact_test_schema")
+        conn = _IsolatedConnection(raw, schema_name="psephosamerica_test_schema")
 
         conn.begin_test_scope()
         raw.commands.clear()
@@ -157,7 +157,7 @@ class TestHarnessIsolationGuard:
 
     def test_rejects_inner_transaction_control_statements(self):
         raw = _FakeConn()
-        conn = _IsolatedConnection(raw, schema_name="openpact_test_schema")
+        conn = _IsolatedConnection(raw, schema_name="psephosamerica_test_schema")
 
         conn.begin_test_scope()
         raw.commands.clear()
@@ -201,7 +201,7 @@ class TestHarnessPrivilegesAndCleanup:
         )
 
         with pytest.raises(pytest.skip.Exception, match="CREATE SCHEMA and DROP SCHEMA"):
-            integration_conftest._create_schema("openpact_test_schema")
+            integration_conftest._create_schema("psephosamerica_test_schema")
 
     def test_cleanup_surfaces_schema_drop_failures(self, monkeypatch):
         events: list[str] = []
@@ -220,9 +220,9 @@ class TestHarnessPrivilegesAndCleanup:
         monkeypatch.setattr(integration_conftest, "_drop_schema", _raise_on_drop)
 
         with pytest.raises(RuntimeError, match="schema leak"):
-            _cleanup_test_connection(_CleanupConn(), "openpact_test_schema")
+            _cleanup_test_connection(_CleanupConn(), "psephosamerica_test_schema")
 
-        assert events == ["finish", "close", "drop:openpact_test_schema"]
+        assert events == ["finish", "close", "drop:psephosamerica_test_schema"]
 
 
 # -- tests -------------------------------------------------------------------

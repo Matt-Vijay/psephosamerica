@@ -52,7 +52,7 @@ _SOURCE_ARTIFACT_ROW = {
     "id": 10,
     "artifact_kind": "pdf",
     "source_url": "https://efdsearch.senate.gov/search/view/annual/abc123/",
-    "storage_uri": "r2://openpact-raw/senate/annual/abc123.pdf",
+    "storage_uri": "r2://psephosamerica-raw/senate/annual/abc123.pdf",
     "sha256": "a" * 64,
     "mime_type": "application/pdf",
     "fetched_at": None,

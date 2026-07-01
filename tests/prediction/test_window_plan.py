@@ -24,7 +24,7 @@ def test_build_prediction_eval_window_plan_skips_windows_after_max_feature_cutof
         plan_artifact_path="out/prediction/prediction-eval-window-plan.json",
     )
 
-    assert plan.plan_version == "openpact-prediction-eval-window-plan-v1"
+    assert plan.plan_version == "psephosamerica-prediction-eval-window-plan-v1"
     assert plan.window_count == 2
     assert [window.window_id for window in plan.windows] == [
         "train-2022-2023__eval-2024-2024",

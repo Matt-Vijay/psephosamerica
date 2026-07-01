@@ -1,4 +1,4 @@
-"""Pure read-API response layer for the Open Pact launch endpoints.
+"""Pure read-API response layer for the Psephos America launch endpoints.
 
   /api/v1/homepage
   /api/v1/zip/:zip

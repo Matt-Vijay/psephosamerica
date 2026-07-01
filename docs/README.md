@@ -1,4 +1,4 @@
-# OpenPact Documentation
+# Psephos America Documentation
 
 Project-level docs live alongside the code. Start here, then go to the
 file that matches what you need.

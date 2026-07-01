@@ -45,9 +45,9 @@ def render_product_index(artifacts: list[ServedArtifact]) -> str:
     body = cards or '<p class="muted">No artifacts.</p>'
     return (
         "<!doctype html><html lang='en'><head><meta charset='utf-8'>"
-        "<title>OpenPact — Marginal-Vote Product</title>"
+        "<title>Psephos America — Marginal-Vote Product</title>"
         f"<style>{style}</style></head><body>"
-        "<h1>OpenPact — Marginal-Vote Product</h1>"
+        "<h1>Psephos America — Marginal-Vote Product</h1>"
         '<p class="muted">Who will break with their party, where a bill passes, who to '
         "work this week, and our standing forward track record — every surface cited and "
         "content-hashed.</p>"

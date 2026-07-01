@@ -1489,7 +1489,7 @@ def _prediction_resume_script_missing_env_guard_failures(
 def _prediction_resume_script_secret_literal_failures(script_text: str) -> list[str]:
     failures: list[str] = []
     assignment_pattern = re.compile(
-        r"^\s*(OPENAI_API_KEY|OPENPACT_POSTGRES_DSN|OPENPACT_CONGRESS_API_KEY)="
+        r"^\s*(OPENAI_API_KEY|PSEPHOS_POSTGRES_DSN|PSEPHOS_CONGRESS_API_KEY)="
         r"([^#\s].*)$"
     )
     for line in script_text.splitlines():

@@ -202,7 +202,7 @@ class TestSha256Bytes:
         assert sha256_bytes(data) == expected
 
     def test_returns_64_char_hex(self):
-        digest = sha256_bytes(b"openpact")
+        digest = sha256_bytes(b"psephosamerica")
         assert len(digest) == 64
         assert all(c in "0123456789abcdef" for c in digest)
 

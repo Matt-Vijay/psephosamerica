@@ -4,7 +4,7 @@ Status: accepted
 
 ## Context
 
-OpenPact must be auditable and stable: a member or evidence card a reader sees
+Psephos America must be auditable and stable: a member or evidence card a reader sees
 today must be reproducible and unchanged tomorrow, even as the canonical database
 is recomputed weekly. Serving the public directly from canonical Postgres tables
 would couple page output to in-flight recomputes and make "what did the site say

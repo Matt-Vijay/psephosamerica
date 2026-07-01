@@ -10,7 +10,7 @@ from src.core.logging import get_logger
 
 def _record(**kwargs: object) -> logging.LogRecord:
     defaults: dict[str, object] = {
-        "name": "openpact.test",
+        "name": "psephosamerica.test",
         "level": logging.INFO,
         "pathname": __file__,
         "lineno": 1,
@@ -32,16 +32,16 @@ def _record(**kwargs: object) -> logging.LogRecord:
 
 def _format(record: logging.LogRecord) -> dict[str, object]:
     # The formatter is attached by get_logger; reuse it for direct formatting.
-    logger = get_logger("openpact.test.formatter")
+    logger = get_logger("psephosamerica.test.formatter")
     formatter = logger.handlers[0].formatter
     assert formatter is not None
     return json.loads(formatter.format(record))
 
 
 def test_json_formatter_emits_core_fields_and_renders_args() -> None:
-    payload = _format(_record(name="openpact.svc", level=logging.WARNING))
+    payload = _format(_record(name="psephosamerica.svc", level=logging.WARNING))
     assert payload["level"] == "WARNING"
-    assert payload["logger"] == "openpact.svc"
+    assert payload["logger"] == "psephosamerica.svc"
     assert payload["msg"] == "hello world"  # %-args rendered via getMessage()
     assert isinstance(payload["ts"], str) and payload["ts"]
     assert "exc" not in payload
@@ -77,7 +77,7 @@ def test_json_formatter_falls_back_to_str_for_non_serializable_extra() -> None:
 
 
 def test_get_logger_sets_level_and_json_stream_handler() -> None:
-    logger = get_logger("openpact.test.unique.alpha", level=logging.DEBUG)
+    logger = get_logger("psephosamerica.test.unique.alpha", level=logging.DEBUG)
     assert logger.level == logging.DEBUG
     assert len(logger.handlers) == 1
     handler = logger.handlers[0]
@@ -86,7 +86,7 @@ def test_get_logger_sets_level_and_json_stream_handler() -> None:
 
 
 def test_get_logger_is_idempotent_and_does_not_duplicate_handlers() -> None:
-    name = "openpact.test.unique.beta"
+    name = "psephosamerica.test.unique.beta"
     first = get_logger(name)
     assert first.level == logging.INFO  # default level
     handler_count = len(first.handlers)

@@ -420,7 +420,7 @@ def fetch_opinions(
         else httpx.Client(
             timeout=120.0,
             headers={
-                "User-Agent": "openpact/1.0 (public-record ingest; +https://github.com/openpact)"
+                "User-Agent": "psephosamerica/1.0 (public-record ingest; +https://github.com/psephosamerica)"
             },
         )
     )
@@ -495,7 +495,7 @@ def fetch_courts(
         if client is not None
         else httpx.Client(
             timeout=60.0,
-            headers={"User-Agent": "openpact/1.0 (public-record ingest)"},
+            headers={"User-Agent": "psephosamerica/1.0 (public-record ingest)"},
         )
     )
     owns = client is None
@@ -525,7 +525,7 @@ def fetch_judges(
         if client is not None
         else httpx.Client(
             timeout=60.0,
-            headers={"User-Agent": "openpact/1.0 (public-record ingest)"},
+            headers={"User-Agent": "psephosamerica/1.0 (public-record ingest)"},
         )
     )
     owns = client is None

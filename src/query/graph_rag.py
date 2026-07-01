@@ -20,7 +20,7 @@ actual model call activates only when a key is present:
   :func:`stub_generate` — a deterministic, offline, fully-tested grounded
   summary that cites the retrieved nodes. The **primary** live backend is
   :func:`openrouter_generate` — an OpenAI-compatible chat-completions call to
-  OpenRouter (``OPENPACT_LLM_MODEL`` with a free-tier fallback chain), used when
+  OpenRouter (``PSEPHOS_LLM_MODEL`` with a free-tier fallback chain), used when
   ``OPENROUTER_API_KEY`` is set. :func:`anthropic_generate` (``claude-opus-4-8``,
   adaptive thinking) remains as an optional alternate behind
   ``ANTHROPIC_API_KEY``. All paths obey the same contract: answer *only* from the
@@ -47,7 +47,7 @@ import numpy as np
 from src.query.graph_store import GraphStore, Node
 from src.query.query_embedder import QueryEmbedder
 
-_LOG = logging.getLogger("openpact.graph_rag")
+_LOG = logging.getLogger("psephosamerica.graph_rag")
 
 # Optional Anthropic alternate (behind ANTHROPIC_API_KEY). Per the claude-api
 # skill: claude-opus-4-8 with adaptive thinking.
@@ -392,7 +392,7 @@ def build_grounding_context(retrieved: list[RetrievedNode]) -> str:
 # -- answer generation -------------------------------------------------
 
 _SYSTEM_INSTRUCTION = (
-    "You are OpenPact's grounded analyst over a connected legislative knowledge "
+    "You are Psephos America's grounded analyst over a connected legislative knowledge "
     "graph spanning federal, state, and municipal officials, bills/ordinances, "
     "roll-call votes, and policy topics. Answer the user's question USING ONLY "
     "the numbered, source-anchored evidence provided in the user message.\n\n"
@@ -443,10 +443,18 @@ def _build_user_content(question: str, grounding_context: str) -> str:
     )
 
 
+def _llm_env(name: str, default: str = "") -> str:
+    """Read a ``PSEPHOS_``-prefixed var, falling back to the legacy ``OPENPACT_`` name."""
+    value = os.environ.get(f"PSEPHOS_{name}")
+    if value is not None:
+        return value
+    return os.environ.get(f"OPENPACT_{name}", default)
+
+
 def _openrouter_models() -> list[str]:
     """Primary model + ordered free-tier fallbacks, from env."""
-    primary = os.environ.get("OPENPACT_LLM_MODEL", OPENROUTER_DEFAULT_MODEL)
-    raw = os.environ.get("OPENPACT_LLM_FALLBACKS", "")
+    primary = _llm_env("LLM_MODEL", OPENROUTER_DEFAULT_MODEL)
+    raw = _llm_env("LLM_FALLBACKS", "")
     fallbacks = [m.strip() for m in raw.split(",") if m.strip()]
     # De-duplicate, preserving order.
     seen: set[str] = set()
@@ -641,8 +649,8 @@ def openrouter_chat_with_fallback(
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
-        "HTTP-Referer": "https://github.com/openpact",
-        "X-Title": "OpenPact GraphRAG",
+        "HTTP-Referer": "https://github.com/psephosamerica",
+        "X-Title": "Psephos America GraphRAG",
     }
     user_content = _build_user_content(question, grounding_context)
     post = poster or _default_poster()

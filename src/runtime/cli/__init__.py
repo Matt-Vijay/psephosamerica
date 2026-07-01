@@ -1,4 +1,4 @@
-"""CLI argument parser for the Open Pact operator runtime.
+"""CLI argument parser for the Psephos America operator runtime.
 
 Pure parser layer: no DB access, no network calls, no command execution.
 Entry points: build_parser(), parse_args(argv).

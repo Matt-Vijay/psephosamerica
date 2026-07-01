@@ -8,7 +8,7 @@ import pytest
 
 from src.core.settings import Settings
 from src.normalize.taxonomy_runtime import TaxonomyRuntime, load_taxonomy_runtime
-from src.runtime.app import OpenPactRuntime, build_runtime, open_runtime_connection
+from src.runtime.app import PsephosAmericaRuntime, build_runtime, open_runtime_connection
 from src.runtime.context import build_runtime_context
 from src.runtime.paths import local_publish_root, repo_root
 
@@ -22,9 +22,9 @@ def _stub_connect(settings: Settings) -> object:
 # ---------------------------------------------------------------------------
 
 
-def test_build_runtime_returns_openpact_runtime():
+def test_build_runtime_returns_psephosamerica_runtime():
     rt = build_runtime(connect_fn=_stub_connect)
-    assert isinstance(rt, OpenPactRuntime)
+    assert isinstance(rt, PsephosAmericaRuntime)
 
 
 def test_build_runtime_repo_root_matches_paths():
@@ -81,7 +81,9 @@ def test_open_runtime_connection_delegates_to_connect_fn():
     settings = Settings()
     taxonomy = load_taxonomy_runtime(repo_root() / "data")
     context = build_runtime_context(settings, taxonomy, connect_fn=conn_mock)
-    rt = OpenPactRuntime(context=context, repo_root=repo_root(), publish_root=local_publish_root())
+    rt = PsephosAmericaRuntime(
+        context=context, repo_root=repo_root(), publish_root=local_publish_root()
+    )
 
     result = open_runtime_connection(rt)
 
@@ -90,11 +92,11 @@ def test_open_runtime_connection_delegates_to_connect_fn():
 
 
 # ---------------------------------------------------------------------------
-# OpenPactRuntime frozen invariant
+# PsephosAmericaRuntime frozen invariant
 # ---------------------------------------------------------------------------
 
 
-def test_openpact_runtime_is_frozen():
+def test_psephosamerica_runtime_is_frozen():
     rt = build_runtime(connect_fn=_stub_connect)
     with pytest.raises(FrozenInstanceError):
         rt.repo_root = Path("/other")  # type: ignore[misc]
