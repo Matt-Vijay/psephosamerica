@@ -1,286 +1,130 @@
-# Psephos America
+# Psephos America · ψ
 
-Psephos America is an open-source, evidence-first public ledger of score-changing events for Members of Congress. It links official public records, applies deterministic rules, and publishes evidence cards and per-member profiles that show what changed, why it changed, and which records support the change.
+**A connected, cited, queryable knowledge graph of US governance — federal, all 50 states, and local — with calibrated vote prediction and plain-English reasoning over the whole thing.**
 
-## v1 Scope
+The name is from the Greek *psêphos* (ψῆφος), the pebble Athenians dropped to cast a vote — the root of *psephology*, the science of elections. ψ is also the wavefunction in physics: a probability amplitude. One glyph for *the vote* and *the probability* — which is exactly what this is: **a calibrated probability on every official's vote, everywhere, grounded in public record.**
 
-Version 1 is intentionally narrow:
+> Formerly "OpenPact." The original narrow v1 (deterministic conflict-of-interest scoring for current Members of Congress) is now one small corner of a much larger substrate.
 
-- Federal Congress only
-- Current Members of Congress only at launch
-- Current Congress legislative data
-- Current-term financial disclosures and PTRs for current members
-- FEC committee and contribution context for the most recent two election cycles
-- One score family: `conflict_of_interest_risk`
-- Public, read-only web product with ZIP entry, homepage/feed, member pages, evidence cards, methodology, and a deferred compare placeholder
-- Batch recomputation with frozen published snapshots
+---
 
-Anything outside `ENGINEERING_SPEC_V1.md` is deferred.
+## What it is
 
-## Current State
+Psephos America ingests public-record governance data from many sources into **one entity-resolved graph** — officials ↔ bills/ordinances ↔ votes ↔ donors ↔ lobbying ↔ awards ↔ floor speeches ↔ jurisdictions — where **every node and edge carries its source URL, a content hash, and a `known_at` timestamp** (strict, leakage-safe provenance). On top of that substrate sit three things:
 
-The backend oracle is real enough to run locally:
+1. **A cited query API + lenses** — filters, joins, multi-hop paths, redundancy/waste detection, accountability rankings.
+2. **GraphRAG reasoning** — ask a question in plain English, get an answer grounded in a cited subgraph.
+3. **Calibrated vote prediction** — a defection-ranking model that generalizes across chambers and jurisdictions.
 
-- Postgres is the canonical store
-- the repo has a DB-backed runtime layer under `src/runtime/`
-- canonical ingest, normalization, rule execution, scoring, snapshot planning, and publish plumbing all exist
-- disclosure artifact discovery and download now use the official House and Senate portals
-- local publish and local readback paths both exist
+## What's in the graph
 
-The remaining gap is depth, not shape:
+| Layer | Coverage |
+|---|---|
+| **State legislative votes** | **39,261,234** per-legislator vote edges · 50 states + DC · 12,467 legislators · 354,220 bills · 955,979 roll calls |
+| **Federal floor speeches** | **52,004,494** member→bill/record edges (full 113th–119th Congress) |
+| **Federal roll-call votes** | House **3,138,375** + Senate **494,465** (113th–119th) |
+| **Local ordinances** | **2,207,679** enacted ordinances · 2,287 jurisdictions · 50 states (LOCUS-v1, CC-BY-NC) |
+| **Federal bills** | **106,536** bills with full text + CRS policy areas (113th–119th) |
+| **Lobbying** | **1,070,335** client→registrant / client→bill edges (Senate LDA, 1999–2020) |
+| **Federal spending** | Federal awards covering **$5.1T** in obligations (USASpending, top-dollar slice) |
+| **Campaign finance** | FEC donor→member contributions |
+| **Courts** | Judges / opinions / citations (CourtListener, proof-scale) |
 
-- Congress live loading is still missing member-detail enrichment, committee memberships, primary sponsors, and vote orchestration
-- disclosure parsing is still at the artifact/provenance boundary, not full PDF extraction over real stored artifacts
-- the public frontend is not started yet
+Together this closes the loop: **money in (donors, lobbying) → power (votes, speeches) → money out (federal awards).**
+
+## Headline result: does the signal generalize?
+
+A defection-ranking model trained **only on US House floor votes**, evaluated **zero-shot on all 50 states + DC**:
+
+- **Sample-weighted AUC 0.700** (macro 0.705) over 3.16M eval pairs — **every jurisdiction clears chance.**
+- Strong: HI 0.88, NJ 0.86, MD 0.85, IL 0.84. Weak (sparsity-driven): DC 0.55, AR 0.56, MI 0.58.
+- Reproduces the earlier lossless federal→California and House→Senate transfers.
+
+**Honest caveat:** this shows real cross-jurisdiction *skill*, not yet rigorous *losslessness* — state bills currently lack sector features, so the near-zero train-vs-transfer gap reduces to party-loyalty transfer. Adding state bill sectors is the open capstone. See [`benchmarks/STATE_TRANSFER_REPORT.md`](benchmarks/STATE_TRANSFER_REPORT.md).
+
+---
+
+## Quickstart
+
+Requires Python 3.12+ and the project dependencies (`pip install -e .`).
+
+**Ask a question (cited GraphRAG):**
+```bash
+python -m src.query ask "Which organizations received the most federal award money?"
+python -m src.query ask "Which congressional bills are near-duplicates of each other?"
+```
+Every answer cites its sources (URL + content hash + `known_at`) and prints which model served it. With no LLM key it returns a deterministic, never-hallucinating grounded-evidence stub.
+
+**Run the explorer (browsable web UI):**
+```bash
+python -m src.api.serve         # → http://127.0.0.1:8000
+```
+Landing page with search + ask boxes; per-official and per-jurisdiction pages, cited.
+
+**Analytical lenses:**
+```bash
+python -m src.query lens copied-bills --scan 20000 --threshold 0.85 --cite
+python -m src.query lens accountability --limit 25
+python -m src.query said-vs-voted ce-<official-id>
+```
+
+Full command + HTTP API reference (query endpoints, redundancy/waste, LOCUS opacity/diffusion, the state-vote index): [`USAGE.md`](USAGE.md).
+
+## LLM backend
+
+GraphRAG uses an **OpenAI-compatible endpoint (OpenRouter by default)**, configured via env vars / a gitignored `.env`:
+
+| Var | Purpose |
+|---|---|
+| `PSEPHOS_LLM_MODEL` | Primary model (e.g. `nvidia/nemotron-3-ultra-550b-a55b:free`) |
+| `PSEPHOS_LLM_FALLBACKS` | Comma-separated fallbacks, tried on 429/5xx |
+| `OPENROUTER_API_KEY` / `OPENROUTER_BASE_URL` | Endpoint + key |
+| `ANTHROPIC_API_KEY` | Optional alternate backend |
+
+Legacy `OPENPACT_*` names are still read as a fallback. Rate-limited models retry with backoff, fall through the chain, then degrade to the grounded stub — never crash, never hallucinate.
+
+## Data sources & ingestion
+
+Adapters live under `src/graph/ingest/` and write sidecars to `data/exports/<source>/` (large `.jsonl` gitignored; manifests + `ingest_meta.json` tracked as provenance):
+
+- **govinfo** — federal bills + full text + CRS (keyless bulk)
+- **House Clerk / Senate** — federal roll-call votes
+- **Congressional Record** — floor speeches linked to bills
+- **OpenStates** — 50-state legislators/bills/votes (bulk session CSVs; `openstates_bulk.py`)
+- **LOCUS-v1** — local ordinance corpus (Hugging Face, CC-BY-NC)
+- **USASpending** — federal awards (cursor-paginated)
+- **Senate LDA** — lobbying (bulk archives via Wayback)
+- **FEC** — campaign finance
+- **CourtListener** — court opinions/judges
+
+## Honest limitations
+
+- **State transfer** shows skill, not proven losslessness (needs state bill sectors) — see above.
+- **Courts** are proof-scale only (CourtListener keyless API throttles hard; full opinion text is gated).
+- **Lobbying** covers 1999–2020; 2021–2026 has no public bulk source (API-only).
+- **LOCUS** is CC-BY-NC (non-commercial) and is a snapshot of *enacted* law, not proposals.
+- Party labels for state legislators cover current members (~59%); historical sessions lose coverage.
+
+## Repository layout
+
+- `src/graph/` — knowledge-graph schema, ingestion adapters, entity resolution, canonical entities
+- `src/query/` — connected-graph store, cited query layer, GraphRAG, analytical lenses, state-vote index
+- `src/api/` — HTTP/WSGI serving: query endpoints + explorer
+- `src/prediction/` — numpy models: defection head, calibration, transfer harness (frozen pins)
+- `src/runtime/` — operator entrypoints, ingestion runners, backfills
+- `src/ingest/ · src/parse/ · src/normalize/ · src/load/ · src/identity/ · src/provenance/` — the legacy federal pipeline (Postgres-backed) that seeded the graph
+- `data/exports/` — source sidecars + tracked provenance manifests
+- `benchmarks/` — pinned baselines + session reports (incl. `STATE_TRANSFER_REPORT.md`)
+- `tests/` — behavioral proof for each layer
 
 ## Documentation
 
-Everything below is in-tree; see [`docs/README.md`](docs/README.md) for the
-index.
-
-- Methodology & spec: [`METHODOLOGY.md`](METHODOLOGY.md), [`ENGINEERING_SPEC_V1.md`](ENGINEERING_SPEC_V1.md)
-- Public formulas: [`docs/scoring.md`](docs/scoring.md)
+- Usage & command reference: [`USAGE.md`](USAGE.md)
+- North-star scope: [`OVERALL_GOAL.md`](OVERALL_GOAL.md)
+- Methodology & source policy: [`METHODOLOGY.md`](METHODOLOGY.md)
+- Docs index: [`docs/README.md`](docs/README.md) · architecture map: [`docs/architecture-domains.md`](docs/architecture-domains.md)
 - Changelog: [`CHANGELOG.md`](CHANGELOG.md)
-- Public correction channel + SLA: [`docs/corrections.md`](docs/corrections.md)
-- Operator runbook: [`docs/operations.md`](docs/operations.md)
-- Developer guide & quality gates: [`docs/development.md`](docs/development.md)
-- Architecture decision records: [`docs/adr/`](docs/adr/)
-- Ontology artifact contract: [`docs/ontology-contract.md`](docs/ontology-contract.md)
 
-## Runtime Entry Surface
+## Ethics
 
-The operator entrypoint is:
-
-```bash
-python3 -m src.runtime.main <command>
-```
-
-Current commands:
-
-- `bootstrap-db`
-- `runtime-env-preflight`
-- `verify-runtime-env-preflight`
-- `status`
-- `load-congress`
-- `materialize-fec-bulk-files`
-- `materialize-member-fec-crosswalk`
-- `materialize-public-statement-rss`
-- `materialize-public-statement-rows`
-- `load-fec-local`
-- `load-member-fec-crosswalk-local`
-- `verify-fec-inputs`
-- `load-disclosures`
-- `parse-disclosures`
-- `process-disclosures`
-- `recompute`
-- `verify-public-statement-rows`
-- `publish`
-- `load-congress-local`
-- `process-disclosures-local`
-- `run-oracle-local`
-- `plan-history-backfill`
-- `check-history-backfill-inputs`
-- `write-congress-archive-manifest`
-- `materialize-congress-archive`
-- `materialize-history-backfill-inputs`
-- `materialize-disclosures-bundle`
-- `materialize-bill-semantics`
-- `verify-bill-semantics`
-- `verify-bill-semantics-plan`
-- `run-history-launch-local`
-- `run-history-backfill-local`
-- `aggregate-history`
-- `prediction-backtest`
-- `prediction-input-inventory`
-- `verify-prediction-input-inventory`
-- `prediction-eval-report`
-- `prediction-eval-window-plan`
-- `verify-prediction-eval-window-plan`
-- `prediction-eval-window-summary`
-- `verify-prediction-eval-window-summary`
-- `verify-prediction-eval-window-run`
-- `prediction-source-url-audit`
-- `verify-prediction-source-url-audit`
-- `verify-prediction-eval-manifest`
-- `verify-prediction-backtest`
-- `verify-prediction-benchmark`
-- `verify-prediction-backfill-plan`
-- `prediction-offline-readiness-summary`
-- `verify-prediction-offline-readiness-summary`
-- `verify-prediction-resume-script`
-- `verify-prediction-operator-handoff`
-- `verify-prediction-operator-runbook`
-- `prediction-operator-status`
-- `verify-prediction-operator-status`
-- `prediction-operator-packet-manifest`
-- `verify-prediction-operator-packet-manifest`
-- `prediction-operator-packet-export`
-- `verify-prediction-operator-packet-export`
-- `verify-prediction-operator-packet-directory`
-- `prediction-operator-resume-plan`
-- `verify-prediction-operator-resume-plan`
-- `verify-prediction-operator-resume-run`
-- `verify-publish`
-- `verify-publish-roundtrip`
-- `verify-history-aggregate`
-
-Examples:
-
-```bash
-python3 -m src.runtime.main status
-python3 -m src.runtime.main runtime-env-preflight --output out/runtime-env-preflight.json --template-output out/psephosamerica.env.example
-python3 -m src.runtime.main verify-runtime-env-preflight --artifact out/runtime-env-preflight.json --require-next-actions --require-template-output --require-no-secret-literals --output out/runtime-env-preflight-verify.json
-python3 -m src.runtime.main load-congress --congress 119
-python3 -m src.runtime.main materialize-fec-bulk-files --cycle 2024 --output-dir data/fec --member-fec-crosswalk data/crosswalks/member_fec.csv
-python3 -m src.runtime.main materialize-member-fec-crosswalk --output data/crosswalks/member_fec.csv
-python3 -m src.runtime.main materialize-public-statement-rss --output data/raw/public-statements.jsonl
-python3 -m src.runtime.main materialize-public-statement-rows --input data/raw/public-statements.jsonl --output data/prepared/public-statement-sector-rows.jsonl
-python3 -m src.runtime.main load-fec-local --committee-master data/fec/cm.txt --candidate-committee-linkage data/fec/ccl.txt --individual-contributions data/fec/itcont.txt
-python3 -m src.runtime.main load-member-fec-crosswalk-local --crosswalk data/crosswalks/member_fec.csv
-python3 -m src.runtime.main verify-fec-inputs --committee-master data/fec/cm.txt --candidate-committee-linkage data/fec/ccl.txt --individual-contributions data/fec/itcont.txt --member-fec-crosswalk data/crosswalks/member_fec.csv --require-member-fec-crosswalk --min-committee-rows 1 --min-linkage-rows 1 --min-contribution-rows 1 --min-member-fec-rows 1 --output out/fec-inputs-verify.json
-python3 -m src.runtime.main load-disclosures --chamber both --year 2025
-python3 -m src.runtime.main parse-disclosures --chamber both --local-root data/artifacts
-python3 -m src.runtime.main process-disclosures --chamber both --local-root data/artifacts
-python3 -m src.runtime.main recompute --snapshot-date 2026-04-14
-python3 -m src.runtime.main recompute --snapshot-date 2026-04-14 --statement-rows data/prepared/public-statement-sector-rows.jsonl
-python3 -m src.runtime.main verify-public-statement-rows --statement-rows data/prepared/public-statement-sector-rows.jsonl --min-rows 1
-python3 -m src.runtime.main publish --snapshot-date 2026-04-14 --zip-bundle data/zip_bundle.json
-python3 -m src.runtime.main process-disclosures-local --bundle data/disclosures_bundle.json
-python3 -m src.runtime.main plan-history-backfill --congress 119 --target-root out/history
-python3 -m src.runtime.main check-history-backfill-inputs --congress-archive data/congress_119 --disclosures-bundle data/disclosures_bundle.json --artifact-root data
-python3 -m src.runtime.main write-congress-archive-manifest --archive-root data/congress_119 --congress 119
-python3 -m src.runtime.main materialize-congress-archive --archive-root data/congress_119 --congress 119 --include-votes --house-vote-year 2025 --senate-session 1
-python3 -m src.runtime.main materialize-history-backfill-inputs --congress 119 --congress-archive-root data/congress_119 --disclosures-bundle-path data/disclosures_bundle.json --disclosures-artifact-root data/disclosures --disclosures-year 2024 --disclosures-year 2025
-python3 -m src.runtime.main materialize-disclosures-bundle --bundle-path data/disclosures_bundle.json --artifact-root data/disclosures --year 2024 --year 2025
-python3 -m src.runtime.main materialize-bill-semantics --output-root out/bill-semantics --model gpt-5.5
-python3 -m src.runtime.main materialize-bill-semantics --output-root out/bill-semantics --missing-from-report out/prediction-eval-report.json
-python3 -m src.runtime.main materialize-bill-semantics --output-root out/bill-semantics --missing-from-report out/prediction-eval-report.json --dry-run --plan-output out/bill-semantics-plan.json --fail-on-unmatched-targets --summary-output out/bill-semantics-materialize-summary.json
-python3 -m src.runtime.main verify-bill-semantics-plan --plan out/bill-semantics-plan.json --require-source-report --require-matched-source-anchors --fail-on-unmatched-targets --output out/bill-semantics-plan-verify.json
-python3 -m src.runtime.main verify-bill-semantics --root out/bill-semantics --require-model-name gpt-5.5 --require-source-inputs-sha256 --output out/bill-semantics-verify.json
-python3 -m src.runtime.main run-history-launch-local --congress 119 --congress-archive-root data/congress_119 --disclosures-bundle-path data/disclosures_bundle.json --disclosures-artifact-root data/disclosures --disclosures-year 2024 --disclosures-year 2025 --target-root out/history --aggregate-root out/history-aggregate
-python3 -m src.runtime.main run-history-launch-local --congress 119 --congress-archive-root data/congress_119 --disclosures-bundle-path data/disclosures_bundle.json --disclosures-artifact-root data/disclosures --target-root out/history --aggregate-root out/history-aggregate --reuse-existing-inputs
-python3 -m src.runtime.main run-history-backfill-local --congress-archive data/congress_119 --disclosures-bundle data/disclosures_bundle.json --congress 119 --target-root out/history --aggregate-root out/history-aggregate
-python3 -m src.runtime.main aggregate-history --source-root out/history/2025-01-06 --source-root out/history/2025-01-13 --target-root out/history-aggregate
-python3 -m src.runtime.main prediction-backtest --feature-cutoff 2024-12-31 --label-start 2025-01-01 --label-end 2026-12-31 --output out/prediction-backtest-2024-to-2026.json
-python3 -m src.runtime.main prediction-backtest --model ontology --feature-cutoff 2024-12-31 --label-start 2025-01-01 --label-end 2026-12-31 --bill-semantics-root out/bill-semantics --congress-archive-manifest data/congress_119/manifest.json --fail-on-missing-bill-semantics-root --fail-on-mixed-bill-semantics-models --output out/prediction-backtest-ontology-2024-to-2026.json
-python3 -m src.runtime.main verify-prediction-backtest --artifact out/prediction-backtest-ontology-2024-to-2026.json --require-run-metadata --require-congress-archive-manifest --require-evaluated-predictions --require-prediction-source-urls --require-official-prediction-source-urls --require-model-name ontology_signal_model --require-ontology-feature-signals --output out/prediction-backtest-verify.json
-python3 -m src.runtime.main prediction-input-inventory --training-feature-cutoff 2022-12-31 --train-start 2023-01-01 --train-end 2024-12-31 --feature-cutoff 2024-12-31 --label-start 2025-01-01 --label-end 2026-12-31 --congress-archive-manifest data/congress_119/manifest.json --output out/prediction-input-inventory.json
-python3 -m src.runtime.main verify-prediction-input-inventory --artifact out/prediction-input-inventory.json --require-run-metadata --require-congress-archive-manifest --require-clean-inventory --require-source-family congress_vote --require-source-family congress_bill --min-training-labels 1000 --min-evaluation-labels 500 --min-fec-contributions 1 --min-member-attributed-fec-contributions 1 --min-members-with-fec-candidate-id 1 --min-public-statement-signals 1 --min-members-with-public-statement-signals 1 --output out/prediction-input-inventory-verify.json
-python3 -m src.runtime.main prediction-eval-report --training-feature-cutoff 2022-12-31 --train-start 2023-01-01 --train-end 2024-12-31 --feature-cutoff 2024-12-31 --label-start 2025-01-01 --label-end 2026-12-31 --bill-semantics-root out/bill-semantics --congress-archive-manifest data/congress_119/manifest.json --output out/prediction-eval-report.json --dataset-output out/prediction-eval-dataset.json --manifest-output out/prediction-eval-manifest.json
-python3 -m src.runtime.main prediction-source-url-audit --eval-report out/prediction-eval-report.json --fail-on-gaps --output out/prediction-source-url-audit.json
-python3 -m src.runtime.main verify-prediction-source-url-audit --artifact out/prediction-source-url-audit.json --require-run-metadata --require-no-gaps --require-no-official-source-gaps --output out/prediction-source-url-audit-verify.json
-python3 -m src.runtime.main verify-prediction-eval-manifest --manifest out/prediction-eval-manifest.json --require-artifact-run-metadata --require-congress-archive-manifest --require-ready-quality --require-failure-analysis --require-backfill-recommendations --require-fail-on-unknown-bill-semantic-availability --require-fail-on-unknown-ontology-edge-availability --require-model-name member_vote_rate_baseline --require-model-name ontology_signal_model --require-model-name learned_signal_logistic --require-ontology-feature-signals --require-source-family congress_vote --min-bill-semantic-coverage-rate 0.95 --min-bill-metadata-coverage-rate 0.95 --min-training-feature-source-url-coverage-rate 0.95 --min-training-feature-official-source-coverage-rate 0.95 --min-evaluation-feature-source-url-coverage-rate 0.95 --min-evaluation-feature-official-source-coverage-rate 0.95 --output out/prediction-eval-manifest-verify.json
-python3 -m src.runtime.main prediction-eval-window-plan --start-label-year 2022 --end-label-year 2026 --train-years 2 --label-years 1 --max-feature-cutoff 2025-12-31 --output-dir out/prediction --bill-semantics-root out/bill-semantics --congress-archive-manifest data/congress_119/manifest.json --output out/prediction/prediction-eval-window-plan.json
-python3 -m src.runtime.main verify-prediction-eval-window-plan --artifact out/prediction/prediction-eval-window-plan.json --require-run-metadata --require-commands --min-window-count 4 --output out/prediction/prediction-eval-window-plan-verify.json
-# Run the per-window eval_report_command, input_inventory_command, input_inventory_verify_command, and eval_manifest_verify_command values emitted by the plan, then run its summary_command, verify_summary_command, and verify_run_command.
-python3 -m src.runtime.main verify-prediction-benchmark --inventory out/prediction-input-inventory.json --backtest out/prediction-backtest-2024-to-2026.json --eval-manifest out/prediction-eval-manifest.json --bill-semantics-plan out/bill-semantics-plan.json --source-url-audit out/prediction-source-url-audit.json --eval-window-run-verify out/prediction/prediction-eval-window-run-verify.json --require-source-url-audit --require-source-url-audit-no-gaps --require-source-url-audit-no-official-source-gaps --require-eval-window-run-verify --bill-semantics-root out/bill-semantics --require-bill-semantics-plan-source-anchors --require-bill-semantics-cache --require-bill-semantics-model-name gpt-5.5 --require-bill-semantics-source-inputs-sha256 --require-clean-inventory --require-inventory-congress-archive-manifest --require-evaluated-backtest --require-backtest-source-urls --require-backtest-official-source-urls --require-backtest-congress-archive-manifest --require-backtest-model-name ontology_signal_model --require-backtest-ontology-feature-signals --require-backtest-source-family congress_vote --require-ready-quality --require-eval-failure-analysis --require-eval-backfill-recommendations --require-eval-congress-archive-manifest --require-eval-fail-on-unknown-bill-semantic-availability --require-eval-fail-on-unknown-ontology-edge-availability --require-eval-model-name member_vote_rate_baseline --require-eval-model-name ontology_signal_model --require-eval-model-name learned_signal_logistic --require-eval-ontology-feature-signals --require-eval-source-family congress_vote --fail-on-unmatched-targets --require-source-family congress_vote --require-source-family congress_bill --min-training-labels 1000 --min-evaluation-labels 500 --min-training-label-source-url-coverage-rate 0.95 --min-evaluation-label-source-url-coverage-rate 0.95 --min-training-label-official-source-url-coverage-rate 0.95 --min-evaluation-label-official-source-url-coverage-rate 0.95 --min-bill-source-url-coverage-rate 0.95 --min-bill-official-source-url-coverage-rate 0.95 --min-bill-sponsor-availability-rate 0.95 --min-ontology-source-anchor-coverage-rate 0.95 --min-ontology-official-source-anchor-coverage-rate 0.95 --min-fec-contributions 1 --min-member-attributed-fec-contributions 1 --min-members-with-fec-candidate-id 1 --min-public-statement-signals 1 --min-members-with-public-statement-signals 1 --min-bill-semantic-coverage-rate 0.95 --min-bill-metadata-coverage-rate 0.95 --min-training-feature-source-url-coverage-rate 0.95 --min-training-feature-official-source-coverage-rate 0.95 --min-evaluation-feature-source-url-coverage-rate 0.95 --min-evaluation-feature-official-source-coverage-rate 0.95 --check-backfill-runtime-requirements --backfill-plan-output out/prediction-backfill-plan.json --output out/prediction-benchmark-verify.json
-python3 -m src.runtime.main verify-prediction-backfill-plan --artifact out/prediction-backfill-plan.json --require-run-metadata --require-source-requirements --require-runtime-requirements --require-supported-suggested-commands --require-blocker-links --output out/prediction-backfill-plan-verify.json
-python3 -m src.runtime.main verify-prediction-backfill-plan --artifact out/prediction-backfill-plan.json --require-run-metadata --require-source-requirements --require-runtime-requirements --require-supported-suggested-commands --require-blocker-links --check-runtime-requirements --output out/prediction-backfill-plan-runtime-verify.json
-python3 -m src.runtime.main prediction-offline-readiness-summary --benchmark-verify out/prediction-benchmark-verify.json --backfill-runtime-verify out/prediction-backfill-plan-runtime-verify.json --backfill-plan out/prediction-backfill-plan.json --env-preflight out/runtime-env-preflight.json --env-preflight-verify out/runtime-env-preflight-verify.json --fec-inputs-verify out/fec-inputs-verify.json --public-statement-rows-verify out/public-statement-rows-verify.json --require-eval-window-run --output out/prediction-offline-readiness.json --resume-script-output out/prediction-resume-commands.sh
-python3 -m src.runtime.main verify-prediction-offline-readiness-summary --artifact out/prediction-offline-readiness.json --require-run-metadata --require-env-preflight-verify --require-eval-window-run --require-resume-script-match --require-no-secret-literals --output out/prediction-offline-readiness-verify.json
-python3 -m src.runtime.main verify-prediction-resume-script --readiness-summary out/prediction-offline-readiness.json --readiness-summary-verify out/prediction-offline-readiness-verify.json --script out/prediction-resume-commands.sh --require-env-guards --require-no-secret-literals --require-safe-commands --output out/prediction-resume-commands-verify.json
-python3 -m src.runtime.main verify-prediction-operator-handoff --env-preflight-verify out/runtime-env-preflight-verify.json --readiness-summary-verify out/prediction-offline-readiness-verify.json --resume-script-verify out/prediction-resume-commands-verify.json --require-no-secret-literals --output out/prediction-operator-handoff-verify.json --runbook-output out/prediction-operator-handoff-runbook.md
-python3 -m src.runtime.main verify-prediction-operator-runbook --handoff-verify out/prediction-operator-handoff-verify.json --runbook out/prediction-operator-handoff-runbook.md --require-handoff-runbook-sha --require-no-secret-literals --require-verified-artifact-hashes --output out/prediction-operator-runbook-verify.json
-python3 -m src.runtime.main prediction-operator-status --runbook-verify out/prediction-operator-runbook-verify.json --require-no-secret-literals --output out/prediction-operator-status.json
-python3 -m src.runtime.main verify-prediction-operator-status --artifact out/prediction-operator-status.json --require-run-metadata --require-no-secret-literals --output out/prediction-operator-status-verify.json
-python3 -m src.runtime.main prediction-operator-packet-manifest --status-verify out/prediction-operator-status-verify.json --require-existing-files --require-no-secret-literals --output out/prediction-operator-packet-manifest.json
-python3 -m src.runtime.main verify-prediction-operator-packet-manifest --artifact out/prediction-operator-packet-manifest.json --require-run-metadata --require-existing-files --require-no-secret-literals --output out/prediction-operator-packet-manifest-verify.json
-python3 -m src.runtime.main prediction-operator-packet-export --manifest-verify out/prediction-operator-packet-manifest-verify.json --target-dir out/prediction-operator-packet --require-no-secret-literals --output out/prediction-operator-packet-export.json
-python3 -m src.runtime.main verify-prediction-operator-packet-export --artifact out/prediction-operator-packet-export.json --require-run-metadata --require-export-manifest --require-exported-files --require-no-secret-literals --output out/prediction-operator-packet-export-verify.json
-python3 -m src.runtime.main verify-prediction-operator-packet-directory --packet-dir out/prediction-operator-packet --require-readme --require-checksums --require-exported-files --require-no-secret-literals --output out/prediction-operator-packet-directory-verify.json
-python3 -m src.runtime.main prediction-operator-resume-plan --packet-dir out/prediction-operator-packet --dotenv .env --require-verified-packet --require-no-secret-literals --output out/prediction-operator-resume-plan.json
-python3 -m src.runtime.main verify-prediction-operator-resume-plan --artifact out/prediction-operator-resume-plan.json --require-run-metadata --require-matches-current-packet --require-no-secret-literals --output out/prediction-operator-resume-plan-verify.json
-cd out/prediction-operator-packet && python3 run_resume.py --dotenv /path/to/psephosamerica.env --repo-root /path/to/psephosamerica --dry-run --output run-resume-dry-run.json
-cd out/prediction-operator-packet && python3 run_resume.py --dotenv /path/to/psephosamerica.env --repo-root /path/to/psephosamerica --phase 3 --dry-run --output run-resume-phase-3-dry-run.json
-python3 -m src.runtime.main verify-prediction-operator-resume-run --packet-dir out/prediction-operator-packet --artifact out/prediction-operator-packet/run-resume-dry-run.json --dotenv /path/to/psephosamerica.env --require-run-metadata --require-ok --require-dry-run --require-no-secret-literals --require-congress-prediction-inputs --output out/prediction-operator-run-resume-verify.json
-python3 -m src.runtime.main prediction-eval-report --training-feature-cutoff 2022-12-31 --train-start 2023-01-01 --train-end 2024-12-31 --feature-cutoff 2024-12-31 --label-start 2025-01-01 --label-end 2026-12-31 --bill-semantics-root out/bill-semantics --strict-readiness
-python3 -m src.runtime.main prediction-eval-report --training-feature-cutoff 2022-12-31 --train-start 2023-01-01 --train-end 2024-12-31 --feature-cutoff 2024-12-31 --label-start 2025-01-01 --label-end 2026-12-31 --bill-semantics-root out/bill-semantics --strict-readiness --min-training-examples 1000 --min-evaluation-examples 500 --min-bill-metadata-coverage-rate 0.95 --min-bill-semantic-coverage-rate 0.95 --min-training-feature-source-coverage-rate 0.95 --min-evaluation-feature-source-coverage-rate 0.95 --min-training-feature-source-url-coverage-rate 0.95 --min-training-feature-official-source-coverage-rate 0.95 --min-evaluation-feature-source-url-coverage-rate 0.95 --min-evaluation-feature-official-source-coverage-rate 0.95 --min-evaluation-source-url-coverage-rate 0.95 --fail-on-unknown-bill-semantic-availability --fail-on-unknown-ontology-edge-availability --fail-on-mixed-bill-semantics-models
-python3 -m src.runtime.main verify-publish --publish-root out/publish
-python3 -m src.runtime.main verify-publish-roundtrip --publish-root out/publish
-python3 -m src.runtime.main verify-history-aggregate --publish-root out/history-aggregate
-```
-
-Notes:
-
-- `bootstrap-db` applies the canonical bootstrap SQL from `db/schema.sql`; `--dry-run` reports the plan instead of dumping SQL.
-- `runtime-env-preflight` checks required env vars without printing secret values. By default it checks `PSEPHOS_POSTGRES_DSN`, `PSEPHOS_CONGRESS_API_KEY`, and `OPENAI_API_KEY`; add repeatable `--require-env` for custom checks, `--dotenv` to inspect a `.env` file for key presence only, `--template-output` to write a secret-free env template with empty values, and `--output` for a sanitized JSON artifact. The artifact includes `next_actions` and `next_actions_by_env` with secret-free operator steps such as `set_env:OPENAI_API_KEY`, `source_dotenv:.env`, or `create_dotenv_from_template:.env:out/psephosamerica.env.example`.
-- `verify-runtime-env-preflight` validates a detached env-preflight artifact before it is shared or consumed by readiness summaries. It verifies internal counts, optional template-output SHA-256 shape/value, required next actions, and obvious secret-literal absence without printing secret values.
-- `prediction-eval-report` embeds dense cutoff-safe training/evaluation feature matrices and compares baseline, ontology, and learned models with accuracy, Brier score, log loss, coverage, skip reasons, split feature-source coverage, split loaded-bill-metadata coverage, split bill-semantic cache coverage for training/evaluation bills, cutoff audit counts, top failure cases, grouped failure analysis, and ranked backfill recommendations. Its feature-source coverage separately counts any anchor, any URL-backed anchor, and official-source-backed anchors, so arbitrary links cannot satisfy production feature provenance gates. Its command summary uses a readiness gate, returning `ok: false` when train/eval labels or learned-model examples are missing while warning on weak-but-runnable source, ontology, or bill-semantics coverage. Missing bill metadata is reported separately from missing LLM semantics, so operators can load absent bill rows before spending semantic-extraction calls; `--min-bill-metadata-coverage-rate` turns that coverage into a production gate. When `--output` or `--dataset-output` is used, each artifact includes a `run_metadata` block for cutoff windows, bill-semantics cache root/hash/model names, thresholds, source-state counts, and optional Congress archive manifest path/SHA-256, and the summary includes each artifact's SHA-256. Add `--congress-archive-manifest` to record the local Congress archive manifest that supplied member, bill, and vote inputs. `--manifest-output` requires both `--output` and `--dataset-output`, then writes one auditable run manifest tying windows, thresholds, gates, source-state counts, Congress archive manifest provenance, bill-semantics cache root/hash/model names, artifact paths, hashes, coverage, and failure analysis together. `verify-prediction-eval-manifest` validates artifact hash shape before recomputing hashes, validates report/dataset schemas, checks embedded artifact `run_metadata` against manifest windows, inputs, thresholds, and source state when present, validates recorded Congress archive manifest SHA-256 when present or required, and validates the bill-semantics cache index hash shape/value after the run; add `--require-artifact-run-metadata` for production verification that must reject legacy or stripped report/dataset artifacts and manifests missing windows, inputs, thresholds, or source-state metadata, add `--require-congress-archive-manifest` when production eval manifests must prove the recorded Congress archive manifest still exists and matches SHA-256, add `--require-ready-quality` when the manifest must be ready with no readiness warnings or quality-gate failures before bundling, add `--require-failure-analysis` and `--require-backfill-recommendations` when a production manifest must carry the operator diagnosis and ranked next backfill actions, add `--require-fail-on-unknown-bill-semantic-availability` and `--require-fail-on-unknown-ontology-edge-availability` when the manifest must prove the original eval run would fail on untimestamped semantic or ontology inputs, add repeatable `--require-model-name` to prove required model comparisons are present, add `--require-ontology-feature-signals` when the eval dataset feature matrix must include the canonical ontology feature families plus training/evaluation official URL-backed claim anchors and learned coefficients for each family before learned-model training is trusted, add repeatable `--require-source-family` when the eval report must prove required source families such as `congress_vote` or portable `legislative_vote`, and add manifest `--min-*coverage-rate` flags when a detached manifest must prove enough LLM semantics, bill metadata, feature-source, source-URL, or official feature-source coverage. Add `--output` to write a standalone verification audit artifact. Add `--strict-readiness` when CI or launch checks should fail on those warnings too; add the `--min-*` thresholds when a production run must prove enough training/evaluation volume and source coverage. Add `--fail-on-unknown-bill-semantic-availability` and `--fail-on-unknown-ontology-edge-availability` when production prediction runs must reject untimestamped semantic or ontology inputs, and add `--fail-on-mixed-bill-semantics-models` when a production benchmark must use a homogeneous semantic-model cache.
-- `prediction-source-url-audit` reads a detached prediction eval report and writes a source-URL gap artifact grouped by train/eval split, model, and signal. It reports both missing URL-backed feature sources and missing official-source-backed feature sources, so production review can distinguish "no link" from "link is present but not authoritative." Use `--fail-on-gaps` when those feature-source gaps should be non-green before production scoring or release review. `verify-prediction-source-url-audit` validates the detached audit artifact, eval-report hash shape/value, derived gap counts, and embedded source-state metadata hash shape/value; add `--require-run-metadata`, `--require-no-gaps`, and `--require-no-official-source-gaps` for production source-gate checks.
-- `prediction-backtest --output` writes the full per-vote backtest artifact with cutoff-window, source-state, optional Congress archive manifest, and semantic-cache `run_metadata`, and returns `output_sha256` plus bill-semantics cache root/hash/model names in the command summary. Add `--congress-archive-manifest` to record the local Congress archive manifest path and SHA-256 that supplied member, bill, and vote inputs. `verify-prediction-backtest` validates the artifact schema and, when embedded metadata is present, verifies cutoff windows, source-state counts, bill-semantics cache index hash shape/value, model names, and recorded archive-manifest SHA-256; add `--require-run-metadata` when production verification must reject legacy or stripped backtest artifacts, add `--require-congress-archive-manifest` when production backtests must prove the recorded Congress archive manifest still exists and matches its SHA-256, add `--require-evaluated-predictions` when empty or fully skipped backtests should fail before bundling, add `--require-prediction-source-urls` when every evaluated/unevaluated label in the artifact must be source-backed, add `--require-official-prediction-source-urls` when those label source URLs must be official House/Senate vote sources, add `--require-model-name` when a production artifact must prove the intended scorer, add `--require-ontology-feature-signals` when ontology artifacts must prove scored predictions carry all required feature families with official URL-backed anchors and mark optional donation/statement families present or unavailable, and add `--output` for a standalone verification audit artifact. Ontology backtests without `--bill-semantics-root` warn with `missing_bill_semantics_root`; add `--fail-on-missing-bill-semantics-root` and `--fail-on-mixed-bill-semantics-models` for production ontology backtests that must use a present, homogeneous semantic-model cache.
-- `prediction-input-inventory` reports temporal feature/label coverage plus FEC attribution and cutoff-safe, source-backed public-statement signal counts before running a benchmark, so missing donation or statement layers are visible before model evaluation. It separately reports URL presence and official-source URL coverage for train/eval labels, bill metadata, and ontology edges, so arbitrary web URLs or malformed anchors cannot satisfy production source gates. When `--output` is used, the artifact includes prediction-window `run_metadata` plus a source-state count snapshot; add `--congress-archive-manifest` to record the local Congress archive manifest path and SHA-256 that supplied member, bill, and vote inputs, and the command summary includes `output_sha256`; `verify-prediction-input-inventory` validates the artifact schema and checks that embedded cutoff/source-state metadata matches the payload dates and counts. Add `--require-run-metadata` for production verification that must reject legacy or stripped inventory artifacts, and add `--require-congress-archive-manifest` when production inventory artifacts must prove the recorded Congress archive manifest still exists and matches its SHA-256. Add `--require-clean-inventory` when inventory warnings or blockers should fail before scoring. Add repeatable `--require-source-family` when a production artifact must prove required source families such as `congress_vote` and `congress_bill` are present. Add `--min-training-labels` and `--min-evaluation-labels` when a benchmark must prove enough label volume before model evaluation. Add `--min-fec-contributions`, `--min-member-attributed-fec-contributions`, `--min-members-with-fec-candidate-id`, `--min-public-statement-signals`, and `--min-members-with-public-statement-signals` when optional donation/PAC and public-statement evidence layers must be present before scoring. Add `--min-training-label-source-url-coverage-rate`, `--min-evaluation-label-source-url-coverage-rate`, `--min-bill-source-url-coverage-rate`, `--min-bill-sponsor-availability-rate`, and `--min-ontology-source-anchor-coverage-rate` for source presence, and add the matching `--min-*-official-source-url-coverage-rate` / `--min-ontology-official-source-anchor-coverage-rate` gates when those sources must be official House/Senate vote, Congress.gov bill, or official ontology claim anchors. Add `--output` for a standalone verification audit artifact.
-- `prediction-eval-window-plan` writes annual cutoff-safe train/eval windows and the exact commands required to run each window: eval reports, input inventories, per-window inventory verifiers, per-window eval-manifest verifiers, the longitudinal summary, the summary verifier, and the final run verifier. Add `--congress-archive-manifest` so every generated eval-report and inventory command records the same Congress archive manifest and every generated verifier requires that archive provenance. Generated per-window inventory verifiers require run metadata, `congress_vote` and `congress_bill` source families, minimum cutoff-available bill sponsor coverage, plus minimum FEC/member-crosswalk and public-statement evidence counts, so annual benchmark windows fail before scoring when core Congress or optional evidence layers are absent. `verify-prediction-eval-window-plan --require-commands` rejects incomplete or unsupported generated commands before operators spend model or data-loading time, including missing archive-manifest flags when the plan metadata declares one. `prediction-eval-window-summary` aggregates multiple eval reports into per-window and per-model longitudinal metrics while preserving report hashes. `verify-prediction-eval-window-summary --require-plan-match --require-current-report-hashes` proves the summary still matches the plan and source reports on disk, including window hash and embedded `run_metadata.report_sha256` shape/value checks. `verify-prediction-eval-window-run --require-window-verifiers --require-summary-verify` is the final annual benchmark gate: it loads the plan, derives expected verifier artifact paths from the generated commands, requires every per-window verifier and the summary verifier to be green, validates the summary verifier's recorded plan hash shape, rejects a summary verifier produced against a different plan hash, and, when the plan declares a Congress archive manifest, loads the verified per-window inventory/eval-manifest source artifacts to prove their archive manifest path and SHA-256 match the plan. That eval-window archive provenance is carried through benchmark verification, offline-readiness summaries, operator handoff, operator status, packet export README, runbook text, and resume-plan verification so operators can audit the exact Congress archive used without digging into nested artifacts.
-- `verify-prediction-benchmark` composes the strict artifact verifiers for a complete prediction benchmark bundle: inventory, backtest, eval manifest, bill-semantics dry-run plan, optionally a source-URL audit, optionally a rolling eval-window run verifier, and optionally the materialized bill-semantics cache. It always requires inventory/backtest/eval artifact run metadata and the bill-semantics plan source report, then checks that inventory/backtest/eval windows agree and that the bill-semantics plan points at the eval manifest's report artifact path and hash shape/value. Add `--source-url-audit` to include a detached source-gap audit in the bundle; add `--require-source-url-audit`, `--require-source-url-audit-no-gaps`, and `--require-source-url-audit-no-official-source-gaps` when production bundles must prove source URL gap diagnostics are present and clean. Add `--eval-window-run-verify` and `--require-eval-window-run-verify` when production bundles must prove annual rolling cutoff-window evaluation is present, green, and not stale against its underlying plan/verifier artifacts. Add `--require-bill-semantics-plan-source-anchors` when matched semantic-materialization targets must already carry URL-backed source anchors. Add `--bill-semantics-root` to run the cache verifier inside the bundle, `--require-bill-semantics-cache` when a production benchmark must fail if that cache root is missing or invalid, repeatable `--require-bill-semantics-model-name` when the bundle must prove the intended LLM semantic-cache model, and `--require-bill-semantics-source-inputs-sha256` when the cache must prove a deterministic source-input set hash. Add `--require-clean-inventory` when a production benchmark must have no inventory warnings or blockers before scoring, and add `--require-inventory-congress-archive-manifest` when the benchmark bundle must prove the inventory artifact is tied to a readable Congress archive manifest by SHA-256. Add `--require-evaluated-backtest` when the bundled backtest must contain at least one evaluated prediction, add `--require-backtest-source-urls` when those prediction labels must be source-backed, add `--require-backtest-official-source-urls` when those source-backed labels must use official vote URLs, add `--require-backtest-congress-archive-manifest` when the bundled backtest must prove its recorded Congress archive manifest still exists and matches SHA-256, add repeatable `--require-backtest-source-family` when the backtest artifact itself must prove required source families such as `congress_vote` or portable `legislative_vote`, add `--require-backtest-model-name` when the bundle must prove the intended scorer, and add `--require-backtest-ontology-feature-signals` when strict benchmark bundles must prove ontology scored predictions include the full feature-family surface with official URL-backed anchors. Add `--require-ready-quality` when it must have eval-manifest `readiness_status: ready` with no readiness warnings, blocking reasons, or quality-gate failures, add `--require-eval-failure-analysis` and `--require-eval-backfill-recommendations` when the bundle must prove it contains operator diagnosis and ranked backfill work, add `--require-eval-congress-archive-manifest` when the bundled eval manifest must prove its recorded Congress archive manifest still exists and matches SHA-256, add `--require-eval-fail-on-unknown-bill-semantic-availability` and `--require-eval-fail-on-unknown-ontology-edge-availability` when the bundled manifest must prove the eval run had strict timestamp gates, add repeatable `--require-eval-model-name` when the bundle must prove required eval model comparisons are present, add `--require-eval-ontology-feature-signals` when the bundle must prove learned-model training/evaluation features include the canonical ontology feature families plus training/evaluation official URL-backed claim anchors and learned coefficients for each family, and add repeatable `--require-eval-source-family` when the eval manifest itself must prove required source families such as `congress_vote` or portable `legislative_vote`. Add `--min-training-labels`, `--min-evaluation-labels`, inventory source coverage flags, inventory optional-evidence count flags, and manifest `--min-*coverage-rate` flags when production bundles must fail thin train/eval label windows, absent FEC/public-statement layers, weak official source coverage, weak bill sponsor availability, or weak eval-manifest semantic, metadata, feature-source, or source-URL coverage. Inventory optional-evidence failures also generate supported FEC/member-crosswalk or public-statement backfill steps. Backtest required-source-family failures generate `refresh_prediction_backtest`; backtest or eval-manifest `missing_ontology_feature_source_anchors` failures generate `backfill_feature_source_urls`, while eval-manifest `missing_learned_ontology_feature_signals` and required-source-family failures generate `refresh_prediction_eval_report`; duplicate backfill actions are coalesced into one plan step that retains source-artifact provenance. Add `--fail-on-unmatched-targets` when unmatched semantic targets should fail the bundle gate. Add `--check-backfill-runtime-requirements` when the generated backfill plan should also fail the benchmark gate if required env vars or local input files are absent. Add `--backfill-plan-output` to write the actionable `backfill_plan` as a detached artifact with source artifact hashes, blockers, source requirements, and suggested local commands for supported actions. Add `--output` to write the full detached verification report with input artifact paths, SHA-256 hashes, strict verification flags, component results, cross-bundle issues, quality-gate failures, and the embedded plan.
-- `verify-prediction-backfill-plan` validates a standalone plan, a detached `prediction-backfill-plan` wrapper, or a `backfill_plan` embedded in a benchmark verification artifact. Add `--require-run-metadata` when production verification must reject legacy or stripped detached plan artifacts and validate source-artifact hash shape/value for the source eval manifest and report, `--require-source-requirements` when every step must explain the source contract, `--require-runtime-requirements` when every step must list env/file prerequisites, `--require-supported-suggested-commands` when actions with known local command paths must include commands, and `--require-blocker-links` when semantic materialization must be explicitly blocked by missing bill metadata it depends on. Add `--check-runtime-requirements` to fail locally when required env vars or input files are absent; the verifier reports a deduplicated `missing_runtime_requirements` list, `missing_runtime_requirements_by_step` records, and a `runtime_readiness_by_step` checklist with each action marked runnable or blocked in the current shell, including both missing and satisfied runtime requirements. Add `--output` for a detached verification artifact.
-- `prediction-offline-readiness-summary` aggregates existing benchmark, runtime-backfill, FEC-input, and public-statement verifier artifacts into a single local launch-readiness snapshot. It records source artifact SHA-256 hashes, green offline input metrics, benchmark component blockers, annual eval-window verifier state, missing env/runtime requirements, runnable/blocked backfill steps, `blocker_summary` grouped by category and benchmark component, `blocked_steps_by_missing_requirement`, `unlock_summary_by_missing_requirement`, ranked `env_unlock_priority`, dependency-ordered `unlock_sequence_by_requirement_set`, `operator_resume_batches`, `next_actions_by_kind`, and deduplicated next live actions. Add `--backfill-plan` to enrich each runtime step with the plan's source requirements, blocker links, reasons, suggested commands, source artifacts, and additional coalesced reasons; add `--env-preflight` to include the sanitized env probe and env/runtime consistency check; add `--env-preflight-verify` to require the env-preflight verifier result to be embedded and counted as a readiness blocker if it found issues or secret-literal failures; add `--require-eval-window-run` to require the benchmark verifier's annual cutoff-window run proof; add `--resume-script-output` to write a secret-free shell script with the same commands grouped by dependency-aware unlock phase plus provenance comments for source artifacts and additional reasons. Use it when API keys or Postgres are unavailable but the current artifact state still needs to be auditable and repeatable.
-- `verify-prediction-offline-readiness-summary` validates a detached readiness summary before an operator relies on it. It checks internal blocker and issue counts, source artifact path/hash shape and consistency, optional run metadata source-artifact hash shape/value and source-state consistency, embedded env-preflight verification status, optional annual eval-window run proof, generated resume-script path/hash/content, and obvious secret-literal absence.
-- `verify-prediction-resume-script` validates that a generated resume script still matches its offline-readiness summary, verifies the recorded SHA-256 shape/value when present, can require env guard lines for every env-gated phase, can reject obvious secret literals, and can require executable lines to match the action-specific supported Psephos America runtime commands before an operator runs or shares the script. Add `--readiness-summary-verify` to also require the readiness summary's own verifier artifact to be green and tied to the same summary hash.
-- `verify-prediction-operator-handoff` ties the offline operator handoff together. It requires the env-preflight verifier, readiness-summary verifier, and resume-script verifier artifacts to be green, checks that the readiness summary recorded the same env-preflight verifier hash shape/value, checks that the resume verifier points at the same readiness-summary verifier by path and hash shape/value, and can reject obvious secret literals across the verifier chain. Its output also carries a compact `operator_plan` with missing env vars, env setup actions, next live actions, annual eval-window run state, and grouped resume phases so operators do not need to open the large readiness summary to see what unlocks the run. Add `--runbook-output` to write the same secret-free unlock plan as Markdown, including the eval-window verifier counts.
-- `verify-prediction-operator-runbook` validates that a generated Markdown operator runbook still matches its JSON handoff artifact, verifies the handoff-recorded runbook SHA-256, checks that all verifier artifact paths and hashes appear in the Markdown, and can reject obvious secret literals before the runbook is shared.
-- `prediction-operator-status` consumes the final runbook verifier artifact and emits a compact secret-free status payload with verifier-chain status, missing env vars, blocker count, annual eval-window run state, next live actions, and resume phases. It stays green when verification is sound but launch is blocked; add `--require-launch-ready` when a deployment gate should fail until the readiness summary has no blockers.
-- `verify-prediction-operator-status` validates that a compact status artifact still matches its linked runbook verifier, handoff verifier, readiness verifier, and readiness summary. It checks recorded source hash shape and values, recomputes the status fields including annual eval-window state, can require embedded run metadata, can reject obvious secret literals, and can fail deployment gates with `--require-launch-ready`.
-- `prediction-operator-packet-manifest` consumes the verified operator-status artifact and writes one manifest for the shareable handoff packet: status/status-verifier, runbook/runbook-verifier, handoff verifier, readiness artifacts, resume script, env preflight, env template, and readiness source artifacts, each with path, existence, byte size, and SHA-256. Add `--require-existing-files` and `--require-no-secret-literals` before copying or handing the packet to another operator.
-- `verify-prediction-operator-packet-manifest` recomputes the packet manifest from the status verifier, validates the recorded status-verifier source hash shape/value, checks packet-file SHA-256 values against disk, reports malformed packet-file hashes separately from real mismatches, can require embedded run metadata, can fail on missing packet files, and can reject obvious secret literals across packet contents.
-- `prediction-operator-packet-export` copies every present file from a verified packet manifest into one target directory under `files/`, writes `packet-export-manifest.json` with source/exported SHA-256 values, writes a secret-free `README.md` index that includes annual eval-window verifier counts from `operator_status`, writes `SHA256SUMS` for shell-friendly verification, writes standalone `verify_packet.py`, `resume_plan.py`, and `run_resume.py` helpers, and can reject obvious secret literals in the exported contents. Use this when the offline handoff packet needs to be archived or handed to another operator without relying on scattered local paths.
-- `verify-prediction-operator-packet-export` validates a copied packet export by checking the export manifest hash/content, the exported README hash when present, the exported `SHA256SUMS` hash and row contents when present, every exported file's existence and SHA-256, optional run metadata, and obvious secret-literal absence in copied files. Malformed recorded SHA-256 values are reported as invalid separately from real file-hash mismatches.
-- `verify-prediction-operator-packet-directory` validates a copied or moved packet directory in-place from `packet-export-manifest.json`, `README.md`, `SHA256SUMS`, and `files/*`. It ignores stale source/export absolute paths by resolving packet files relative to the packet directory, so an operator can verify a portable handoff after moving or archiving it, while malformed exported-file hashes remain explicit invalid-hash failures instead of being accepted or counted as mismatches.
-- `prediction-operator-resume-plan` reads a verified operator packet's resume script and compact status, then emits a no-execution dry run with phases, commands, env guards, provenance comments for source artifacts and additional reasons, currently missing env vars, runnable/blocked phase counts, packet verification status, annual eval-window run state, and secret-literal checks. Add `--dotenv .env` to inspect non-empty key presence without printing values. Use it before running the live resume script so operators can see exactly what will unlock when API/DB env vars are present.
-- `verify-prediction-operator-resume-plan` recomputes a resume plan from the packet directory recorded in the artifact and compares it to the stored dry run. It can require run metadata, current-packet match, no secret literals, and launch readiness before the artifact is used as an operator handoff. When run metadata is present, it also checks embedded source-state counts, validates recorded source-artifact SHA-256 shape before hash comparison, and checks the derivable dotenv path in `run_metadata.verification_flags` so stale resume-plan metadata cannot silently pass.
-- `verify-prediction-operator-resume-run` validates a saved packet-local `run_resume.py --output` artifact from an Psephos America checkout. It checks that the artifact was produced by `run_resume.py`, verifies run metadata when required, recomputes selected phase/command counts, selected source-artifact/additional-reason provenance, and can require an ok dry run with no obvious secret literals before an operator treats the saved artifact as proof that a packet is ready to launch. Add `--require-congress-prediction-inputs` when production handoff must prove the Congress load was required, present, ok, and produced member, bill, and vote prediction inputs. When run metadata is present, it also validates recorded SHA-256 hash shape, recomputes packet file hashes for `packet-export-manifest.json`, `SHA256SUMS`, `resume_plan.py`, `run_resume.py`, and the manifest-named resume script, optionally matches the dotenv file hash used for the run, and checks derivable `run_metadata.source_state` counts plus `run_metadata.verification_flags`; packet-local and checkout verifiers surface structured hash missing/invalid/mismatch counts so malformed hash shape is not conflated with absent or stale files. Add `--require-run-metadata` for production verification that must reject legacy or stripped runner artifacts. The verifier requires `env_validation: presence_only`, because these dry-run artifacts prove key presence and hash continuity, not external credential validity.
-- Packet-local `run_resume.py` first verifies the moved packet, parses a dotenv as plain `KEY=VALUE` without shell-sourcing it, checks that `resume_plan.py --require-verified-packet` is launch-ready, and only then runs the manifest-named resume script inside the chosen `--repo-root` with those env values in the child process. Use `--dry-run` to prove the dotenv unlocks the packet without touching live DB/API/LLM paths. Add repeatable `--phase N` when only a selected phase should be checked or run; the runner then requires only that phase's env guards instead of all packet phases and surfaces the selected source artifacts and additional reasons at top level. Add `--output` to save the same secret-free JSON result as a detached audit artifact. The runner records `env_validation: presence_only` so operators know it does not authenticate the API keys or database DSN.
-- `materialize-fec-bulk-files` downloads official FEC Committee Master, Candidate-Committee Linkage, and Individual Contributions ZIPs for a cycle and extracts them into the `load-fec-local` filenames (`cm.txt`, `ccl.txt`, `itcont.txt`). Individual contributions are filtered by default to candidate committees present in `ccl.txt`; when `--member-fec-crosswalk` points at `member_fec.csv`, filtering narrows further to committees linked to known congressional members. This avoids a full national `itcont.txt` extraction/load; add `--no-filter-individual-contributions` only when an operator explicitly wants the full file. Use `--dry-run` to audit URLs/paths without network, `--force` to replace existing local files, and `--summary-output` for a detached SHA-256-stamped acquisition summary.
-- `materialize-member-fec-crosswalk` builds the loader-ready `bioguide_id,fec_candidate_id` CSV from `unitedstates/congress-legislators` public ID data. It prefers the FEC ID matching the latest congressional term chamber when a legislator has multiple IDs, supports `--source-file` for audited local YAML, and writes a detached summary with source/output SHA-256 when `--summary-output` is used.
-- `materialize-public-statement-rss` uses `unitedstates/congress-legislators` current member records to find official House/Senate RSS feeds, fetches feed items, normalizes official statement URLs to HTTPS, and writes raw public-statement JSONL with deterministic statement IDs, member IDs, dates, titles, summaries, and RSS provenance. Use `--max-feeds` or `--max-items-per-feed` for bounded trial runs, `--source-file` for audited local legislator YAML, and `--summary-output` for a detached acquisition summary.
-- `materialize-public-statement-rows` converts raw official member statement records into the prepared JSONL consumed by `recompute --statement-rows`. Raw rows must include a member, date, and official House/Senate statement URL; sectors can be explicit or inferred from the locked sector taxonomy aliases/keywords, and missing IDs are replaced with deterministic source IDs derived from member/date/URL. The summary reports skipped reasons, derived-ID count, row/member/sector counts, and SHA-256 hashes for input, taxonomy, output, and optional summary artifacts.
-- `load-fec-local` streams individual contributions in DB-sized chunks instead of materializing the full file in memory. Tune `--contribution-chunk-size` when loading a very large FEC subset.
-- `prediction-eval-report` uses future label text only to identify the target bill key for evaluation. Sector, committee, financial, donation, public-statement, and semantic features must come from cutoff-available bill metadata, LLM semantic payloads, ontology edges, or signal rows; future roll-call `question`/`result` text is not a sector feature source.
-- Ontology edges without a recognized availability date (`transaction_date`, `start_date`, `committee_start_date`, `filing_date`, `filed_at`, `report_date`, `effective_date`, `as_of_date`, or `date`) are excluded from temporal prediction features and surfaced under `cutoff_audit.unknown_availability_ontology_edge_count`.
-- `recompute --statement-rows` accepts prepared `.json`, `.jsonl`, or `.csv` member-sector public-statement rows. Each row must include a member, sector, `statement_date`, and official House/Senate statement URL so the resulting ontology edge is source-backed and cutoff-safe. The recompute summary and ingestion-run parameters record the statement-row file path, SHA-256, and row count for later audit.
-- `verify-public-statement-rows` validates prepared `.json`, `.jsonl`, or `.csv` public-statement rows through the same loader path before recompute. It enforces member/sector/date fields, stable source IDs, official House/Senate statement URLs, duplicate-ID detection, date range reporting, optional minimum row counts, and a detached verification audit with input/output SHA-256 hashes.
-- Donation/PAC and public-statement signal rows must carry a cutoff-recognized date (`contribution_date`, `statement_date`, `date`, or `as_of_date`) before they can affect prediction features.
-- `materialize-bill-semantics` accepts repeatable `--bill-key` and `--missing-from-report` so a partial prediction eval report can directly drive the next cache-fill pass for missing training or evaluation bills. Add `--dry-run --plan-output ...` to write an auditable target plan without requiring `OPENAI_API_KEY`; the plan includes matched bill inputs, unmatched target keys, source anchors, source eval-report SHA-256, source eval-report missing keys, and source eval-report run metadata. Add `--summary-output` on dry-run, failed strict-target, or real materialization runs when the command summary itself must be durable with model, target keys, unmatched keys, strictness, and cache index hash. `verify-bill-semantics-plan` validates that plan and can enforce `--fail-on-unmatched-targets` before LLM spend; add `--require-source-report` when production verification must reject plans without source eval-report path, hash shape/value, missing-key snapshot, and run metadata, add `--require-matched-source-anchors` when matched target bills must carry source anchors before LLM extraction, and add `--output` for a standalone plan verification audit artifact. Plans created with materialization's `--fail-on-unmatched-targets` carry that strictness forward and verify non-green if unmatched target keys remain. Add `--fail-on-unmatched-targets` to materialization itself when a partial target match must be non-green instead of silently materializing only the bills currently loaded. The eval report also ranks follow-up actions under `backfill_recommendations`, including missing bill semantics, FEC/member crosswalk attribution, public-statement signals, vote-history gaps, source URL gaps, and missing availability timestamps. Semantic payloads are stamped with `available_at` from loaded bill dates plus the producing model name, and indexed with per-payload SHA-256 hashes, model names, source bill keys, and a deterministic source-input hash; the command summary returns the requested `model` and `index_sha256`, `verify-bill-semantics` validates the cache directly and reports present `model_names`, `source_bill_keys`, and source-input SHA-256 hash shape/value, and corrupted, stale, or model-mismatched semantic cache files fail load before prediction use. Add repeatable `--require-model-name` when a cache verifier must prove the intended LLM produced the materialized semantics, add `--require-source-inputs-sha256` when the cache must prove the deterministic source-input hash, and add `--output` for a standalone cache verification audit artifact. Legacy semantic caches without `available_at` are treated as unknown availability, do not count as cutoff-safe coverage, trigger a readiness warning, and can be made non-green with `--fail-on-unknown-bill-semantic-availability`.
-- `materialize-history-backfill-inputs` and `run-history-launch-local` accept `--reuse-existing-inputs` so staged local inputs can be validated and replayed again without re-fetching them. On that reuse path, `--disclosures-year` may be omitted and will be inferred from the staged bundle, but the staged inputs still must satisfy the requested chamber and vote-coverage scope.
-- `status` returns summary counts plus the latest ingestion run, latest parse run, latest artifact, and active data sources.
-- `load-congress` treats `--house-vote-year` or `--senate-session` as an explicit vote request, even if `--include-votes` is omitted.
-- `publish` requires `--zip-bundle`; there is no implicit default.
-- `process-disclosures-local` only accepts `--bundle`; unused `--chamber` and `--limit` flags are gone.
-- verification commands still emit structured JSON on stdout, print a one-line failure summary to stderr when checks fail, and exit nonzero on verification failure.
-- `aggregate-history` now verifies the aggregate root it just wrote and returns the nested history-verify summary.
-- `run-history-backfill-local` now verifies the aggregate root when `--aggregate-root` is provided; a failed aggregate verify keeps the overall run non-green even if snapshot replays succeeded.
-
-## Repository Layout
-
-- `ENGINEERING_SPEC_V1.md` - locked v1 contract and source of truth
-- `README.md` - project overview and repo orientation
-- `METHODOLOGY.md` - public methods, source policy, and limitations
-- `data/` - taxonomy and crosswalk artifacts
-- `db/` - canonical schema and migrations
-- `src/core/` - settings and structured logging
-- `src/db/` - DB connection, SQL building, FK resolution, lookup loading, write execution
-- `src/ingest/` - typed source clients and source-to-canonical transforms
-- `src/load/` - canonical load-plan builders
-- `src/normalize/` - taxonomy, member, and issuer normalization
-- `src/parse/disclosures/` - disclosure acquisition, index discovery, artifact download, normalization, and transform layers
-- `src/provenance/` - ingestion, artifact, and parse-run lifecycle helpers
-- `src/query/` - persisted row fetchers and read-model assembly helpers
-- `src/rules/` - rule contracts, loaders, contexts, evaluator, and engine
-- `src/scoring/` - score snapshot and delta builders
-- `src/export/` - published artifact contracts, planning, writing, and local reads
-- `src/pipeline/` - DB-backed orchestration
-- `src/runtime/` - operator-facing runtime surface and entrypoints
-- `tests/` - behavioral proof for each layer
-
-## What v1 Means
-
-v1 is a deterministic, inspectable, frozen launch. Every score change must be decomposable into explicit rule fires, every evidence object must separate fact from inference from normative judgment, and every published snapshot must remain immutable after release.
-
-## Development Standard
-
-This repo is intentionally backend-first. The goal is a codebase that is legible at every zoom level:
-
-- the top-level directories should describe the system without explanation
-- each package should have one obvious job
-- each file should feel like one unit of responsibility
-- each function should read like one mechanical step
-
-Tests, naming, and runtime topology are treated as product quality, not cleanup work.
+Public-record data on officials' public conduct only. No logins, no scraping behind auth, robots.txt respected. `known_at` on every feature; strict cutoff discipline so predictions never see the future; every served fact cited to its source; access gates documented rather than faked.
