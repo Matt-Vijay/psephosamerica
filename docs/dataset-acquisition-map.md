@@ -1,5 +1,8 @@
 # Dataset Acquisition Map
 
+> **Acquisition status (2026-07-02):** Tier-1 CC0/PD sources + gettable Tier-2 all downloaded to `data/raw/acquisitions/` (1.2GB, see MANIFEST.md). Remaining: LegiScan (login), ICPSR (institutional).
+
+
 Verified survey (2026-07-02) of existing datasets that can be legally ingested and remolded into the Psephos America graph. Every claim below survived 3-vote adversarial verification against primary sources (deep-research run `wf_78d2f9a9-4d6`: 24 sources fetched, 120 claims extracted, top 25 verified 25/25).
 
 The dominant risk dimension is **license clarity**, which splits everything into three tiers.
