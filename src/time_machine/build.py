@@ -151,6 +151,11 @@ def _ingest_govinfo_text(
         available = issued if issued is not None else observed
         basis = "official_publication" if issued is not None else "local_observation"
         revision = int(getattr(record, "revision"))
+        artifact_url = (
+            entry.source_url
+            or getattr(record, "acquisition_url", None)
+            or str(getattr(record, "source_url"))
+        )
         sink.write(
             {
                 "text_version_id": (
@@ -173,7 +178,8 @@ def _ingest_govinfo_text(
                     observed_at=observed,
                     source_artifact_id=entry.source_artifact_id,
                     source_family="govinfo_bills_text",
-                    source_url=str(getattr(record, "source_url")),
+                    # The URL and hash must describe the same acquired bytes.
+                    source_url=artifact_url,
                     content_sha256=entry.content_sha256,
                     valid_from=issued,
                 ),

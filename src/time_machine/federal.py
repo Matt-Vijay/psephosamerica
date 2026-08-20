@@ -9,7 +9,7 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 
-import yaml
+import yaml  # type: ignore[import-untyped]
 
 from src.time_machine.inventory import InventoryEntry
 from src.time_machine.model import (
@@ -94,9 +94,10 @@ def _short_json_prefix(line: str, marker: str) -> dict[str, Any] | None:
     if not found:
         return None
     try:
-        return json.loads(prefix + "}")
+        value = json.loads(prefix + "}")
     except json.JSONDecodeError:
         return None
+    return value if isinstance(value, dict) else None
 
 
 def load_contract_crosswalks(
@@ -236,17 +237,17 @@ def ingest_identity_spine(
     legacy_map: dict[str, str] = {}
     legacy_base = _fact_provenance(contract_entry, event_at=None)
     for legacy_id, bioguide in legacy_people.items():
-        person_id = by_bioguide.get(bioguide.upper())
-        if person_id is None:
+        mapped_person_id = by_bioguide.get(bioguide.upper())
+        if mapped_person_id is None:
             continue
-        legacy_map[legacy_id] = person_id
+        legacy_map[legacy_id] = mapped_person_id
         key = ("legacy_ce", legacy_id)
         if key in external_seen:
             continue
-        external_seen[key] = person_id
+        external_seen[key] = mapped_person_id
         sinks["person_ids"].write(
             {
-                "person_id": person_id,
+                "person_id": mapped_person_id,
                 "id_scheme": "legacy_ce",
                 "id_value": legacy_id,
                 "is_primary": False,

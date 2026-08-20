@@ -13,10 +13,11 @@ import json
 import os
 import re
 import tempfile
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from datetime import UTC, date, datetime
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
+from urllib.parse import urlsplit
 from xml.etree.ElementTree import Element
 
 import httpx
@@ -37,7 +38,7 @@ _PACKAGE_RE = re.compile(
 )
 _SHA256_RE = re.compile(r"[0-9a-f]{64}")
 _ISO_DATE_RE = re.compile(r"(?<!\d)(\d{4}-\d{2}-\d{2})(?!\d)")
-_BODY_TAGS = frozenset({"legis-body", "resolution-body", "main"})
+_BODY_TAGS = frozenset({"legis-body", "resolution-body", "main", "amendmain"})
 _METADATA_TAGS = frozenset(
     {
         "meta",
@@ -108,6 +109,7 @@ class GovInfoManifestEntry:
     issued_date: str | None
     root_tag: str
     body_tags: tuple[str, ...]
+    acquisition_url: str | None = None
 
 
 @dataclass(frozen=True)
@@ -124,6 +126,7 @@ class BillTextArtifact:
     root_tag: str
     body_tags: tuple[str, ...]
     from_cache: bool
+    acquisition_url: str | None = None
 
 
 def parse_package_id(value: str) -> GovInfoPackage:
@@ -146,6 +149,35 @@ def parse_package_filename(value: str) -> GovInfoPackage:
     if not value.endswith(".xml") or Path(value).name != value:
         raise ValueError(f"invalid GovInfo BILLS filename: {value!r}")
     return parse_package_id(value.removesuffix(".xml"))
+
+
+def _validated_acquisition_url(package: GovInfoPackage, value: str | None) -> str:
+    url = value or package.source_url
+    try:
+        parsed = urlsplit(url)
+        port = parsed.port
+    except ValueError as exc:
+        raise ValueError("invalid GovInfo text acquisition URL") from exc
+    expected_name = f"{package.package_id}.xml".lower()
+    filename_matches = PurePosixPath(parsed.path).name.lower() == expected_name
+    common_valid = (
+        parsed.scheme == "https"
+        and parsed.username is None
+        and parsed.password is None
+        and port in (None, 443)
+        and not parsed.fragment
+        and filename_matches
+    )
+    govinfo_path = urlsplit(package.source_url).path
+    is_govinfo = parsed.hostname == "www.govinfo.gov" and parsed.path == govinfo_path
+    is_gpo_github = parsed.hostname in {"github.com", "raw.githubusercontent.com"} and (
+        parsed.path.startswith("/usgpo/")
+    )
+    if not common_valid or not (is_govinfo or is_gpo_github):
+        raise ValueError(
+            f"acquisition URL must identify {package.package_id} on an official GPO host"
+        )
+    return url
 
 
 def _local_name(tag: str) -> str:
@@ -217,7 +249,9 @@ def parse_bill_text_xml(xml_bytes: bytes) -> ParsedBillText:
         raise BillTextParseError("invalid GovInfo BILLS XML") from exc
     bodies = _body_nodes(root)
     if not bodies:
-        raise BillTextParseError("XML has no legis-body, resolution-body, or USLM main")
+        raise BillTextParseError(
+            "XML has no legis-body, resolution-body, USLM main, or amendment main"
+        )
     texts = [text for body in bodies if (text := _substantive_text(body))]
     if not texts:
         raise BillTextParseError("legislative body is empty")
@@ -240,6 +274,7 @@ def _object_path(output_root: Path, digest: str) -> Path:
 def _manifest_entry(raw: dict[str, Any]) -> GovInfoManifestEntry:
     try:
         row = dict(raw)
+        row.setdefault("acquisition_url", None)
         if not isinstance(row["body_tags"], list):
             raise TypeError("body_tags must be a list")
         row["body_tags"] = tuple(row["body_tags"])
@@ -250,6 +285,7 @@ def _manifest_entry(raw: dict[str, Any]) -> GovInfoManifestEntry:
             raise ValueError("observed_at must be timezone-aware")
         if entry.issued_date is not None:
             date.fromisoformat(entry.issued_date)
+        _validated_acquisition_url(package, entry.acquisition_url)
     except (KeyError, TypeError, ValueError) as exc:
         raise CacheIntegrityError("invalid GovInfo BILLS manifest entry") from exc
     if (
@@ -404,7 +440,59 @@ def _artifact_from_entry(
         root_tag=parsed.root_tag,
         body_tags=parsed.body_tags,
         from_cache=from_cache,
+        acquisition_url=entry.acquisition_url,
     )
+
+
+def cache_bill_text_bytes(
+    package_id: str,
+    output_root: Path,
+    content: bytes,
+    *,
+    observed_at: datetime | None = None,
+    acquisition_url: str | None = None,
+) -> BillTextArtifact:
+    """Validate and cache already-acquired official BILLS XML bytes.
+
+    This is the transport-neutral half of :func:`fetch_bill_text`.  It is used
+    when the caller has obtained the same official GPO bytes through an allowed
+    browser/download channel.  The canonical GovInfo package URL remains the
+    evidence URL; ``acquisition_url`` records the exact official transport.
+    """
+    package = parse_package_id(package_id)
+    output_root = output_root.resolve()
+    _require_inventory(output_root)
+    transport_url = _validated_acquisition_url(package, acquisition_url)
+    parsed = parse_bill_text_xml(content)
+    digest = _sha256(content)
+    object_path = _object_path(output_root, digest)
+    _store_immutable(object_path, content, digest)
+    entries = list(load_govinfo_manifest(output_root))
+    revisions = [entry for entry in entries if entry.package_id == package.package_id]
+    latest = max(revisions, key=lambda entry: entry.revision, default=None)
+    if latest is not None and latest.content_sha256 == digest:
+        return _artifact_from_entry(output_root, latest, from_cache=True)
+    observed = _aware_utc(observed_at)
+    entry = GovInfoManifestEntry(
+        package_id=package.package_id,
+        congress=package.congress,
+        bill_type=package.bill_type,
+        bill_number=package.bill_number,
+        version_code=package.version_code,
+        revision=(latest.revision + 1) if latest is not None else 1,
+        source_url=package.source_url,
+        relative_path=str(object_path.relative_to(output_root)),
+        content_sha256=digest,
+        byte_count=len(content),
+        observed_at=observed.isoformat().replace("+00:00", "Z"),
+        issued_date=parsed.issued_date.isoformat() if parsed.issued_date else None,
+        root_tag=parsed.root_tag,
+        body_tags=parsed.body_tags,
+        acquisition_url=transport_url,
+    )
+    entries.append(entry)
+    _write_manifest(output_root, entries)
+    return _artifact_from_entry(output_root, entry, from_cache=False)
 
 
 def fetch_bill_text(
@@ -441,35 +529,14 @@ def fetch_bill_text(
     finally:
         if owns_client:
             http.close()
-    parsed = parse_bill_text_xml(content)
-    digest = _sha256(content)
-    object_path = _object_path(output_root, digest)
-    _store_immutable(object_path, content, digest)
-
-    if latest is not None and latest.content_sha256 == digest:
-        return _artifact_from_entry(output_root, latest, from_cache=False)
-
-    observed = supplied_observation or _aware_utc(None)
-    relative_path = str(object_path.relative_to(output_root))
-    entry = GovInfoManifestEntry(
-        package_id=package.package_id,
-        congress=package.congress,
-        bill_type=package.bill_type,
-        bill_number=package.bill_number,
-        version_code=package.version_code,
-        revision=(latest.revision + 1) if latest is not None else 1,
-        source_url=package.source_url,
-        relative_path=relative_path,
-        content_sha256=digest,
-        byte_count=len(content),
-        observed_at=observed.isoformat().replace("+00:00", "Z"),
-        issued_date=parsed.issued_date.isoformat() if parsed.issued_date else None,
-        root_tag=parsed.root_tag,
-        body_tags=parsed.body_tags,
+    result = cache_bill_text_bytes(
+        package.package_id,
+        output_root,
+        content,
+        observed_at=supplied_observation,
+        acquisition_url=package.source_url,
     )
-    entries.append(entry)
-    _write_manifest(output_root, entries)
-    return _artifact_from_entry(output_root, entry, from_cache=False)
+    return replace(result, from_cache=False)
 
 
 __all__ = [
@@ -481,6 +548,7 @@ __all__ = [
     "GovInfoTextError",
     "InventoryRequiredError",
     "ParsedBillText",
+    "cache_bill_text_bytes",
     "fetch_bill_text",
     "load_govinfo_manifest",
     "parse_bill_text_xml",

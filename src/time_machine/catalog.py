@@ -25,6 +25,7 @@ def create_catalog(output_root: Path) -> Path:
     catalog_path = output_root / CATALOG_FILENAME
     connection = duckdb.connect(str(catalog_path))
     try:
+        connection.execute("SET TimeZone='UTC'")
         connection.execute("CREATE SCHEMA IF NOT EXISTS tm")
         for table in TABLE_SCHEMAS:
             parquet = output_root / PARQUET_DIRNAME / f"{table}.parquet"
@@ -88,7 +89,9 @@ def connect(output_root: Path, *, read_only: bool = True) -> duckdb.DuckDBPyConn
     path = output_root / CATALOG_FILENAME
     if not path.exists():
         raise FileNotFoundError(f"catalog missing: run build first ({path})")
-    return duckdb.connect(str(path), read_only=read_only)
+    connection = duckdb.connect(str(path), read_only=read_only)
+    connection.execute("SET TimeZone='UTC'")
+    return connection
 
 
 def query(output_root: Path, sql: str) -> tuple[list[str], list[tuple[Any, ...]]]:

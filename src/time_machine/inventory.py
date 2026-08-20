@@ -178,7 +178,13 @@ def _govinfo_cached_inputs(
         if resolved in seen or not resolved.exists():
             continue
         seen.add(resolved)
-        result.append(("govinfo_bills_text", resolved, row.get("source_url")))
+        result.append(
+            (
+                "govinfo_bills_text",
+                resolved,
+                row.get("acquisition_url") or row.get("source_url"),
+            )
+        )
     return result
 
 

@@ -12,6 +12,7 @@ from src.time_machine.govinfo_text import (
     BillTextParseError,
     CacheIntegrityError,
     InventoryRequiredError,
+    cache_bill_text_bytes,
     fetch_bill_text,
     load_govinfo_manifest,
     parse_bill_text_xml,
@@ -125,6 +126,49 @@ def test_inventory_is_required_before_any_http_request(tmp_path: Path) -> None:
         fetch_bill_text("BILLS-118hr1ih", tmp_path, client=client)
 
     assert calls == []
+
+
+def test_official_browser_bytes_use_same_immutable_manifest_path(tmp_path: Path) -> None:
+    _write_inventory(tmp_path)
+    source = (
+        "https://github.com/usgpo/uslm/raw/refs/heads/main/"
+        "bill-version-samples-september-2024/BILLS-118s1325rs.xml"
+    )
+    first = cache_bill_text_bytes(
+        "BILLS-118s1325rs",
+        tmp_path,
+        USLM_XML,
+        observed_at=datetime(2025, 1, 1, tzinfo=UTC),
+        acquisition_url=source,
+    )
+    second = cache_bill_text_bytes(
+        "BILLS-118s1325rs",
+        tmp_path,
+        USLM_XML,
+        acquisition_url=source,
+    )
+    assert first.from_cache is False
+    assert second.from_cache is True
+    assert second.raw_path == first.raw_path
+    assert load_govinfo_manifest(tmp_path)[0].acquisition_url == source
+
+
+def test_browser_cache_rejects_a_source_for_a_different_package(tmp_path: Path) -> None:
+    _write_inventory(tmp_path)
+    mismatched = (
+        "https://github.com/usgpo/uslm/raw/refs/heads/main/"
+        "bill-version-samples-september-2024/BILLS-118s999rs.xml"
+    )
+
+    with pytest.raises(ValueError, match="must identify BILLS-118s1325rs"):
+        cache_bill_text_bytes(
+            "BILLS-118s1325rs",
+            tmp_path,
+            USLM_XML,
+            acquisition_url=mismatched,
+        )
+
+    assert load_govinfo_manifest(tmp_path) == ()
 
 
 def test_fetch_resumes_by_manifest_and_preserves_content_revisions(tmp_path: Path) -> None:
