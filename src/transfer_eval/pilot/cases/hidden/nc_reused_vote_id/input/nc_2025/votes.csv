@@ -1,0 +1,2 @@
+id,identifier,motion_text,motion_classification,start_date,result,organization_id,bill_id,bill_action_id,jurisdiction,session_identifier
+ocd-vote/016e5383-fb49-445a-bf95-ccc9b3e845a8,,M11 Concur,['passage'],2025-06-03T04:24:00-04:00,pass,ocd-organization/4861d484-9f30-411a-baaf-c2c12d4d174f,ocd-bill/272a294d-2a9e-415b-99c6-f0e0d910696a,,North Carolina,2025

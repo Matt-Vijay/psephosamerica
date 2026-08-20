@@ -1,0 +1,3 @@
+id,identifier,motion_text,motion_classification,start_date,result,organization_id,bill_id,bill_action_id,jurisdiction,session_identifier
+ocd-vote/fa93ea63-ef3a-4b99-8402-25f92aaf18fe,,House Vote #201 - 2025-2026 Regular Session,['passage'],2025-03-06,pass,ocd-organization/f94ae35f-f161-4599-b603-e7737dc8c93f,ocd-bill/b37a923c-e7f8-4f09-8497-9b9417eef7a6,,Georgia,2025_26
+ocd-vote/328553f0-fd81-4034-9729-6479db546c94,,Senate Vote #306 - 2025-2026 Regular Session,['passage'],2025-03-27,pass,ocd-organization/3b9777f2-c2fb-48e1-83bf-66fc7a17492e,ocd-bill/b37a923c-e7f8-4f09-8497-9b9417eef7a6,,Georgia,2025_26

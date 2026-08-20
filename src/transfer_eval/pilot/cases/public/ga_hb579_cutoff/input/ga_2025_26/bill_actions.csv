@@ -1,0 +1,16 @@
+id,bill_id,organization_id,description,date,classification,order
+6dc165f4-e2e7-49c3-8e56-90f90a169d2a,ocd-bill/b37a923c-e7f8-4f09-8497-9b9417eef7a6,ocd-organization/f94ae35f-f161-4599-b603-e7737dc8c93f,House Hopper,2025-02-21,['introduction'],0
+6a53bf1e-ebe0-4c8b-a4ae-92ad6f2eb1b6,ocd-bill/b37a923c-e7f8-4f09-8497-9b9417eef7a6,ocd-organization/f94ae35f-f161-4599-b603-e7737dc8c93f,House First Readers,2025-02-24,['reading-1'],1
+bb127476-ecaf-487c-933c-0391f25d4321,ocd-bill/b37a923c-e7f8-4f09-8497-9b9417eef7a6,ocd-organization/f94ae35f-f161-4599-b603-e7737dc8c93f,House Second Readers,2025-02-26,['reading-2'],2
+2004e788-143d-4505-91b6-777a30e01dc8,ocd-bill/b37a923c-e7f8-4f09-8497-9b9417eef7a6,ocd-organization/f94ae35f-f161-4599-b603-e7737dc8c93f,House Committee Favorably Reported By Substitute,2025-02-27,['committee-passage-favorable'],3
+bb842c21-056c-4ba7-bf27-f6720ded4b94,ocd-bill/b37a923c-e7f8-4f09-8497-9b9417eef7a6,ocd-organization/f94ae35f-f161-4599-b603-e7737dc8c93f,House Third Readers,2025-03-06,['reading-3'],4
+80e383f1-e93f-4019-90f9-aaa93135aec9,ocd-bill/b37a923c-e7f8-4f09-8497-9b9417eef7a6,ocd-organization/f94ae35f-f161-4599-b603-e7737dc8c93f,House Passed/Adopted By Substitute,2025-03-06,['passage'],5
+50be1384-4788-4e46-be7e-00e094fe2ac1,ocd-bill/b37a923c-e7f8-4f09-8497-9b9417eef7a6,ocd-organization/3b9777f2-c2fb-48e1-83bf-66fc7a17492e,Senate Read and Referred,2025-03-10,['referral-committee'],6
+7d13f879-445c-45ab-b45a-a1b84b680ae4,ocd-bill/b37a923c-e7f8-4f09-8497-9b9417eef7a6,ocd-organization/3b9777f2-c2fb-48e1-83bf-66fc7a17492e,Senate Committee Favorably Reported,2025-03-20,['committee-passage-favorable'],7
+ea89f507-39c6-46f1-86b8-d48656acd40d,ocd-bill/b37a923c-e7f8-4f09-8497-9b9417eef7a6,ocd-organization/3b9777f2-c2fb-48e1-83bf-66fc7a17492e,Senate Read Second Time,2025-03-21,['reading-2'],8
+b0f9721c-eca5-4037-ac7e-44a63d16436e,ocd-bill/b37a923c-e7f8-4f09-8497-9b9417eef7a6,ocd-organization/3b9777f2-c2fb-48e1-83bf-66fc7a17492e,Senate Third Read,2025-03-27,['reading-3'],9
+0aac9b7f-f100-4133-a21c-db0193986da5,ocd-bill/b37a923c-e7f8-4f09-8497-9b9417eef7a6,ocd-organization/3b9777f2-c2fb-48e1-83bf-66fc7a17492e,Senate Passed/Adopted,2025-03-27,['passage'],10
+0ee6a377-10b0-4e8b-9b20-031297f27d20,ocd-bill/b37a923c-e7f8-4f09-8497-9b9417eef7a6,ocd-organization/f94ae35f-f161-4599-b603-e7737dc8c93f,House Sent to Governor,2025-04-10,['executive-receipt'],11
+e6eef1cc-1f7a-45d9-8ed3-63a6534e0582,ocd-bill/b37a923c-e7f8-4f09-8497-9b9417eef7a6,ocd-organization/f94ae35f-f161-4599-b603-e7737dc8c93f,House Date Signed by Governor,2025-05-09,['executive-signature'],12
+29063a65-9b8a-4926-a0f1-12148854c7fe,ocd-bill/b37a923c-e7f8-4f09-8497-9b9417eef7a6,ocd-organization/3b9777f2-c2fb-48e1-83bf-66fc7a17492e,Act 89,2025-05-09,['executive-signature'],13
+82548504-eefc-4d04-bad6-fcec564bae73,ocd-bill/b37a923c-e7f8-4f09-8497-9b9417eef7a6,ocd-organization/1186f244-c9f8-46de-a453-c58d6de050d7,Effective Date,2026-07-01,[],14

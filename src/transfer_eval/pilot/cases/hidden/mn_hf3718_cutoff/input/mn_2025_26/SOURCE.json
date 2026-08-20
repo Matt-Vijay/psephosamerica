@@ -1,0 +1,23 @@
+{
+  "fixture_sha256": "a8d1cf19b3574d1890808d3d13c4ca5d02e2d6883bcebca7be33cb61a02e87a0",
+  "format": "openstates-csv-row-filter-v0",
+  "members": {
+    "bill_actions.csv": "MN/2025-2026/MN_2025-2026_bill_actions.csv",
+    "bill_sources.csv": "MN/2025-2026/MN_2025-2026_bill_sources.csv",
+    "bills.csv": "MN/2025-2026/MN_2025-2026_bills.csv",
+    "organizations.csv": "MN/2025-2026/MN_2025-2026_organizations.csv",
+    "vote_counts.csv": "MN/2025-2026/MN_2025-2026_vote_counts.csv",
+    "vote_people.csv": "MN/2025-2026/MN_2025-2026_vote_people.csv",
+    "vote_sources.csv": "MN/2025-2026/MN_2025-2026_vote_sources.csv",
+    "votes.csv": "MN/2025-2026/MN_2025-2026_votes.csv"
+  },
+  "parent": {
+    "byte_count": 30915268,
+    "generated_at": "2026-06-23 23:12:27.103480",
+    "inventory_path": "data/raw/openstates_bulk/Minnesota_2025_2026_Regular_Session.zip",
+    "observed_at": "2026-06-24T23:40:40.306472Z",
+    "sha256": "ad101028de9384b4a4224abfef126ebbb6e14991c92f7b7008a9dde5e2147a14",
+    "source_id": "artifact:sha256:ad101028de9384b4a4224abfef126ebbb6e14991c92f7b7008a9dde5e2147a14",
+    "url": "https://data.openstates.org/csv/latest/MN_2025-2026_csv_1YLAYl4jbLomrIsTlHEGMi.zip"
+  }
+}

@@ -1,0 +1,3 @@
+id,identifier,motion_text,motion_classification,start_date,result,organization_id,bill_id,bill_action_id,jurisdiction,session_identifier
+ocd-vote/2975c64e-c27a-479c-80d4-b66b963f80d9,,"Passage, as amended",['passage'],2026-04-09,pass,ocd-organization/e91db6f8-2232-49cd-91af-fdb5adb4ac3b,ocd-bill/30535aa1-9373-49f0-8a5e-811a8534dcc7,,Minnesota,2025-2026
+ocd-vote/98af2776-e0f7-4b92-b563-1867f7020608,,"Repassage, as amended by the Senate",['passage'],2026-04-20,pass,ocd-organization/e91db6f8-2232-49cd-91af-fdb5adb4ac3b,ocd-bill/30535aa1-9373-49f0-8a5e-811a8534dcc7,,Minnesota,2025-2026

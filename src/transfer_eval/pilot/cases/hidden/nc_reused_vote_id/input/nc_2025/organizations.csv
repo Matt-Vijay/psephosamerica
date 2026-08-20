@@ -1,0 +1,4 @@
+created_at,updated_at,extras,id,name,parent_id,jurisdiction_id,classification,sources,links,other_names
+2017-07-25 04:41:58.707389+00:00,2017-07-25 04:41:58.707403+00:00,{},ocd-organization/097fcec3-4290-42eb-927f-0a786b873093,Executive Office of the Governor,,ocd-jurisdiction/country:us/state:nc/government,executive,[],[],[]
+2017-07-25 04:41:58.726854+00:00,2020-04-29 05:13:59.424403+00:00,{},ocd-organization/4861d484-9f30-411a-baaf-c2c12d4d174f,House,ocd-organization/32aab083-d7a0-44e0-9b95-a7790c542605,ocd-jurisdiction/country:us/state:nc/government,lower,[],[],[]
+2017-07-25 04:41:58.732355+00:00,2020-04-29 05:13:59.771314+00:00,{},ocd-organization/6347dffa-4778-4dc0-97d7-fd4db3ff5328,Senate,ocd-organization/32aab083-d7a0-44e0-9b95-a7790c542605,ocd-jurisdiction/country:us/state:nc/government,upper,[],[],[]

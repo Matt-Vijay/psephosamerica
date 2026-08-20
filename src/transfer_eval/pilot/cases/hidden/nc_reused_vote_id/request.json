@@ -1,0 +1,27 @@
+{
+  "artifacts": [
+    {
+      "available_at": "2026-06-24T23:40:40.306472Z",
+      "byte_count": 20691722,
+      "content_sha256": "22a26e28ad410e6075f1be3c5a59f57f26245e12ef3ded076922427c8c028002",
+      "jurisdiction_id": "ocd-jurisdiction/country:us/state:nc/government",
+      "path": "input/nc_2023",
+      "session": "2023",
+      "source_id": "artifact:sha256:22a26e28ad410e6075f1be3c5a59f57f26245e12ef3ded076922427c8c028002",
+      "source_url": "https://data.openstates.org/csv/latest/NC_2023_csv_2AGiWt3JwIxMPk1UiVIWKG.zip"
+    },
+    {
+      "available_at": "2026-06-24T23:40:40.306472Z",
+      "byte_count": 21334994,
+      "content_sha256": "92f39ea2365fa9829028d591f3913abe7d201a75106a04999db8d8246aaa1af5",
+      "jurisdiction_id": "ocd-jurisdiction/country:us/state:nc/government",
+      "path": "input/nc_2025",
+      "session": "2025",
+      "source_id": "artifact:sha256:92f39ea2365fa9829028d591f3913abe7d201a75106a04999db8d8246aaa1af5",
+      "source_url": "https://data.openstates.org/csv/latest/NC_2025_csv_1Rk3pxHOnFl1ljQ5EdL58r.zip"
+    }
+  ],
+  "case_id": "case-c9c1d8d6a737",
+  "contract_version": "psephos.openstates-slice.v0",
+  "cutoff": "2026-06-25T12:00:00Z"
+}

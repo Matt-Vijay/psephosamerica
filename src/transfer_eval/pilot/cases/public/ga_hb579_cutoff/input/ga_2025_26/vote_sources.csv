@@ -1,0 +1,3 @@
+id,note,url,vote_event_id
+449e6f9d-a836-41e3-9a36-f3b72150ad39,api,http://webservices.legis.ga.gov/GGAServices/Votes/Service.svc?wsdl,ocd-vote/fa93ea63-ef3a-4b99-8402-25f92aaf18fe
+004f8e03-e78d-4aeb-95f0-ae8a75da4f71,api,http://webservices.legis.ga.gov/GGAServices/Votes/Service.svc?wsdl,ocd-vote/328553f0-fd81-4034-9729-6479db546c94

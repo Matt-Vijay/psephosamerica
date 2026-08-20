@@ -1,0 +1,39 @@
+id,bill_id,organization_id,description,date,classification,order
+ce2a0718-38a3-4816-ac81-3b5dedba7189,ocd-bill/272a294d-2a9e-415b-99c6-f0e0d910696a,ocd-organization/097fcec3-4290-42eb-927f-0a786b873093,Ch. SL 2025-5,2025-06-04,['became-law'],0
+d5f6ee15-3923-4b8d-b0f9-3835ee3e07c3,ocd-bill/272a294d-2a9e-415b-99c6-f0e0d910696a,ocd-organization/097fcec3-4290-42eb-927f-0a786b873093,Ratified,2025-06-04,[],1
+29486f22-5081-4a67-b12e-d2df9dd09ba9,ocd-bill/272a294d-2a9e-415b-99c6-f0e0d910696a,ocd-organization/4861d484-9f30-411a-baaf-c2c12d4d174f,Ordered Enrolled,2025-06-03,[],2
+fc14c04c-205a-45cc-9a5d-3b055e0ad4fe,ocd-bill/272a294d-2a9e-415b-99c6-f0e0d910696a,ocd-organization/4861d484-9f30-411a-baaf-c2c12d4d174f,Concurred In S Com Sub,2025-06-03,['amendment-passage'],3
+5c216354-fda7-4232-a7ba-64b07fb869aa,ocd-bill/272a294d-2a9e-415b-99c6-f0e0d910696a,ocd-organization/4861d484-9f30-411a-baaf-c2c12d4d174f,Placed On Cal For 06/03/2025,2025-06-02,[],4
+d12fba49-6695-4226-b04a-81ded19d15f5,ocd-bill/272a294d-2a9e-415b-99c6-f0e0d910696a,ocd-organization/4861d484-9f30-411a-baaf-c2c12d4d174f,Withdrawn From Com,2025-06-02,[],5
+fc4738cb-d212-4155-b553-0951ed48998d,ocd-bill/272a294d-2a9e-415b-99c6-f0e0d910696a,ocd-organization/4861d484-9f30-411a-baaf-c2c12d4d174f,"Ref To Com On Rules, Calendar, and Operations of the House",2025-05-27,['referral-committee'],6
+5a11352d-be36-42ba-8fd8-dcc7814a8a61,ocd-bill/272a294d-2a9e-415b-99c6-f0e0d910696a,ocd-organization/4861d484-9f30-411a-baaf-c2c12d4d174f,Regular Message Received For Concurrence in S Com Sub,2025-05-23,[],7
+f0b1c918-054b-4a65-8290-462821e777f7,ocd-bill/272a294d-2a9e-415b-99c6-f0e0d910696a,ocd-organization/6347dffa-4778-4dc0-97d7-fd4db3ff5328,Regular Message Sent To House,2025-05-23,[],8
+970552db-751b-48ac-919e-843cc346f0f1,ocd-bill/272a294d-2a9e-415b-99c6-f0e0d910696a,ocd-organization/6347dffa-4778-4dc0-97d7-fd4db3ff5328,Passed 3rd Reading,2025-05-22,"['passage', 'reading-3']",9
+b5106901-3535-4a90-a032-b969a6e754d2,ocd-bill/272a294d-2a9e-415b-99c6-f0e0d910696a,ocd-organization/6347dffa-4778-4dc0-97d7-fd4db3ff5328,Passed 2nd Reading,2025-05-22,['reading-2'],10
+1d853eb5-685f-489e-be14-03a7c47cf8e9,ocd-bill/272a294d-2a9e-415b-99c6-f0e0d910696a,ocd-organization/6347dffa-4778-4dc0-97d7-fd4db3ff5328,Reptd Fav,2025-05-21,['committee-passage-favorable'],11
+132028df-fcf6-4ee9-a5b5-bc8db8c0b703,ocd-bill/272a294d-2a9e-415b-99c6-f0e0d910696a,ocd-organization/6347dffa-4778-4dc0-97d7-fd4db3ff5328,Re-ref Com On Rules and Operations of the Senate,2025-05-20,['referral-committee'],12
+70793c12-4081-4ad1-97cd-86363dd4ed76,ocd-bill/272a294d-2a9e-415b-99c6-f0e0d910696a,ocd-organization/6347dffa-4778-4dc0-97d7-fd4db3ff5328,Com Substitute Adopted,2025-05-20,[],13
+1cb51dc7-805f-4421-a79a-27b612b8c574,ocd-bill/272a294d-2a9e-415b-99c6-f0e0d910696a,ocd-organization/6347dffa-4778-4dc0-97d7-fd4db3ff5328,Reptd Fav Com Substitute,2025-05-20,['committee-passage-favorable'],14
+06f9bf73-1568-42c0-8486-2d4430bb797c,ocd-bill/272a294d-2a9e-415b-99c6-f0e0d910696a,ocd-organization/6347dffa-4778-4dc0-97d7-fd4db3ff5328,"Re-ref to Elections.  If fav, re-ref to Rules and Operations of the Senate",2025-05-19,['referral-committee'],15
+59fedfa6-e28a-4610-9794-598339e805bd,ocd-bill/272a294d-2a9e-415b-99c6-f0e0d910696a,ocd-organization/6347dffa-4778-4dc0-97d7-fd4db3ff5328,Withdrawn From Com,2025-05-19,[],16
+a56bcf07-3607-46bd-9dfd-ec81df5a371f,ocd-bill/272a294d-2a9e-415b-99c6-f0e0d910696a,ocd-organization/6347dffa-4778-4dc0-97d7-fd4db3ff5328,Ref To Com On Rules and Operations of the Senate,2025-03-06,['referral-committee'],17
+055c8d43-f59f-4d8e-b408-20304e4e57b7,ocd-bill/272a294d-2a9e-415b-99c6-f0e0d910696a,ocd-organization/6347dffa-4778-4dc0-97d7-fd4db3ff5328,Passed 1st Reading,2025-03-06,['reading-1'],18
+5232cfa4-c270-45d9-bf8e-3bf8743c95cf,ocd-bill/272a294d-2a9e-415b-99c6-f0e0d910696a,ocd-organization/6347dffa-4778-4dc0-97d7-fd4db3ff5328,Regular Message Received From House,2025-03-06,[],19
+bb3a815f-82cf-41b9-92ef-1ba2ddb8a8fb,ocd-bill/272a294d-2a9e-415b-99c6-f0e0d910696a,ocd-organization/4861d484-9f30-411a-baaf-c2c12d4d174f,Regular Message Sent To Senate,2025-03-06,[],20
+336f9c88-baa8-4d55-9cc8-6388f4279289,ocd-bill/272a294d-2a9e-415b-99c6-f0e0d910696a,ocd-organization/4861d484-9f30-411a-baaf-c2c12d4d174f,Passed 3rd Reading,2025-03-05,"['passage', 'reading-3']",21
+c538f082-bd11-45a9-9e80-a933ffa1bcbf,ocd-bill/272a294d-2a9e-415b-99c6-f0e0d910696a,ocd-organization/4861d484-9f30-411a-baaf-c2c12d4d174f,Passed 2nd Reading,2025-03-05,['reading-2'],22
+5af019dc-659f-4055-8122-0e0f481dc692,ocd-bill/272a294d-2a9e-415b-99c6-f0e0d910696a,ocd-organization/4861d484-9f30-411a-baaf-c2c12d4d174f,Placed On Cal For 03/05/2025,2025-03-04,[],23
+9952b38a-fd69-439a-a017-6c0323b1bc52,ocd-bill/272a294d-2a9e-415b-99c6-f0e0d910696a,ocd-organization/4861d484-9f30-411a-baaf-c2c12d4d174f,Cal Pursuant Rule 36(b),2025-03-04,[],24
+fab75336-fef2-4167-93da-57bc5294a69d,ocd-bill/272a294d-2a9e-415b-99c6-f0e0d910696a,ocd-organization/4861d484-9f30-411a-baaf-c2c12d4d174f,Reptd Fav,2025-03-04,['committee-passage-favorable'],25
+e71294f6-dac2-4e79-8d68-7d84f625482d,ocd-bill/272a294d-2a9e-415b-99c6-f0e0d910696a,ocd-organization/4861d484-9f30-411a-baaf-c2c12d4d174f,"Re-ref Com On Rules, Calendar, and Operations of the House",2025-03-04,['referral-committee'],26
+791ba942-58c6-4f61-9234-00861ba20093,ocd-bill/272a294d-2a9e-415b-99c6-f0e0d910696a,ocd-organization/4861d484-9f30-411a-baaf-c2c12d4d174f,Reptd Fav Com Substitute,2025-03-04,['committee-passage-favorable'],27
+cf02ee7f-1a89-4264-9e79-77f3e0dce75a,ocd-bill/272a294d-2a9e-415b-99c6-f0e0d910696a,ocd-organization/4861d484-9f30-411a-baaf-c2c12d4d174f,"Re-ref to the Com on Election Law, if favorable, Rules, Calendar, and Operations of the House",2025-02-24,['referral-committee'],28
+7664e1ec-9410-498b-8301-99a6838fa881,ocd-bill/272a294d-2a9e-415b-99c6-f0e0d910696a,ocd-organization/4861d484-9f30-411a-baaf-c2c12d4d174f,Withdrawn From Com,2025-02-24,[],29
+b4ebbf6f-1b98-4b7f-9491-5bf3ecf75f1a,ocd-bill/272a294d-2a9e-415b-99c6-f0e0d910696a,ocd-organization/4861d484-9f30-411a-baaf-c2c12d4d174f,"Re-ref to the Com on State and Local Government, if favorable, Election Law, if favorable, Rules, Calendar, and Operations of the House",2025-02-13,['referral-committee'],30
+da23f558-2f9e-449f-9df6-f3c053389c70,ocd-bill/272a294d-2a9e-415b-99c6-f0e0d910696a,ocd-organization/4861d484-9f30-411a-baaf-c2c12d4d174f,Withdrawn From Com,2025-02-13,[],31
+ac109034-312d-4b93-a11c-c496dc764889,ocd-bill/272a294d-2a9e-415b-99c6-f0e0d910696a,ocd-organization/4861d484-9f30-411a-baaf-c2c12d4d174f,"Serial Referral To Rules, Calendar, and Operations of the House Stricken",2025-02-13,[],32
+051bb717-e8c2-4f53-b045-ac773ba6c9b2,ocd-bill/272a294d-2a9e-415b-99c6-f0e0d910696a,ocd-organization/4861d484-9f30-411a-baaf-c2c12d4d174f,"Re-ref to the Com on Election Law, if favorable, State and Local Government, if favorable, Rules, Calendar, and Operations of the House",2025-02-03,['referral-committee'],33
+8aefdab6-abf0-4dc3-b02b-fd5e00248f81,ocd-bill/272a294d-2a9e-415b-99c6-f0e0d910696a,ocd-organization/4861d484-9f30-411a-baaf-c2c12d4d174f,Withdrawn From Com,2025-02-03,[],34
+ab811802-8905-4887-9f44-05182222f586,ocd-bill/272a294d-2a9e-415b-99c6-f0e0d910696a,ocd-organization/4861d484-9f30-411a-baaf-c2c12d4d174f,"Ref To Com On Rules, Calendar, and Operations of the House",2025-01-30,['referral-committee'],35
+66660681-9547-4558-bff2-5cdfd8dc7c75,ocd-bill/272a294d-2a9e-415b-99c6-f0e0d910696a,ocd-organization/4861d484-9f30-411a-baaf-c2c12d4d174f,Passed 1st Reading,2025-01-30,['reading-1'],36
+29f946c7-b02d-4e36-9586-a2294f12f16c,ocd-bill/272a294d-2a9e-415b-99c6-f0e0d910696a,ocd-organization/4861d484-9f30-411a-baaf-c2c12d4d174f,Filed,2025-01-29,['introduction'],37

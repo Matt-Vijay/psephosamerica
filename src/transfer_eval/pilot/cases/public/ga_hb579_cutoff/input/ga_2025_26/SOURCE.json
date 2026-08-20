@@ -1,0 +1,23 @@
+{
+  "fixture_sha256": "7d9ab84550a5321edb91bd602ebcba65ce0f611575fb034b66aea41704d12c14",
+  "format": "openstates-csv-row-filter-v0",
+  "members": {
+    "bill_actions.csv": "GA/2025_26/GA_2025_26_bill_actions.csv",
+    "bill_sources.csv": "GA/2025_26/GA_2025_26_bill_sources.csv",
+    "bills.csv": "GA/2025_26/GA_2025_26_bills.csv",
+    "organizations.csv": "GA/2025_26/GA_2025_26_organizations.csv",
+    "vote_counts.csv": "GA/2025_26/GA_2025_26_vote_counts.csv",
+    "vote_people.csv": "GA/2025_26/GA_2025_26_vote_people.csv",
+    "vote_sources.csv": "GA/2025_26/GA_2025_26_vote_sources.csv",
+    "votes.csv": "GA/2025_26/GA_2025_26_votes.csv"
+  },
+  "parent": {
+    "byte_count": 61248850,
+    "generated_at": "2026-06-21 23:06:26.853427",
+    "inventory_path": "data/raw/openstates_bulk/Georgia_2025_2026_Regular_Session.zip",
+    "observed_at": "2026-06-24T23:40:40.306472Z",
+    "sha256": "a106bb47fab40604a99d007a7de97276755ac81421abd7d0443a300d57dfc1d9",
+    "source_id": "artifact:sha256:a106bb47fab40604a99d007a7de97276755ac81421abd7d0443a300d57dfc1d9",
+    "url": "https://data.openstates.org/csv/latest/GA_2025_26_csv_3M5mGgcY0kBxBjgAF8UlD9.zip"
+  }
+}

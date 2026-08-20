@@ -1,0 +1,33 @@
+id,bill_id,organization_id,description,date,classification,order
+fa87ef25-bcf1-4769-b31b-90d072c10089,ocd-bill/d5a239b6-f32a-4621-983e-5ecc1ac71ee4,ocd-organization/097fcec3-4290-42eb-927f-0a786b873093,Ch. SL 2023-35,2023-06-10,['became-law'],0
+69c9c85f-e48d-44ff-8d73-4c45c9bce7b6,ocd-bill/d5a239b6-f32a-4621-983e-5ecc1ac71ee4,ocd-organization/097fcec3-4290-42eb-927f-0a786b873093,Signed by Gov. 6/9/2023,2023-06-09,['executive-signature'],1
+722b9b11-9167-4c8e-b9bb-fe47e12e59ab,ocd-bill/d5a239b6-f32a-4621-983e-5ecc1ac71ee4,ocd-organization/097fcec3-4290-42eb-927f-0a786b873093,Pres. To Gov. 6/2/2023,2023-06-02,['executive-receipt'],2
+ef751c72-c0af-45f2-b7d0-3d6a395c53aa,ocd-bill/d5a239b6-f32a-4621-983e-5ecc1ac71ee4,ocd-organization/097fcec3-4290-42eb-927f-0a786b873093,Ratified,2023-06-01,[],3
+831983c5-f44d-4add-914f-18d70dd2c398,ocd-bill/d5a239b6-f32a-4621-983e-5ecc1ac71ee4,ocd-organization/4861d484-9f30-411a-baaf-c2c12d4d174f,Ordered Enrolled,2023-05-31,[],4
+dd426b61-0991-4e0d-9247-a16d8728b565,ocd-bill/d5a239b6-f32a-4621-983e-5ecc1ac71ee4,ocd-organization/4861d484-9f30-411a-baaf-c2c12d4d174f,Concurred In S Com Sub,2023-05-31,['amendment-passage'],5
+d26de3ac-9cb5-48a2-bbbe-c983ea9ee14b,ocd-bill/d5a239b6-f32a-4621-983e-5ecc1ac71ee4,ocd-organization/4861d484-9f30-411a-baaf-c2c12d4d174f,Placed On Cal For 05/31/2023,2023-05-30,[],6
+bbbc328b-593d-44b2-8a53-074ce2c66b3f,ocd-bill/d5a239b6-f32a-4621-983e-5ecc1ac71ee4,ocd-organization/4861d484-9f30-411a-baaf-c2c12d4d174f,Cal Pursuant 36(b),2023-05-30,[],7
+69b6907e-99c9-489f-a3fb-9271e48cfd1f,ocd-bill/d5a239b6-f32a-4621-983e-5ecc1ac71ee4,ocd-organization/4861d484-9f30-411a-baaf-c2c12d4d174f,Regular Message Received For Concurrence in S Com Sub,2023-05-26,[],8
+139811a8-05f2-4371-b8b0-2b9d6bc57f80,ocd-bill/d5a239b6-f32a-4621-983e-5ecc1ac71ee4,ocd-organization/6347dffa-4778-4dc0-97d7-fd4db3ff5328,Regular Message Sent To House,2023-05-26,[],9
+d8ce5f0d-d9ba-4154-b65f-07fd72a757a1,ocd-bill/d5a239b6-f32a-4621-983e-5ecc1ac71ee4,ocd-organization/6347dffa-4778-4dc0-97d7-fd4db3ff5328,Passed 3rd Reading,2023-05-25,"['passage', 'reading-3']",10
+40bc617f-4c6b-46b4-a284-8199ac885755,ocd-bill/d5a239b6-f32a-4621-983e-5ecc1ac71ee4,ocd-organization/6347dffa-4778-4dc0-97d7-fd4db3ff5328,Passed 2nd Reading,2023-05-25,['reading-2'],11
+26797645-5366-47ef-854b-599f18b68dbc,ocd-bill/d5a239b6-f32a-4621-983e-5ecc1ac71ee4,ocd-organization/6347dffa-4778-4dc0-97d7-fd4db3ff5328,Reptd Fav,2023-05-24,['committee-passage-favorable'],12
+ce3513f8-fd89-4171-a1df-21fa21c42fc5,ocd-bill/d5a239b6-f32a-4621-983e-5ecc1ac71ee4,ocd-organization/6347dffa-4778-4dc0-97d7-fd4db3ff5328,Re-ref Com On Rules and Operations of the Senate,2023-05-23,['referral-committee'],13
+f9d579ac-6b4d-48c7-8dac-6e7edc996c08,ocd-bill/d5a239b6-f32a-4621-983e-5ecc1ac71ee4,ocd-organization/6347dffa-4778-4dc0-97d7-fd4db3ff5328,Com Substitute Adopted,2023-05-23,[],14
+11c70685-02f6-49b6-af8e-e8be2c4b0019,ocd-bill/d5a239b6-f32a-4621-983e-5ecc1ac71ee4,ocd-organization/6347dffa-4778-4dc0-97d7-fd4db3ff5328,Reptd Fav Com Substitute,2023-05-23,['committee-passage-favorable'],15
+aa2acd26-2032-41e0-918b-516c5ebe6b15,ocd-bill/d5a239b6-f32a-4621-983e-5ecc1ac71ee4,ocd-organization/6347dffa-4778-4dc0-97d7-fd4db3ff5328,"Re-ref to State and Local Government.  If fav, re-ref to Rules and Operations of the Senate",2023-05-18,['referral-committee'],16
+a1cd67ad-70d9-4465-b58a-027d60f8ab75,ocd-bill/d5a239b6-f32a-4621-983e-5ecc1ac71ee4,ocd-organization/6347dffa-4778-4dc0-97d7-fd4db3ff5328,Withdrawn From Com,2023-05-18,[],17
+9e1956c9-511c-4d8c-8db6-84b1dfb80e17,ocd-bill/d5a239b6-f32a-4621-983e-5ecc1ac71ee4,ocd-organization/6347dffa-4778-4dc0-97d7-fd4db3ff5328,Ref To Com On Rules and Operations of the Senate,2023-04-26,['referral-committee'],18
+535b9e6d-eddf-491d-99ac-365eb597f2dd,ocd-bill/d5a239b6-f32a-4621-983e-5ecc1ac71ee4,ocd-organization/6347dffa-4778-4dc0-97d7-fd4db3ff5328,Passed 1st Reading,2023-04-26,['reading-1'],19
+5dbbfc25-30de-4aa9-896c-9b6dc2ee8bde,ocd-bill/d5a239b6-f32a-4621-983e-5ecc1ac71ee4,ocd-organization/6347dffa-4778-4dc0-97d7-fd4db3ff5328,Regular Message Received From House,2023-04-26,[],20
+d57059b5-12ac-48dd-a760-6232fac1f119,ocd-bill/d5a239b6-f32a-4621-983e-5ecc1ac71ee4,ocd-organization/4861d484-9f30-411a-baaf-c2c12d4d174f,Regular Message Sent To Senate,2023-04-26,[],21
+7f5a2063-edd9-4393-8f35-66f1095d34fc,ocd-bill/d5a239b6-f32a-4621-983e-5ecc1ac71ee4,ocd-organization/4861d484-9f30-411a-baaf-c2c12d4d174f,Passed 3rd Reading,2023-04-25,"['passage', 'reading-3']",22
+e284e57b-0a67-4968-afcf-55f03e800922,ocd-bill/d5a239b6-f32a-4621-983e-5ecc1ac71ee4,ocd-organization/4861d484-9f30-411a-baaf-c2c12d4d174f,Passed 2nd Reading,2023-04-25,['reading-2'],23
+192db3e8-d79d-4a0a-8772-46158f283007,ocd-bill/d5a239b6-f32a-4621-983e-5ecc1ac71ee4,ocd-organization/4861d484-9f30-411a-baaf-c2c12d4d174f,Added to Calendar,2023-04-25,[],24
+b44ba8ee-c2d8-4c66-9a76-3c2865e8f6db,ocd-bill/d5a239b6-f32a-4621-983e-5ecc1ac71ee4,ocd-organization/4861d484-9f30-411a-baaf-c2c12d4d174f,Cal Pursuant Rule 36(b),2023-04-25,[],25
+06fae42a-a059-4310-b371-20682bff29a5,ocd-bill/d5a239b6-f32a-4621-983e-5ecc1ac71ee4,ocd-organization/4861d484-9f30-411a-baaf-c2c12d4d174f,Reptd Fav,2023-04-25,['committee-passage-favorable'],26
+0bd37372-9439-4a8c-b90d-c84077e6ec22,ocd-bill/d5a239b6-f32a-4621-983e-5ecc1ac71ee4,ocd-organization/4861d484-9f30-411a-baaf-c2c12d4d174f,"Re-ref Com On Rules, Calendar, and Operations of the House",2023-04-25,['referral-committee'],27
+b4c16cc7-0003-4161-970c-c986eac4ac45,ocd-bill/d5a239b6-f32a-4621-983e-5ecc1ac71ee4,ocd-organization/4861d484-9f30-411a-baaf-c2c12d4d174f,Reptd Fav Com Substitute,2023-04-25,['committee-passage-favorable'],28
+d566cd46-646c-4594-bc51-00eb1f05e2cd,ocd-bill/d5a239b6-f32a-4621-983e-5ecc1ac71ee4,ocd-organization/4861d484-9f30-411a-baaf-c2c12d4d174f,"Ref to the Com on Local Government, if favorable, Rules, Calendar, and Operations of the House",2023-03-20,['referral-committee'],29
+2abd556a-51fb-4888-a9e7-0e07c5e8d46c,ocd-bill/d5a239b6-f32a-4621-983e-5ecc1ac71ee4,ocd-organization/4861d484-9f30-411a-baaf-c2c12d4d174f,Passed 1st Reading,2023-03-20,['reading-1'],30
+57ebceab-e5a6-47f6-ac1b-b4a30df62b78,ocd-bill/d5a239b6-f32a-4621-983e-5ecc1ac71ee4,ocd-organization/4861d484-9f30-411a-baaf-c2c12d4d174f,Filed,2023-03-16,['introduction'],31

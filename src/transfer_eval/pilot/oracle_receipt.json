@@ -1,0 +1,51 @@
+{
+  "cases": [
+    {
+      "case_id": "ga_hb579_cutoff",
+      "status": "PASS",
+      "tables": {
+        "action": {"expected": 14, "match": true, "oracle": 14},
+        "bill": {"expected": 1, "match": true, "oracle": 1},
+        "member_vote": {"expected": 236, "match": true, "oracle": 236},
+        "roll_call": {"expected": 2, "match": true, "oracle": 2}
+      }
+    },
+    {
+      "case_id": "mn_hf3718_cutoff",
+      "status": "PASS",
+      "tables": {
+        "action": {"expected": 27, "match": true, "oracle": 27},
+        "bill": {"expected": 1, "match": true, "oracle": 1},
+        "member_vote": {"expected": 268, "match": true, "oracle": 268},
+        "roll_call": {"expected": 2, "match": true, "oracle": 2}
+      }
+    },
+    {
+      "case_id": "nc_reused_vote_id",
+      "status": "PASS",
+      "tables": {
+        "action": {"expected": 70, "match": true, "oracle": 70},
+        "bill": {"expected": 2, "match": true, "oracle": 2},
+        "member_vote": {"expected": 240, "match": true, "oracle": 240},
+        "roll_call": {"expected": 2, "match": true, "oracle": 2}
+      }
+    },
+    {
+      "case_id": "mo_missing_org",
+      "status": "PASS",
+      "tables": {
+        "action": {"expected": 20, "match": true, "oracle": 20},
+        "bill": {"expected": 10, "match": true, "oracle": 10},
+        "member_vote": {"expected": 36, "match": true, "oracle": 36},
+        "roll_call": {"expected": 1, "match": true, "oracle": 1}
+      }
+    }
+  ],
+  "oracle": {
+    "build_sha256": "b64b4f8cdad5a037bfe6eea9b49e1fbd9a8b752ccb6413ecd7674caba91d737e",
+    "catalog_sha256": "a1dc59c2cdb720cd42c2cd58ea8be2cf597b633129b080890549ef442ddd33b0",
+    "integrity_sha256": "33e325bcaef1a0626e1d81879492218f83d693ac5aa761ad0ecffeb43eed3338",
+    "integrity_status": "pass"
+  },
+  "schema_version": 1
+}

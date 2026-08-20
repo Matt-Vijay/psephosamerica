@@ -1,0 +1,4 @@
+id,note,url,bill_id
+7a0a0149-d71f-4f53-b62f-1e848585e6e1,,https://www.legis.ga.gov/legislation/70666,ocd-bill/b37a923c-e7f8-4f09-8497-9b9417eef7a6
+570ada4e-7a31-4485-a95f-335bed3cb13e,api,http://webservices.legis.ga.gov/GGAServices/Legislation/Service.svc?wsdl,ocd-bill/b37a923c-e7f8-4f09-8497-9b9417eef7a6
+b72ebac4-b596-4a8f-adad-9c471795856b,api,http://webservices.legis.ga.gov/GGAServices/Members/Service.svc?wsdl,ocd-bill/b37a923c-e7f8-4f09-8497-9b9417eef7a6

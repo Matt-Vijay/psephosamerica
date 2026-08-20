@@ -1,0 +1,29 @@
+id,bill_id,organization_id,description,date,classification,order
+d4c5451f-4513-4995-8063-cb2be147ce38,ocd-bill/30535aa1-9373-49f0-8a5e-811a8534dcc7,ocd-organization/e91db6f8-2232-49cd-91af-fdb5adb4ac3b,"Introduction and first reading, referred to Agriculture Finance and Policy",2026-02-25,"['introduction', 'referral-committee']",0
+e4baaeac-740d-4cd6-8656-9337aff78d4a,ocd-bill/30535aa1-9373-49f0-8a5e-811a8534dcc7,ocd-organization/e91db6f8-2232-49cd-91af-fdb5adb4ac3b,"Authors added Allen, Harder, and Burkel",2026-03-05,[],1
+538930d9-cb40-4fe0-986b-4750cbbcbefd,ocd-bill/30535aa1-9373-49f0-8a5e-811a8534dcc7,ocd-organization/e91db6f8-2232-49cd-91af-fdb5adb4ac3b,"Committee report, to adopt as amended",2026-03-16,['committee-passage'],2
+d25c386f-ad41-441a-8bb9-efc835bf0e3e,ocd-bill/30535aa1-9373-49f0-8a5e-811a8534dcc7,ocd-organization/e91db6f8-2232-49cd-91af-fdb5adb4ac3b,Second reading,2026-03-16,['reading-2'],3
+02740c01-00b4-44ee-a2a4-2a07c742238c,ocd-bill/30535aa1-9373-49f0-8a5e-811a8534dcc7,ocd-organization/e91db6f8-2232-49cd-91af-fdb5adb4ac3b,"House rule 1.21, placed on Calendar for the Day Thursday, April 9, 2026",2026-04-07,[],4
+12013c52-373b-4f0b-b920-112675ece83d,ocd-bill/30535aa1-9373-49f0-8a5e-811a8534dcc7,ocd-organization/e91db6f8-2232-49cd-91af-fdb5adb4ac3b,Amended,2026-04-09,['amendment-passage'],5
+1b5f4197-307f-4974-ac2f-f789802eb317,ocd-bill/30535aa1-9373-49f0-8a5e-811a8534dcc7,ocd-organization/e91db6f8-2232-49cd-91af-fdb5adb4ac3b,Third reading as amended,2026-04-09,['reading-3'],6
+28c28ce7-eea2-4166-9f0b-1f063ba3bc0f,ocd-bill/30535aa1-9373-49f0-8a5e-811a8534dcc7,ocd-organization/e91db6f8-2232-49cd-91af-fdb5adb4ac3b,Bill was passed as amended,2026-04-09,['passage'],7
+70d9ab0c-5098-4571-9a60-9cb22f90f9a8,ocd-bill/30535aa1-9373-49f0-8a5e-811a8534dcc7,ocd-organization/e91db6f8-2232-49cd-91af-fdb5adb4ac3b,"House rule 1.15 (c), message requesting concurrence received",2026-04-16,[],8
+1c509c4b-377e-4856-ba80-2af1b27c7601,ocd-bill/30535aa1-9373-49f0-8a5e-811a8534dcc7,ocd-organization/e91db6f8-2232-49cd-91af-fdb5adb4ac3b,Returned from Senate with amendment,2026-04-20,[],9
+dd1a5f50-89ce-4793-abcf-4dd54aa4c9ea,ocd-bill/30535aa1-9373-49f0-8a5e-811a8534dcc7,ocd-organization/e91db6f8-2232-49cd-91af-fdb5adb4ac3b,Motion to concur with Senate amendments,2026-04-20,[],10
+bc4da2eb-f798-4751-98ce-374f504e9744,ocd-bill/30535aa1-9373-49f0-8a5e-811a8534dcc7,ocd-organization/e91db6f8-2232-49cd-91af-fdb5adb4ac3b,Motion prevailed,2026-04-20,[],11
+26acd1e3-3da8-44df-b13e-932a018ff741,ocd-bill/30535aa1-9373-49f0-8a5e-811a8534dcc7,ocd-organization/e91db6f8-2232-49cd-91af-fdb5adb4ac3b,Third reading as amended by the Senate,2026-04-20,['reading-3'],12
+8c0977d5-43a0-4609-b222-1a666eb8c91b,ocd-bill/30535aa1-9373-49f0-8a5e-811a8534dcc7,ocd-organization/e91db6f8-2232-49cd-91af-fdb5adb4ac3b,Bill was repassed as amended by the Senate,2026-04-20,[],13
+cfe60a47-2170-4d00-a64b-c062fd0ea920,ocd-bill/30535aa1-9373-49f0-8a5e-811a8534dcc7,ocd-organization/339ea74e-8ea4-4ce3-902d-6fd7a5bc571b,Presented to Governor 04/28/2026,2026-04-28,['executive-receipt'],14
+1532b00c-3862-4c1e-8c58-73a567082a6c,ocd-bill/30535aa1-9373-49f0-8a5e-811a8534dcc7,ocd-organization/339ea74e-8ea4-4ce3-902d-6fd7a5bc571b,Governor approval 04/29/2026,2026-04-29,['executive-signature'],15
+e922d11e-2cc2-41b9-9d0e-89393d55b653,ocd-bill/30535aa1-9373-49f0-8a5e-811a8534dcc7,ocd-organization/e91db6f8-2232-49cd-91af-fdb5adb4ac3b,"Secretary of State, Filed 04/29/2026",2026-04-29,[],16
+106b34a6-619c-4ca6-93ff-92fd1a89e3f3,ocd-bill/30535aa1-9373-49f0-8a5e-811a8534dcc7,ocd-organization/6a026144-758d-4d57-b856-9c60dce3c4b5,Received from House,2026-04-13,['introduction'],17
+c9bad6c8-55e6-45f0-89a1-1aa4dec7ddc1,ocd-bill/30535aa1-9373-49f0-8a5e-811a8534dcc7,ocd-organization/6a026144-758d-4d57-b856-9c60dce3c4b5,Introduction and first reading,2026-04-13,['introduction'],18
+61c76496-2a49-420c-84c0-32c581ef363f,ocd-bill/30535aa1-9373-49f0-8a5e-811a8534dcc7,ocd-organization/6a026144-758d-4d57-b856-9c60dce3c4b5,"Referred to Rules and Administration for comparison with SF4069, now on General Orders",2026-04-13,['referral-committee'],19
+8a55e58f-d252-4c80-becb-19985acf0a8b,ocd-bill/30535aa1-9373-49f0-8a5e-811a8534dcc7,ocd-organization/6a026144-758d-4d57-b856-9c60dce3c4b5,"Comm report: Rule 45-amend, subst. General Orders SF4069",2026-04-14,[],20
+9cb576af-1db7-40b2-9311-4786f4a8f005,ocd-bill/30535aa1-9373-49f0-8a5e-811a8534dcc7,ocd-organization/6a026144-758d-4d57-b856-9c60dce3c4b5,Second reading,2026-04-14,['reading-2'],21
+6b5d8056-ca7d-4fc1-81ba-6e78c432c525,ocd-bill/30535aa1-9373-49f0-8a5e-811a8534dcc7,ocd-organization/6a026144-758d-4d57-b856-9c60dce3c4b5,Special Order,2026-04-15,[],22
+abb5ddc5-a457-41b2-a971-cad973fd310b,ocd-bill/30535aa1-9373-49f0-8a5e-811a8534dcc7,ocd-organization/6a026144-758d-4d57-b856-9c60dce3c4b5,Third reading Passed,2026-04-15,['passage'],23
+636b4f40-ac03-4f92-acbf-b82166b8f15b,ocd-bill/30535aa1-9373-49f0-8a5e-811a8534dcc7,ocd-organization/6a026144-758d-4d57-b856-9c60dce3c4b5,Presentment date 04/28/26,2026-04-28,[],24
+51b0143b-78ee-499a-a2f7-b8c0a5a092a6,ocd-bill/30535aa1-9373-49f0-8a5e-811a8534dcc7,ocd-organization/339ea74e-8ea4-4ce3-902d-6fd7a5bc571b,Governor's action Approval 04/29/26,2026-04-29,['executive-signature'],25
+0acc22e2-4124-4c5f-a568-e578204c7d72,ocd-bill/30535aa1-9373-49f0-8a5e-811a8534dcc7,ocd-organization/6a026144-758d-4d57-b856-9c60dce3c4b5,Secretary of State Chapter 53 04/29/26,2026-04-29,[],26
+f200759e-6fe8-405e-8710-a153d9f5d496,ocd-bill/30535aa1-9373-49f0-8a5e-811a8534dcc7,ocd-organization/6a026144-758d-4d57-b856-9c60dce3c4b5,Effective date 07/01/2026,2026-07-01,[],27

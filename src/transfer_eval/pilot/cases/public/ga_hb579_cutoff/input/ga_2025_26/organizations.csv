@@ -1,0 +1,4 @@
+created_at,updated_at,extras,id,name,parent_id,jurisdiction_id,classification,sources,links,other_names
+2017-07-12 06:33:14.483188+00:00,2017-07-12 06:33:14.483202+00:00,{},ocd-organization/1186f244-c9f8-46de-a453-c58d6de050d7,Georgia General Assembly,,ocd-jurisdiction/country:us/state:ga/government,legislature,[],[],[]
+2017-07-12 06:33:14.512920+00:00,2020-04-29 05:05:37.091766+00:00,{},ocd-organization/f94ae35f-f161-4599-b603-e7737dc8c93f,House,ocd-organization/1186f244-c9f8-46de-a453-c58d6de050d7,ocd-jurisdiction/country:us/state:ga/government,lower,[],[],[]
+2017-07-12 06:33:14.517942+00:00,2020-04-29 05:05:37.601115+00:00,{},ocd-organization/3b9777f2-c2fb-48e1-83bf-66fc7a17492e,Senate,ocd-organization/1186f244-c9f8-46de-a453-c58d6de050d7,ocd-jurisdiction/country:us/state:ga/government,upper,[],[],[]

@@ -1,0 +1,23 @@
+{
+  "fixture_sha256": "fc32da7e6aea03df5d65697ddd33586009651bec84acbf7a827ab8ceff1eb60b",
+  "format": "openstates-csv-row-filter-v0",
+  "members": {
+    "bill_actions.csv": "NC/2023/NC_2023_bill_actions.csv",
+    "bill_sources.csv": "NC/2023/NC_2023_bill_sources.csv",
+    "bills.csv": "NC/2023/NC_2023_bills.csv",
+    "organizations.csv": "NC/2023/NC_2023_organizations.csv",
+    "vote_counts.csv": "NC/2023/NC_2023_vote_counts.csv",
+    "vote_people.csv": "NC/2023/NC_2023_vote_people.csv",
+    "vote_sources.csv": "NC/2023/NC_2023_vote_sources.csv",
+    "votes.csv": "NC/2023/NC_2023_votes.csv"
+  },
+  "parent": {
+    "byte_count": 20691722,
+    "generated_at": "2025-01-14 23:05:07.692754",
+    "inventory_path": "data/raw/openstates_bulk/North_Carolina_2023_2024_Session.zip",
+    "observed_at": "2026-06-24T23:40:40.306472Z",
+    "sha256": "22a26e28ad410e6075f1be3c5a59f57f26245e12ef3ded076922427c8c028002",
+    "source_id": "artifact:sha256:22a26e28ad410e6075f1be3c5a59f57f26245e12ef3ded076922427c8c028002",
+    "url": "https://data.openstates.org/csv/latest/NC_2023_csv_2AGiWt3JwIxMPk1UiVIWKG.zip"
+  }
+}

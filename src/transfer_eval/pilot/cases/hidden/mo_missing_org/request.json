@@ -1,0 +1,17 @@
+{
+  "artifacts": [
+    {
+      "available_at": "2026-06-24T23:40:40.306472Z",
+      "byte_count": 28764,
+      "content_sha256": "b6f6a52c1b27b93762523682e4158360d261f75a65c8d1688ca901b966049014",
+      "jurisdiction_id": "ocd-jurisdiction/country:us/state:mo/government",
+      "path": "input/mo_2017s1",
+      "session": "2017S1",
+      "source_id": "artifact:sha256:b6f6a52c1b27b93762523682e4158360d261f75a65c8d1688ca901b966049014",
+      "source_url": "https://data.openstates.org/csv/latest/MO_2017S1_csv_1AOjXVO3wU92r7VZy9o7H.zip"
+    }
+  ],
+  "case_id": "case-ef3a61c3de37",
+  "contract_version": "psephos.openstates-slice.v0",
+  "cutoff": "2026-06-27T00:00:00Z"
+}

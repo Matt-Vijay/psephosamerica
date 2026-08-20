@@ -1,0 +1,22 @@
+{
+  "fixture_sha256": "bec550785cd8b35a864dc182da99f648c489fbaef1f97e1e32bcf0643f2fbd3b",
+  "format": "openstates-csv-row-filter-v0",
+  "members": {
+    "bill_actions.csv": "MO/2017S1/MO_2017S1_bill_actions.csv",
+    "bill_sources.csv": "MO/2017S1/MO_2017S1_bill_sources.csv",
+    "bills.csv": "MO/2017S1/MO_2017S1_bills.csv",
+    "vote_counts.csv": "MO/2017S1/MO_2017S1_vote_counts.csv",
+    "vote_people.csv": "MO/2017S1/MO_2017S1_vote_people.csv",
+    "vote_sources.csv": "MO/2017S1/MO_2017S1_vote_sources.csv",
+    "votes.csv": "MO/2017S1/MO_2017S1_votes.csv"
+  },
+  "parent": {
+    "byte_count": 28764,
+    "generated_at": "2021-02-01 00:55:44.653853",
+    "inventory_path": "data/raw/openstates_bulk/Missouri_2017_First_Extraordinary_Session.zip",
+    "observed_at": "2026-06-24T23:40:40.306472Z",
+    "sha256": "b6f6a52c1b27b93762523682e4158360d261f75a65c8d1688ca901b966049014",
+    "source_id": "artifact:sha256:b6f6a52c1b27b93762523682e4158360d261f75a65c8d1688ca901b966049014",
+    "url": "https://data.openstates.org/csv/latest/MO_2017S1_csv_1AOjXVO3wU92r7VZy9o7H.zip"
+  }
+}

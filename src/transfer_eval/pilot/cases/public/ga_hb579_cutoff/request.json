@@ -1,0 +1,17 @@
+{
+  "artifacts": [
+    {
+      "available_at": "2026-06-24T23:40:40.306472Z",
+      "byte_count": 61248850,
+      "content_sha256": "a106bb47fab40604a99d007a7de97276755ac81421abd7d0443a300d57dfc1d9",
+      "jurisdiction_id": "ocd-jurisdiction/country:us/state:ga/government",
+      "path": "input/ga_2025_26",
+      "session": "2025_26",
+      "source_id": "artifact:sha256:a106bb47fab40604a99d007a7de97276755ac81421abd7d0443a300d57dfc1d9",
+      "source_url": "https://data.openstates.org/csv/latest/GA_2025_26_csv_3M5mGgcY0kBxBjgAF8UlD9.zip"
+    }
+  ],
+  "case_id": "ga_hb579_cutoff",
+  "contract_version": "psephos.openstates-slice.v0",
+  "cutoff": "2026-06-30T23:59:59Z"
+}

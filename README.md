@@ -1,5 +1,10 @@
 # Psephos America · ψ
 
+The bounded executable-transfer pilot is documented in
+[`src/transfer_eval/README.md`](src/transfer_eval/README.md): one OpenStates normalization task,
+one public case, three hidden real-data cases, a deterministic continuous score, and a cleanroom
+Deno runner backed by the American Legislative Time Machine V1 oracle.
+
 **A connected, cited, queryable knowledge graph of US governance — federal, all 50 states, and local — with calibrated vote prediction and plain-English reasoning over the whole thing.**
 
 The name is from the Greek *psêphos* (ψῆφος), the pebble Athenians dropped to cast a vote — the root of *psephology*, the science of elections. ψ is also the wavefunction in physics: a probability amplitude. One glyph for *the vote* and *the probability* — which is exactly what this is: **a calibrated probability on every official's vote, everywhere, grounded in public record.**
