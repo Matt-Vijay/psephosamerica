@@ -4,6 +4,9 @@ version = "0.1.0"
 description = "Evidence-first public ledger of score-changing events for Members of Congress"
 requires-python = ">=3.12"
 dependencies = [
+    "duckdb>=1.2,<2",
+    "pyarrow>=18,<25",
+    "pytz>=2024,<2027",
     "psycopg[binary]>=3.1,<4",
     "pydantic>=2.7,<3",
     "pydantic-settings>=2.2,<3",
