@@ -1,4 +1,9 @@
-# govinfo BILLSTATUS bill ingest — the Track B data unlock
+# govinfo BILLSTATUS metadata ingest — the Track B data unlock
+
+**Historical legacy-run record:** the figures below describe the 106,536-row
+graph/embedding contract used by the recorded experiments. The current local
+`bill_content_full.jsonl` contains 106,592 BILLSTATUS metadata/dossier rows;
+the Time Machine integrity report is authoritative for the canonical build.
 
 Track B proved on real data that its cross-pressured/defection ceiling was a
 *data* problem: the corpus had 19 bills and 0 that were vote-linkable, so
@@ -11,6 +16,11 @@ Keyless **govinfo bulk** (`www.govinfo.gov/bulkdata/BILLSTATUS/<congress>/<type>
 no API key), every House + Senate bill and resolution for **congresses 113–119**:
 title, CRS **policy area** + **legislative subjects**, sponsors, cosponsors,
 committees, and the CRS **summary** text.
+
+This legacy ingest did **not** fetch GovInfo's `BILLS` collection or any actual
+bill-text version package. Its derived `text` field is a search/embedding dossier
+assembled from the title, policy area, subjects, and CRS summary; it must not be
+interpreted as statutory or legislative text.
 
 | Congress | Bills | Congress | Bills |
 |---|---|---|---|
@@ -27,8 +37,9 @@ chamber), **0 skipped** — every BILLSTATUS file parsed.
 Each bill's canonical id is minted by the **same** `BillRef` the House/Senate
 roll-call adapters resolve their votes to (`congress` + `type` + `number` →
 `hr-1` → `cb-<digest>`). So a govinfo bill is, by construction, already the
-`dst_id` of its `vote` edges — no fuzzy matching. Every bill embeds to a
-**distinct** 256-d point (titles are unique), so cosine retrieval discriminates.
+`dst_id` of its `vote` edges — no fuzzy matching. Every bill embeds its assembled
+BILLSTATUS dossier to a 256-d point, so cosine retrieval can discriminate beyond
+the earlier sector-only stand-in.
 
 ## Delivered to the watched corpus
 

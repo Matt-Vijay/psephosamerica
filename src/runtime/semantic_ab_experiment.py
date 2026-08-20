@@ -1,13 +1,15 @@
 """Semantic vs hash vs concat bill-embedding A/B on the 118th pin (v5 #1).
 
-Track A is shipping ``semantic_embedding`` (MiniLM-384 over full bill text + CRS
-summaries); the current SOTA (0.7707) used the title-only hash ``dossier_embedding``.
+Track A is shipping ``semantic_embedding`` (MiniLM-384 over the BILLSTATUS title,
+CRS policy area, legislative subjects, and CRS summary); the current SOTA (0.7707)
+used the title-only hash ``dossier_embedding``. This legacy input is an assembled
+metadata/summary dossier, not actual GovInfo BILLS version text.
 This reruns the bill-content experiment three ways on the 118th pin and reports
 ΔAUC vs 0.7707, so we can decide whether to re-pin and whether to escalate to API
 embeddings:
 
 * **hash**  — dossier_embedding (the current SOTA input),
-* **semantic** — semantic_embedding (full text + CRS),
+* **semantic** — semantic_embedding (title + CRS policy/subjects/summary),
 * **concat** — both, concatenated.
 
 If semantic ≤ hash we report it honestly (the diagnosis — pooling, truncation,

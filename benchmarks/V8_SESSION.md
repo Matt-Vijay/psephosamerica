@@ -273,7 +273,7 @@ outside this track's domain).
   donor→vote path falls back to embedding similarity until then.
 - **Live LLM GraphRAG answers**: gated on `ANTHROPIC_API_KEY`; the stub serves
   honest grounded answers in the meantime and the real path is wired + ready.
-- **Richer bill-text embeddings** (`semantic_reembed`, Track A): will sharpen
+- **Richer BILLSTATUS-dossier embeddings** (`semantic_reembed`, Track A): will sharpen
   both GraphRAG retrieval and near-duplicate discrimination.
 - The prediction pins/baselines remain FROZEN and servable; resume the frontier
   after the substrate is consumed by the LOCUS pitch.

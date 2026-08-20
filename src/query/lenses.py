@@ -3,11 +3,11 @@
 These are the cross-cutting *reasoning* views a human actually asks for, each
 returning rows that carry their provenance so every served answer is cited:
 
-* :func:`copied_bill_clusters` — **model-legislation / copied-text detection
-  across bills** (federal + state). MinHash + LSH banding over the bill-text
-  content sidecar finds near-identical bill *text* shared across different
-  bills/jurisdictions — the LOCUS flagship generalised from municipal
-  ordinances to legislative bills. Numpy + stdlib only, streams the sidecar.
+* :func:`copied_bill_clusters` — **BILLSTATUS-dossier similarity across federal
+  bills**. MinHash + LSH banding compares the legacy sidecar's assembled title,
+  policy-area, subject, and CRS-summary language. It does not compare GovInfo
+  BILLS legislative version text and therefore does not establish copied/model
+  legislation. Numpy + stdlib only, streams the sidecar.
 
 * :func:`accountability_rankings` — **opacity / accountability rankings** per
   jurisdiction and per official, derived from what the graph can observe today:
@@ -38,7 +38,7 @@ import numpy as np
 from src.query.graph_store import GraphStore, Node
 from src.query.locus import _minhash, _shingles, _TOKEN_RE
 
-# Bill-text content sidecars Track A emits (full corpus first, slim fallback).
+# Legacy BILLSTATUS dossier sidecars Track A emits (full corpus first, slim fallback).
 BILL_CONTENT_PATHS = (
     Path("data/exports/govinfo_bills/bill_content_full.jsonl"),
     Path("data/exports/govinfo_bills/bill_content.jsonl"),
@@ -67,7 +67,7 @@ class _BillText:
 def _iter_bill_text(
     paths: tuple[Path, ...] = BILL_CONTENT_PATHS, *, limit: int | None = None
 ) -> Iterator[_BillText]:
-    """Stream bill-text rows from the first content sidecar that exists."""
+    """Stream BILLSTATUS dossier rows from the first legacy sidecar that exists."""
     path = next((p for p in paths if p.exists()), None)
     if path is None:
         return
@@ -132,13 +132,12 @@ def copied_bill_clusters(
     cross_jurisdiction_only: bool = False,
     seed: int = 20260620,
 ) -> list[CopiedBillPair]:
-    """Near-duplicate bill *text* across bills via MinHash + LSH (model-legislation).
+    """Find near-duplicate BILLSTATUS dossier language via MinHash + LSH.
 
-    This is the LOCUS flagship generalised from municipal ordinances to
-    legislative bills: the same statutory text appearing in many bills (model
-    legislation diffusion, recycled boilerplate, companion bills across
-    chambers). Works on the bill-text content sidecar with no embeddings — so it
-    runs today and sharpens as the corpus grows.
+    The legacy sidecar's ``text`` field is assembled from title, policy area,
+    subjects, and CRS summary. Similarity can identify companion or closely
+    described bills, but it does not compare legislative version text and must
+    not be reported as proof of copied/model legislation.
 
     ``threshold`` is the estimated-Jaccard cutoff; ``limit`` bounds how many
     bills are scanned. Each side of every pair is cited to its source.
@@ -196,8 +195,8 @@ def _bill_brief(bill: _BillText, store: GraphStore | None = None) -> dict[str, o
         "content_sha256": bill.content_sha256,
         "known_at": None,
     }
-    # The bill-text sidecar often lacks provenance; fall back to the canonical
-    # bill node's source anchor (e.g. the govinfo BILLSTATUS URL) when available.
+    # The legacy BILLSTATUS dossier sidecar often lacks provenance; fall back
+    # to the canonical bill node's source anchor when available.
     if citation["source_url"] is None and store is not None:
         node = store.node(bill.canonical_id)
         if node is not None:

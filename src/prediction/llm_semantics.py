@@ -24,7 +24,7 @@ _OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses"
 
 
 class BillSemanticInput(ExportContractModel):
-    """Source-backed bill text context sent to the LLM semantic extractor."""
+    """Source-backed bill title/summary context sent to the semantic extractor."""
 
     bill_key: str
     title: str

@@ -5,6 +5,11 @@ Track A shipped dense govinfo bill embeddings for **all congresses 113–119**
 (106,536 bills, all vote-linkable); the `corpus_watch` watcher fired automatically
 and the bill-content experiment ran on real held-out data.
 
+**Terminology correction:** this historical benchmark's "bill content" was the
+BILLSTATUS-derived title + CRS policy-area/subjects/summary dossier. It did not
+contain GovInfo BILLS legislative version text. The measured results below are
+unchanged; only the input description is corrected.
+
 ## Headline (118th House — apples-to-apples vs the 0.7247 vote-only pin)
 
 | model (118th House, train → 2024-04-20, eval → 2024-12-31) | defection AUC |
@@ -43,7 +48,8 @@ defection-propensity feature, orthogonal to the member-specific RAG) adds anothe
 
 - 361,571 votes linked; 232,341 eval pairs. Same monotonic-in-k signature.
 - Strict no-leakage: member retrieval stores built from **2013** votes only; **2014**
-  votes query against that history. Bill embeddings are static (bill text, not votes).
+  votes query against that history. Bill embeddings are static
+  (BILLSTATUS-derived dossier, not votes).
 
 ## Why this matters
 

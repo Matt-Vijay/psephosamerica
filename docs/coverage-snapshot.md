@@ -6,6 +6,12 @@ access is keyless (no credential), local-bulk (committed/local file),
 or derived (computed from ingested data). Credential-gated sources are in
 [`ingestion-credentials.md`](ingestion-credentials.md).
 
+This is a historical legacy-graph snapshot, not Time Machine V1 coverage.
+Its 106,536 BILLSTATUS count is the graph/embedding contract used by those
+runs; the current local dossier has 106,592 metadata rows. See
+[`time-machine-v1.md`](time-machine-v1.md) and its generated integrity report
+for canonical measured coverage.
+
 | Tier | Source | Produces | Access | Demonstrated |
 |---|---|---|---|---|
 | federal | BILLSTATUS bill edges (sponsor/subject/committee) | graph edges | derived | 1,673,411 edges / 106,999 bills |
@@ -19,7 +25,7 @@ or derived (computed from ingested data). Credential-gated sources are in
 | federal | Senate LDA federal lobbying | Org IDs + lobbying edges | keyless | 248 orgs |
 | federal | Senate.gov roll-call votes | Person IDs + vote edges | keyless | 286 senators (LIS), 494,265 vote edges 113-119 |
 | federal | congress-legislators roster | Person IDs (bioguide+LIS, real names) | keyless | 1,132 members (440 renamed + 692 added) |
-| federal | govinfo BILLSTATUS bulk (113-119) | Bill IDs + CRS content + embeddings | keyless | 106,536 bills, 100% of substantive votes linkable |
+| federal | govinfo BILLSTATUS bulk (113-119) | Bill IDs + title/CRS metadata-summary dossier + embeddings | keyless | 106,536 bills, 100% of substantive votes linkable |
 | state | CA leginfo bulk (partial-ZIP range reads) | Bill IDs + titles + legislators + rich roll-calls | keyless | 25,539 bills, 720 seats, 48,676 roll-calls / 2.96M votes |
 | state | OpenStates people (all 50 states) | Person IDs | keyless | 7,359 legislators |
 | county | Legistar county clients | Person IDs + bills + votes | keyless | 21 counties (in 24,368 officials) |

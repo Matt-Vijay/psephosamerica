@@ -16,7 +16,7 @@ The dominant risk dimension is **license clarity**, which splits everything into
 | **Klarner State Partisan Balance** | Partisan composition of both chambers + governor, supermajority control | **1937–2011** | Harvard Dataverse (hdl:1902.1/20403) | CC0-family (verify edition) |
 | **Shor–McCarty state-legislator ideology** | Ideal-point scores for **27,629 state legislators** — entity spine + ideology enrichment | 1993–2020 (Apr 2023 update, doi:10.7910/DVN/NWSYOS) | Harvard Dataverse bulk | **CC0** |
 | **CourtListener / Free Law Project bulk** | Courts, dockets, opinion clusters, opinions, **citation map**, judges/people, **judicial financial disclosures**, oral arguments — quarterly PostgreSQL CSV exports | Comprehensive; disclosures thin recent years | Bulk CSV (quarterly regen) | **Public Domain Mark** |
-| **Open States / Plural bulk** | Legislator data, per-session bill+vote CSV/JSON incl. **full bill text**, district polygons, near-complete PostgreSQL dumps | 50 states + DC | Bulk (login) + PG dumps | **Public-domain dedication** (attribution appreciated) |
+| **Open States / Plural bulk** | Legislator data; per-session bill, action, and vote CSV/JSON; bill-version metadata and official text links; district polygons; near-complete PostgreSQL dumps | 50 states + DC | Bulk (login) + PG dumps | **Public-domain dedication** (attribution appreciated) |
 
 ## Tier 2 — Ambiguous / conditional: confirm terms before redistributing
 

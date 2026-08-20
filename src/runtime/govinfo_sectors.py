@@ -29,13 +29,15 @@ from src.runtime.govinfo_bills_run import Candidate, collect_candidates
 
 
 def bill_sector_record(xml: str) -> dict[str, object]:
-    """Parse a BILLSTATUS doc into a full content record (one parse-only pass).
+    """Parse a BILLSTATUS doc into a complete dossier record (one parse-only pass).
 
     The record carries everything downstream passes need without re-fetching:
-    the dense embed ``text`` (#1's semantic input), the CRS ``policy_area`` +
-    ``subjects`` (Track B's sectors, #4), and the sponsor / cosponsor / committee
-    data the graph edges (#2) are built from -- keyed by the ``cb-<digest>`` the
-    votes resolve to. See :func:`~src.graph.ingest.govinfo_billstatus.billstatus_record`.
+    the derived dossier ``text`` (#1's semantic input), the CRS ``policy_area``
+    + ``subjects`` (Track B's sectors, #4), and the sponsor / cosponsor /
+    committee data the graph edges (#2) are built from -- keyed by the
+    ``cb-<digest>`` the votes resolve to. It does not contain GovInfo BILLS
+    legislative version text. See
+    :func:`~src.graph.ingest.govinfo_billstatus.billstatus_record`.
     """
     return billstatus_record(parse_billstatus_xml(xml))
 

@@ -13,7 +13,7 @@ thinking) over the same cited evidence — no code path change, just the key.
 
 Other commands surface the lenses from the terminal:
 
-    python -m src.query lens copied-bills        # model-legislation / copied text
+    python -m src.query lens copied-bills        # BILLSTATUS-dossier similarity
     python -m src.query lens accountability       # per-official opacity ranking
     python -m src.query lens jurisdictions        # per-jurisdiction accountability
     python -m src.query said-vs-voted <person_id> # speeches vs votes
@@ -75,7 +75,7 @@ def _cmd_lens(args: argparse.Namespace) -> int:
         if args.json:
             print(json.dumps([_copied_dict(p) for p in pairs], ensure_ascii=False, indent=2))
             return 0
-        print(f"Copied / model-legislation bill pairs (jaccard >= {args.threshold}):\n")
+        print(f"Similar BILLSTATUS-dossier pairs (jaccard >= {args.threshold}):\n")
         for p in pairs:
             tag = "CROSS-JURISDICTION " if p.cross_jurisdiction else ""
             title_a = str(p.a.get("title", ""))[:55]

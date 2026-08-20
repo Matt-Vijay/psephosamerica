@@ -3,7 +3,9 @@
 Psephos America is a public-interest governance-intelligence tool: a cited, queryable
 knowledge graph of US public officials, bills/ordinances, roll-call votes, and
 policy topics. **Every served fact carries its source URL, content hash, and
-`known_at` timestamp.** This page is the canonical run reference.
+`known_at` timestamp.** This page documents the legacy graph/query product
+surface. The canonical local Parquet/DuckDB build, status, integrity, and
+point-in-time query workflow is [`docs/time-machine-v1.md`](docs/time-machine-v1.md).
 
 A project venv with deps lives at `/tmp/opvenv`; substitute your own Python if
 you have one. All commands run from the repo root.
@@ -44,7 +46,7 @@ retrieval.
 ### Analytical lenses from the CLI
 
 ```sh
-# (a) copied / model-legislation detection across bills (text MinHash)
+# (a) similarity detection across BILLSTATUS dossiers (metadata/CRS-summary MinHash)
 /tmp/opvenv/bin/python -m src.query lens copied-bills --scan 20000 --threshold 0.85 --cite
 
 # (c) per-official accountability / opacity ranking (transparent composite)
@@ -160,16 +162,19 @@ federal + municipal + bounded slices; this index is the query-on-demand path for
 **A (live, OpenRouter `openai/gpt-oss-120b:free`):** "The budget-reconciliation
 measures were designed to implement the provisions of the congressional budget
 resolutions… Title II … and Title V … for fiscal year 2018【1】【2】【3】" — cited to
-four `govinfo.gov` BILLSTATUS records with their `known_at` dates.
+four `govinfo.gov` BILLSTATUS title/subject/CRS-summary records with their
+`known_at` dates.
 
 **Q (no key, grounded stub):** `Who supports affordable housing?` → returns the
 top source-anchored entities + one-hop facts from the graph, each with its
 source URL and `known_at`, and an explicit note that no external knowledge was
 used.
 
-**Lens (copied bills):** scanning 20k federal bill texts at jaccard ≥ 0.85
-surfaces near-identical bill text (recycled boilerplate / companion bills),
-each side cited to its canonical `govinfo` BILLSTATUS record.
+**Lens (copied bills):** scanning 20k federal BILLSTATUS-derived dossiers at
+jaccard ≥ 0.85 surfaces near-identical title, subject, and CRS-summary
+language (often companion or closely related bills), each side cited to its
+canonical `govinfo` BILLSTATUS record. This legacy lens did not compare actual
+GovInfo BILLS version text.
 
 **Lens (accountability):** ranks officials by an explained composite of
 `record_depth` (log-scaled vote count), `source_coverage` (fraction of votes

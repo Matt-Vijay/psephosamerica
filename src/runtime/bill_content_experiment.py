@@ -2,8 +2,10 @@
 
 This is the result the whole v4 effort is gated on. The moment Track A's contract
 carries dense, vote-linkable bill rows, the watcher fires this: it joins each vote
-to its bill's dense embedding, and measures defection AUC with bill content added,
-two ways:
+to its bill's dense embedding, and measures defection AUC with the available
+BILLSTATUS dossier signal added, two ways. In this legacy experiment, "content"
+means title + CRS policy area, legislative subjects, and CRS summary—not actual
+GovInfo BILLS version text:
 
 * **bill-RAG**: retrieve the member's own k-nearest past votes by *dense*
   bill-embedding cosine (which, unlike the sector-bag stand-in, discriminates
@@ -109,7 +111,8 @@ def load_bill_embedding_map(
     """Normalized bill key -> dense embedding, from contract bill rows.
 
     ``field`` selects the embedding (``dossier_embedding`` = the title-only hash
-    vector, ``semantic_embedding`` = Track A's MiniLM over full text + CRS summary).
+    vector, ``semantic_embedding`` = Track A's MiniLM over the BILLSTATUS title,
+    CRS policy area, legislative subjects, and CRS summary).
     ``concat_with`` (if given) concatenates a second field's vector, for the
     semantic-vs-hash-vs-concat A/B. A row missing the requested field is skipped.
     """

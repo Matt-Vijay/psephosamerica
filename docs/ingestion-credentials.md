@@ -13,8 +13,12 @@ below are **credential-gated** — provide the env var and the matching adapter
 |---|---|---|---|
 | `OPENSTATES_API_KEY` | OpenStates v3 API | **State legislators' bills + votes** (all 50 legislatures). The vote adapter shape is identical to `ingest/house_clerk` / `ingest/senate`. | https://openstates.org/accounts/profile/ |
 | `LEGISCAN_API_KEY` | LegiScan | Alternative/!redundant state bill + roll-call source (50 states) | https://legiscan.com/legiscan |
-| `CONGRESS_GOV_API_KEY` | api.congress.gov (api.data.gov) | Richer federal bill metadata + full text + cosponsors (beyond the keyless Clerk/Senate vote XML already ingested) | https://api.congress.gov/sign-up/ |
-| `GOVINFO_API_KEY` | GovInfo (api.data.gov) | Federal bill full text, CBO/JCT scores, the Bound Congressional Record | https://api.govinfo.gov/docs/ |
+| `CONGRESS_GOV_API_KEY` | api.congress.gov (api.data.gov) | Richer federal bill metadata, cosponsors, and text-version metadata/links (beyond the keyless Clerk/Senate vote XML already ingested) | https://api.congress.gov/sign-up/ |
+| `GOVINFO_API_KEY` | GovInfo (api.data.gov) | GovInfo API access to BILLS package metadata/text renditions, CBO/JCT scores, and the Bound Congressional Record | https://api.govinfo.gov/docs/ |
+
+The Time Machine V1 representative BILLS XML fetch uses official, keyless
+GovInfo package-content URLs; `GOVINFO_API_KEY` is only needed for GovInfo API
+endpoints. BILLSTATUS metadata alone is not legislative text.
 
 ## Money trail
 

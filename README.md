@@ -22,7 +22,7 @@ Psephos America ingests public-record governance data from many sources into **o
 | **Federal floor speeches** | **52,004,494** member→bill/record edges (full 113th–119th Congress) |
 | **Federal roll-call votes** | House **3,138,375** + Senate **494,465** (113th–119th) |
 | **Local ordinances** | **2,207,679** enacted ordinances · 2,287 jurisdictions · 50 states (LOCUS-v1, CC-BY-NC) |
-| **Federal bills** | **106,536** bills with full text + CRS policy areas (113th–119th) |
+| **Federal bills** | **106,592** local BILLSTATUS metadata/dossier rows (113th–119th); **106,536** are in the historical graph/embedding contract (titles + CRS metadata/summaries, not full bill text) |
 | **Lobbying** | **1,070,335** client→registrant / client→bill edges (Senate LDA, 1999–2020) |
 | **Federal spending** | Federal awards covering **$5.1T** in obligations (USASpending, top-dollar slice) |
 | **Campaign finance** | FEC donor→member contributions |
@@ -46,10 +46,15 @@ A defection-ranking model trained **only on US House floor votes**, evaluated **
 
 Requires Python 3.12+ and the project dependencies (`pip install -e .`).
 
+**Canonical local analytical path:** inventory the existing immutable inputs,
+build the Parquet/DuckDB substrate, and query it with real point-in-time cutoffs.
+See [`docs/time-machine-v1.md`](docs/time-machine-v1.md). The graph, model, and
+explorer commands below are legacy product surfaces layered beside that substrate.
+
 **Ask a question (cited GraphRAG):**
 ```bash
 python -m src.query ask "Which organizations received the most federal award money?"
-python -m src.query ask "Which congressional bills are near-duplicates of each other?"
+python -m src.query ask "Which congressional bill dossiers have near-duplicate summaries?"
 ```
 Every answer cites its sources (URL + content hash + `known_at`) and prints which model served it. With no LLM key it returns a deterministic, never-hallucinating grounded-evidence stub.
 
@@ -85,7 +90,7 @@ Rate-limited models retry with backoff, fall through the chain, then degrade to 
 
 Adapters live under `src/graph/ingest/` and write sidecars to `data/exports/<source>/` (large `.jsonl` gitignored; manifests + `ingest_meta.json` tracked as provenance):
 
-- **govinfo** — federal bills + full text + CRS (keyless bulk)
+- **govinfo BILLSTATUS** — federal bill metadata + CRS summaries (keyless bulk; GovInfo BILLS version text was not part of this legacy ingest)
 - **House Clerk / Senate** — federal roll-call votes
 - **Congressional Record** — floor speeches linked to bills
 - **OpenStates** — 50-state legislators/bills/votes (bulk session CSVs; `openstates_bulk.py`)
@@ -110,6 +115,7 @@ Adapters live under `src/graph/ingest/` and write sidecars to `data/exports/<sou
 - `src/api/` — HTTP/WSGI serving: query endpoints + explorer
 - `src/prediction/` — numpy models: defection head, calibration, transfer harness (frozen pins)
 - `src/runtime/` — operator entrypoints, ingestion runners, backfills
+- `src/time_machine/` — canonical local inventory, normalization, DuckDB, and integrity path
 - `src/ingest/ · src/parse/ · src/normalize/ · src/load/ · src/identity/ · src/provenance/` — the legacy federal pipeline (Postgres-backed) that seeded the graph
 - `data/exports/` — source sidecars + tracked provenance manifests
 - `benchmarks/` — pinned baselines + session reports (incl. `STATE_TRANSFER_REPORT.md`)
@@ -117,6 +123,7 @@ Adapters live under `src/graph/ingest/` and write sidecars to `data/exports/<sou
 
 ## Documentation
 
+- Canonical local point-in-time substrate: [`docs/time-machine-v1.md`](docs/time-machine-v1.md)
 - Usage & command reference: [`USAGE.md`](USAGE.md)
 - North-star scope: [`OVERALL_GOAL.md`](OVERALL_GOAL.md)
 - Methodology & source policy: [`METHODOLOGY.md`](METHODOLOGY.md)

@@ -616,7 +616,7 @@ def render_home_page(jurisdictions: list[tuple[str, int]]) -> str:
         "<code>ANTHROPIC_API_KEY</code> set, a live model synthesises a narrative; "
         "otherwise an honest grounded summary is returned.</p>"
         "<h2>Analytical lenses</h2><nav>"
-        "<a href='/v1/graph/copied_bills'>Copied / model legislation</a>"
+        "<a href='/v1/graph/copied_bills'>Similar BILLSTATUS dossiers</a>"
         "<a href='/v1/graph/accountability'>Official accountability</a>"
         "<a href='/v1/graph/jurisdiction_accountability'>Jurisdiction accountability</a>"
         "<a href='/v1/graph/locus/duplicates'>LOCUS cross-city duplicates</a>"
