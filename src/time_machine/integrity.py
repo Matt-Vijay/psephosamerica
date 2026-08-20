@@ -130,6 +130,7 @@ def generate_integrity_report(
     try:
         tables = {table: _table_measure(connection, table) for table in TABLE_SCHEMAS}
         broken_artifact_fks: dict[str, int] = {}
+        artifact_hash_mismatches: dict[str, int] = {}
         for table in TABLE_SCHEMAS:
             if table == "source_artifacts":
                 continue
@@ -139,6 +140,14 @@ def generate_integrity_report(
                 SELECT count(*) FROM tm.{table} f
                 LEFT JOIN tm.source_artifacts a USING (source_artifact_id)
                 WHERE f.source_artifact_id IS NULL OR a.source_artifact_id IS NULL
+                """,
+            )
+            artifact_hash_mismatches[table] = _scalar(
+                connection,
+                f"""
+                SELECT count(*) FROM tm.{table} f
+                JOIN tm.source_artifacts a USING (source_artifact_id)
+                WHERE f.content_sha256 IS DISTINCT FROM a.content_sha256
                 """,
             )
         broken_relations = {
@@ -247,10 +256,14 @@ def generate_integrity_report(
     broken_total = sum(int(value or 0) for value in broken_artifact_fks.values()) + sum(
         int(value or 0) for value in broken_relations.values()
     )
+    artifact_hash_mismatch_total = sum(
+        int(value or 0) for value in artifact_hash_mismatches.values()
+    )
     hard_failures = {
         "duplicate_keys": duplicate_total,
         "temporal_violations": temporal_total,
         "broken_foreign_keys": broken_total,
+        "artifact_hash_mismatches": artifact_hash_mismatch_total,
         "false_full_text_rows": int(text_coverage["false_full_text_rows"] or 0),
         "undefended_law_links": int(law_links["without_official_id"] or 0),
     }
@@ -263,6 +276,7 @@ def generate_integrity_report(
         "source_families": sources,
         "unmatched_ids": unmatched,
         "broken_artifact_foreign_keys": broken_artifact_fks,
+        "artifact_hash_mismatches": artifact_hash_mismatches,
         "broken_relations": broken_relations,
         "text_version_coverage": text_coverage,
         "law_links": law_links,

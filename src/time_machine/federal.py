@@ -67,7 +67,6 @@ def _fact_provenance(
     availability_basis: str = "local_observation",
     observed_at: str | datetime | None = None,
     source_url: str | None = None,
-    content_sha256: str | None = None,
     family: str | None = None,
     valid_from: str | date | datetime | None = None,
     valid_to: str | date | datetime | None = None,
@@ -82,7 +81,9 @@ def _fact_provenance(
         source_artifact_id=entry.source_artifact_id,
         source_family=family or entry.source_family,
         source_url=source_url if source_url is not None else entry.source_url,
-        content_sha256=content_sha256 or entry.content_sha256,
+        # URLs may identify records inside an aggregate. The hash identifies
+        # the retained artifact named by source_artifact_id.
+        content_sha256=entry.content_sha256,
         valid_from=valid_from,
         valid_to=valid_to,
     )
@@ -286,7 +287,7 @@ def ingest_bills(
             bill_id = federal_bill_id(congress, bill_type, number)
             legacy_to_bill[legacy_id] = bill_id
             introduced = iso_date(raw.get("introduced_date"))
-            source_url, source_hash = bill_anchors.get(legacy_id, (None, None))
+            source_url, _source_hash = bill_anchors.get(legacy_id, (None, None))
             if not source_url:
                 source_url = (
                     f"https://www.govinfo.gov/bulkdata/BILLSTATUS/{congress}/{bill_type}/"
@@ -309,7 +310,6 @@ def ingest_bills(
                         entry,
                         event_at=introduced,
                         source_url=source_url,
-                        content_sha256=source_hash,
                         family="govinfo_billstatus",
                         valid_from=introduced,
                     ),
@@ -389,7 +389,6 @@ def ingest_house_vote_edges(
                 event = source.get("valid_from") or source.get("known_at")
                 observed = source.get("first_observed_at") or entry.observed_at
                 source_url = source.get("source_url") or entry.source_url
-                source_hash = source.get("content_sha256") or entry.content_sha256
                 fact = _fact_provenance(
                     entry,
                     event_at=event,
@@ -397,7 +396,6 @@ def ingest_house_vote_edges(
                     availability_basis="official_event_date",
                     observed_at=observed,
                     source_url=source_url,
-                    content_sha256=source_hash,
                     family="house_clerk" if chamber == "house" else "senate_lis",
                 )
                 canonical_roll = (

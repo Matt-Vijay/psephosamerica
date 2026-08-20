@@ -11,7 +11,26 @@ from src.time_machine.model import TABLE_SCHEMAS, ParquetSink, provenance
 def _empty_catalog(root: Path, bill_rows: list[dict[str, object]]) -> None:
     for table, schema in TABLE_SCHEMAS.items():
         with ParquetSink(root / "parquet" / f"{table}.parquet", schema) as sink:
-            if table == "bills":
+            if table == "source_artifacts":
+                sink.write(
+                    {
+                        "source_artifact_id": "artifact:sha256:" + "a" * 64,
+                        "source_family": "fixture",
+                        "relative_path": "fixture.json",
+                        "source_url": "https://example.gov/source",
+                        "media_type": "application/json",
+                        "content_sha256": "a" * 64,
+                        "byte_count": 1,
+                        "retained": True,
+                        "modified_at": datetime(2022, 1, 1, tzinfo=UTC),
+                        "published_at": None,
+                        "available_at": datetime(2022, 1, 1, tzinfo=UTC),
+                        "availability_basis": "fixture",
+                        "observed_at": datetime(2022, 1, 1, tzinfo=UTC),
+                        "inventoried_at": datetime(2022, 1, 1, tzinfo=UTC),
+                    }
+                )
+            elif table == "bills":
                 sink.write_many(bill_rows)
     create_catalog(root)
 
@@ -110,6 +129,7 @@ def test_integrity_finds_duplicate_keys_and_bad_provenance(tmp_path: Path) -> No
     assert report["tables"]["bills"]["duplicate_keys"] == 1
     assert report["tables"]["bills"]["missing_or_bad_hashes"] == 2
     assert report["hard_failures"]["temporal_violations"] == 2
+    assert report["hard_failures"]["artifact_hash_mismatches"] == 2
 
 
 def test_query_surface_rejects_mutation(tmp_path: Path) -> None:
