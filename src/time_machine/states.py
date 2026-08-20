@@ -33,6 +33,7 @@ from src.time_machine.model import (
     openstates_bill_id,
     openstates_person_id,
     provenance,
+    stable_id,
     utc_datetime,
 )
 
@@ -277,7 +278,13 @@ def normalize_openstates_zip(
             chamber = organizations.get(organization_id, (None, None))[0]
             if chamber is None and valid_bill is not None:
                 chamber = bill_chambers.get(valid_bill)
-            roll_call_id = f"roll-call:openstates:{source_roll_call_id}"
+            # OpenStates has reused ocd-vote IDs for conflicting records in
+            # different sessions (notably New Jersey).  The exact upstream ID
+            # remains in source_roll_call_id; the canonical key needs session
+            # context to avoid conflating distinct legislative events.
+            roll_call_id = stable_id(
+                "roll-call:openstates", canonical_session_id, source_roll_call_id
+            )
             sinks["roll_calls"].write(
                 {
                     "roll_call_id": roll_call_id,
@@ -350,7 +357,7 @@ def normalize_openstates_zip(
             source_member_vote_id = _clean(row.get("id"))
             member_vote_id = _member_vote_id(
                 source_member_vote_id,
-                source_roll_call_id,
+                roll_call.roll_call_id,
                 valid_person,
                 choice,
             )
@@ -489,11 +496,13 @@ def _session_context(
             if jurisdiction is not None and jurisdiction.strip()
         }
     )
-    jurisdiction_id = (
-        jurisdictions[0]
-        if jurisdictions
-        else f"ocd-jurisdiction/country:us/state:{state}/government"
-    )
+    if jurisdictions:
+        jurisdiction_id = jurisdictions[0]
+    else:
+        # Older exports omit organizations.  DC is an OCD district rather than
+        # a state; all other represented OpenStates codes are the 50 states.
+        division = "district" if state == "dc" else "state"
+        jurisdiction_id = f"ocd-jurisdiction/country:us/{division}:{state}/government"
     generated_at = _datetime(readme.get("generated at"))
     return _SessionContext(
         state=state,
@@ -603,13 +612,16 @@ def _event_or_observation_provenance(
 
 def _member_vote_id(
     source_id: str,
-    source_roll_call_id: str,
+    roll_call_id: str,
     source_person_id: str | None,
     choice: str,
 ) -> str:
     if source_id:
-        return f"member-vote:openstates:{source_id}"
-    digest = _short_digest(source_roll_call_id, source_person_id or "", choice)
+        # vote_people IDs are unique within an archive but 14k+ values are
+        # reused across the full corpus.  Keep the exact source ID visible and
+        # qualify it by the already session-safe canonical roll call.
+        return f"member-vote:openstates:{roll_call_id}:{source_id}"
+    digest = _short_digest(roll_call_id, source_person_id or "", choice)
     return f"member-vote:openstates:derived:{digest}"
 
 

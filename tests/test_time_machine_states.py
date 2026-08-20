@@ -28,8 +28,14 @@ def _csv(fieldnames: list[str], rows: list[dict[str, str]]) -> str:
     return buffer.getvalue()
 
 
-def _write_fixture(path: Path) -> None:
-    prefix = "MI/2025-2026/MI_2025-2026"
+def _write_fixture(
+    path: Path,
+    *,
+    state: str = "MI",
+    session: str = "2025-2026",
+    include_organizations: bool = True,
+) -> None:
+    prefix = f"{state}/{session}/{state}_{session}"
     bill_id = "ocd-bill/11111111-1111-1111-1111-111111111111"
     vote_id = "ocd-vote/22222222-2222-2222-2222-222222222222"
     person_id = "ocd-person/33333333-3333-3333-3333-333333333333"
@@ -39,23 +45,26 @@ def _write_fixture(path: Path) -> None:
         archive.writestr(
             "README",
             "Open States Data Export\n\n"
-            "State: MI\n"
-            "Session: 2025-2026\n"
+            f"State: {state}\n"
+            f"Session: {session}\n"
             "Generated At: 2026-06-23 23:11:13.802706\n",
         )
-        archive.writestr(
-            f"{prefix}_organizations.csv",
-            _csv(
-                ["id", "classification", "jurisdiction_id"],
-                [
-                    {
-                        "id": organization_id,
-                        "classification": "upper",
-                        "jurisdiction_id": "ocd-jurisdiction/country:us/state:mi/government",
-                    }
-                ],
-            ),
-        )
+        if include_organizations:
+            archive.writestr(
+                f"{prefix}_organizations.csv",
+                _csv(
+                    ["id", "classification", "jurisdiction_id"],
+                    [
+                        {
+                            "id": organization_id,
+                            "classification": "upper",
+                            "jurisdiction_id": (
+                                f"ocd-jurisdiction/country:us/state:{state.lower()}/government"
+                            ),
+                        }
+                    ],
+                ),
+            )
         archive.writestr(
             f"{prefix}_bills.csv",
             _csv(
@@ -76,8 +85,8 @@ def _write_fixture(path: Path) -> None:
                         "title": "A real state bill",
                         "classification": "['bill']",
                         "subject": "['Courts', 'Public records']",
-                        "session_identifier": "2025-2026",
-                        "jurisdiction": "Michigan",
+                        "session_identifier": session,
+                        "jurisdiction": state,
                         "organization_classification": "upper",
                     }
                 ],
@@ -188,8 +197,8 @@ def _write_fixture(path: Path) -> None:
                         "organization_id": organization_id,
                         "bill_id": bill_id,
                         "bill_action_id": "action-1",
-                        "jurisdiction": "Michigan",
-                        "session_identifier": "2025-2026",
+                        "jurisdiction": state,
+                        "session_identifier": session,
                     }
                 ],
             ),
@@ -234,22 +243,26 @@ def _write_fixture(path: Path) -> None:
         )
 
 
-def test_normalizes_one_openstates_zip_without_inventing_links_or_text(tmp_path: Path) -> None:
-    zip_path = tmp_path / "Michigan_2025_2026_Regular_Session.zip"
-    _write_fixture(zip_path)
-    artifact = InventoryEntry(
-        source_artifact_id="artifact:sha256:" + "a" * 64,
+def _artifact(zip_path: Path, digest_character: str) -> InventoryEntry:
+    return InventoryEntry(
+        source_artifact_id="artifact:sha256:" + digest_character * 64,
         source_family="openstates_bulk",
         relative_path="data/raw/openstates_bulk/" + zip_path.name,
         absolute_path=str(zip_path),
         source_url="https://data.openstates.org/",
         media_type="application/zip",
-        content_sha256="a" * 64,
+        content_sha256=digest_character * 64,
         byte_count=zip_path.stat().st_size,
         modified_at="2026-06-24T00:00:00Z",
         modified_ns=zip_path.stat().st_mtime_ns,
         observed_at="2026-06-24T00:00:00Z",
     )
+
+
+def test_normalizes_one_openstates_zip_without_inventing_links_or_text(tmp_path: Path) -> None:
+    zip_path = tmp_path / "Michigan_2025_2026_Regular_Session.zip"
+    _write_fixture(zip_path)
+    artifact = _artifact(zip_path, "a")
     sinks = {table: _Rows() for table in TABLE_SCHEMAS}
 
     report = normalize_openstates_zip(zip_path, artifact, sinks)
@@ -300,7 +313,9 @@ def test_normalizes_one_openstates_zip_without_inventing_links_or_text(tmp_path:
     assert roll_call["chamber"] == "upper"
 
     resolved, unresolved = sinks["member_votes"].rows
-    assert resolved["member_vote_id"] == "member-vote:openstates:member-vote-upstream-1"
+    assert resolved["member_vote_id"] == (
+        f"member-vote:openstates:{roll_call['roll_call_id']}:member-vote-upstream-1"
+    )
     assert resolved["source_person_id"].startswith("ocd-person/")
     assert resolved["person_id"].endswith(resolved["source_person_id"])
     assert resolved["content_sha256"] == "a" * 64
@@ -312,3 +327,39 @@ def test_normalizes_one_openstates_zip_without_inventing_links_or_text(tmp_path:
     assert sinks["terms"].rows == []
     assert sinks["amendments"].rows == []
     assert sinks["law_links"].rows == []
+
+
+def test_roll_call_keys_include_session_and_dc_uses_district_ocd_id(tmp_path: Path) -> None:
+    michigan_path = tmp_path / "Michigan.zip"
+    later_michigan_path = tmp_path / "Michigan_later_session.zip"
+    dc_path = tmp_path / "District_of_Columbia.zip"
+    _write_fixture(michigan_path)
+    _write_fixture(later_michigan_path, session="2027-2028")
+    _write_fixture(
+        dc_path,
+        state="DC",
+        session="22",
+        include_organizations=False,
+    )
+    michigan_sinks = {table: _Rows() for table in TABLE_SCHEMAS}
+    later_michigan_sinks = {table: _Rows() for table in TABLE_SCHEMAS}
+    dc_sinks = {table: _Rows() for table in TABLE_SCHEMAS}
+
+    normalize_openstates_zip(michigan_path, _artifact(michigan_path, "b"), michigan_sinks)
+    normalize_openstates_zip(
+        later_michigan_path,
+        _artifact(later_michigan_path, "c"),
+        later_michigan_sinks,
+    )
+    normalize_openstates_zip(dc_path, _artifact(dc_path, "d"), dc_sinks)
+
+    michigan_roll = michigan_sinks["roll_calls"].rows[0]
+    later_michigan_roll = later_michigan_sinks["roll_calls"].rows[0]
+    dc_roll = dc_sinks["roll_calls"].rows[0]
+    assert michigan_roll["source_roll_call_id"] == later_michigan_roll["source_roll_call_id"]
+    assert michigan_roll["roll_call_id"] != later_michigan_roll["roll_call_id"]
+    assert dc_roll["jurisdiction_id"] == ("ocd-jurisdiction/country:us/district:dc/government")
+    assert (
+        michigan_sinks["member_votes"].rows[1]["member_vote_id"]
+        != later_michigan_sinks["member_votes"].rows[1]["member_vote_id"]
+    )
