@@ -114,6 +114,12 @@ def test_as_of_separates_event_availability_and_local_observation(tmp_path: Path
     )
     assert index_rows == [("late-publication",), ("past",), ("preannounced-future",)]
 
+    _columns, timestamp_rows = query(
+        tmp_path,
+        "SELECT event_at FROM tm.bills WHERE bill_id = 'past'",
+    )
+    assert timestamp_rows[0][0].isoformat() == "2020-01-01T00:00:00+00:00"
+
 
 def test_integrity_finds_duplicate_keys_and_bad_provenance(tmp_path: Path) -> None:
     bad = _bill(

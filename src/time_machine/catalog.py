@@ -102,8 +102,13 @@ def query(output_root: Path, sql: str) -> tuple[list[str], list[tuple[Any, ...]]
     connection = connect(output_root, read_only=True)
     try:
         cursor = connection.execute(sql)
-        columns = [item[0] for item in cursor.description or []]
-        return columns, cursor.fetchall()
+        # DuckDB's DB-API TIMESTAMPTZ conversion imports optional ``pytz``.
+        # Arrow already uses the stdlib UTC zone correctly and is a required
+        # dependency of the Parquet path, so the small query surface uses it
+        # for all result conversion rather than growing the runtime stack.
+        result = cursor.to_arrow_table()
+        columns = result.column_names
+        return columns, [tuple(row[column] for column in columns) for row in result.to_pylist()]
     finally:
         connection.close()
 

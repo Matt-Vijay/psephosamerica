@@ -186,7 +186,13 @@ def generate_integrity_report(
             ),
             "person_examples": _examples(
                 connection,
-                "SELECT DISTINCT source_person_id FROM tm.member_votes WHERE person_id IS NULL LIMIT ?",
+                """
+                SELECT DISTINCT coalesce(source_person_id, member_name)
+                FROM tm.member_votes
+                WHERE person_id IS NULL
+                  AND coalesce(source_person_id, member_name) IS NOT NULL
+                LIMIT ?
+                """,
             ),
             "bill_examples": _examples(
                 connection,
@@ -282,9 +288,11 @@ def generate_integrity_report(
         "law_links": law_links,
         "openstates_manifest": _openstates_manifest_audit(source_root),
         "known_limitations": [
-            "Legacy federal vote feeds retain bill-linked roll calls only; procedural roll calls were discarded upstream.",
+            "The legacy House feed retains bill-linked roll calls only; procedural House rolls discarded upstream cannot be reconstructed.",
             "BILLSTATUS title, subjects and CRS summaries are metadata, never full bill text.",
+            "The retained BILLSTATUS dossiers omit federal actions and amendments; V1 does not reconstruct them from votes or prose.",
             "State version rows are official links unless is_full_text is true; linked documents were not downloaded.",
+            "Source-reported state dates are preserved, including obvious year outliers; no guessed corrections are applied.",
         ],
     }
     if write:
@@ -337,6 +345,45 @@ def _markdown(report: dict[str, Any]) -> str:
     )
     for name, value in report["hard_failures"].items():
         lines.append(f"- {name.replace('_', ' ')}: {value:,}")
+    missing_urls = sum(int(row.get("missing_urls") or 0) for row in report["tables"].values())
+    bad_hashes = sum(
+        int(row.get("missing_or_bad_hashes") or 0) for row in report["tables"].values()
+    )
+    unmatched = report["unmatched_ids"]
+    future_events = sum(
+        int(row.get("preannounced_future_events") or 0) for row in report["tables"].values()
+    )
+    lines.extend(
+        [
+            "",
+            "## Source and identity gaps",
+            "",
+            f"- Rows with a missing source URL: {missing_urls:,}",
+            f"- Rows with a missing or malformed retained-artifact hash: {bad_hashes:,}",
+            f"- Member-vote rows without an exact person ID: {unmatched['member_votes_without_person']:,}",
+            f"- Roll calls with a source bill ID that did not resolve: {unmatched['roll_calls_without_resolved_bill']:,}",
+            f"- Unresolved person/name examples: {', '.join(unmatched['person_examples']) or '—'}",
+            f"- Unresolved bill examples: {', '.join(unmatched['bill_examples']) or '—'}",
+            "",
+            "## Temporal observations",
+            "",
+            f"- Source rows whose availability precedes a future event time: {future_events:,}",
+            "- These are reported, not rewritten; `as_of` still excludes each row until its event time.",
+        ]
+    )
+    manifest = report.get("openstates_manifest")
+    if manifest is not None:
+        lines.extend(
+            [
+                "",
+                "## OpenStates inventory",
+                "",
+                f"- Manifest entries: {manifest['manifest_entries']:,}",
+                f"- Local ZIP files: {manifest['local_zip_files']:,}",
+                f"- Manifest minus local: {manifest['manifest_minus_local']:,}",
+                f"- Duplicate labels: {len(manifest['duplicate_labels']):,}",
+            ]
+        )
     lines.extend(["", "## Known limitations", ""])
     lines.extend(f"- {item}" for item in report["known_limitations"])
     return "\n".join(lines) + "\n"
