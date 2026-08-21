@@ -2,9 +2,11 @@
 
 **Verdict: no viable signal.** The current Psephos corpus does not contain a nontrivial,
 independently checkable legal-change or continual-maintenance target suitable for Harvey/Legora-grade
-RL or evaluation. Its one defensible hard target is provenance-preserving, point-in-time record
-normalization—the capability already isolated by Transfer Eval V0. That remains useful plumbing,
-but a schema-specific parser and date filter can solve it. It is not a legal-agent thesis.
+RL or evaluation. Viewed as a deterministic environment compiler, its 74,714,826 canonical fact
+rows collapse to at most six generic data procedures. Only OpenStates normalization has broad
+held-out-jurisdiction volume, and **zero** families contain retained legal before state, official
+transition evidence, and retained after state. Transfer Eval V0 remains useful plumbing, not a
+legal-agent thesis.
 
 No episode bundle was created. The machine-readable measurements and decisions are in
 [`harvey-legora-signal-audit.json`](harvey-legora-signal-audit.json).
@@ -69,6 +71,7 @@ or version has a non-null `valid_to`.
 
 The cutoff machinery therefore prevents mechanical future inclusion in a query. It cannot turn one
 later snapshot into an independently observed history of corrections, publication, or legal effect.
+It also does not preserve parent/child closure across all historical `as_of` views, quantified below.
 
 ### Text, amendment, and codification truth
 
@@ -98,6 +101,134 @@ later snapshot into an independently observed history of corrections, publicatio
 | Opinion revision/citation maintenance | Snippet, citation mention, prior opinion → changed text, cited authority, current treatment | Full official before/after opinions and treatment graph | `cites` exposes target IDs; alias resolution is lookup | Citation grounding and authority maintenance | **Reject.** No full opinions or treatment graph |
 | Artifact provenance | Immutable bytes → correct URL/hash/time/record anchor | SHA-256 and manifest/FK checks | Hash and copy manifest fields | Grounding and auditability | **Auxiliary only.** Valuable component, not a standalone legal signal |
 | LOCUS labels | Short provision heading → function/topic/dimension scores | Dataset-provided labels | Labels sit beside rows; keyword/templates are strong | High-volume review/classification | **Reject.** Derived static labels, no independent legal oracle, non-commercial license |
+
+## Deterministic environment compiler refinement
+
+The compiler framing changes what is worth preserving, but not the verdict. Psephos can compile
+hard-scored normalization, provenance, join, and integrity exercises. It cannot currently compile a
+diverse family of witnessed legal transitions.
+
+| Diversity measure | Result | Interpretation |
+|---|---:|---|
+| Strict legal before/event/after families | **0** | No stable entity has retained official before bytes, an official transition/specification, retained official after bytes, and an independent exact witness |
+| Relaxed generic deterministic procedures | **≤6** | Row count, jurisdiction, field name, template, cutoff, and mask variants are collapsed |
+| Procedures with broad held-out-jurisdiction volume | **1** | OpenStates schema normalization/key construction, already exercised by Transfer Eval |
+| Independent-representation alignment procedures | **1** | House vote alignment is a keyed join plus one choice taxonomy map |
+| High-value legal-agent families | **0** | No text propagation, codification, legal correction, authority resolution, or continual-law oracle survives |
+
+The six-procedure upper bound is deliberately generous:
+
+1. parse/project fields and rewrite namespaces or composite keys;
+2. exact-key join and path composition;
+3. group-by tally;
+4. keyed or string set difference;
+5. cutoff filtering, upsert, and deduplication; and
+6. hash, primary-key, foreign-key, and content-claim validation.
+
+Streaming, edge, path, repair, conflict, and program-synthesis packaging does not automatically add
+a family. If two tasks require the same operator and differ only in rows, jurisdiction, labels, or
+cutoff, they are fake scale.
+
+### Real transition and correction motifs
+
+| Witnessed motif | Exact local evidence | Why it does not survive |
+|---|---|---|
+| California amendment metadata | Two bills, SB 623 and SB 574, have June 21 metadata, June 22 amendment actions/version-link metadata, and changed June 24 title/subject metadata | Both observations are OpenStates; no amendment/version bytes; the after title is not derivable from the event |
+| OpenStates API → bulk | 73 overlapping bills; 309 → 314 rolls; five new California rolls and 56 choices | With both snapshots this is set difference; without the later file the human votes are unknowable |
+| Identity-spine catch-up | Six June 10–11 House choices by James Gallagher (`G000607`) are absent from the June edge export, present in June 24 OpenStates with Clerk URLs, and the person/CA-1 term appears in congress-legislators on July 2 | The later identity row diagnoses stale resolution but cannot reconstruct the lost choices; supplying OpenStates makes recovery a copy/join |
+| BILLSTATUS derivatives | 106,536 → 106,592 rows; 56 additions and 21 changed common rows | Same-day local derivatives; no raw BILLSTATUS XML, row publication time, or official update event |
+| CourtListener revisions | 36 revision-labelled records across 27 dockets; all 36 retain identical capped snippets; three change citation-ID sets | No before/after PDFs; grouping by docket and timestamp verifies metadata only |
+| Senate schema fill | 4,945 common rolls; 4,943 merely gain `question`; three old rows disappear | Same upstream transformed twice; official XML and migration event are absent |
+| Contract CDC | 140,951 updates, of which 140,492 are enrichment flags; 433 name lookups, 19 bill merges, and seven person joins | Untimestamped build stages, not official/legal transitions |
+
+Recorded correction phrases are real, but still do not supply correction gold. South Carolina has
+3,230 `Scrivener's error corrected` actions across 2,198 bills; Wisconsin has 448 `LRB correction`
+actions across 422; Texas has 160 corrected-committee-report actions across 152; California has 125
+introduced-version and 92 enrolled-version corrections. State version rows retain no documents.
+Even in California there is no explicit action→version edge: among the 125 introduced corrections,
+44 have no later-dated link, 14 have one, and 67 have multiple. Selecting “the next link” would be a
+benchmark-authored heuristic, not an official witness.
+
+### Duplicate representations and exact invariants
+
+- **OpenStates API versus bulk:** all 553 API roll IDs are present in the later bulk archives. Core
+  fields are exact for 477 and differ only by CRLF/LF for 76; tally vectors, source sets, and
+  `(name, choice)` sets are exact on all 553. The only substantive row-key change is 343 Texas
+  person IDs across 86 rolls, collapsing to four inferred substitutions with no official crosswalk.
+- **OpenStates versus official-derived House votes:** 1,394 matched 118th/119th-Congress rolls cover
+  604,073 OpenStates person-vote rows. After `yes↔yea` and `no↔nay`, 603,645 choices match; 422 are
+  uniformly OpenStates `other` versus House-derived `present`, and six Bioguide IDs are absent from
+  the official-derived roll. That is one join and one taxonomy map, not 604,073 tasks; the original
+  House XML was not retained.
+- **Senate serializations:** the v1/v2 files share 4,945 rolls and identical vote arrays containing
+  494,469 casts. The v1-derived edge feed has 4,945 rolls and 494,465 casts: it omits three other v1
+  rolls (300 casts) and four unusual `present, giving live pair` choices while retaining v1's three
+  late rolls. Every edge-roll hash is the SHA-256 of its v1 rich record. This proves direct lineage,
+  not independent corroboration.
+- **Choice rows versus count rows:** 933,442 OpenStates rolls have both person choices and count rows.
+  Grouping choices matches all nonzero option totals on 846,610 (90.70%) and the yes/no cells on
+  904,187 (96.87%); 86,832 rolls conflict. Both representations come from the same ZIP, so exact
+  cases are one group-by invariant and disagreement has no independent winner.
+- **Artifact integrity:** rehashing all 697 inventoried artifacts (18,700,281,610 bytes) finds zero
+  missing, size, or SHA-256 mismatches. Canonical PK/FK/provenance checks are also clean, but fact and
+  artifact rows were emitted by the same build, so only byte rehashing is independently witnessed.
+  Provenance is aggregate-level: 7,259 House roll URLs share one retained aggregate hash, 4,948
+  Senate URLs share two, and 692,903 distinct OpenStates roll URLs resolve to 552 ZIP hashes. It does
+  not prove that the bytes at each cited record URL were retained.
+
+The base tables are referentially clean; the historical `*_as_of` views are **not graph-closed**.
+At cutoff `2024-01-01`, visible children lack 10,103,155 bill parents for actions, 407,347 bill
+parents for version links, 898,800 session parents and 896,901 bill parents for rolls, and 29,918,126
+person parents for resolved votes. At `2026-06-12`, the corresponding counts are 13,087,082,
+501,168, 1,208,125, 1,197,325, and 43,185,144. Vote→roll remains closed because those two tables
+share the event clock. Once the state artifacts become available on June 25, state bill paths close,
+but 10,800 historical federal rolls still lose expired session parents; people remain unavailable for
+3,633,144 federal votes until the July 2 identity-spine observation. This is a real schema-policy
+problem, not a legal transition: the row masks work as written, but temporal path episodes need an
+explicit snapshot-closure policy before they are safe to compile.
+
+There is one genuine key-shape defect worth retaining as parser supervision: 5,197 OpenStates source
+roll IDs are reused across sessions, covering 10,398 conflicting rows (Oklahoma 4,614 groups, North
+Carolina 368, New Jersey 186, New Mexico 29). Qualifying the source ID by session repairs it exactly.
+That is one composite-key rule. Similarly, 1,391 resolved OpenStates person IDs have multiple names,
+but the corpus has no authoritative temporal winner; grouping aliases is valid, “repairing” the name
+is not.
+
+### What each Time Machine shape can honestly compile
+
+| Episode shape | Current relations and scale | Honest target | Effective procedure / limit |
+|---|---|---|---|
+| Edge | 13,097,175 action→bill; 3,461,312 version→bill; 55,161,451 vote→roll; 45,532 term→person edges; zero broken FKs | Preserve exact edge or explicit unresolved key | Parse/project or exact join; no amendment/law edges exist |
+| Path | Base tables have 55,161,451 vote→roll→session paths; 54,783,340 also reach a bill; 42,884,464 reach person and bill | Reconstruct a recorded provenance path | Plain FK composition, usually inside one ZIP; current historical `as_of` views are not referentially closed |
+| Repair | Session-qualified vote IDs and byte/hash recovery | Apply a known composite-key or provenance rule | One parser/invariant family; unresolved identities and titles lack authoritative targets |
+| Conflict | Tally disagreements, 752 federal title conflicts, name variants, duplicate vote representations | Detect keyed agreement/disagreement | Group-by or diff; resolution normally has no authority/time oracle |
+| Streaming | Cutoff/dedup over actions, rolls, votes, and version links; 180 future-event exclusions | Bounded row projection at a cutoff | One interval predicate; all state facts come from one retrospective observation, and cross-table paths can break |
+| Program synthesis | OpenStates CSV and six genuine GPO XML inputs | Recover a normalization/extraction program | Credible for OpenStates parsing only; six unrelated XML files do not create a scalable second family |
+
+The raw state formats themselves do not provide hidden migration diversity. Across 677 nonfederal
+archives, every present core CSV relation has one header schema. `organizations.csv` has two header
+shapes (57 old, 358 extended) and is absent in 262; the archives have 13 file-presence signatures.
+Those are useful missing-table/optional-column robustness cases, not witnessed schema migrations.
+
+### Hard kill criteria
+
+Kill a proposed family when any of these is true:
+
+- the same durable entity lacks retained official before state, an official event/specification,
+  retained official after state, or an independent witness;
+- both “witnesses” are serializations from one fetch or outputs from one build lineage;
+- the target is a copy, rename, mask, exact join, group-by, regex/template, sort, set difference, or
+  hash check already counted as a generic procedure;
+- repair requires an invented source hierarchy or has no authoritative winner;
+- supplying the later snapshot turns the task into CDC, while withholding it requires predicting a
+  discretionary human event;
+- historical event dates from one retrospective snapshot are treated as observed history;
+- a point-in-time graph is scored without first defining and enforcing parent/child closure;
+- optional columns across unrelated sessions are marketed as a schema migration; or
+- apparent scale disappears under a procedure-level held-out split.
+
+Do not revive the legal environment-compiler thesis until at least three non-isomorphic families
+survive these tests. The current strict count is zero.
 
 ## Concrete real episodes
 
@@ -166,9 +297,10 @@ OpenStates update. The first two would omit the evidence needed to verify the cl
 the third would advertise set difference as legal-agent learning. Packaging any of them would make
 the evidence look stronger than it is.
 
-The honest reusable outputs are the Time Machine provenance/cutoff oracle and Transfer Eval's hard
-behavioral score. They can be auxiliary reward components in a future legal environment. They do
-not independently justify post-training on legal change, authority, or continual maintenance.
+The honest reusable outputs are the Time Machine's aggregate provenance checks and Transfer Eval's
+bounded hard behavioral score. The general cutoff views need a graph-closure policy before serving
+as a path oracle. These pieces can be auxiliary reward components in a future legal environment;
+they do not independently justify post-training on legal change, authority, or continual maintenance.
 
 ## What would change the verdict
 
@@ -179,8 +311,9 @@ Do not add another harness. Acquire the missing oracle material first:
 - explicit amendment-to-version and enacted-law identifiers;
 - official public-law/chapter bytes and historical statute/code snapshots;
 - full before/after court opinions plus citation treatment/currentness data;
-- adjudicated authority/title semantics for source conflicts; and
-- multiple contemporaneous observations of the same legal matter.
+- adjudicated authority/title semantics for source conflicts;
+- multiple contemporaneous observations of the same legal matter; and
+- an explicit, tested parent/child closure policy for point-in-time graph queries.
 
 A revived audit should require performance materially above copy, parser, hash, lookup, regex,
 group-by, and set-difference baselines on held-out sources and time periods. Until those data exist,

@@ -2,7 +2,7 @@
   "schema_version": 1,
   "audit_date": "2026-08-20",
   "verdict": "no_viable_signal",
-  "verdict_scope": "No current Psephos asset supports a nontrivial, independently checkable Harvey/Legora-grade legal-change or continual-maintenance reward. Transfer Eval remains a defensible normalization auxiliary, not the thesis.",
+  "verdict_scope": "No current Psephos asset supports a nontrivial, independently checkable Harvey/Legora-grade legal-change or continual-maintenance reward. As a deterministic environment compiler, it supports at most six generic data procedures; only OpenStates normalization has broad held-out jurisdiction volume, and zero families contain retained legal before/event/after state.",
   "episode_bundle_created": false,
   "episode_bundle_reason": "Every candidate either lacks retained oracle bytes, exposes the target directly, reduces to parsing or joining, requires an invented authority rule, or lacks contemporaneous observations.",
   "method": {
@@ -317,12 +317,414 @@
       "decision": "Static derived labels, no temporal law, generic provenance, and a non-commercial license do not meet the bar."
     }
   ],
+  "deterministic_environment_compiler_refinement": {
+    "strict_witnessed_legal_transition_families": 0,
+    "relaxed_generic_procedure_upper_bound": 6,
+    "procedures_with_broad_held_out_jurisdiction_volume": 1,
+    "independent_representation_alignment_procedures": 1,
+    "high_value_legal_agent_families": 0,
+    "canonical_rows_excluding_artifact_ledger": 74714826,
+    "effective_procedures": [
+      {
+        "id": "parse_project_and_key_rewrite",
+        "counts_as_one_family": true,
+        "examples": [
+          "OpenStates CSV to canonical JSON/Parquet",
+          "session-qualified roll-call keys",
+          "choice and identifier namespace normalization"
+        ],
+        "assessment": "The only broadly instantiated held-out family; Transfer Eval already exercises it."
+      },
+      {
+        "id": "exact_key_join_and_path_composition",
+        "counts_as_one_family": true,
+        "examples": [
+          "member_vote to roll_call to bill to session to source_artifact",
+          "action and version-link attachment to bills"
+        ],
+        "assessment": "Plain foreign-key composition, not legal reasoning."
+      },
+      {
+        "id": "group_by_tally",
+        "counts_as_one_family": true,
+        "examples": [
+          "member choices to reported option totals",
+          "alias and duplicate-name collection"
+        ],
+        "assessment": "One SQL aggregation procedure regardless of the number of rolls."
+      },
+      {
+        "id": "keyed_or_string_set_difference",
+        "counts_as_one_family": true,
+        "examples": [
+          "OpenStates API to bulk changes",
+          "OpenStates to BILLSTATUS title conflicts",
+          "opinion revision metadata differences"
+        ],
+        "assessment": "Detects recorded differences; normally cannot adjudicate a legal winner."
+      },
+      {
+        "id": "interval_mask_upsert_and_dedup",
+        "counts_as_one_family": true,
+        "examples": [
+          "as_of cutoff",
+          "bounded streaming projection",
+          "idempotent keyed update"
+        ],
+        "assessment": "Streaming is an execution regime for the same transform, not a new semantic family."
+      },
+      {
+        "id": "hash_primary_key_foreign_key_invariant_check",
+        "counts_as_one_family": true,
+        "examples": [
+          "SHA-256 artifact verification",
+          "duplicate-key and broken-path detection",
+          "fact-to-artifact provenance checks"
+        ],
+        "assessment": "Useful hard auxiliary reward; relational agreement is circular when both sides were emitted by the same build."
+      }
+    ],
+    "real_witnessed_transition_motifs": [
+      {
+        "id": "openstates_california_amendment_metadata",
+        "before_state": "June 21 OpenStates API bill metadata",
+        "official_event": "June 22 amendment actions and amended-version link metadata",
+        "after_state": "June 24 OpenStates bulk title/subject metadata",
+        "episodes": 2,
+        "examples": [
+          "California SB 623",
+          "California SB 574"
+        ],
+        "independent_witness": false,
+        "deterministically_derivable_after_state": false,
+        "assessment": "A real observed metadata transition, but both views are OpenStates and the amended text bytes are absent."
+      },
+      {
+        "id": "openstates_api_to_bulk_vote_delta",
+        "all_api_unique_roll_calls": 553,
+        "all_roll_ids_present_in_bulk": 553,
+        "core_fields_byte_exact": 477,
+        "core_fields_line_ending_only_difference": 76,
+        "tally_source_and_name_choice_sets_exact": 553,
+        "before_bills": 73,
+        "after_bills": 73,
+        "before_roll_calls": 309,
+        "after_roll_calls": 314,
+        "new_roll_calls": 5,
+        "new_member_choices": 56,
+        "independent_witness": false,
+        "deterministically_derivable_after_state": false,
+        "assessment": "Both snapshots supplied means set difference; withholding the later snapshot means predicting human events."
+      },
+      {
+        "id": "stale_house_identity_spine_catch_up",
+        "person_name": "James Gallagher",
+        "bioguide_id": "G000607",
+        "house_rolls": ["119-2-217", "119-2-218", "119-2-219", "119-2-220", "119-2-221", "119-2-222"],
+        "dropped_house_edge_choices": 6,
+        "openstates_observed_at": "2026-06-24T23:40:40.306472Z",
+        "congress_legislators_observed_date": "2026-07-02",
+        "term_start": "2026-06-10",
+        "independent_witness": "OpenStates supplies the six choices with Clerk URLs; congress-legislators independently supplies the later identity and term",
+        "deterministically_derivable_lost_choices_from_identity_update": false,
+        "assessment": "A real stale-identity and stream-maintenance motif, but the identity update alone cannot reconstruct dropped choices; supplying OpenStates reduces recovery to copy/join, while raw Clerk XML was not retained."
+      },
+      {
+        "id": "openstates_recorded_correction_actions",
+        "south_carolina_scrivener_actions": 3230,
+        "south_carolina_bills": 2198,
+        "wisconsin_lrb_actions": 448,
+        "wisconsin_bills": 422,
+        "texas_corrected_committee_report_actions": 160,
+        "texas_bills": 152,
+        "california_introduced_version_correction_actions": 125,
+        "california_introduced_version_correction_bills": 124,
+        "california_enrolled_version_correction_actions": 92,
+        "california_enrolled_version_correction_bills": 89,
+        "california_introduced_corrections_with_no_later_link": 44,
+        "california_introduced_corrections_with_one_later_link": 14,
+        "california_introduced_corrections_with_multiple_later_links": 67,
+        "retained_corrected_state_texts": 0,
+        "explicit_action_to_version_edges": 0,
+        "assessment": "Officially described correction events are retained, but before/after document bytes and an unambiguous event-to-version edge are not. Phrase repetition is regex/template scale, not repair supervision."
+      },
+      {
+        "id": "govinfo_metadata_snapshot_delta",
+        "before_rows": 106536,
+        "after_rows": 106592,
+        "added_rows": 56,
+        "common_rows": 106536,
+        "unchanged_common_rows": 106515,
+        "changed_common_rows": 21,
+        "independent_witness": false,
+        "deterministically_derivable_after_state": false,
+        "assessment": "Same-day derivative JSONL snapshots with no raw BILLSTATUS XML, row publication times, or official update event."
+      },
+      {
+        "id": "courtlistener_revision_metadata",
+        "revision_records": 36,
+        "dockets": 27,
+        "identical_capped_snippets": 36,
+        "citation_sets_changed": 3,
+        "retained_before_after_pdfs": 0,
+        "assessment": "Docket grouping and timestamp sorting witness metadata revisions, not their legal text."
+      },
+      {
+        "id": "senate_rich_schema_fill",
+        "before_rows": 4948,
+        "after_rows": 4945,
+        "common_rows": 4945,
+        "common_rows_only_adding_question": 4943,
+        "before_only_rows": 3,
+        "independent_witness": false,
+        "assessment": "One derivative schema projection from the same Senate upstream, not an official correction event."
+      },
+      {
+        "id": "contract_build_deltas",
+        "created_rows": 185830,
+        "updated_rows": 140951,
+        "internal_enrichment_only_updates": 140492,
+        "display_name_lookups": 433,
+        "bill_id_title_source_merges": 19,
+        "person_id_name_joins": 7,
+        "delta_event_timestamps": 0,
+        "assessment": "Mechanical stages of one build, not public legal transitions."
+      }
+    ],
+    "duplicate_representation_and_witness_paths": [
+      {
+        "id": "openstates_vs_official_derived_house_votes",
+        "congresses": [118, 119],
+        "matched_roll_calls": 1394,
+        "openstates_person_vote_rows": 604073,
+        "choice_exact_after_yes_yea_normalization": 603645,
+        "taxonomy_conflicts": 422,
+        "taxonomy_conflict_pattern": "OpenStates other vs official-derived present",
+        "bioguide_ids_missing_from_official_derived_roll": 6,
+        "witness_class": "independent representation, shared underlying official event",
+        "assessment": "The strongest current cross-source witness, but 604k rows collapse to one key join and one choice map; raw House XML was not retained."
+      },
+      {
+        "id": "openstates_api_vs_bulk_roll_serialization",
+        "roll_calls": 553,
+        "exact_after_line_ending_normalization": 553,
+        "texas_rolls_with_person_id_substitution": 86,
+        "person_id_substitution_rows": 343,
+        "inferred_identity_pairs": 4,
+        "official_identity_crosswalk": false,
+        "witness_class": "same-provider representations at different local observations",
+        "assessment": "One serialization normalizer plus an inferential identity join; not an independent legal witness or authoritative repair."
+      },
+      {
+        "id": "senate_rich_vs_edge_serializations",
+        "rich_v1_v2_common_roll_calls": 4945,
+        "rich_v1_v2_identical_casts": 494469,
+        "v1_derived_edge_roll_calls": 4945,
+        "v1_derived_edge_casts": 494465,
+        "v1_rolls_omitted_wholesale_from_edges": 3,
+        "casts_in_wholesale_omitted_rolls": 300,
+        "unusual_casts_omitted_from_retained_edge_rolls": 4,
+        "v1_only_late_rolls_retained_in_edges": 3,
+        "edge_roll_hashes_equal_v1_record_sha256": 4945,
+        "witness_class": "circular derivative representations",
+        "assessment": "The edge feed is mechanically derived from v1; it is neither an independent witness nor a correction stream."
+      },
+      {
+        "id": "openstates_vote_people_vs_vote_counts",
+        "nonfederal_archives_with_all_vote_tables": 482,
+        "rolls_with_people": 1054229,
+        "rolls_with_counts": 1064663,
+        "comparable_rolls": 933442,
+        "all_nonzero_options_exact": 846610,
+        "yes_no_cells_exact": 904187,
+        "conflicting_rolls": 86832,
+        "conflicting_option_cells": 148444,
+        "total_absolute_count_error": 1057983,
+        "witness_class": "duplicate tables in the same source artifact",
+        "assessment": "A group-by integrity witness, not an independent source or a distinct family per jurisdiction."
+      },
+      {
+        "id": "openstates_vs_billstatus_titles",
+        "matched_bills": 53724,
+        "exact_titles": 52967,
+        "material_string_conflicts": 752,
+        "witness_class": "different source families without temporal title semantics",
+        "assessment": "Conflict detection is exact; resolution lacks an authority/time oracle."
+      },
+      {
+        "id": "raw_to_time_machine",
+        "witness_class": "derived projection",
+        "assessment": "The canonical rows are produced from the raw ZIP and therefore are a private reference answer, not independent corroboration."
+      }
+    ],
+    "schema_and_key_shape_audit": {
+      "nonfederal_archives": 677,
+      "distinct_core_csv_header_schemas_where_present": 1,
+      "distinct_organization_header_schemas": 2,
+      "organization_archives_old_header": 57,
+      "organization_archives_extended_header": 358,
+      "organization_archives_missing": 262,
+      "distinct_required_optional_file_presence_signatures": 13,
+      "archives_with_actions": 662,
+      "archives_with_versions_and_version_links": 670,
+      "archives_with_votes": 552,
+      "archives_with_vote_people": 520,
+      "archives_with_vote_counts": 497,
+      "assessment": "Core formats are uniform; missing-table combinations and optional organization columns are robustness cases, not witnessed schema migrations."
+    },
+    "exact_key_path_and_provenance_invariants": {
+      "member_vote_to_roll_paths": 55161451,
+      "member_vote_roll_paths_reaching_bill": 54783340,
+      "member_vote_paths_reaching_person_and_bill": 42884464,
+      "state_bills_with_action_version_roll_cluster": 415062,
+      "resolved_member_vote_people": 43262575,
+      "unresolved_member_vote_people": 11898876,
+      "resolved_roll_call_bills": 1207331,
+      "unresolved_roll_call_bills": 3778,
+      "reused_openstates_source_roll_call_ids": 5197,
+      "rows_using_reused_source_roll_call_ids": 10398,
+      "duplicate_source_id_excess_rows": 5201,
+      "resolved_openstates_people": 12467,
+      "resolved_people_seen_in_multiple_zip_artifacts": 10272,
+      "resolved_people_with_multiple_member_names": 1391,
+      "maximum_names_per_resolved_person": 4,
+      "canonical_duplicate_keys": 0,
+      "canonical_broken_foreign_keys": 0,
+      "canonical_artifact_hash_mismatches": 0,
+      "rehash_artifacts": 697,
+      "rehash_bytes": 18700281610,
+      "rehash_mismatches": 0,
+      "house_record_urls": 7259,
+      "house_retained_aggregate_hashes": 1,
+      "senate_record_urls": 4948,
+      "senate_retained_aggregate_hashes": 2,
+      "openstates_distinct_roll_urls": 692903,
+      "openstates_roll_zip_hashes": 552,
+      "assessment": "Composite-key synthesis and byte rehashing are exact. Unresolved identities and bills must be preserved as unresolved because no correction gold exists."
+    },
+    "temporal_path_closure_audit": {
+      "method": "For each cutoff, LEFT JOIN every child *_as_of view to its corresponding parent *_as_of view and count non-null child keys with no visible parent.",
+      "base_tables_referentially_closed": true,
+      "as_of_views_referentially_closed": false,
+      "cutoff_2024_01_01": {
+        "actions_with_missing_bill_parent": 10103155,
+        "version_links_with_missing_bill_parent": 407347,
+        "rolls_with_missing_session_parent": 898800,
+        "nonnull_rolls_with_missing_bill_parent": 896901,
+        "resolved_votes_with_missing_person_parent": 29918126,
+        "votes_with_missing_roll_parent": 0
+      },
+      "cutoff_2026_06_12": {
+        "actions_with_missing_bill_parent": 13087082,
+        "version_links_with_missing_bill_parent": 501168,
+        "rolls_with_missing_session_parent": 1208125,
+        "nonnull_rolls_with_missing_bill_parent": 1197325,
+        "resolved_votes_with_missing_person_parent": 43185144,
+        "votes_with_missing_roll_parent": 0
+      },
+      "cutoff_2026_06_25": {
+        "actions_with_missing_bill_parent": 0,
+        "version_links_with_missing_bill_parent": 0,
+        "rolls_with_missing_session_parent": 10800,
+        "nonnull_rolls_with_missing_bill_parent": 0,
+        "resolved_votes_with_missing_person_parent": 3633144,
+        "votes_with_missing_roll_parent": 0
+      },
+      "cutoff_2026_08_21": {
+        "rolls_with_missing_session_parent": 10800,
+        "resolved_votes_with_missing_person_parent": 0
+      },
+      "cause": "Per-table masks combine different availability and validity clocks; old sessions can expire while immutable historical rolls remain visible, and parents may be observed after children whose availability was backfilled to event dates.",
+      "assessment": "The row predicates behave mechanically but cannot serve as a point-in-time graph/path oracle until a referential-closure policy is defined and tested."
+    },
+    "relation_to_episode_shape": [
+      {
+        "shape": "edge",
+        "relations": ["actions", "bill_text_versions", "roll_calls", "member_votes", "terms", "source_artifacts"],
+        "current_support": "yes_auxiliary",
+        "exact_target": "foreign-key edge projection with explicit unresolved cases",
+        "effective_family": "exact_key_join_and_path_composition"
+      },
+      {
+        "shape": "path",
+        "relations": ["member_votes", "roll_calls", "bills", "sessions", "source_artifacts", "person_ids"],
+        "current_support": "base_table_only_not_current_as_of_graph",
+        "exact_target": "recorded base-table provenance path, not legal state evolution",
+        "effective_family": "exact_key_join_and_path_composition"
+      },
+      {
+        "shape": "repair",
+        "relations": ["source_artifacts", "person_ids", "roll_calls", "member_votes"],
+        "current_support": "limited",
+        "exact_target": "session-qualified key and artifact-hash repair",
+        "effective_family": "parse_project_and_key_rewrite",
+        "unsupported_target": "identity, title, legal-text, or codification repair without an authoritative winner"
+      },
+      {
+        "shape": "conflict",
+        "relations": ["roll_calls", "member_votes", "bills", "person_ids"],
+        "current_support": "detection_only_with_one_narrow_official_priority_case",
+        "exact_target": "agreement and disagreement set across explicit keys",
+        "effective_family": "keyed_or_string_set_difference"
+      },
+      {
+        "shape": "streaming",
+        "relations": ["actions", "roll_calls", "member_votes", "bill_text_versions"],
+        "current_support": "row_projection_only_not_referentially_closed",
+        "exact_target": "bounded-memory parse, cutoff, dedup, and row projection",
+        "effective_family": "interval_mask_upsert_and_dedup",
+        "unsupported_target": "point-in-time graph/path replay under the current parent-child clock policy"
+      },
+      {
+        "shape": "program_synthesis",
+        "relations": ["all_nonempty_time_machine_relations"],
+        "current_support": "parser_transform_only",
+        "exact_target": "candidate executable reproducing the public normalization contract on hidden sessions",
+        "effective_family": "packaging_of_existing_procedures_not_a_new_family"
+      }
+    ],
+    "hard_kill_criteria": [
+      "Kill a transition family unless the same durable ID has retained official before state, an official event or update specification, and retained official after state.",
+      "Kill an independent-witness claim when both representations are emitted by the same build, share the same artifact lineage, or are serializations of one fetch.",
+      "Count copying, renaming, masking, exact joins, SQL group-bys, regex/template classification, sorting, set difference, and hashing as at most one procedure each, regardless of row count.",
+      "Kill a repair family unless an independent authoritative source determines the winner; unresolved conflict detection is not repair.",
+      "If the later snapshot is supplied, call the task CDC; if it is withheld and the change is a human event, call the target unknowable rather than replayable.",
+      "Kill temporal-maintenance claims based on one retrospective observation with event dates backfilled as availability.",
+      "Kill point-in-time graph/path tasks until the cutoff contract defines and enforces referential closure across parent and child relations.",
+      "Kill schema-migration claims based only on optional columns across unrelated sessions without a witnessed schema-version event.",
+      "Kill task-family scale claims unless held-out splits vary the required procedure or source schema, not merely jurisdiction, row, ID, cutoff, or mask.",
+      "Kill the compiler thesis for legal-agent RL unless at least three non-isomorphic families survive these tests with procedure-level held-out splits. Current count is zero."
+    ],
+    "requires_new_primary_source_ingestion": [
+      {
+        "family": "legal_text_transition_and_amendment_propagation",
+        "missing": "periodic content-addressed official bill/amendment before and after bytes plus publication/update events"
+      },
+      {
+        "family": "codification_path_and_repair",
+        "missing": "official public-law/chapter and historical statute/code bytes with explicit crosswalks"
+      },
+      {
+        "family": "court_revision_and_authority_maintenance",
+        "missing": "full before/after opinion bytes, supersession links, citation treatment, and observation times"
+      },
+      {
+        "family": "continual_source_repair",
+        "missing": "periodic official snapshots, tombstones, correction notices, and authoritative source hierarchy"
+      },
+      {
+        "family": "procedural_state_transition",
+        "missing": "effective rules, rosters, quorum/threshold state, normalized motion types, and explicit vote-to-action links"
+      }
+    ]
+  },
   "minimum_missing_evidence_for_reconsideration": [
     "content-addressed official before/after legal text with publication observations",
     "explicit amendment-to-version and enacted-law identifiers",
     "official public-law/chapter and historical code or statute bytes",
     "adjudicated source authority and title/type semantics",
     "full opinion revisions plus citation treatment/currentness data",
-    "multiple contemporaneous observations of the same legal matter"
+    "multiple contemporaneous observations of the same legal matter",
+    "an explicit tested parent-child closure policy for point-in-time graph queries"
   ]
 }
