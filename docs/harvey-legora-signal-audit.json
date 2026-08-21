@@ -1,0 +1,328 @@
+{
+  "schema_version": 1,
+  "audit_date": "2026-08-20",
+  "verdict": "no_viable_signal",
+  "verdict_scope": "No current Psephos asset supports a nontrivial, independently checkable Harvey/Legora-grade legal-change or continual-maintenance reward. Transfer Eval remains a defensible normalization auxiliary, not the thesis.",
+  "episode_bundle_created": false,
+  "episode_bundle_reason": "Every candidate either lacks retained oracle bytes, exposes the target directly, reduces to parsing or joining, requires an invented authority rule, or lacks contemporaneous observations.",
+  "method": {
+    "network_fetches": 0,
+    "new_bulk_data": 0,
+    "primary_local_oracle": "data/time_machine/time_machine.duckdb",
+    "primary_local_reports": [
+      "data/time_machine/build.json",
+      "data/time_machine/integrity.json"
+    ],
+    "source_workspace": "/Users/matthew/Documents/Coding/psephosamerica",
+    "decision_requirements": [
+      "independently machine-checkable target",
+      "derivable without future records",
+      "not directly copied from the supplied input",
+      "materially harder than a parser, hash, lookup, group-by, or set difference",
+      "no LLM judge as the primary oracle",
+      "no benchmark-authored legal rule or unverifiable legal judgment"
+    ]
+  },
+  "canonical_time_machine": {
+    "retained_source_artifacts": 697,
+    "retained_source_bytes": 18700281610,
+    "source_families": 9,
+    "bills": 1601450,
+    "actions": 13097175,
+    "roll_calls": 1211109,
+    "member_votes": 55161451,
+    "amendments": 0,
+    "law_links": 0
+  },
+  "openstates_state_corpus": {
+    "inventoried_zip_artifacts": 680,
+    "normalized_nonfederal_sessions": 677,
+    "jurisdictions": 52,
+    "artifact_bytes": 14281915184,
+    "bills": 1494858,
+    "bills_with_actions": 1455842,
+    "actions": 13097175,
+    "bills_with_roll_calls": 420576,
+    "roll_calls": 1198902,
+    "member_votes": 51528307,
+    "bills_with_actions_version_links_and_rolls": 415062,
+    "single_observation_at": "2026-06-24T23:40:40.306472Z",
+    "distinct_observation_times": 1,
+    "actions_available_at_event_at": 13096996,
+    "actions_event_after_observation": 179,
+    "version_rows_event_after_observation": 1,
+    "state_valid_to_values": 0,
+    "version_link_rows": 3461306,
+    "bills_with_version_links": 1459472,
+    "distinct_version_urls": 3407477,
+    "retained_full_text_rows": 0,
+    "retained_text_values": 0,
+    "retained_document_paths": 0,
+    "dated_link_rows": 502287,
+    "nonempty_version_codes": 7444,
+    "distinct_enclosing_zip_hashes_on_version_rows": 670,
+    "bills_with_at_least_two_link_rows": 852205,
+    "bills_with_at_least_two_dated_link_rows": 115363,
+    "bills_with_at_least_two_distinct_link_dates": 84647,
+    "amendment_classified_action_rows": 446047,
+    "bills_with_amendment_classified_actions": 160689,
+    "amendment_labelled_version_link_rows": 318014,
+    "bills_with_amendment_labelled_version_links": 128732,
+    "bills_in_both_amendment_sets": 74707,
+    "became_law_action_rows": 59403,
+    "bills_with_became_law_actions": 53032,
+    "jurisdictions_with_became_law_actions": 29,
+    "chapter_or_law_identifier_regex": "chapter|public law|public act|law number|session law|statutes of|(^|[^a-z])act[ .:-]*[0-9]",
+    "chapter_or_law_identifier_regex_action_rows": 30788,
+    "bills_with_chapter_or_law_identifier_regex_actions": 29819
+  },
+  "federal_text_and_metadata": {
+    "billstatus_metadata_rows": 106592,
+    "billstatus_crs_summary_rows": 87596,
+    "billstatus_crs_summary_characters": 65115494,
+    "retained_raw_billstatus_xml_files": 0,
+    "genuine_bills_xml_versions": 6,
+    "genuine_bills_xml_bytes": 129945,
+    "extracted_legislative_text_characters": 58588,
+    "bills_with_genuine_text": 6,
+    "bills_with_more_than_one_genuine_text_version": 0,
+    "non_null_issued_dates": 0,
+    "manifest_revisions_other_than_one": 0,
+    "explicit_uslm_ref_elements": 17,
+    "packages": [
+      {
+        "package_id": "BILLS-113hres378cdh",
+        "xml_bytes": 4871,
+        "text_characters": 1001
+      },
+      {
+        "package_id": "BILLS-114hres99eh",
+        "xml_bytes": 3113,
+        "text_characters": 393
+      },
+      {
+        "package_id": "BILLS-116hr1865eas",
+        "xml_bytes": 3796,
+        "text_characters": 962
+      },
+      {
+        "package_id": "BILLS-116hres755rds",
+        "xml_bytes": 15354,
+        "text_characters": 9234
+      },
+      {
+        "package_id": "BILLS-116s1014es",
+        "xml_bytes": 27089,
+        "text_characters": 10177
+      },
+      {
+        "package_id": "BILLS-118s1325rs",
+        "xml_bytes": 75722,
+        "text_characters": 36821
+      }
+    ]
+  },
+  "federal_openstates_cross_source": {
+    "congresses": [117, 118, 119],
+    "openstates_bills": 54047,
+    "openstates_actions": 183908,
+    "openstates_version_records": 63271,
+    "openstates_bills_with_version_records": 53162,
+    "openstates_version_links": 126700,
+    "retained_linked_document_bytes": 0,
+    "bills_matching_billstatus_by_congress_type_number": 53724,
+    "exact_title_matches": 52967,
+    "case_or_whitespace_only_title_differences": 3,
+    "punctuation_only_title_differences": 2,
+    "remaining_different_title_strings": 752,
+    "openstates_bills_absent_from_billstatus_acquisition": 323
+  },
+  "openstates_api_to_bulk_update_probe": {
+    "api_observed_at": "2026-06-21T21:35:00.525984Z",
+    "bulk_observed_at": "2026-06-24T23:40:40.306472Z",
+    "overlapping_bills": 73,
+    "overlapping_bills_by_state": {
+      "AZ": 16,
+      "CA": 30,
+      "TX": 27
+    },
+    "api_roll_calls": 309,
+    "api_member_choices": 14792,
+    "bulk_roll_calls": 314,
+    "bulk_member_choices": 14848,
+    "common_roll_calls_with_identical_core_fields": 309,
+    "bulk_only_roll_calls": 5,
+    "bulk_only_member_choices": 56,
+    "common_roll_calls_with_person_id_substitutions": 86,
+    "removed_person_vote_keys": 343,
+    "added_person_vote_keys": 343,
+    "inferred_name_choice_preserving_person_pairs": 4,
+    "assessment": "Exact set difference recovers recorded changes; predicting the five later votes would require predicting human events, and the four identity crosswalks are not officially adjudicated."
+  },
+  "courtlistener": {
+    "raw_snapshot_records_present": 3740,
+    "fetch_state_claimed_records": 5500,
+    "opinion_objects": 3734,
+    "nonempty_snippets": 3729,
+    "snippet_characters": 1864240,
+    "maximum_snippet_characters": 500,
+    "retained_opinion_pdfs": 0,
+    "explicit_revision_named_records": 36,
+    "dockets_with_revision_named_records": 27,
+    "listed_cited_opinion_occurrences": 102043,
+    "distinct_listed_cited_ids": 46651,
+    "bulk_citation_alias_rows": 18123788,
+    "listed_cited_ids_with_bulk_alias": 34808,
+    "listed_citation_occurrences_with_bulk_alias": 65975,
+    "bulk_alias_rows_for_listed_cited_ids": 102891,
+    "normalized_opinions": 80,
+    "normalized_opinion_citation_edges": 0,
+    "normalized_statute_citation_edges": 0,
+    "skipped_bulk_opinion_text_size_reported": "54 GB",
+    "skipped_bulk_docket_size_reported": "5 GB"
+  },
+  "locus": {
+    "rows": 2207679,
+    "jurisdictions": 2287,
+    "text_utf8_bytes": 132274239,
+    "text_length_characters": {
+      "median": 55,
+      "p90": 85,
+      "p99": 136,
+      "maximum": 300
+    },
+    "observation_times": 1,
+    "effective_dates": 0,
+    "version_chains": 0,
+    "per_record_official_source_urls": 0,
+    "license": "CC-BY-NC-4.0"
+  },
+  "legacy_change_feeds": {
+    "contract_records": {
+      "created_rows": 185830,
+      "updated_rows": 140951,
+      "internal_enrichment_only_updates": 140492,
+      "person_display_name_updates": 433,
+      "bill_name_id_source_merges": 19,
+      "person_name_id_updates": 7,
+      "event_timestamps_on_deltas": 0
+    },
+    "locus": {
+      "created_rows": 2207679,
+      "updated_rows": 0
+    },
+    "govinfo_billstatus": {
+      "created_rows": 106536,
+      "updated_rows": 0
+    },
+    "courtlistener": {
+      "created_rows": 11,
+      "updated_rows": 0
+    }
+  },
+  "other_relevant_assets": {
+    "congressional_record_derived_edges": 52004494,
+    "congressional_record_session_days": 2564,
+    "retained_congressional_record_speech_texts": 0,
+    "legiscan_files": 0,
+    "retained_public_law_or_us_code_xml_files": 0
+  },
+  "candidate_signals": [
+    {
+      "id": "point_in_time_normalization",
+      "disposition": "auxiliary_only",
+      "input": "Bounded OpenStates CSV rows, artifact provenance, and a cutoff.",
+      "hidden_target": "Normalized bill, action, roll-call, member-vote, and provenance records at the cutoff.",
+      "verifier": "Exact semantic projection from the private Time Machine oracle.",
+      "leakage_route": "The raw rows expose every substantive target fact; all state artifacts share one observation instant.",
+      "naive_baseline": "A schema-specific CSV parser plus date comparison.",
+      "transfer_hypothesis": "Evidence intake, cutoff discipline, deterministic tool use, and provenance preservation.",
+      "decision": "Keep Transfer Eval as plumbing; it is not legal-change or continual-maintenance supervision."
+    },
+    {
+      "id": "continual_snapshot_maintenance",
+      "disposition": "reject",
+      "input": "The June 21 API slice and June 24 bulk snapshot for 73 overlapping AZ, CA, and TX bills.",
+      "hidden_target": "Recorded additions, deletions, identity changes, and newly available events.",
+      "verifier": "Exact source-ID and field set difference.",
+      "leakage_route": "Both snapshots directly contain the answer; withholding the later snapshot makes new human votes unpredictable.",
+      "naive_baseline": "Hash join and set difference obtains the full recorded delta.",
+      "transfer_hypothesis": "Firm-memory maintenance and source update diligence.",
+      "decision": "This is generic CDC/ETL, not an agentic legal-maintenance target."
+    },
+    {
+      "id": "amendment_and_version_propagation",
+      "disposition": "reject",
+      "input": "Dated actions and 3.46 million state document/version links.",
+      "hidden_target": "Textual change, affected provisions, and propagation into later versions.",
+      "verifier": "Byte-level or structured diff against retained official before/after text.",
+      "leakage_route": "Version names and URLs disclose labels but not content.",
+      "naive_baseline": "Copy version labels or order dated links; no baseline can recover absent text.",
+      "transfer_hypothesis": "Contract redlining, statutory change tracing, and diligence.",
+      "decision": "Zero retained state text pairs and zero federal multi-version chains leave no verifier."
+    },
+    {
+      "id": "codification_and_enactment",
+      "disposition": "reject",
+      "input": "Became-law actions and chapter/public-law-like prose identifiers.",
+      "hidden_target": "Official law identity, enacted bytes, and codified sections affected.",
+      "verifier": "Official public-law/chapter and code-version crosswalk.",
+      "leakage_route": "A regex can copy chapter numbers from action prose.",
+      "naive_baseline": "Regex extraction of the visible identifier.",
+      "transfer_hypothesis": "Legal research, updating, and current-law verification.",
+      "decision": "The law_links table and retained statute/public-law corpus are empty."
+    },
+    {
+      "id": "cross_source_conflict_resolution",
+      "disposition": "reject",
+      "input": "OpenStates and BILLSTATUS metadata for 53,724 matching federal bills.",
+      "hidden_target": "A reconciled authoritative title and temporal explanation for differences.",
+      "verifier": "Independent official title types and publication history.",
+      "leakage_route": "If BILLSTATUS is supplied, its target string is directly copyable; if withheld, source preference is unstated.",
+      "naive_baseline": "Exact join on Congress, type, and number followed by field diff.",
+      "transfer_hypothesis": "Conflicting-source review and authority ranking.",
+      "decision": "The 752 remaining differences mix legitimate title variants and cutoff differences, with no adjudicated semantic gold."
+    },
+    {
+      "id": "opinion_revision_and_citation_maintenance",
+      "disposition": "reject",
+      "input": "CourtListener metadata, 500-character snippets, listed cited IDs, and the citation-alias table.",
+      "hidden_target": "Substantive opinion revisions, supported cited-authority table, and currentness/treatment.",
+      "verifier": "Before/after official opinion bytes plus authority and treatment graph.",
+      "leakage_route": "Cited IDs are listed directly; retained snippets omit the document body.",
+      "naive_baseline": "ID lookup for covered aliases or timestamp sort for named revisions.",
+      "transfer_hypothesis": "Citation grounding, source review, and ongoing authority maintenance.",
+      "decision": "No PDFs/full text or treatment graph is retained; lookup coverage is incomplete and some aliases are ambiguous."
+    },
+    {
+      "id": "artifact_provenance",
+      "disposition": "auxiliary_only",
+      "input": "Retained immutable files and their source manifests.",
+      "hidden_target": "Correct URL, hash, size, observation time, and record-to-artifact anchor.",
+      "verifier": "SHA-256 and exact manifest/foreign-key checks.",
+      "leakage_route": "URLs, times, and expected hashes are manifest fields.",
+      "naive_baseline": "Hash bytes and copy manifest values.",
+      "transfer_hypothesis": "Grounding and auditable evidence handling.",
+      "decision": "A valuable invariant and reward component, but not a standalone legal-agent signal."
+    },
+    {
+      "id": "locus_ordinance_labels",
+      "disposition": "reject",
+      "input": "Short local-law headings/snippets.",
+      "hidden_target": "LOCUS function, topic, substantive flag, and dimension scores.",
+      "verifier": "Dataset-provided labels rather than independent legal truth.",
+      "leakage_route": "Labels are stored beside each record; most text is a short heading.",
+      "naive_baseline": "Template and keyword classification.",
+      "transfer_hypothesis": "Large-scale legal review and classification.",
+      "decision": "Static derived labels, no temporal law, generic provenance, and a non-commercial license do not meet the bar."
+    }
+  ],
+  "minimum_missing_evidence_for_reconsideration": [
+    "content-addressed official before/after legal text with publication observations",
+    "explicit amendment-to-version and enacted-law identifiers",
+    "official public-law/chapter and historical code or statute bytes",
+    "adjudicated source authority and title/type semantics",
+    "full opinion revisions plus citation treatment/currentness data",
+    "multiple contemporaneous observations of the same legal matter"
+  ]
+}
