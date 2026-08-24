@@ -1,0 +1,13 @@
+id,bill_id,organization_id,description,date,classification,order
+1274850f-13a9-4269-a6eb-722c48924c75,ocd-bill/a2f5794e-0059-4762-9f12-a0d65f604a4c,ocd-organization/a6719ff4-d604-4144-95e3-453a03672dfd,"DO PASS, as amended, committee report adopted",2024-01-24,['committee-passage-favorable'],0
+4c7e3684-791e-4b7c-b3d3-b666af693e5d,ocd-bill/a2f5794e-0059-4762-9f12-a0d65f604a4c,ocd-organization/a6719ff4-d604-4144-95e3-453a03672dfd,Sent to Senate Committees' Committee & Senate Rules Committee & Senate Judiciary Committee,2024-01-16,"['introduction', 'referral-committee']",1
+cbe8a640-184b-4076-90f9-fcfcd051ba6b,ocd-bill/a2f5794e-0059-4762-9f12-a0d65f604a4c,ocd-organization/a6719ff4-d604-4144-95e3-453a03672dfd,germane,2024-01-18,[],2
+73c1a0d9-47c2-45a2-9f51-1445a20470b9,ocd-bill/a2f5794e-0059-4762-9f12-a0d65f604a4c,ocd-organization/af9a59f2-c6b2-4bb1-b270-85f5d40605b4,Sent to House Judiciary Committee,2024-02-01,"['introduction', 'referral-committee']",3
+dffcc8bf-c98e-4dad-9d6d-018395018fb5,ocd-bill/a2f5794e-0059-4762-9f12-a0d65f604a4c,ocd-organization/a6719ff4-d604-4144-95e3-453a03672dfd,floor substitute adopted (1 amendment),2024-01-30,[],4
+de7addc4-99fb-40cf-9843-683d2fb94952,ocd-bill/a2f5794e-0059-4762-9f12-a0d65f604a4c,ocd-organization/a6719ff4-d604-4144-95e3-453a03672dfd,passed Senate,2024-01-30,['passage'],5
+f9850640-588b-4a36-b1cd-31df7b135d8e,ocd-bill/a2f5794e-0059-4762-9f12-a0d65f604a4c,ocd-organization/af9a59f2-c6b2-4bb1-b270-85f5d40605b4,DO PASS committee report adopted,2024-02-09,['committee-passage-favorable'],6
+75d7d0fe-3db0-4469-9941-7f0c0e2ca658,ocd-bill/a2f5794e-0059-4762-9f12-a0d65f604a4c,ocd-organization/a6719ff4-d604-4144-95e3-453a03672dfd,"DO NOT PASS, replaced with committee substitute",2024-01-29,['committee-passage'],7
+0907ae1b-2167-4019-ad66-244e8f3467a6,ocd-bill/a2f5794e-0059-4762-9f12-a0d65f604a4c,ocd-organization/36f78a21-d16b-42a3-9b14-5265b4ebf59e,Signed,2024-03-04,['executive-signature'],8
+8bcc5d5a-4394-4ea9-97c2-19416aba5ea5,ocd-bill/a2f5794e-0059-4762-9f12-a0d65f604a4c,ocd-organization/af9a59f2-c6b2-4bb1-b270-85f5d40605b4,floor substitute adopted (1 amendment),2024-02-13,[],9
+a0d31146-a2f7-4816-8e95-c2e24c97d559,ocd-bill/a2f5794e-0059-4762-9f12-a0d65f604a4c,ocd-organization/af9a59f2-c6b2-4bb1-b270-85f5d40605b4,passed House,2024-02-13,['passage'],10
+026b517f-f9bb-48d6-8657-38167ee93922,ocd-bill/a2f5794e-0059-4762-9f12-a0d65f604a4c,ocd-organization/36f78a21-d16b-42a3-9b14-5265b4ebf59e,Senate concurred in House amendments,2024-02-14,[],11

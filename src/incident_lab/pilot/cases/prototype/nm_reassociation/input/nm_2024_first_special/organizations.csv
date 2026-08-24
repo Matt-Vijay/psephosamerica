@@ -1,0 +1,3 @@
+created_at,updated_at,extras,id,name,parent_id,jurisdiction_id,classification,sources,links,other_names
+2017-07-14 07:03:40.978063+00:00,2017-07-14 07:03:40.978078+00:00,{},ocd-organization/7a5a12b7-e955-4999-a469-df3748934953,New Mexico Legislature,,ocd-jurisdiction/country:us/state:nm/government,legislature,[],[],[]
+2017-07-14 07:03:41.094678+00:00,2020-04-29 05:16:38.374792+00:00,{},ocd-organization/a6719ff4-d604-4144-95e3-453a03672dfd,Senate,ocd-organization/7a5a12b7-e955-4999-a469-df3748934953,ocd-jurisdiction/country:us/state:nm/government,upper,[],[],[]

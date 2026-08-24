@@ -1,0 +1,3 @@
+id,bill_id,organization_id,description,date,classification,order
+315d96a6-458a-41eb-87f7-35e4b055908b,ocd-bill/e5bb73d2-9345-4673-b547-598b215562e9,ocd-organization/a6719ff4-d604-4144-95e3-453a03672dfd,Sent to Senate Judiciary Committee,2024-07-18,"['introduction', 'referral-committee']",0
+7bf15a63-0b29-4884-9dd5-6fdd8fb60488,ocd-bill/e5bb73d2-9345-4673-b547-598b215562e9,ocd-organization/7a5a12b7-e955-4999-a469-df3748934953,action postponed indefinitely,2024-08-14,[],1

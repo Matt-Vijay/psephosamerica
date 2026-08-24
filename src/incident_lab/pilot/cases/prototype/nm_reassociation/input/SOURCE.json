@@ -1,0 +1,289 @@
+{
+  "canonical_extract": {
+    "algorithm": "SHA-256 over each non-receipt file in lexical POSIX-path order: UTF-8 path, NUL, ASCII byte count, NUL, file bytes, NUL",
+    "byte_count": 19259,
+    "file_count": 18,
+    "files": [
+      {
+        "byte_count": 116,
+        "path": "nm_2024_first_special/README",
+        "sha256": "eb5648dca3940acbb4b583860666f31847d9c8bcb29ba0c9802f2481a6f3177f"
+      },
+      {
+        "byte_count": 477,
+        "path": "nm_2024_first_special/bill_actions.csv",
+        "sha256": "cb16a4152c57a155183d79dee62b8db70856d61c1c2c144c11eba1e397f3cd2c"
+      },
+      {
+        "byte_count": 191,
+        "path": "nm_2024_first_special/bill_sources.csv",
+        "sha256": "093ff5c1adc0e06c679179ffd4325c7b62d7be650ebe8324027a9f6727270ba2"
+      },
+      {
+        "byte_count": 241,
+        "path": "nm_2024_first_special/bills.csv",
+        "sha256": "1eac0dc899bfec70198e1bfd05b1a3cd90c22bf3955514fe5264fd659b8d702a"
+      },
+      {
+        "byte_count": 570,
+        "path": "nm_2024_first_special/organizations.csv",
+        "sha256": "9fc47edf470b68877e3be813b3eb23e20cac9ae1295314ac9161c295d907a05e"
+      },
+      {
+        "byte_count": 491,
+        "path": "nm_2024_first_special/vote_counts.csv",
+        "sha256": "f841c7bfe96e39944e76690f61c002ac39e4daf3e903c166c33f9c4cec4df94f"
+      },
+      {
+        "byte_count": 5938,
+        "path": "nm_2024_first_special/vote_people.csv",
+        "sha256": "55582bd3c42d6dd0500d15d325f95ae4f64d9683ffa4b1491c6741029ee860ca"
+      },
+      {
+        "byte_count": 180,
+        "path": "nm_2024_first_special/vote_sources.csv",
+        "sha256": "f7e3b09dc4369b643c414014a72f660268c73f1019bd71531b1a9ac592ee9a2c"
+      },
+      {
+        "byte_count": 348,
+        "path": "nm_2024_first_special/votes.csv",
+        "sha256": "cd7c6a646e37e7bc70834c786c516b56be0dc0e59c20133e90b036440ece6538"
+      },
+      {
+        "byte_count": 114,
+        "path": "nm_2024_regular/README",
+        "sha256": "6ca809557916ddf8067f0a5f3a214e9daa0301f0c114077b8c004f37c4c31d86"
+      },
+      {
+        "byte_count": 2521,
+        "path": "nm_2024_regular/bill_actions.csv",
+        "sha256": "f86dc108ea8a40c16f83d8308ce6e04ef3c590153ff087161bc5e9082f1980f8"
+      },
+      {
+        "byte_count": 189,
+        "path": "nm_2024_regular/bill_sources.csv",
+        "sha256": "80f0eeb83d6b5eb0eb96f95520b01621f3df37064daa0e0f1772cce19c91e8c8"
+      },
+      {
+        "byte_count": 254,
+        "path": "nm_2024_regular/bills.csv",
+        "sha256": "a069acf23a87443aa42e199b45e3d7da56c3aa1d06038f68bcfa2eb956080698"
+      },
+      {
+        "byte_count": 815,
+        "path": "nm_2024_regular/organizations.csv",
+        "sha256": "ceba42076395ccc7457c6c72a05b4acc1d26131c31f5440f1e53f6bedaa372fa"
+      },
+      {
+        "byte_count": 491,
+        "path": "nm_2024_regular/vote_counts.csv",
+        "sha256": "f841c7bfe96e39944e76690f61c002ac39e4daf3e903c166c33f9c4cec4df94f"
+      },
+      {
+        "byte_count": 5797,
+        "path": "nm_2024_regular/vote_people.csv",
+        "sha256": "bcc9889dc5d988653428a696b379fe039eeece7ba2599dc383787441ccd9c336"
+      },
+      {
+        "byte_count": 180,
+        "path": "nm_2024_regular/vote_sources.csv",
+        "sha256": "f7e3b09dc4369b643c414014a72f660268c73f1019bd71531b1a9ac592ee9a2c"
+      },
+      {
+        "byte_count": 346,
+        "path": "nm_2024_regular/votes.csv",
+        "sha256": "27b2c2f8b1483cec730ae33a507557280b13212d312ab5aee88399ce72cf3813"
+      }
+    ],
+    "sha256": "c54606d1adc5ce8bef87a302641b14ed0766e71eb679fe6d093d1df152917136"
+  },
+  "fixture_bytes_label": "DERIVED FIXTURE BYTES: selected verbatim member records; not parent ZIP bytes, not a repaired output, and not a task schema.",
+  "format": "openstates-csv-verbatim-record-filter-prototype-v1",
+  "parents": [
+    {
+      "archive_name": "New_Mexico_2024_Regular_Session.zip",
+      "byte_count": 3865019,
+      "generated_at": "2024-03-25 23:07:21.567504",
+      "label": "nm_2024_regular",
+      "path_name": "data/raw/openstates_bulk/New_Mexico_2024_Regular_Session.zip",
+      "selected_members": [
+        {
+          "byte_count": 114,
+          "extraction": "verbatim_member",
+          "fixture_path": "nm_2024_regular/README",
+          "member_path": "README",
+          "selected_data_rows": null,
+          "sha256": "6ca809557916ddf8067f0a5f3a214e9daa0301f0c114077b8c004f37c4c31d86"
+        },
+        {
+          "byte_count": 254,
+          "extraction": "verbatim_header_and_selected_records",
+          "fixture_path": "nm_2024_regular/bills.csv",
+          "member_path": "NM/2024/NM_2024_bills.csv",
+          "selected_data_rows": 1,
+          "sha256": "a069acf23a87443aa42e199b45e3d7da56c3aa1d06038f68bcfa2eb956080698"
+        },
+        {
+          "byte_count": 2521,
+          "extraction": "verbatim_header_and_selected_records",
+          "fixture_path": "nm_2024_regular/bill_actions.csv",
+          "member_path": "NM/2024/NM_2024_bill_actions.csv",
+          "selected_data_rows": 12,
+          "sha256": "f86dc108ea8a40c16f83d8308ce6e04ef3c590153ff087161bc5e9082f1980f8"
+        },
+        {
+          "byte_count": 189,
+          "extraction": "verbatim_header_and_selected_records",
+          "fixture_path": "nm_2024_regular/bill_sources.csv",
+          "member_path": "NM/2024/NM_2024_bill_sources.csv",
+          "selected_data_rows": 1,
+          "sha256": "80f0eeb83d6b5eb0eb96f95520b01621f3df37064daa0e0f1772cce19c91e8c8"
+        },
+        {
+          "byte_count": 346,
+          "extraction": "verbatim_header_and_selected_records",
+          "fixture_path": "nm_2024_regular/votes.csv",
+          "member_path": "NM/2024/NM_2024_votes.csv",
+          "selected_data_rows": 1,
+          "sha256": "27b2c2f8b1483cec730ae33a507557280b13212d312ab5aee88399ce72cf3813"
+        },
+        {
+          "byte_count": 5797,
+          "extraction": "verbatim_header_and_selected_records",
+          "fixture_path": "nm_2024_regular/vote_people.csv",
+          "member_path": "NM/2024/NM_2024_vote_people.csv",
+          "selected_data_rows": 42,
+          "sha256": "bcc9889dc5d988653428a696b379fe039eeece7ba2599dc383787441ccd9c336"
+        },
+        {
+          "byte_count": 491,
+          "extraction": "verbatim_header_and_selected_records",
+          "fixture_path": "nm_2024_regular/vote_counts.csv",
+          "member_path": "NM/2024/NM_2024_vote_counts.csv",
+          "selected_data_rows": 5,
+          "sha256": "f841c7bfe96e39944e76690f61c002ac39e4daf3e903c166c33f9c4cec4df94f"
+        },
+        {
+          "byte_count": 180,
+          "extraction": "verbatim_header_and_selected_records",
+          "fixture_path": "nm_2024_regular/vote_sources.csv",
+          "member_path": "NM/2024/NM_2024_vote_sources.csv",
+          "selected_data_rows": 1,
+          "sha256": "f7e3b09dc4369b643c414014a72f660268c73f1019bd71531b1a9ac592ee9a2c"
+        },
+        {
+          "byte_count": 815,
+          "extraction": "verbatim_header_and_selected_records",
+          "fixture_path": "nm_2024_regular/organizations.csv",
+          "member_path": "NM/2024/NM_2024_organizations.csv",
+          "selected_data_rows": 3,
+          "sha256": "ceba42076395ccc7457c6c72a05b4acc1d26131c31f5440f1e53f6bedaa372fa"
+        }
+      ],
+      "sha256": "494f1680b245747df91af34504bcfdb08af080d22136dd977d34be6e205564f3",
+      "source_url": "https://data.openstates.org/csv/latest/NM_2024_csv_3TWIIK8DDER0TzmpIA7aiv.zip"
+    },
+    {
+      "archive_name": "New_Mexico_2024_First_Special_Session.zip",
+      "byte_count": 179822,
+      "generated_at": "2024-09-20 23:08:39.074368",
+      "label": "nm_2024_first_special",
+      "path_name": "data/raw/openstates_bulk/New_Mexico_2024_First_Special_Session.zip",
+      "selected_members": [
+        {
+          "byte_count": 116,
+          "extraction": "verbatim_member",
+          "fixture_path": "nm_2024_first_special/README",
+          "member_path": "README",
+          "selected_data_rows": null,
+          "sha256": "eb5648dca3940acbb4b583860666f31847d9c8bcb29ba0c9802f2481a6f3177f"
+        },
+        {
+          "byte_count": 241,
+          "extraction": "verbatim_header_and_selected_records",
+          "fixture_path": "nm_2024_first_special/bills.csv",
+          "member_path": "NM/2024S1/NM_2024S1_bills.csv",
+          "selected_data_rows": 1,
+          "sha256": "1eac0dc899bfec70198e1bfd05b1a3cd90c22bf3955514fe5264fd659b8d702a"
+        },
+        {
+          "byte_count": 477,
+          "extraction": "verbatim_header_and_selected_records",
+          "fixture_path": "nm_2024_first_special/bill_actions.csv",
+          "member_path": "NM/2024S1/NM_2024S1_bill_actions.csv",
+          "selected_data_rows": 2,
+          "sha256": "cb16a4152c57a155183d79dee62b8db70856d61c1c2c144c11eba1e397f3cd2c"
+        },
+        {
+          "byte_count": 191,
+          "extraction": "verbatim_header_and_selected_records",
+          "fixture_path": "nm_2024_first_special/bill_sources.csv",
+          "member_path": "NM/2024S1/NM_2024S1_bill_sources.csv",
+          "selected_data_rows": 1,
+          "sha256": "093ff5c1adc0e06c679179ffd4325c7b62d7be650ebe8324027a9f6727270ba2"
+        },
+        {
+          "byte_count": 348,
+          "extraction": "verbatim_header_and_selected_records",
+          "fixture_path": "nm_2024_first_special/votes.csv",
+          "member_path": "NM/2024S1/NM_2024S1_votes.csv",
+          "selected_data_rows": 1,
+          "sha256": "cd7c6a646e37e7bc70834c786c516b56be0dc0e59c20133e90b036440ece6538"
+        },
+        {
+          "byte_count": 5938,
+          "extraction": "verbatim_header_and_selected_records",
+          "fixture_path": "nm_2024_first_special/vote_people.csv",
+          "member_path": "NM/2024S1/NM_2024S1_vote_people.csv",
+          "selected_data_rows": 42,
+          "sha256": "55582bd3c42d6dd0500d15d325f95ae4f64d9683ffa4b1491c6741029ee860ca"
+        },
+        {
+          "byte_count": 491,
+          "extraction": "verbatim_header_and_selected_records",
+          "fixture_path": "nm_2024_first_special/vote_counts.csv",
+          "member_path": "NM/2024S1/NM_2024S1_vote_counts.csv",
+          "selected_data_rows": 5,
+          "sha256": "f841c7bfe96e39944e76690f61c002ac39e4daf3e903c166c33f9c4cec4df94f"
+        },
+        {
+          "byte_count": 180,
+          "extraction": "verbatim_header_and_selected_records",
+          "fixture_path": "nm_2024_first_special/vote_sources.csv",
+          "member_path": "NM/2024S1/NM_2024S1_vote_sources.csv",
+          "selected_data_rows": 1,
+          "sha256": "f7e3b09dc4369b643c414014a72f660268c73f1019bd71531b1a9ac592ee9a2c"
+        },
+        {
+          "byte_count": 570,
+          "extraction": "verbatim_header_and_selected_records",
+          "fixture_path": "nm_2024_first_special/organizations.csv",
+          "member_path": "NM/2024S1/NM_2024S1_organizations.csv",
+          "selected_data_rows": 2,
+          "sha256": "9fc47edf470b68877e3be813b3eb23e20cac9ae1295314ac9161c295d907a05e"
+        }
+      ],
+      "sha256": "00453d1dee1aa34ad5100d635692e57fbfef45af79ce8cfbcb7ed5b5c45e7758",
+      "source_url": "https://data.openstates.org/csv/latest/NM_2024S1_csv_1vq29jAbcJWagcywRzt40Q.zip"
+    }
+  ],
+  "prototype_status": "measurement_fixture_only_not_task_schema",
+  "receipt_version": 1,
+  "selection_policy": {
+    "bill_actions": "all rows linked to the selected bill",
+    "bill_sources": "all rows linked to the selected bill",
+    "bills": "the bill_id linked from the target vote in each parent",
+    "organizations": "rows directly referenced by selected actions or votes",
+    "record_bytes": "original header and selected data records in original order",
+    "vote_counts": "all rows linked to the target roll ID",
+    "vote_people": "all rows linked to the target roll ID",
+    "vote_sources": "all rows linked to the target roll ID",
+    "votes": "the target roll ID"
+  },
+  "target_roll_id": "ocd-vote/a5a38c48-675e-4dc9-bb67-c06337a2bce8",
+  "url_evidence": {
+    "byte_count": 105538,
+    "path_name": "data/raw/openstates_bulk/_manifest.json",
+    "sha256": "ea808f161867ec5e0afb34ee14d63a022703f766fe8b1227cf4a0e33f6cd1829"
+  }
+}

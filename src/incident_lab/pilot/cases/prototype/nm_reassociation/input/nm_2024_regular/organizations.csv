@@ -1,0 +1,4 @@
+created_at,updated_at,extras,id,name,parent_id,jurisdiction_id,classification,sources,links,other_names
+2017-07-14 07:03:40.961439+00:00,2017-07-14 07:03:40.961455+00:00,{},ocd-organization/36f78a21-d16b-42a3-9b14-5265b4ebf59e,Office of the Governor,,ocd-jurisdiction/country:us/state:nm/government,executive,[],[],[]
+2017-07-14 07:03:41.055649+00:00,2020-04-29 05:16:38.196605+00:00,{},ocd-organization/af9a59f2-c6b2-4bb1-b270-85f5d40605b4,House,ocd-organization/7a5a12b7-e955-4999-a469-df3748934953,ocd-jurisdiction/country:us/state:nm/government,lower,[],[],[]
+2017-07-14 07:03:41.094678+00:00,2020-04-29 05:16:38.374792+00:00,{},ocd-organization/a6719ff4-d604-4144-95e3-453a03672dfd,Senate,ocd-organization/7a5a12b7-e955-4999-a469-df3748934953,ocd-jurisdiction/country:us/state:nm/government,upper,[],[],[]

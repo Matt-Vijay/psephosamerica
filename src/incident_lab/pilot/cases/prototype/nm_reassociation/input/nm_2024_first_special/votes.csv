@@ -1,0 +1,2 @@
+id,identifier,motion_text,motion_classification,start_date,result,organization_id,bill_id,bill_action_id,jurisdiction,session_identifier
+ocd-vote/a5a38c48-675e-4dc9-bb67-c06337a2bce8,,senate passage,['passage'],2024-01-30,pass,ocd-organization/a6719ff4-d604-4144-95e3-453a03672dfd,ocd-bill/e5bb73d2-9345-4673-b547-598b215562e9,,New Mexico,2024S1
