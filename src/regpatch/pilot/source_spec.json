@@ -1,0 +1,62 @@
+{
+  "episode_id": "public-47-cfr-73-2024-01928",
+  "scope": {
+    "granularity": "part",
+    "parts": [
+      "73"
+    ],
+    "sections": [
+      "73.622"
+    ],
+    "title": 47
+  },
+  "sources": {
+    "base": {
+      "acquired_at": "2026-08-28T13:59:36-04:00",
+      "acquired_at_basis": "retained_file_mtime_no_http_receipt",
+      "media_type": "application/xml",
+      "path": "sources/ecfr-title47-part73-before-2024-01-30.xml",
+      "response_headers": {},
+      "sha256": "a389ee84d16ba538be62305ea535e2960df3864cfecd9aab463317c420a263af",
+      "source_url": "https://www.ecfr.gov/api/versioner/v1/full/2024-01-30/title-47.xml?part=73"
+    },
+    "rules": [
+      {
+        "metadata": {
+          "acquired_at": "2026-08-28T13:59:40-04:00",
+          "acquired_at_basis": "retained_file_mtime_no_http_receipt",
+          "media_type": "application/json",
+          "path": "sources/federal-register-2024-01928.json",
+          "response_headers": {},
+          "sha256": "21f8bd3a4a89bb0fe5d21a25b5f5178baf690213a8c1abdbe53a3d6dc0c1c76c",
+          "source_url": "https://www.federalregister.gov/api/v1/documents/2024-01928?publication_date=2024-01-31"
+        },
+        "ecfr_amendment_date": "2024-01-31",
+        "ecfr_issue_date": "2024-01-31",
+        "order": 1,
+        "xml": {
+          "acquired_at": "2026-08-28T13:59:40-04:00",
+          "acquired_at_basis": "retained_file_mtime_no_http_receipt",
+          "media_type": "application/xml",
+          "path": "sources/federal-register-2024-01928.xml",
+          "response_headers": {},
+          "sha256": "505477c8e72073e2ab59f953841c50ae1193ffbbbff7485b73fef452d49df9f2",
+          "source_url": "https://www.federalregister.gov/documents/full_text/xml/2024/01/31/2024-01928.xml"
+        }
+      }
+    ],
+    "target": {
+      "acquired_at": "2026-08-28T13:59:39-04:00",
+      "acquired_at_basis": "retained_file_mtime_no_http_receipt",
+      "media_type": "application/xml",
+      "path": "sources/ecfr-title47-part73-after-2024-01-31.xml",
+      "response_headers": {},
+      "sha256": "778b6079ddea582cdcfe1fe5adba9badb47c60752ce6100c30ecd3c267263061",
+      "source_url": "https://www.ecfr.gov/api/versioner/v1/full/2024-01-31/title-47.xml?part=73"
+    }
+  },
+  "window": {
+    "base_date": "2024-01-30",
+    "successor_date": "2024-01-31"
+  }
+}

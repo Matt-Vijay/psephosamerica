@@ -15,6 +15,9 @@ dependencies = [
     "numpy>=2.1,<3",
 ]
 
+[project.scripts]
+psephos-regpatch = "src.regpatch.cli:main"
+
 [project.optional-dependencies]
 pdf = [
     "pypdf>=4,<6",

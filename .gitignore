@@ -32,6 +32,9 @@ data/crosswalks/member_fec.csv
 *.swp
 data/real/
 data/time_machine/
+# RegPatch evaluator-only corpus: hidden successor bytes, IDs, hashes, and plans.
+# The public seed remains tracked under src/regpatch/pilot/.
+data/regpatch_evaluator/
 
 # Track A contract-corpus exports (large regenerable artifacts)
 data/exports/contract_records/records.jsonl

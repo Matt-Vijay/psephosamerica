@@ -1,0 +1,136 @@
+{
+  "schema_version": 1,
+  "report_kind": "psephos_regpatch_v0_measured_receipt",
+  "measured_at": "2026-08-28T15:33:57-04:00",
+  "public_private_boundary": {
+    "public_episode_count": 1,
+    "hidden_episode_count": 12,
+    "private_successor_bytes_committed": false,
+    "private_episode_identifiers_committed": false
+  },
+  "metadata_probe": {
+    "metadata_candidates": 24,
+    "additional_candidates_beyond_seed": 23,
+    "distinct_cfr_titles": 6,
+    "distinct_agencies": 13,
+    "xref_page_range_prefilter_admitted": 12,
+    "xref_page_range_prefilter_rejected": 12,
+    "live_january_api_documents": 246,
+    "live_january_capped_candidates": 30
+  },
+  "retained_source_audit": {
+    "status": "PASS",
+    "substantive_window_candidates": 12,
+    "independent_composition_candidates": 1,
+    "official_artifacts": 60,
+    "official_artifacts_rehashed": 60,
+    "retained_bytes": 48570537,
+    "cfr_titles": 7,
+    "federal_register_documents": 17,
+    "agency_names": 16
+  },
+  "compiler": {
+    "status": "PASS",
+    "accepted_corrected_substantive_windows": 12,
+    "rejected_corrected_substantive_windows": 0,
+    "operation_shape_count": 8,
+    "operation_shapes": [
+      "add",
+      "authority_citation",
+      "heading_edit",
+      "redesignate",
+      "remove",
+      "republish",
+      "revise",
+      "table_edit"
+    ],
+    "correction_chain_windows": 2,
+    "correction_chains_count_as_independent_rules": false,
+    "independent_multi_rule_windows": 1,
+    "independent_composition": {
+      "primary_document_count": 3,
+      "changed_section_count": 9,
+      "every_primary_document_has_substantive_contribution": true,
+      "changed_regions_fully_covered": true,
+      "contributions_disjoint": true,
+      "metadata_scope_discrepancy_overrides": 1
+    },
+    "rejected_long_window_attempt": {
+      "count": 1,
+      "reason_code": "SAME_DAY_COLLISION_UNOBSERVED",
+      "unmatched_causal_witnesses": 7
+    }
+  },
+  "suite": {
+    "status": "PASS",
+    "episode_count": 13,
+    "trusted_oracle": {
+      "overall": 100.0,
+      "all_episodes_100": true
+    },
+    "weak_baselines": [
+      {
+        "name": "copy-before",
+        "public": 69.9615,
+        "hidden": 69.0093,
+        "all": 69.0825
+      },
+      {
+        "name": "copy-rule-replacement",
+        "public": 0.0,
+        "hidden": 0.0,
+        "all": 0.0
+      },
+      {
+        "name": "naive-regex",
+        "public": 24.99,
+        "hidden": 69.0093,
+        "all": 65.6232
+      },
+      {
+        "name": "public-hardcode",
+        "public": 100.0,
+        "hidden": 69.0093,
+        "all": 71.3932
+      },
+      {
+        "name": "damaging-partial",
+        "public": 1.8907,
+        "hidden": 15.294,
+        "all": 14.263
+      }
+    ],
+    "baseline_matrix_seconds": 77.43,
+    "all_score_method": "episode_count_weighted_public_plus_hidden_without_third_execution"
+  },
+  "cleanroom": {
+    "public_demo_status": "PASS",
+    "public_demo_seconds": 7.15,
+    "public_demo_sha256": "b2c3b3c81bec35f23e148e608bc13cd671ac40884a2a9705b96e06787ff229c1",
+    "public_bundle_files": 6,
+    "public_bundle_sha256": "d93ea689f7f3d047098da19d91711d10423725470edc39622f07199c65b493f5",
+    "independent_composition_bundle_files": 8,
+    "independent_composition_copy_before_score": 67.0457,
+    "independent_composition_copy_before_deterministic": true
+  },
+  "focused_verification": {
+    "pytest_files": [
+      "tests/test_regpatch_compiler.py",
+      "tests/test_regpatch_grader.py",
+      "tests/test_regpatch_runner.py",
+      "tests/test_regpatch_cli.py"
+    ],
+    "pytest_passed": 17,
+    "ruff_check": "PASS",
+    "ruff_format_check": "PASS",
+    "mypy_strict_source_files": 8,
+    "mypy_strict": "PASS"
+  },
+  "versions": {
+    "python": "3.12.13",
+    "deno": "2.8.3",
+    "pytest": "8.4.2",
+    "ruff": "0.16.5",
+    "mypy": "1.20.2"
+  }
+}
