@@ -1,0 +1,162 @@
+{
+  "artifacts": [
+    {
+      "acquired_at": "2026-08-20T00:27:53.689316Z",
+      "acquisition_url": "https://github.com/usgpo/uslm/raw/refs/heads/main/bill-version-samples-september-2024/BILLS-113hres378cdh.xml",
+      "acquisition_url_role": "exact_official_gpo_sample_transport",
+      "artifact_id": "sha256:c4482791569619c36a8b213ae0e810e65fbb41ca1b2eab000c0b0e5c13eae1e4",
+      "byte_count": 4871,
+      "content_path": "raw/govinfo_bills/sha256/c4/c4482791569619c36a8b213ae0e810e65fbb41ca1b2eab000c0b0e5c13eae1e4.xml",
+      "content_semantics": "exact_official_gpo_sample_xml_bytes",
+      "http_etag": null,
+      "http_last_modified": null,
+      "identifier": "BILLS-113hres378cdh",
+      "kind": "official_gpo_sample_bill_version_xml",
+      "media_type": "application/xml",
+      "published_at": null,
+      "sha256": "c4482791569619c36a8b213ae0e810e65fbb41ca1b2eab000c0b0e5c13eae1e4",
+      "source_relationships": [
+        {
+          "target": "bill:us:113:hres:378",
+          "type": "belongs_to_bill_identity"
+        }
+      ],
+      "source_url": "https://www.govinfo.gov/content/pkg/BILLS-113hres378cdh/xml/BILLS-113hres378cdh.xml",
+      "source_url_role": "canonical_govinfo_package_url_byte_identity_unverified"
+    },
+    {
+      "acquired_at": "2026-08-20T00:27:53.692805Z",
+      "acquisition_url": "https://github.com/usgpo/uslm/raw/refs/heads/main/bill-version-samples-september-2024/BILLS-114hres99eh.xml",
+      "acquisition_url_role": "exact_official_gpo_sample_transport",
+      "artifact_id": "sha256:421e69417bdfe40b1d41cde3ccf915ac5e65e6ad0ebf752a596cd9325f33250b",
+      "byte_count": 3113,
+      "content_path": "raw/govinfo_bills/sha256/42/421e69417bdfe40b1d41cde3ccf915ac5e65e6ad0ebf752a596cd9325f33250b.xml",
+      "content_semantics": "exact_official_gpo_sample_xml_bytes",
+      "http_etag": null,
+      "http_last_modified": null,
+      "identifier": "BILLS-114hres99eh",
+      "kind": "official_gpo_sample_bill_version_xml",
+      "media_type": "application/xml",
+      "published_at": null,
+      "sha256": "421e69417bdfe40b1d41cde3ccf915ac5e65e6ad0ebf752a596cd9325f33250b",
+      "source_relationships": [
+        {
+          "target": "bill:us:114:hres:99",
+          "type": "belongs_to_bill_identity"
+        }
+      ],
+      "source_url": "https://www.govinfo.gov/content/pkg/BILLS-114hres99eh/xml/BILLS-114hres99eh.xml",
+      "source_url_role": "canonical_govinfo_package_url_byte_identity_unverified"
+    },
+    {
+      "acquired_at": "2026-08-20T00:28:28.024713Z",
+      "acquisition_url": "https://github.com/usgpo/uslm/raw/refs/heads/main/bill-version-samples-september-2024/BILLS-116hr1865eas.xml",
+      "acquisition_url_role": "exact_official_gpo_sample_transport",
+      "artifact_id": "sha256:c2bd2db618f147cf7c9cd53ae098ca0b0ff8a56a29eda02f38ad98107d291731",
+      "byte_count": 3796,
+      "content_path": "raw/govinfo_bills/sha256/c2/c2bd2db618f147cf7c9cd53ae098ca0b0ff8a56a29eda02f38ad98107d291731.xml",
+      "content_semantics": "exact_official_gpo_sample_xml_bytes",
+      "http_etag": null,
+      "http_last_modified": null,
+      "identifier": "BILLS-116hr1865eas",
+      "kind": "official_gpo_sample_amendment_xml",
+      "media_type": "application/xml",
+      "published_at": null,
+      "sha256": "c2bd2db618f147cf7c9cd53ae098ca0b0ff8a56a29eda02f38ad98107d291731",
+      "source_relationships": [
+        {
+          "target": "bill:us:116:hr:1865",
+          "type": "belongs_to_bill_identity"
+        }
+      ],
+      "source_url": "https://www.govinfo.gov/content/pkg/BILLS-116hr1865eas/xml/BILLS-116hr1865eas.xml",
+      "source_url_role": "canonical_govinfo_package_url_byte_identity_unverified"
+    },
+    {
+      "acquired_at": "2026-08-20T00:28:28.027512Z",
+      "acquisition_url": "https://github.com/usgpo/uslm/raw/refs/heads/main/bill-version-samples-september-2024/BILLS-116hres755rds.xml",
+      "acquisition_url_role": "exact_official_gpo_sample_transport",
+      "artifact_id": "sha256:ad7cf8cdf136bd64afcb6faac15b3922b5943274c82b2e5831366877607aabe9",
+      "byte_count": 15354,
+      "content_path": "raw/govinfo_bills/sha256/ad/ad7cf8cdf136bd64afcb6faac15b3922b5943274c82b2e5831366877607aabe9.xml",
+      "content_semantics": "exact_official_gpo_sample_xml_bytes",
+      "http_etag": null,
+      "http_last_modified": null,
+      "identifier": "BILLS-116hres755rds",
+      "kind": "official_gpo_sample_bill_version_xml",
+      "media_type": "application/xml",
+      "published_at": null,
+      "sha256": "ad7cf8cdf136bd64afcb6faac15b3922b5943274c82b2e5831366877607aabe9",
+      "source_relationships": [
+        {
+          "target": "bill:us:116:hres:755",
+          "type": "belongs_to_bill_identity"
+        }
+      ],
+      "source_url": "https://www.govinfo.gov/content/pkg/BILLS-116hres755rds/xml/BILLS-116hres755rds.xml",
+      "source_url_role": "canonical_govinfo_package_url_byte_identity_unverified"
+    },
+    {
+      "acquired_at": "2026-08-20T00:28:28.030405Z",
+      "acquisition_url": "https://github.com/usgpo/uslm/raw/refs/heads/main/bill-version-samples-september-2024/BILLS-116s1014es.xml",
+      "acquisition_url_role": "exact_official_gpo_sample_transport",
+      "artifact_id": "sha256:fc44a05eb1eec04f6d43c93e3bd4a41fea40ea3f3226b8e17a3bd14a28c8b490",
+      "byte_count": 27089,
+      "content_path": "raw/govinfo_bills/sha256/fc/fc44a05eb1eec04f6d43c93e3bd4a41fea40ea3f3226b8e17a3bd14a28c8b490.xml",
+      "content_semantics": "exact_official_gpo_sample_xml_bytes",
+      "http_etag": null,
+      "http_last_modified": null,
+      "identifier": "BILLS-116s1014es",
+      "kind": "official_gpo_sample_bill_version_xml",
+      "media_type": "application/xml",
+      "published_at": null,
+      "sha256": "fc44a05eb1eec04f6d43c93e3bd4a41fea40ea3f3226b8e17a3bd14a28c8b490",
+      "source_relationships": [
+        {
+          "target": "bill:us:116:s:1014",
+          "type": "belongs_to_bill_identity"
+        }
+      ],
+      "source_url": "https://www.govinfo.gov/content/pkg/BILLS-116s1014es/xml/BILLS-116s1014es.xml",
+      "source_url_role": "canonical_govinfo_package_url_byte_identity_unverified"
+    },
+    {
+      "acquired_at": "2026-08-20T00:28:28.034093Z",
+      "acquisition_url": "https://github.com/usgpo/uslm/raw/refs/heads/main/bill-version-samples-september-2024/BILLS-118s1325rs.xml",
+      "acquisition_url_role": "exact_official_gpo_sample_transport",
+      "artifact_id": "sha256:978de05e8f47f0f47a52255aa0a2a326dc1e6aa8f2516cbe02e5aba165a4c89b",
+      "byte_count": 75722,
+      "content_path": "raw/govinfo_bills/sha256/97/978de05e8f47f0f47a52255aa0a2a326dc1e6aa8f2516cbe02e5aba165a4c89b.xml",
+      "content_semantics": "exact_official_gpo_sample_xml_bytes",
+      "http_etag": null,
+      "http_last_modified": null,
+      "identifier": "BILLS-118s1325rs",
+      "kind": "official_gpo_sample_bill_version_xml",
+      "media_type": "application/xml",
+      "published_at": null,
+      "sha256": "978de05e8f47f0f47a52255aa0a2a326dc1e6aa8f2516cbe02e5aba165a4c89b",
+      "source_relationships": [
+        {
+          "target": "bill:us:118:s:1325",
+          "type": "belongs_to_bill_identity"
+        }
+      ],
+      "source_url": "https://www.govinfo.gov/content/pkg/BILLS-118s1325rs/xml/BILLS-118s1325rs.xml",
+      "source_url_role": "canonical_govinfo_package_url_byte_identity_unverified"
+    }
+  ],
+  "generated_from_observations_through": "2026-08-20T00:28:28.034093Z",
+  "manifest_kind": "legislative_patch_source_receipt",
+  "schema_version": 1,
+  "source_root": "data/time_machine",
+  "totals": {
+    "artifacts": 6,
+    "by_kind": {
+      "official_gpo_sample_amendment_xml": 1,
+      "official_gpo_sample_bill_version_xml": 5
+    },
+    "bytes": 129945,
+    "published_at_missing": 6,
+    "published_at_present": 0
+  }
+}

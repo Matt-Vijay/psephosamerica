@@ -1,0 +1,217 @@
+{
+  "schema_version": 2,
+  "audit_id": "legislative-patch-oracle-feasibility-v0",
+  "audit_date": "2026-08-28",
+  "verdict": "KILL_V0",
+  "verdict_scope": "Do not build the seed environment from the evidence established in the current local corpus. The required 25 witnessed triples were not demonstrated. Feasibility across the wider GovInfo population remains unresolved because the reported online result set was not retained or byte/action-screened.",
+  "global_hypothesis_status": "UNRESOLVED",
+  "v0_built": false,
+  "v0_omission_reason": "The current retained corpus contains zero complete base-amendment-successor chains. Building an episode would require inferred causal edges or an unreceipted target.",
+  "acquisition": {
+    "metadata_probe_cap_bytes": 524288000,
+    "full_pilot_cap_bytes": 5368709120,
+    "new_network_bytes_retained": 0,
+    "existing_official_sample_bytes_rehashed": 129945,
+    "cap_compliant": true,
+    "note": "Official search and action pages were observed online, but their response bytes were not retained. They are reported as unreceipted observations and are not counted as exact oracle evidence."
+  },
+  "local_official_assets": {
+    "cache_description": "Official GPO USLM GitHub sample-conversion bytes stored by the Time Machine",
+    "sample_packages": 6,
+    "distinct_bill_identities": 6,
+    "exact_local_bytes": 129945,
+    "locally_rehashed_against_existing_manifest": 6,
+    "matched_to_govinfo_premis_sha256": 0,
+    "proven_byte_identical_to_current_govinfo_package_urls": 0,
+    "acquisition_urls_commit_pinned": false,
+    "publication_times_present": 0,
+    "publication_times_missing": 6,
+    "congresses": [
+      113,
+      114,
+      116,
+      118
+    ],
+    "ordinary_bill_or_resolution_samples": 5,
+    "amendment_samples": 1,
+    "amendment_sample_package": "BILLS-116hr1865eas",
+    "amendment_sample_bytes": 3796,
+    "amendment_sample_root": "engrossedAmendment",
+    "amendment_instruction_count": 1,
+    "locally_evidenced_operation": "append_at_end",
+    "amendment_content_marker": "changed=added",
+    "local_base_versions_for_amendment_samples": 0,
+    "local_successor_versions_for_amendment_samples": 0,
+    "local_raw_billstatus_xml": 0,
+    "local_gpo_bill_or_amendment_schema_files": 0,
+    "time_machine_amendment_rows": 0,
+    "local_complete_version_chains": 0,
+    "local_exact_triples": 0,
+    "exact_sample_size_bytes": {
+      "minimum": 3113,
+      "maximum": 75722,
+      "amendment_sample": 3796
+    }
+  },
+  "legacy_billstatus_derivatives": {
+    "bill_content_full_rows": 106592,
+    "records_rows": 106536,
+    "retained_raw_official_response_bytes": 0,
+    "retained_actions_or_amendments_or_text_versions": 0,
+    "admissible_for_causal_witnessing": false,
+    "reason": "The derivatives discarded raw BILLSTATUS XML and omit the action/amendment/text-version evidence required by this audit."
+  },
+  "unreceipted_official_ui_observations": {
+    "search_ui_observed_date": "2026-08-28",
+    "response_bytes_retained": false,
+    "reproducible_offline": false,
+    "source": "GovInfo BILLS search UI",
+    "congress_range": [
+      113,
+      119
+    ],
+    "queries": [
+      {
+        "query": "billversion:eas congress:range(113,119)",
+        "stage_code": "EAS",
+        "govinfo_ui_reported_rows": 288
+      },
+      {
+        "query": "billversion:eah congress:range(113,119)",
+        "stage_code": "EAH",
+        "govinfo_ui_reported_rows": 171
+      }
+    ],
+    "reported_rows_total": 459,
+    "reported_unrestricted_eas_rows": 1344,
+    "interpretation": "These are packages carrying EAS/EAH stage codes, not a homogeneous population of executable amendment documents and not witnessed triples. EAH is a bill or joint resolution as passed including House floor amendments; EAS is the amendment as passed by the Senate."
+  },
+  "triple_screen": {
+    "retained_amendment_samples_screened": 1,
+    "retained_candidates_with_all_three_exact_byte_sets": 0,
+    "retained_candidates_with_complete_official_action_reference_evidence": 0,
+    "admitted_local_exact_triples": 0,
+    "exact_triples_in_wider_online_population": null,
+    "admitted_congresses": [],
+    "admitted_chambers": [],
+    "admitted_version_code_transitions": [],
+    "admitted_chain_length_distribution": {},
+    "admitted_document_size_distribution": {},
+    "admitted_operation_families": [],
+    "wider_population_status": "not_acquired_or_screened",
+    "reason": "Version metadata alone does not establish an exact base package, complete ordered amendment set, and resulting successor package."
+  },
+  "screened_local_case": {
+    "package_id": "BILLS-116hr1865eas",
+    "sha256": "c2bd2db618f147cf7c9cd53ae098ca0b0ff8a56a29eda02f38ad98107d291731",
+    "bytes": 3796,
+    "content_provenance": "official GPO USLM GitHub sample conversion; current GovInfo production byte identity not verified",
+    "instruction": "At the end, add the following",
+    "action_date_in_sample": "2019-11-12",
+    "candidate_base_identity": "H.R. 1865 as received from the House",
+    "naively_inferred_final_target": "BILLS-116hr1865enr",
+    "excluded_from_local_v0": true,
+    "online_action_evidence_receipted": false,
+    "online_action_observation": "Congress.gov/official House materials report that the House later agreed to the Senate amendment with a further amendment consisting of Rules Committee Print 116-44 on 2019-12-17, and the Senate agreed to the House amendment on 2019-12-19.",
+    "exclusion_reasons": [
+      "No exact base or final-target bytes are retained locally.",
+      "The observed official history contains an intervening House amendment before enrollment.",
+      "The local EAS instruction alone therefore cannot explain an enrolled target."
+    ]
+  },
+  "operation_family_evidence": {
+    "locally_evidenced_families": [
+      "append_or_insert"
+    ],
+    "admissible_families": [],
+    "unreceipted_search_snippet_hypotheses_excluded_from_counts": [
+      "strike_and_replace",
+      "whole_measure_substitute",
+      "multiple_line_or_reference_edits",
+      "nested_amendment_to_amendment"
+    ],
+    "collapse_policy": "Wording, formatting, page-line variants, and repeated templates count as one procedure. Whole-measure substitutes are leakage risks when candidate-visible prose largely contains the target."
+  },
+  "mapping_ambiguity": {
+    "package_chronology_is_causal_evidence": false,
+    "related_versions_are_directed_patch_edges": false,
+    "billstatus_actions_define_complete_ordered_amendment_sets": false,
+    "congress_api_amendment_target_defines_successor_package": false,
+    "dtd_base_document_id": "optional XML ID; not documented as a GovInfo package reference",
+    "dtd_meta_aip_capability": "The schema can represent executed status and ordered amendment-document filenames with optional hashes, but production population/resolution was not demonstrated.",
+    "meta_aip_execution_evidence_found_in_retained_samples": 0,
+    "required_admission_rule": "Require exact official base, amendment, and successor bytes; a resolvable target; official adoption/concurrence evidence; proof that the supplied set is complete and ordered; unique instruction anchors; exact structural replay; and zero unexplained residual diff."
+  },
+  "gate": {
+    "minimum_exact_triples": {
+      "required": 25,
+      "established_in_retained_corpus": 0,
+      "wider_population": null,
+      "status": "NOT_DEMONSTRATED"
+    },
+    "minimum_structurally_distinct_operation_families": {
+      "required": 3,
+      "admitted": 0,
+      "status": "NOT_DEMONSTRATED"
+    },
+    "chamber_coverage": {
+      "required": 2,
+      "admitted_exact_triples": 0,
+      "status": "NOT_DEMONSTRATED"
+    },
+    "held_out_shortcut_resistance": {
+      "required": true,
+      "eligible_hidden_cases": 0,
+      "status": "NOT_DEMONSTRATED"
+    },
+    "credible_hundreds_or_thousands_scaling_evidence": {
+      "required": true,
+      "witnessed_examples": 0,
+      "status": "NOT_DEMONSTRATED"
+    },
+    "all_gates_passed": false
+  },
+  "baseline_scores": {
+    "copy_base": null,
+    "copy_amendment": null,
+    "naive_diff_or_regex": null,
+    "public_hardcoding": null,
+    "status": "not_run_no_eligible_episode",
+    "reason": "Assigning numeric scores without an admitted official target would fabricate evidence."
+  },
+  "license_and_authentication": {
+    "retained_sample_notice": "The retained U.S.-government XML sample carries an explicit 17 U.S.C. 105/public-domain notice.",
+    "xml_digitally_signed": false,
+    "premis_fixity_checked": false,
+    "operational_constraint": "Preserve URL, hash, acquisition receipt, and links to authenticated PDF/PREMIS where available; do not imply that a reproduction is an official publication; separately screen embedded third-party material.",
+    "known_bar_to_redistributing_current_retained_sample": false,
+    "congress_api_specific_redistribution_terms_verified": false
+  },
+  "artifacts": {
+    "source_manifest": {
+      "path": "docs/legislative-patch-source-manifest.json",
+      "sha256": "cb789719241de4dd28e5f946e65625b3cc703d6dc40b268cac10b363ef91f9b4"
+    },
+    "acquisition_script": {
+      "path": "src/time_machine/patch_probe.py",
+      "sha256": "86876d718f08c641d6ccf166a5e48fd28a837ada23d46c1f47d3f8ae650b4286"
+    },
+    "focused_tests": {
+      "path": "tests/test_legislative_patch_probe.py",
+      "sha256": "665858c2475d0ad9902454689b93caf29f4ae2003470c3c561ead897a1297461",
+      "tests": 13
+    }
+  },
+  "official_references": [
+    "https://www.govinfo.gov/help/bills",
+    "https://github.com/usgpo/bulk-data/blob/main/Bills-XML-User-Guide.md",
+    "https://github.com/usgpo/bill-status/blob/main/BILLSTATUS-XML_User_User-Guide.md",
+    "https://github.com/usgpo/bill-dtd/blob/master/amend.dtd",
+    "https://github.com/usgpo/uslm/blob/main/USLM-User-Guide.md",
+    "https://github.com/LibraryOfCongress/api.congress.gov/blob/main/Documentation/AmendmentEndpoint.md",
+    "https://www.congress.gov/bill/116th-congress/house-bill/1865/all-actions",
+    "https://www.congress.gov/116/bills/hr1865/BILLS-116hr1865eah.pdf",
+    "https://www.govinfo.gov/app/details/BILLS-116hr1865enr/related",
+    "https://www.govinfo.gov/about/policies"
+  ]
+}
