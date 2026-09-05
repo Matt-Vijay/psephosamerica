@@ -22,7 +22,7 @@ from typing import cast
 from defusedxml import ElementTree as SafeET
 from defusedxml.common import DefusedXmlException
 
-from src.regpatch.compiler import canonical_table_signature, is_projected_editorial_node
+from src.regpatch.projection import canonical_table_signature, is_projected_editorial_node
 
 SCORE_VERSION = "psephos.regpatch.score.v0"
 PROJECTION_VERSION = "psephos.regpatch.ecfr-substantive.v3"

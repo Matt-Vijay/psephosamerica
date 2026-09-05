@@ -1,4 +1,9 @@
-# Psephos America — Overall Goal
+# Historical proposal: universal vote prediction
+
+> Archived research direction, not the current goal or a claim about shipped
+> capabilities. Kept for its experiment evidence and design history. Start at
+> [README.md](README.md) for the runnable work and current limits. The statements
+> below describe that earlier proposal; they do not authorize new implementation.
 
 **The single, maximalist objective for this codebase.** Everything older in
 this repo (the v1 deterministic conflict-of-interest scoring, the

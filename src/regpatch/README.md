@@ -7,6 +7,20 @@ scores the resulting XML against the withheld historical eCFR successor.
 This is an evaluator/operator guide. The candidate-facing contract is
 [`pilot/TASK.md`](pilot/TASK.md).
 
+## Code ownership
+
+Follow `sources.py` (bytes and discovery) → `compiler.py` (causal admission) →
+`evaluation.py` (bundles and score orchestration). Evaluation calls `runner.py`
+for isolated execution and `grader.py` for deterministic comparison; both the
+compiler and grader use the pure `projection.py` XML rules. `corpus.py` adapts
+the retained source collection into that same compiler. `cli.py` only parses
+and dispatches commands. There is no plugin registry or alternative build path.
+
+Existing public imports from `compiler` and `cli` remain available as direct
+re-exports; new callers should import from the owning module. Commands, file
+contracts, and scores are unchanged. Private citation-receipt ordering is now
+explicit rather than dependent on Python's hash seed.
+
 ## Zero to a public score
 
 Requirements are Python 3.12+, Deno 2.x at the runner's fixed trusted path
@@ -53,9 +67,13 @@ not from Federal Register publication dates:
   --start-date 2024-01-01 --end-date 2024-01-31
 
 .venv/bin/psephos-regpatch acquire /private/tmp/regpatch-store \
-  /private/tmp/regpatch-store/probe.json 0 \
+  /private/tmp/regpatch-store/probe.json CANDIDATE_INDEX \
   /private/tmp/regpatch-store/versions-title-5-part-2634-page-1.json 0
 ```
+
+Replace `CANDIDATE_INDEX` with the zero-based row for title 5 / part 2634 in
+`probe.json`; API result order is not a stable candidate identifier. The final
+index selects an observed version window, which still needs causal validation.
 
 `acquire` prints the compiler-ready `source_spec` path. Continue with:
 

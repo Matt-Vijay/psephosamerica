@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from src.regpatch import cli
+from src.regpatch import cli, evaluation
 
 
 def _sha256(payload: bytes) -> str:
@@ -46,7 +46,7 @@ def test_real_seed_bundle_is_exact_public_allowlist_and_runs_from_fresh_director
     assert cli.main(["bundle", str(episode), str(bundle)]) == 0
     bundle_report = json.loads(capsys.readouterr().out)
     assert bundle_report["status"] == "PASS"
-    assert bundle_report["bundle_sha256"] == cli._tree_digest(bundle)
+    assert bundle_report["bundle_sha256"] == evaluation._tree_digest(bundle)
 
     manifest = json.loads((bundle / "episode/manifest.json").read_text(encoding="utf-8"))
     declared_inputs = {
@@ -100,13 +100,13 @@ def test_real_seed_bundle_is_exact_public_allowlist_and_runs_from_fresh_director
     undeclared = bundle / "episode/input/undeclared.json"
     undeclared.write_text("{}\n", encoding="utf-8")
     with pytest.raises(ValueError, match="exact public file allowlist"):
-        cli._audit_candidate_bundle(bundle, private_sha256s=private_sha256s)
+        evaluation._audit_candidate_bundle(bundle, private_sha256s=private_sha256s)
     undeclared.rename(tmp_path / "quarantined-undeclared.json")
 
     with (bundle / "TASK.md").open("ab") as task:
         task.write(b"\ntarget_sha256=" + target_sha256.encode("ascii"))
     with pytest.raises(ValueError, match="private marker"):
-        cli._audit_candidate_bundle(bundle, private_sha256s=private_sha256s)
+        evaluation._audit_candidate_bundle(bundle, private_sha256s=private_sha256s)
 
 
 def test_acquire_cli_requires_and_selects_an_observed_version_window(
@@ -172,7 +172,7 @@ def test_acquire_cli_requires_and_selects_an_observed_version_window(
 
 
 def test_split_scores_are_weighted_without_a_third_suite_execution() -> None:
-    combined = cli._weighted_aggregate(
+    combined = evaluation._weighted_aggregate(
         {"overall": 100.0, "components": {"changed_regions": 1.0}},
         1,
         {"overall": 60.0, "components": {"changed_regions": 0.5}},

@@ -1,7 +1,7 @@
 [project]
 name = "psephosamerica"
 version = "0.1.0"
-description = "Evidence-first public ledger of score-changing events for Members of Congress"
+description = "Provenance-preserving public-record research and executable evaluation"
 requires-python = ">=3.12"
 dependencies = [
     "duckdb>=1.2,<2",

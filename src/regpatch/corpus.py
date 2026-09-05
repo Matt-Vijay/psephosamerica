@@ -187,8 +187,15 @@ def compile_retained_corpus(
     by_id = {_candidate_id(row): row for row in candidates}
     public_source_id = str(plan["public_candidate_id"])
     issue_dates = _object(plan.get("ecfr_issue_dates", {}), "ecfr_issue_dates")
-    accepted: list[dict[str, object]] = []
-    rejected: list[dict[str, object]] = []
+    specs_by_id = {
+        source_id: (
+            load_episode_spec(PILOT_SPEC)
+            if source_id == public_source_id
+            else _candidate_spec(candidate, manifest, root, issue_dates)
+        )
+        for source_id, candidate in by_id.items()
+    }
+    results: list[dict[str, object]] = []
     destination.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(
         prefix=f".{destination.name}-staging-", dir=destination.parent
@@ -197,33 +204,11 @@ def compile_retained_corpus(
         staged.mkdir()
         for candidate in candidates:
             source_id = _candidate_id(candidate)
-            spec = (
-                load_episode_spec(PILOT_SPEC)
-                if source_id == public_source_id
-                else _candidate_spec(candidate, manifest, root, issue_dates)
-            )
+            spec = specs_by_id[source_id]
             split = "public" if source_id == public_source_id else "hidden"
-            relative = Path("episodes") / split / spec.episode_id
-            result = try_compile_episode(spec, staged / relative)
-            classification = (
-                _classify_compiled_episode(staged / relative)
-                if result["status"] == "ACCEPTED"
-                else None
-            )
-            result.update(
-                {
-                    "source_candidate_id": source_id,
-                    "split": split,
-                    "path": relative.as_posix(),
-                    "episode_kind": (
-                        str(classification["episode_kind"])
-                        if classification is not None
-                        else "observed_window_attempt"
-                    ),
-                    "composition_classification": classification,
-                }
-            )
-            (accepted if result["status"] == "ACCEPTED" else rejected).append(result)
+            result = _compile_case(spec, staged, split, attempt_kind="observed_window_attempt")
+            result["source_candidate_id"] = source_id
+            results.append(result)
 
         for raw_window in _array(plan.get("composition_windows", []), "composition_windows"):
             window = _object(raw_window, "composition window")
@@ -233,59 +218,17 @@ def compile_retained_corpus(
             ]
             if not source_ids or any(value not in by_id for value in source_ids):
                 raise ValueError("composition plan refers to an unavailable candidate")
-            specs = [
-                (
-                    load_episode_spec(PILOT_SPEC)
-                    if value == public_source_id
-                    else _candidate_spec(by_id[value], manifest, root, issue_dates)
-                )
-                for value in source_ids
-            ]
+            specs = [specs_by_id[value] for value in source_ids]
             composition = _composition_spec(str(window["episode_id"]), specs)
-            relative = Path("episodes") / "hidden" / composition.episode_id
-            result = try_compile_episode(composition, staged / relative)
-            classification = (
-                _classify_compiled_episode(staged / relative)
-                if result["status"] == "ACCEPTED"
-                else None
-            )
-            result.update(
-                {
-                    "source_candidate_ids": source_ids,
-                    "split": "hidden",
-                    "path": relative.as_posix(),
-                    "episode_kind": (
-                        str(classification["episode_kind"])
-                        if classification is not None
-                        else "independent_multi_rule_window_attempt"
-                    ),
-                    "composition_classification": classification,
-                }
-            )
-            (accepted if result["status"] == "ACCEPTED" else rejected).append(result)
+            result = _compile_case(composition, staged, "hidden")
+            result["source_candidate_ids"] = source_ids
+            results.append(result)
 
         for composition in _planned_independent_specs(root, plan):
-            relative = Path("episodes") / "hidden" / composition.episode_id
-            result = try_compile_episode(composition, staged / relative)
-            classification = (
-                _classify_compiled_episode(staged / relative)
-                if result["status"] == "ACCEPTED"
-                else None
-            )
-            result.update(
-                {
-                    "split": "hidden",
-                    "path": relative.as_posix(),
-                    "episode_kind": (
-                        str(classification["episode_kind"])
-                        if classification is not None
-                        else "independent_multi_rule_window_attempt"
-                    ),
-                    "composition_classification": classification,
-                }
-            )
-            (accepted if result["status"] == "ACCEPTED" else rejected).append(result)
+            results.append(_compile_case(composition, staged, "hidden"))
 
+        accepted = [row for row in results if row["status"] == "ACCEPTED"]
+        rejected = [row for row in results if row["status"] != "ACCEPTED"]
         public = [row for row in accepted if row["split"] == "public"]
         hidden = [row for row in accepted if row["split"] == "hidden"]
         observed = [
@@ -383,6 +326,30 @@ def compile_retained_corpus(
     return suite
 
 
+def _compile_case(
+    spec: EpisodeSpec,
+    staged: Path,
+    split: str,
+    *,
+    attempt_kind: str = "independent_multi_rule_window_attempt",
+) -> dict[str, object]:
+    """All plan variants use the same compiler, classifier, and receipt shape."""
+    relative = Path("episodes") / split / spec.episode_id
+    result = try_compile_episode(spec, staged / relative)
+    classification = (
+        _classify_compiled_episode(staged / relative) if result["status"] == "ACCEPTED" else None
+    )
+    return {
+        **result,
+        "split": split,
+        "path": relative.as_posix(),
+        "episode_kind": (
+            str(classification["episode_kind"]) if classification is not None else attempt_kind
+        ),
+        "composition_classification": classification,
+    }
+
+
 def _candidate_spec(
     candidate: Mapping[str, Any],
     manifest: Mapping[str, Any],
@@ -470,15 +437,12 @@ def _composition_spec(episode_id: str, specs: Sequence[EpisodeSpec]) -> EpisodeS
             rules.append(rule)
     rules.sort(key=lambda rule: (rule.ecfr_amendment_date or date.min, rule.order))
     ordered = tuple(replace(rule, order=index) for index, rule in enumerate(rules, start=1))
-    return EpisodeSpec(
+    return replace(
+        first,
         episode_id=episode_id,
-        title=first.title,
-        parts=first.parts,
         requested_sections=(),
         granularity="part",
-        base_date=first.base_date,
         successor_date=last.successor_date,
-        base=first.base,
         target=last.target,
         rules=ordered,
     )

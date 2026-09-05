@@ -355,34 +355,8 @@ class RegPatchRunner:
         request: bytes,
         capture: Path,
     ) -> tuple[int, bool, bytes, bytes]:
-        if any("," in str(path) for path in readable):
-            raise RuntimeError("Deno allow-read path contains a comma")
-        allowed_read = ",".join(str(path) for path in readable)
-        if "," in str(output_root):
-            raise RuntimeError("Deno allow-write path contains a comma")
+        command = self._sandbox_command(entrypoint, readable, output_root)
         stdout_path, stderr_path = capture / "stdout", capture / "stderr"
-        command = [
-            str(self.deno),
-            "run",
-            "--no-prompt",
-            "--no-config",
-            "--no-lock",
-            "--no-code-cache",
-            "--cached-only",
-            "--no-npm",
-            "--no-remote",
-            "--deny-import",
-            f"--allow-read={allowed_read}",
-            f"--allow-write={output_root}",
-            "--deny-net",
-            "--deny-env",
-            "--deny-run",
-            "--deny-ffi",
-            "--deny-sys",
-            "--seed=0",
-            "--v8-flags=--max-old-space-size=256",
-            str(entrypoint),
-        ]
         environment = {
             "PATH": str(self.deno.parent),
             "NO_COLOR": "1",
@@ -412,6 +386,38 @@ class RegPatchRunner:
         stdout_payload = stdout_path.read_bytes()[:MAX_CAPTURE_BYTES]
         stderr_payload = stderr_path.read_bytes()[:MAX_CAPTURE_BYTES]
         return process.returncode, timed_out, stdout_payload, stderr_payload
+
+    def _sandbox_command(
+        self, entrypoint: Path, readable: list[Path], output_root: Path
+    ) -> list[str]:
+        """Probe and candidate execution must use the same permission policy."""
+        if any("," in str(path) for path in readable):
+            raise RuntimeError("Deno allow-read path contains a comma")
+        allowed_read = ",".join(str(path) for path in readable)
+        if "," in str(output_root):
+            raise RuntimeError("Deno allow-write path contains a comma")
+        return [
+            str(self.deno),
+            "run",
+            "--no-prompt",
+            "--no-config",
+            "--no-lock",
+            "--no-code-cache",
+            "--cached-only",
+            "--no-npm",
+            "--no-remote",
+            "--deny-import",
+            f"--allow-read={allowed_read}",
+            f"--allow-write={output_root}",
+            "--deny-net",
+            "--deny-env",
+            "--deny-run",
+            "--deny-ffi",
+            "--deny-sys",
+            "--seed=0",
+            "--v8-flags=--max-old-space-size=256",
+            str(entrypoint),
+        ]
 
     def _check_version(self) -> str:
         if not self.deno.is_file() or not os.access(self.deno, os.X_OK):
@@ -460,28 +466,7 @@ console.log(JSON.stringify(checks));
             entrypoint.write_text(probe, encoding="utf-8")
             canary = root / "denied-canary"
             canary.write_text("secret", encoding="utf-8")
-            command = [
-                str(self.deno),
-                "run",
-                "--no-prompt",
-                "--no-config",
-                "--no-lock",
-                "--no-code-cache",
-                "--cached-only",
-                "--no-npm",
-                "--no-remote",
-                "--deny-import",
-                f"--allow-read={entrypoint}",
-                f"--allow-write={output}",
-                "--deny-net",
-                "--deny-env",
-                "--deny-run",
-                "--deny-ffi",
-                "--deny-sys",
-                "--seed=0",
-                str(entrypoint),
-                str(canary),
-            ]
+            command = [*self._sandbox_command(entrypoint, [entrypoint], output), str(canary)]
             result = subprocess.run(
                 command,
                 cwd=allowed,

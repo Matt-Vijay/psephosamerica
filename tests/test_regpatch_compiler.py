@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 from datetime import UTC, date, datetime
 from pathlib import Path
 
@@ -9,6 +10,7 @@ import pytest
 
 from src.regpatch.compiler import (
     CompileError,
+    _changed_regions,
     acquire_official_source,
     canonical_table_signature,
     compile_episode,
@@ -21,6 +23,27 @@ from src.regpatch.corpus import _classify_compiled_episode
 
 PILOT_SPEC = Path("src/regpatch/pilot/source_spec.json")
 TARGET_SHA256 = "778b6079ddea582cdcfe1fe5adba9badb47c60752ce6100c30ecd3c267263061"
+
+
+def test_changed_region_receipts_have_stable_natural_order() -> None:
+    from defusedxml import ElementTree as SafeElementTree
+
+    source = (
+        '<DIV5 N="73" TYPE="PART">'
+        + "".join(
+            f'<DIV8 N="{identity}" TYPE="SECTION"><P>Old</P></DIV8>'
+            for identity in ("73.10", "73.2", "73.9")
+        )
+        + "</DIV5>"
+    )
+    before = SafeElementTree.fromstring(source)
+    after = SafeElementTree.fromstring(source.replace("Old", "New"))
+    spec = replace(load_episode_spec(PILOT_SPEC), requested_sections=())
+
+    changed, receipts = _changed_regions(before, after, spec)
+
+    assert [region.identity for region in changed.values()] == ["73.2", "73.9", "73.10"]
+    assert [row["region_id"] for row in receipts] == ["73.2", "73.9", "73.10"]
 
 
 def test_real_seed_compiles_with_exact_causal_receipt_and_private_target(

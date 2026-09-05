@@ -1,17 +1,34 @@
 # Development Guide
 
-This guide describes how to work on the Psephos America backend and the quality gates
-every change must pass. It reflects the gates enforced in
-`.github/workflows/ci.yml`.
+Use checks proportionate to the area changed. The large historical backend CI
+is documented separately below; it is not the local loop for RegPatch work.
 
-## Environment
+## RegPatch verification
+
+```bash
+.venv/bin/pip install -e . pytest ruff mypy types-defusedxml
+.venv/bin/pytest -q tests/test_regpatch_compiler.py tests/test_regpatch_grader.py tests/test_regpatch_runner.py tests/test_regpatch_cli.py
+.venv/bin/ruff check src/regpatch tests/test_regpatch_*.py
+.venv/bin/ruff format --check src/regpatch tests/test_regpatch_*.py
+.venv/bin/mypy --strict src/regpatch
+```
+
+The runner tests require the trusted Deno path described in the
+[operator guide](../src/regpatch/README.md). Run `psephos-regpatch demo` in a
+fresh temporary directory to check public end-to-end behavior. Changes to
+projection or scoring require remeasuring affected scores, not changing tests
+to fit them. Corpus checks use the already-retained ignored evaluator store.
+
+## Legacy backend CI
+
+### Environment
 
 - Python 3.12.
 - Install with dev tooling: `pip install -e ".[dev]"`.
 - The package lives under `src/` and is importable as `src.*`
   (`pythonpath = ["src"]` in `pyproject.toml`).
 
-## Quality gates
+### Quality gates
 
 Run all of these before pushing; CI runs the same set and blocks merge on any
 failure.

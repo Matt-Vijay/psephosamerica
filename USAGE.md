@@ -1,4 +1,8 @@
-# Psephos America — Usage (ask anything + run the explorer)
+# Legacy graph/query commands
+
+This reference is retained for the earlier graph, prediction, and explorer
+surfaces. It is not the current quickstart or benchmark contract; start with
+[README.md](README.md). These commands are unchanged by the RegPatch cleanup.
 
 Psephos America is a public-interest governance-intelligence tool: a cited, queryable
 knowledge graph of US public officials, bills/ordinances, roll-call votes, and

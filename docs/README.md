@@ -1,25 +1,45 @@
 # Psephos America Documentation
 
-Project-level docs live alongside the code. Start here, then go to the
-file that matches what you need.
+Start with the [repository README](../README.md). This index distinguishes
+runnable work from historical proposals; it is not an additional roadmap.
 
-## Methodology and product surface
+## Runnable work
+
+- [RegPatch](../src/regpatch/README.md): public demo, source acquisition, private
+  suites, scoring, and isolation. The candidate contract is
+  [TASK.md](../src/regpatch/pilot/TASK.md); measurements are alongside it.
+- [Time Machine](time-machine-v1.md): local legislative inventory, canonical
+  build, integrity report, and point-in-time queries.
+- [Transfer Eval](../src/transfer_eval/README.md): bounded executable
+  OpenStates normalization pilot.
+- [Development](development.md): focused checks and the separate legacy CI gates.
+
+## Research evidence
+
+- [Legislature replay](legislature-replay-feasibility.md).
+- [Harvey/Legora signal audit](harvey-legora-signal-audit.md).
+- [Legislative amendment patch audit](legislative-patch-feasibility.md).
+- [Earlier environment comparison](flagship-environment-decision.md) and
+  [incident prototype findings](incident-lab-research.md).
+
+These reports retain their original measured scope and negative findings. They
+are not new implementation instructions or claims about RegPatch difficulty.
+
+## Historical ledger and graph reference
 
 - [`/METHODOLOGY.md`](../METHODOLOGY.md) — launch methodology, source set,
   rule philosophy, fact/inference/judgment separation, snapshot policy,
   known limitations.
-- [`/ENGINEERING_SPEC_V1.md`](../ENGINEERING_SPEC_V1.md) — locked v1 spec.
+- [`/ENGINEERING_SPEC_V1.md`](../ENGINEERING_SPEC_V1.md) — earlier ledger spec.
+- [`/OVERALL_GOAL.md`](../OVERALL_GOAL.md) — archived universal-prediction proposal.
 - [`scoring.md`](scoring.md) — public scoring formulas (baseline, severity
   → delta, aggregate, per-rule severities).
 - [`/CHANGELOG.md`](../CHANGELOG.md) — Keep-a-Changelog record of changes.
 - [`corrections.md`](corrections.md) — public correction channel, what
   counts as a correction, SLA, processing flow.
 
-## Operating the system
+## Operating the legacy system
 
-- [`development.md`](development.md) — environment setup and the exact
-  quality gates every change must pass (ruff, format, bandit, compileall,
-  mypy --strict, pytest unit + coverage gate, integration).
 - [`operations.md`](operations.md) — operator runbook: `bootstrap-db →
   ingest → recompute → publish → verify → aggregate`, the prediction
   operator surface, and integrity/cadence rules.
@@ -50,7 +70,7 @@ file that matches what you need.
 
 | Concern | Path |
 |---|---|
-| Operator CLI dispatch | `src/runtime/commands.py`, `src/runtime/main.py` |
+| Legacy operator CLI dispatch | `src/runtime/commands/`, `src/runtime/main.py` |
 | Canonical schema | `db/schema.sql`, `db/migrations/` |
 | Conflict rule engine | `src/rules/`, rule YAMLs in `src/rules/conflict_of_interest/` |
 | Disclosure parser | `src/parse/disclosures/` |

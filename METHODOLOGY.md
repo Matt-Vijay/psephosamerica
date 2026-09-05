@@ -1,6 +1,9 @@
-# Methodology
+# Legacy ledger methodology
 
-This page describes the launch methodology for Psephos America. It follows `ENGINEERING_SPEC_V1.md` and only covers the v1 system.
+This page describes the historical congressional-ledger implementation in
+[ENGINEERING_SPEC_V1.md](ENGINEERING_SPEC_V1.md), not the entire project. For the
+executable benchmark's source, clock, and scoring semantics, use the
+[RegPatch guide](src/regpatch/README.md).
 
 ## Source Set
 

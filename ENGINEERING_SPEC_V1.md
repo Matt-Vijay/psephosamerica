@@ -1,6 +1,8 @@
-# Psephos America Engineering Spec v1
+# Historical specification: congressional conflict-of-interest ledger
 
-Status: locked working spec for the first public release.
+Status: archived specification for the earlier ledger product. This is not the
+current project-wide scope. See [README.md](README.md) for runnable entry points;
+the specification remains here to explain the retained ledger implementation.
 
 This document synthesizes `research/01` through `research/12` into one v1 plan. Where the research docs left options open, this file makes the decision.
 
