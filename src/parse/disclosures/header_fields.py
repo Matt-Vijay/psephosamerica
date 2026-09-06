@@ -24,10 +24,7 @@ from datetime import date, datetime
 
 from src.parse.disclosures.models import Chamber, FilingType
 
-
-# ---------------------------------------------------------------------------
 # Stable conflict tokens
-# ---------------------------------------------------------------------------
 
 CONFLICT_AMBIGUOUS_CHAMBER = "ambiguous_chamber:both_house_and_senate"
 CONFLICT_YEAR_CONFLICT_PREFIX = "year_conflict:multiple_labeled_years="

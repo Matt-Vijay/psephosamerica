@@ -13,14 +13,13 @@ import pytest
 
 from src.ingest.congress.congress_api import (
     CongressAPIClient,
-    bills_url,
     bill_detail_url,
+    bills_url,
     committees_url,
     cosponsors_url,
     member_detail_url,
     members_url,
 )
-
 
 # ---------------------------------------------------------------------------
 # URL builders are key-free

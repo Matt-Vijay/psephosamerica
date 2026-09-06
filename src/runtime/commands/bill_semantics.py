@@ -6,8 +6,9 @@ import datetime as dt
 import hashlib
 import json
 import re
-
 from pathlib import Path
+from typing import Any, cast
+
 from src.evidence.source_anchor_policy import is_official_source_url
 from src.prediction.llm_semantics import (
     BillSemanticIndexPayload,
@@ -23,9 +24,6 @@ from src.runtime.bill_semantics_cache import (
     bill_semantics_index_payload as _bill_semantics_index_payload,
     bill_semantics_index_run_metadata_failures as _bill_semantics_index_run_metadata_failures,
 )
-from src.runtime.context import open_connection
-from typing import Any, cast
-
 from src.runtime.commands._shared import (
     _attach_optional_verification_output,
     _command_issue_result,
@@ -44,6 +42,7 @@ from src.runtime.commands.core import (
     _is_present_invalid_iso_date,
     _string_list_from_plan,
 )
+from src.runtime.context import open_connection
 
 
 def _handle_materialize_bill_semantics(args: Any) -> dict[str, Any]:
@@ -181,7 +180,7 @@ def _attach_materialize_bill_semantics_summary_output(
         "model": str(getattr(args, "model", "")),
         "output_root": str(Path(args.output_root)),
         "feature_cutoff": (
-            getattr(args, "feature_cutoff").isoformat()
+            args.feature_cutoff.isoformat()
             if getattr(args, "feature_cutoff", None) is not None
             else None
         ),
@@ -223,7 +222,7 @@ def _materialize_bill_semantics_source_state(
         "model": str(getattr(args, "model", "")),
         "output_root": str(Path(args.output_root)),
         "feature_cutoff": (
-            getattr(args, "feature_cutoff").isoformat()
+            args.feature_cutoff.isoformat()
             if getattr(args, "feature_cutoff", None) is not None
             else None
         ),
@@ -331,7 +330,7 @@ def _bill_semantic_materialization_plan(
             "model": str(getattr(args, "model", "")),
             "output_root": str(Path(args.output_root)),
             "feature_cutoff": (
-                getattr(args, "feature_cutoff").isoformat()
+                args.feature_cutoff.isoformat()
                 if getattr(args, "feature_cutoff", None) is not None
                 else None
             ),
@@ -340,7 +339,7 @@ def _bill_semantic_materialization_plan(
             "fail_on_unmatched_targets": bool(getattr(args, "fail_on_unmatched_targets", False)),
             "source_state": _bill_semantics_plan_verify_source_state(
                 feature_cutoff=(
-                    getattr(args, "feature_cutoff").isoformat()
+                    args.feature_cutoff.isoformat()
                     if getattr(args, "feature_cutoff", None) is not None
                     else None
                 ),

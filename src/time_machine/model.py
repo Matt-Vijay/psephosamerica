@@ -347,7 +347,7 @@ class ParquetSink:
         if not self._buffer:
             return
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        table = pa.Table.from_pylist(list(self._buffer), schema=self.schema)
+        table = pa.Table.from_pylist(self._buffer, schema=self.schema)
         if self._writer is None:
             self._writer = pq.ParquetWriter(
                 self.path,

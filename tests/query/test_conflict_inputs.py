@@ -31,7 +31,6 @@ from src.rules.contexts import build_late_or_amended_disclosure_context
 from src.rules.evaluator import evaluate_rule
 from src.rules.loader import load_rule
 
-
 # ---------------------------------------------------------------------------
 # Shared in-memory fixtures
 # ---------------------------------------------------------------------------

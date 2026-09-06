@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import math
 from collections.abc import Mapping
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 
 from src.prediction.prediction_assembly import SignalEvidence, assemble_served_prediction
 
@@ -32,7 +32,7 @@ def _evidence(signal_name: str, url: str) -> SignalEvidence:
         label=f"evidence for {signal_name}",
         source_url=url,
         content_sha256=_SHA,
-        retrieved_at=datetime(2025, 1, 10, tzinfo=timezone.utc),
+        retrieved_at=datetime(2025, 1, 10, tzinfo=UTC),
     )
 
 

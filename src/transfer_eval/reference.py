@@ -7,10 +7,11 @@ import csv
 import json
 import re
 from collections import Counter
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 from src.transfer_eval.cases import audit_case, load_request
 from src.transfer_eval.contract import canonical_output, semantic_key, validate_record

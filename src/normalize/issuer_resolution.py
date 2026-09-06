@@ -13,12 +13,11 @@ from __future__ import annotations
 
 import re
 import unicodedata
+from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import Literal, Sequence
+from typing import Literal
 
-# ---------------------------------------------------------------------------
 # Reference dataset types (caller-supplied, no I/O here)
-# ---------------------------------------------------------------------------
 
 MatchMethod = Literal["regex_ticker", "exact_name", "alias_match", "fuzzy_score", "unresolved"]
 ConfidenceLabel = Literal["HIGH", "MEDIUM", "LOW"]
@@ -57,9 +56,7 @@ class IssuerCandidate:
         }
 
 
-# ---------------------------------------------------------------------------
 # Internal indices – built once per reference dataset
-# ---------------------------------------------------------------------------
 
 
 @dataclass
@@ -70,7 +67,7 @@ class _RefIndex:
     all_records: list[IssuerRecord]
 
     @staticmethod
-    def build(records: Sequence[IssuerRecord]) -> "_RefIndex":
+    def build(records: Sequence[IssuerRecord]) -> _RefIndex:
         by_ticker: dict[str, IssuerRecord] = {}
         by_norm_name: dict[str, IssuerRecord] = {}
         by_alias: dict[str, IssuerRecord] = {}
@@ -114,9 +111,7 @@ def _bind_unique_record_key(
     index[key] = record
 
 
-# ---------------------------------------------------------------------------
 # String normalization helpers
-# ---------------------------------------------------------------------------
 
 # Common legal suffixes to strip for fuzzy matching
 _SUFFIX_RE = re.compile(
@@ -180,9 +175,7 @@ def _extract_tickers_from_text(text: str) -> list[str]:
     return tickers
 
 
-# ---------------------------------------------------------------------------
 # Public API
-# ---------------------------------------------------------------------------
 
 
 def build_index(records: Sequence[IssuerRecord]) -> _RefIndex:
@@ -201,9 +194,7 @@ def resolve_issuer(
     """Always returns at least one candidate (method="unresolved" if nothing matches)."""
     candidates: list[IssuerCandidate] = []
 
-    # ------------------------------------------------------------------
     # Step 1: ticker hint from disclosure row (deterministic)
-    # ------------------------------------------------------------------
     if issuer_ticker_hint:
         ticker_key = issuer_ticker_hint.upper().strip()
         if ticker_key in index.by_ticker:
@@ -219,9 +210,7 @@ def resolve_issuer(
                 )
             )
 
-    # ------------------------------------------------------------------
     # Step 2: regex ticker extraction from the name text
-    # ------------------------------------------------------------------
     if not candidates:
         extracted = _extract_tickers_from_text(issuer_name)
         for t in extracted:
@@ -239,9 +228,7 @@ def resolve_issuer(
                 )
                 break  # first match wins at this stage
 
-    # ------------------------------------------------------------------
     # Step 3: exact normalized name match
-    # ------------------------------------------------------------------
     if not candidates:
         norm = _normalize_name(issuer_name)
         if norm in index.by_norm_name:
@@ -257,9 +244,7 @@ def resolve_issuer(
                 )
             )
 
-    # ------------------------------------------------------------------
     # Step 4: alias match
-    # ------------------------------------------------------------------
     if not candidates:
         norm = _normalize_name(issuer_name)
         if norm in index.by_alias:
@@ -275,9 +260,7 @@ def resolve_issuer(
                 )
             )
 
-    # ------------------------------------------------------------------
     # Step 5: fuzzy token-overlap scoring across all names + aliases
-    # ------------------------------------------------------------------
     if not candidates:
         query_fuzzy = _normalize_for_fuzzy(issuer_name)
         best_score = 0.0
@@ -312,9 +295,7 @@ def resolve_issuer(
                 )
             )
 
-    # ------------------------------------------------------------------
     # Fallback: unresolved
-    # ------------------------------------------------------------------
     if not candidates:
         candidates.append(
             IssuerCandidate(

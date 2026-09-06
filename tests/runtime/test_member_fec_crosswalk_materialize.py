@@ -20,7 +20,7 @@ class _Response(io.BytesIO):
         super().__init__(body)
         self._final_url = final_url
 
-    def __enter__(self) -> "_Response":
+    def __enter__(self) -> _Response:
         return self
 
     def __exit__(self, *args: object) -> None:

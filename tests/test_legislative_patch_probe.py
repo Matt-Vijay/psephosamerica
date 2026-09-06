@@ -47,8 +47,7 @@ def _existing_govinfo_cache(root: Path) -> bytes:
                 "root_tag": "engrossedAmendment",
                 "body_tags": ["amendMain"],
                 "acquisition_url": (
-                    "https://raw.githubusercontent.com/usgpo/uslm/main/"
-                    f"samples/{package_id}.xml"
+                    f"https://raw.githubusercontent.com/usgpo/uslm/main/samples/{package_id}.xml"
                 ),
             }
         ],
@@ -200,8 +199,7 @@ def test_exact_xml_kind_rejects_html_even_on_matching_official_url(tmp_path: Pat
         with pytest.raises(ProbeError, match="non-XML media type"):
             acquire_one(
                 store_root=tmp_path,
-                url="https://www.govinfo.gov/content/pkg/BILLS-118hr1ih/xml/"
-                "BILLS-118hr1ih.xml",
+                url="https://www.govinfo.gov/content/pkg/BILLS-118hr1ih/xml/BILLS-118hr1ih.xml",
                 identifier="BILLS-118hr1ih",
                 kind="official_bill_version_xml",
                 cap_bytes=1024,

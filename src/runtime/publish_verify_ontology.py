@@ -9,11 +9,11 @@ from src.export.local_store import (
     load_ontology_edges,
     load_ontology_frontend_client,
     load_ontology_frontend_contract,
-    load_ontology_frontend_types,
     load_ontology_frontend_index,
+    load_ontology_frontend_types,
     load_ontology_index,
-    load_ontology_member_features,
     load_ontology_member_edges,
+    load_ontology_member_features,
     load_ontology_static_schema,
 )
 from src.export.manifest import ManifestEntry, SnapshotManifest

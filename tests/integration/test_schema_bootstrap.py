@@ -5,18 +5,18 @@ from __future__ import annotations
 import os
 
 import pytest
+from psycopg.errors import DuplicateTable, UndefinedTable
 
 from src.db.bootstrap import apply_sql, read_migration_sql, read_schema_sql
 from tests.integration import conftest as integration_conftest
 from tests.integration.conftest import (
-    _IsolatedConnection,
     _cleanup_test_connection,
     _current_schema_name,
+    _IsolatedConnection,
     _managed_test_connection,
     _open_admin_connection,
     _open_external_connection,
 )
-
 
 REAL_PG_REQUIRED = pytest.mark.skipif(
     not os.environ.get("PSEPHOS_TEST_POSTGRES_DSN"),
@@ -71,10 +71,10 @@ def _schema_exists(schema_name: str) -> bool:
 
 
 class _FakeCursor:
-    def __init__(self, conn: "_FakeConn") -> None:
+    def __init__(self, conn: _FakeConn) -> None:
         self._conn = conn
 
-    def __enter__(self) -> "_FakeCursor":
+    def __enter__(self) -> _FakeCursor:
         return self
 
     def __exit__(self, exc_type, exc, tb) -> None:
@@ -260,7 +260,7 @@ class TestSchemaSQL:
         sql = read_schema_sql()
         apply_sql(conn, sql)
 
-        with pytest.raises(Exception):
+        with pytest.raises(DuplicateTable):
             apply_sql(conn, sql)
 
 
@@ -335,7 +335,7 @@ class TestDisposableSchemaLifecycle:
         COMMIT;
         """
 
-        with pytest.raises(Exception):
+        with pytest.raises(UndefinedTable):
             apply_sql(conn, broken_sql)
 
         assert _existing_tables(conn) == set()

@@ -6,13 +6,13 @@ import json
 from datetime import date
 from pathlib import Path
 
+from src.prediction.real_data_eval import EvalWindow, VoteRow, evaluate_windows
 from src.runtime.real_benchmark import (
     baseline_from_window,
     build_report,
     default_congress_windows,
     main,
 )
-from src.prediction.real_data_eval import EvalWindow, VoteRow, evaluate_windows
 
 
 def _rows() -> list[VoteRow]:

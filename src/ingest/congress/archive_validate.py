@@ -15,16 +15,13 @@ patching globals or sys.modules.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable
 
 from src.ingest.congress.archive import CongressArchiveManifest
 
-
-# ---------------------------------------------------------------------------
 # Result types
-# ---------------------------------------------------------------------------
 
 
 @dataclass(frozen=True, slots=True)
@@ -56,9 +53,7 @@ class ArchiveValidationResult:
     missing: tuple[MissingFile, ...]
 
 
-# ---------------------------------------------------------------------------
 # Validation
-# ---------------------------------------------------------------------------
 
 
 def validate_congress_archive_manifest(

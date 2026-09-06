@@ -3,15 +3,14 @@
 from __future__ import annotations
 
 import hashlib
+from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Iterable, Iterator, TypeVar
+from typing import Any, TypeVar
 
 from src.db.load_report import (
     LoadSummary,
-    TableWriteResult,
-    WarnErrorSummary,
-    build_load_summary,
+    merge_load_summaries as _merge_load_summaries,
 )
 from src.db.repositories import rollback_if_available
 from src.ingest.fec.bulk import (
@@ -236,17 +235,3 @@ def _parsed_counts(
         "candidate_committee_linkages": len(linkages),
         "individual_contributions": contribution_count,
     }
-
-
-def _merge_load_summaries(
-    summaries: list[LoadSummary],
-    *,
-    run_id: int,
-) -> LoadSummary:
-    warn_error = WarnErrorSummary()
-    table_results: list[TableWriteResult] = []
-    for summary in summaries:
-        table_results.extend(summary.table_results)
-        warn_error.warnings.extend(summary.warn_error.warnings)
-        warn_error.errors.extend(summary.warn_error.errors)
-    return build_load_summary(table_results, warn_error=warn_error, run_id=run_id)

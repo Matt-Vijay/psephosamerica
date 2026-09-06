@@ -6,7 +6,6 @@ import datetime as dt
 
 import pytest
 
-from src.rules.models import RuleFire, Severity
 from src.export.contracts import (
     ConfidenceLabel,
     EvidenceBlock,
@@ -15,20 +14,20 @@ from src.export.contracts import (
     SourceAnchor,
 )
 from src.load.recompute import (
-    plan_ontology_edges,
     plan_evidence_cards,
+    plan_ontology_edges,
     plan_rule_fires,
     plan_score_snapshots,
     recompute_load_plan,
 )
 from src.ontology.contracts import OntologyEdgePayload, OntologyNodeRef
-
+from src.rules.models import RuleFire, Severity
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
 
-_FIRED_AT = dt.datetime(2024, 3, 1, 12, 0, 0, tzinfo=dt.timezone.utc)
+_FIRED_AT = dt.datetime(2024, 3, 1, 12, 0, 0, tzinfo=dt.UTC)
 _SNAPSHOT_DATE = dt.date(2024, 3, 1)
 
 

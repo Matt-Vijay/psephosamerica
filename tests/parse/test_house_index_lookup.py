@@ -21,7 +21,6 @@ from src.parse.disclosures.house_index_lookup import (
     index_house_rows_by_doc_id,
 )
 
-
 # ---------------------------------------------------------------------------
 # Shared XML fixtures (inline, no network)
 # ---------------------------------------------------------------------------

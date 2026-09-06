@@ -12,17 +12,17 @@ from unittest.mock import MagicMock, patch
 from src.query.evidence_card import assemble_evidence_card
 from src.query.published_rows import (
     fetch_all_ontology_edge_rows,
+    fetch_bill_semantic_input_rows,
     fetch_evidence_card_row,
     fetch_homepage_feed_rows,
     fetch_member_committee_rows,
     fetch_member_row_by_slug,
     fetch_member_rule_fire_rows,
     fetch_member_score_snapshot_rows,
-    fetch_bill_semantic_input_rows,
     fetch_vote_prediction_backtest_bill_signal_rows,
-    fetch_vote_prediction_contribution_signal_rows,
     fetch_vote_prediction_backtest_feature_rows,
     fetch_vote_prediction_backtest_label_rows,
+    fetch_vote_prediction_contribution_signal_rows,
     fetch_vote_prediction_readiness_rows,
     fetch_vote_prediction_statement_signal_rows,
 )

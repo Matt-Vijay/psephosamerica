@@ -6,47 +6,46 @@ import datetime as dt
 import hashlib
 import json
 import shutil
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Literal
+from typing import TYPE_CHECKING, Any, Literal
 from uuid import uuid4
 
+from src.export.contracts import HistoryCoveragePayload
+from src.export.local_store import load_history_coverage
+from src.export.writer import history_coverage_path, manifest_path
 from src.ingest.congress.archive import CongressArchiveManifest
 from src.ingest.congress.archive_manifest import load_manifest
 from src.ingest.congress.archive_validate import validate_congress_archive_manifest
 from src.runtime.congress_options import current_congress_for_date
-from src.export.contracts import HistoryCoveragePayload
-from src.export.local_store import load_history_coverage
-from src.export.writer import history_coverage_path, manifest_path
 from src.runtime.context import RuntimeContext, open_connection
-from src.runtime.disclosures_bundle import DisclosuresBundle
-from src.runtime.disclosures_bundle import load_disclosures_bundle
+from src.runtime.disclosures_bundle import DisclosuresBundle, load_disclosures_bundle
 from src.runtime.disclosures_bundle_files import Sha256Mismatch, read_and_verify_entry
 from src.runtime.disclosures_bundle_validate import (
     DisclosuresBundleValidationError,
     validate_disclosures_bundle,
 )
-from src.runtime.oracle_contracts import (
-    CongressOracleOptions,
-    LocalOracleRunResult,
-    LocalOracleOptions,
-)
-from src.runtime.oracle_local import run_oracle_local
-from src.runtime.history_verify import verify_history_aggregate_local
-from src.runtime.history_verify_types import HistoryVerifyResult
 from src.runtime.history_backfill_types import (
-    HistoryBackfillCongressArchiveInputsPayload,
-    HistoryBackfillDisclosuresBundleInputsPayload,
     HistoryBackfillAggregatePayload,
     HistoryBackfillAttemptPayload,
+    HistoryBackfillCongressArchiveInputsPayload,
     HistoryBackfillDateWindowPayload,
+    HistoryBackfillDisclosuresBundleInputsPayload,
     HistoryBackfillInputReadinessPayload,
     HistoryBackfillReportPayload,
     HistoryBackfillVerifyPayload,
     HistoryBackfillVerifyStagePayload,
     history_backfill_report_path,
 )
-
+from src.runtime.history_verify import verify_history_aggregate_local
+from src.runtime.history_verify_types import HistoryVerifyResult
+from src.runtime.oracle_contracts import (
+    CongressOracleOptions,
+    LocalOracleOptions,
+    LocalOracleRunResult,
+)
+from src.runtime.oracle_local import run_oracle_local
 
 _WEEKDAY_NAMES = {
     0: "monday",

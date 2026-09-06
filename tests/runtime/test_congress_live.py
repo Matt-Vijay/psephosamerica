@@ -20,7 +20,6 @@ from unittest.mock import MagicMock, patch
 from src.ingest.congress.models import BillRecord, CommitteeRecord, CosponsorRecord, MemberRecord
 from src.runtime.congress_live import run_live_congress_load
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------

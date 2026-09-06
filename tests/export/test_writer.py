@@ -37,25 +37,25 @@ from src.export.writer import (
     ontology_edges_path,
     ontology_frontend_client_path,
     ontology_frontend_contract_path,
-    ontology_frontend_types_path,
     ontology_frontend_index_path,
+    ontology_frontend_types_path,
     ontology_index_path,
-    ontology_member_features_path,
     ontology_member_edges_path,
+    ontology_member_features_path,
     ontology_schema_path,
     plan_snapshot,
     prediction_bootstrap_path,
-    prediction_topology_path,
     prediction_committee_context_path,
     prediction_committee_readiness_path,
-    prediction_member_readiness_path,
     prediction_member_context_path,
+    prediction_member_readiness_path,
     prediction_readiness_index_path,
     prediction_readiness_path,
     prediction_sector_context_path,
     prediction_sector_readiness_path,
     prediction_source_context_path,
     prediction_source_index_path,
+    prediction_topology_path,
     serialize_payload,
     zip_entry_path,
     zip_path,
@@ -1500,7 +1500,7 @@ def test_plan_snapshot_deterministic():
     plan2 = plan_snapshot(SNAPSHOT_ID, [_make_member_profile()], [_make_zip_feed()], [])
     assert len(plan1) == len(plan2)
     mpath = manifest_path(SNAPSHOT_ID)
-    for f1, f2 in zip(plan1, plan2):
+    for f1, f2 in zip(plan1, plan2, strict=False):
         assert f1.path == f2.path  # path-stable always
         if f1.path != mpath:
             assert f1.content == f2.content  # data files are content-deterministic

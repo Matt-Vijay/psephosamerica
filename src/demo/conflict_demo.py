@@ -38,10 +38,7 @@ from src.rules.contexts import (
 from src.rules.engine import load_canonical_rules, run_member_batch
 from src.rules.models import RuleFire
 
-
-# ---------------------------------------------------------------------------
 # Constants
-# ---------------------------------------------------------------------------
 
 _SNAPSHOT_DATE = dt.date(2026, 4, 13)
 _SNAPSHOT_ID = "2026-04-13"
@@ -63,9 +60,7 @@ _COMMITTEES: list[dict[str, Any]] = [
 ]
 
 
-# ---------------------------------------------------------------------------
 # Result container
-# ---------------------------------------------------------------------------
 
 
 @dataclass(frozen=True)
@@ -79,9 +74,7 @@ class DemoResult:
     snapshot_manifest: SnapshotManifest
 
 
-# ---------------------------------------------------------------------------
 # Context builders
-# ---------------------------------------------------------------------------
 
 
 def _build_contexts() -> list[dict[str, Any]]:
@@ -144,9 +137,7 @@ def _build_contexts() -> list[dict[str, Any]]:
     return [cst_ctx, sho_ctx, rct_ctx, late_ctx]
 
 
-# ---------------------------------------------------------------------------
 # Main entry point
-# ---------------------------------------------------------------------------
 
 
 def run_conflict_demo() -> DemoResult:
@@ -291,9 +282,7 @@ def run_conflict_demo() -> DemoResult:
     )
 
 
-# ---------------------------------------------------------------------------
 # CLI entry point
-# ---------------------------------------------------------------------------
 
 
 def main() -> None:

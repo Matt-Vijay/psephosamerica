@@ -36,7 +36,7 @@ from pathlib import Path
 import numpy as np
 
 from src.query.graph_store import GraphStore, Node
-from src.query.locus import _minhash, _shingles, _TOKEN_RE
+from src.query.locus import _TOKEN_RE, _minhash, _shingles
 
 # Legacy BILLSTATUS dossier sidecars Track A emits (full corpus first, slim fallback).
 BILL_CONTENT_PATHS = (

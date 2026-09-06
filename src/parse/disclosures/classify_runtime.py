@@ -19,15 +19,14 @@ classify_from_pages(pages, chamber, *, known_headers, **flags) -> ClassifyResult
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-from typing import Callable, Optional
+from collections.abc import Callable, Sequence
 
 from src.parse.disclosures.classify import (
+    _ANNUAL_SECTION_HEADERS,
+    _PTR_SECTION_HEADERS,
     ClassifyResult,
     PdfHeuristicInput,
     classify_pdf,
-    _ANNUAL_SECTION_HEADERS,
-    _PTR_SECTION_HEADERS,
 )
 from src.parse.disclosures.models import Chamber
 from src.parse.disclosures.text_document import (
@@ -48,7 +47,7 @@ def build_heuristic_input(
     has_impossible_dates: bool = False,
     has_duplicate_header_rows: bool = False,
     has_unresolved_options_or_trusts: bool = False,
-    member_name_match_score: Optional[float] = None,
+    member_name_match_score: float | None = None,
 ) -> PdfHeuristicInput:
     """Build a PdfHeuristicInput from extracted text metrics and caller-supplied flags."""
     return PdfHeuristicInput(
@@ -78,7 +77,7 @@ def classify_artifact_bytes(
     has_impossible_dates: bool = False,
     has_duplicate_header_rows: bool = False,
     has_unresolved_options_or_trusts: bool = False,
-    member_name_match_score: Optional[float] = None,
+    member_name_match_score: float | None = None,
 ) -> ClassifyResult:
     """Extract text metrics from raw PDF bytes and return a ClassifyResult.
 
@@ -104,13 +103,13 @@ def classify_from_pages(
     pages: Sequence[PageText],
     chamber: Chamber,
     *,
-    known_headers: Optional[frozenset[str]] = None,
+    known_headers: frozenset[str] | None = None,
     is_ptr: bool = False,
     is_amendment: bool = False,
     has_non_standard_amounts: bool = False,
     has_impossible_dates: bool = False,
     has_unresolved_options_or_trusts: bool = False,
-    member_name_match_score: Optional[float] = None,
+    member_name_match_score: float | None = None,
     repeated_header_fraction: float = 0.5,
 ) -> ClassifyResult:
     """Classify a disclosure document from its extracted PageText objects.

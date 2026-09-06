@@ -8,8 +8,8 @@ from pathlib import Path
 
 from src.graph.bills import BillRef
 from src.graph.ingest.lda_bulk import (
-    BulkArchiveRef,
     SOURCE_DESCRIPTION,
+    BulkArchiveRef,
     bulk_filing_to_record,
     iter_bulk_records,
     merge_bulk_into_export,

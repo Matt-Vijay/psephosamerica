@@ -5,9 +5,11 @@ from __future__ import annotations
 import datetime as dt
 import hashlib
 import json
-
 from collections.abc import Collection
 from pathlib import Path
+from types import SimpleNamespace
+from typing import Any, cast
+
 from src.evidence.source_anchor_policy import has_official_claim_source_anchor
 from src.pipeline.publish_snapshot_run import _ontology_edge_from_row
 from src.prediction.backtest import REQUIRED_ONTOLOGY_FEATURE_SIGNAL_NAMES
@@ -28,10 +30,6 @@ from src.runtime.bill_semantics_cache import (
     bill_semantics_index_model_names as _bill_semantics_index_model_names,
     bill_semantics_index_sha256 as _bill_semantics_index_sha256,
 )
-from src.runtime.context import RuntimeContext, open_connection
-from types import SimpleNamespace
-from typing import Any, cast
-
 from src.runtime.commands._shared import (
     _attach_optional_verification_output,
     _congress_archive_manifest_metadata,
@@ -43,7 +41,7 @@ from src.runtime.commands._shared import (
     _string_list,
     _write_json_artifact,
 )
-from src.runtime.commands.history import _validate_congress_archive_manifest_metadata
+from src.runtime.commands.bill_semantics import _manifest_has_bill_semantics_cache
 from src.runtime.commands.core import (
     _PREDICTION_EVAL_CUTOFF_AUDIT_KEYS,
     _PREDICTION_EVAL_INT_THRESHOLD_ARGS,
@@ -69,8 +67,9 @@ from src.runtime.commands.core import (
     _string_list_has_untrimmed,
     _top_learned_signal_coefficients,
 )
-from src.runtime.commands.bill_semantics import _manifest_has_bill_semantics_cache
+from src.runtime.commands.history import _validate_congress_archive_manifest_metadata
 from src.runtime.commands.prediction_misc import _prediction_window_date_issues
+from src.runtime.context import RuntimeContext, open_connection
 
 
 def run_prediction_eval_report_command(
@@ -1429,17 +1428,6 @@ def _prediction_eval_split_missing_source_anchor_signal_names(
             if not has_official_claim_source_anchor(feature_source_anchors.get(signal_name, [])):
                 missing.add(signal_name)
     return missing
-
-
-def _prediction_eval_split_source_backed_signal_names(
-    split: Any,
-) -> set[str]:
-    return {
-        signal_name
-        for example in getattr(split, "examples", [])
-        for signal_name, anchors in example.feature_source_anchors.items()
-        if has_official_claim_source_anchor(anchors)
-    }
 
 
 def _prediction_eval_manifest_coverage_threshold_failures(

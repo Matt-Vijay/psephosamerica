@@ -6,6 +6,8 @@ import json
 from datetime import date
 from pathlib import Path
 
+import pytest
+
 from src.runtime.bill_content_bayesian import run
 
 
@@ -41,14 +43,14 @@ def _rich(path: Path) -> None:
     path.write_text("\n".join(json.dumps(r) for r in rolls), encoding="utf-8")
 
 
-def test_bayesian_reports_band_and_checkpoint(tmp_path: Path) -> None:
+def test_bayesian_reports_band_and_checkpoint(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     rich = tmp_path / "rich.jsonl"
     records = tmp_path / "records.jsonl"
     _rich(rich)
     _records(records)
-    import os
-
-    os.chdir(tmp_path)  # checkpoints/ written under cwd
+    monkeypatch.chdir(tmp_path)  # checkpoints/ written under cwd; restored after this test
     report = run(
         rich,
         records,

@@ -139,8 +139,8 @@ def _slice_metrics(scores: list[float], labels: list[bool]) -> dict[str, float]:
     n = len(labels)
     if n == 0:
         return {"brier": 0.0, "accuracy": 0.0, "ece": 0.0, "auc": 0.5, "sample_count": 0}
-    brier = sum((p - (1.0 if y else 0.0)) ** 2 for p, y in zip(scores, labels)) / n
-    accuracy = sum(1 for p, y in zip(scores, labels) if (p >= 0.5) == y) / n
+    brier = sum((p - (1.0 if y else 0.0)) ** 2 for p, y in zip(scores, labels, strict=False)) / n
+    accuracy = sum(1 for p, y in zip(scores, labels, strict=False) if (p >= 0.5) == y) / n
     ece = expected_calibration_error(scores, labels)
     metrics = ranking_metrics(scores, labels)
     return {

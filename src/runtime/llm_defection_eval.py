@@ -146,7 +146,7 @@ def evaluate_llm_stack(
                 -max(-_LOGIT_CLAMP, min(_LOGIT_CLAMP, b + w_h * _logit(h) + w_l * _logit(lp)))
             )
         )
-        for h, lp in zip(eval_head, eval_llm)
+        for h, lp in zip(eval_head, eval_llm, strict=False)
     ]
     return StackingResult(
         head_auc=ranking_metrics(eval_head, labels).auc,

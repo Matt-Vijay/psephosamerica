@@ -9,7 +9,6 @@ from __future__ import annotations
 
 from src.demo.conflict_demo import run_conflict_demo
 
-
 # fire_id (random UUID) and fired_at (wall clock) are non-deterministic
 # provenance identifiers; everything else (rule_id, severity, sourced_facts,
 # derived_values, parameters_used) is the deterministic scoring payload.

@@ -17,8 +17,9 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Optional, Sequence, Union
+from typing import TYPE_CHECKING, Any
 from urllib.parse import urlparse
 
 if TYPE_CHECKING:
@@ -69,12 +70,12 @@ def senate_index_url(year: int) -> str:
     return f"{_SEARCH_HOME}?report_type=annual&search_year={year}"
 
 
-def _extract_doc_id(cell: str) -> Optional[str]:
+def _extract_doc_id(cell: str) -> str | None:
     m = _DOC_HREF_RE.search(cell)
     return m.group(1) if m else None
 
 
-def _row_from_cells(cells: Sequence[str], year: int) -> Optional[SenateIndexRow]:
+def _row_from_cells(cells: Sequence[str], year: int) -> SenateIndexRow | None:
     """Build a SenateIndexRow from a 5-element cell list, or return None.
 
     Invariant: the link column (index 3) must contain a /search/view/paper/{id}/
@@ -100,7 +101,7 @@ def _row_from_cells(cells: Sequence[str], year: int) -> Optional[SenateIndexRow]
 
 
 def parse_senate_index(
-    payload: Union[dict[str, Any], str],
+    payload: dict[str, Any] | str,
     *,
     year: int,
 ) -> list[SenateIndexRow]:

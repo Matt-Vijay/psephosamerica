@@ -5,8 +5,6 @@ Thin layer over house_index.py.  No DB writes.
 
 from __future__ import annotations
 
-from typing import Optional
-
 import httpx
 
 from src.parse.disclosures.house_index import (
@@ -37,7 +35,7 @@ def fetch_house_rows_by_doc_id(
     year: int,
     filing_kind: HouseFilingKind,
     *,
-    client: Optional[httpx.Client] = None,
+    client: httpx.Client | None = None,
 ) -> dict[str, HouseIndexRow]:
     """Fetch the House index for *year* / *filing_kind* and key rows by doc_id.
 

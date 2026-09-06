@@ -3,11 +3,11 @@ from __future__ import annotations
 from datetime import UTC, date, datetime
 from pathlib import Path
 
+from src.graph.contracts import ContractSourceAnchor, build_bill_output
 from src.graph.cron import load_assignment, run_cycle, save_assignment
 from src.graph.entity_resolution.assignment import CanonicalAssignment
 from src.graph.entity_resolution.records import SourceRecord
 from src.graph.ingest.votes import vote_edge, vote_provenance
-from src.graph.contracts import ContractSourceAnchor, build_bill_output
 from src.graph.materialize import materialize_person_nodes
 from src.graph.provenance import ProvenanceEnvelope
 

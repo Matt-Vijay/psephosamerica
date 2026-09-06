@@ -21,8 +21,8 @@ from src.ingest.congress.congress_api import (
 from src.ingest.congress.house_votes import parse_house_vote_xml
 from src.ingest.congress.models import BillRecord, CommitteeRecord, CosponsorRecord, MemberRecord
 from src.ingest.congress.senate_votes import parse_senate_vote_xml
-from src.runtime.congress_options import CongressVoteCoverage
 from src.runtime.congress_live_full import run_live_congress_load_full
+from src.runtime.congress_options import CongressVoteCoverage
 from src.runtime.congress_votes import VoteFetchResult
 from tests.support.congress_live_fixtures import (
     bill_detail_item,
@@ -40,7 +40,6 @@ from tests.support.congress_live_fixtures import (
     members_page,
     senate_vote_xml,
 )
-
 
 # ---------------------------------------------------------------------------
 # Shared fixture builders
@@ -174,7 +173,7 @@ class _FixtureCongressAPIClient(CongressAPIClient):
     def close(self) -> None:
         return None
 
-    def __enter__(self) -> "_FixtureCongressAPIClient":
+    def __enter__(self) -> _FixtureCongressAPIClient:
         return self
 
     def __exit__(self, *exc: object) -> None:

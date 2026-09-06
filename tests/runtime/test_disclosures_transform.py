@@ -27,17 +27,16 @@ from src.parse.disclosures.transform import (
     ParseContext,
 )
 from src.runtime.disclosures_transform import (
-    BatchTransformResult,
     SKIP_NO_PARSE_RESULT,
     SKIP_NO_PARSED_DOCUMENT,
     SKIP_UNRESOLVED_MEMBER_IDENTITY,
+    BatchTransformResult,
     SkippedSession,
     build_parse_context,
     transform_parse_sessions,
     transform_parsed_disclosure,
     transform_single_session,
 )
-
 
 # ---------------------------------------------------------------------------
 # Minimal builders

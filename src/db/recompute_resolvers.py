@@ -30,9 +30,7 @@ from dataclasses import dataclass, field
 from src.db.load_executor import Resolvers
 from src.db.repositories import ConnectionLike, Row, fetch_all
 
-# ---------------------------------------------------------------------------
 # SQL — fetch only the columns each map needs
-# ---------------------------------------------------------------------------
 
 _MEMBER_SQL = """
 SELECT id, bioguide_id
@@ -52,9 +50,7 @@ FROM rule_fire
 WHERE source_record_id IS NOT NULL
 """
 
-# ---------------------------------------------------------------------------
 # Map container
-# ---------------------------------------------------------------------------
 
 
 @dataclass
@@ -71,9 +67,7 @@ class RecomputeResolverMaps:
     # rule_fire.source_record_id → rule_fire.id
 
 
-# ---------------------------------------------------------------------------
 # Individual row fetchers
-# ---------------------------------------------------------------------------
 
 
 def _fetch_member_by_bioguide(conn: ConnectionLike) -> dict[str, int]:
@@ -91,9 +85,7 @@ def _fetch_rule_fire_by_source_record(conn: ConnectionLike) -> dict[str, int]:
     return {r["source_record_id"]: r["id"] for r in rows}
 
 
-# ---------------------------------------------------------------------------
 # Public API
-# ---------------------------------------------------------------------------
 
 
 def load_recompute_resolver_maps(conn: ConnectionLike) -> RecomputeResolverMaps:

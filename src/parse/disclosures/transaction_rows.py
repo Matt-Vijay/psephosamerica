@@ -8,7 +8,6 @@ from __future__ import annotations
 from collections.abc import Sequence
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Optional
 
 from src.parse.disclosures.models import Transaction
 from src.parse.disclosures.normalize import (
@@ -36,7 +35,7 @@ def _parse_tx_date(raw: str) -> date:
     raise ValueError(f"Unrecognized transaction date: {raw!r}")
 
 
-def _clean_ticker(raw: str) -> Optional[str]:
+def _clean_ticker(raw: str) -> str | None:
     stripped = raw.strip()
     return stripped if stripped else None
 
@@ -51,7 +50,7 @@ def transaction_from_cells(
     amount_raw: str,
     issuer_ticker_raw: str = "",
     asset_description_raw: str = "",
-    source_record_id: Optional[str] = None,
+    source_record_id: str | None = None,
 ) -> Transaction:
     """Build one Transaction from explicit raw cell values.
 
@@ -72,8 +71,8 @@ def transaction_from_cells(
     description = asset_description_raw.strip() or None
 
     amount_label = amount_raw.strip() or None
-    amount_min: Optional[Decimal] = None
-    amount_max: Optional[Decimal] = None
+    amount_min: Decimal | None = None
+    amount_max: Decimal | None = None
     if amount_label is not None:
         pair = normalize_amount_range(amount_label)
         if pair is not None:

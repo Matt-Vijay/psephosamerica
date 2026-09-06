@@ -9,7 +9,7 @@ import tempfile
 import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, IO
+from typing import IO, Any
 from urllib.parse import urlparse
 from uuid import uuid4
 

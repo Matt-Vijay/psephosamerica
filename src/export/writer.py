@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import json
-from datetime import date
 from dataclasses import dataclass
+from datetime import date
 from pathlib import PurePosixPath
 from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel
 
+from src.evidence.source_anchor_policy import validate_evidence_card_policy
 from src.identity.current_member_lookup import build_current_member_lookup
 from src.ontology.agent_tools import build_ontology_agent_tool_manifest
 from src.ontology.artifact_paths import ontology_frontend_artifact_paths
@@ -52,7 +53,6 @@ from .contracts import (
     SourceAnchor,
     ZipFeedPayload,
 )
-from src.evidence.source_anchor_policy import validate_evidence_card_policy
 
 if TYPE_CHECKING:
     from src.api.contracts import MemberPagePayload

@@ -8,15 +8,11 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 from uuid import UUID
 
-import src.runtime as runtime
 import pytest
 
-from tests.support.congress_archive_fixtures import make_archive
-from tests.support.disclosures_bundle_fixtures import (
-    build_bundle_fixture,
-    make_house_spec,
-    make_senate_spec,
-)
+import src.runtime as runtime
+from src.export.contracts import HistoryCoveragePayload
+from src.export.writer import manifest_path
 from src.runtime.history_backfill import (
     CongressDateWindow,
     HistoricalSnapshotTarget,
@@ -30,16 +26,14 @@ from src.runtime.history_backfill import (
     history_backfill_report_path,
     load_history_backfill_report,
     plan_congress_history_backfill,
-    run_local_history_backfill,
     resolve_congress_date_window,
+    run_local_history_backfill,
 )
-from src.export.contracts import HistoryCoveragePayload
 from src.runtime.history_verify_types import (
     HistoryVerifyIssue,
     HistoryVerifyResult,
     HistoryVerifyStageResult,
 )
-from src.export.writer import manifest_path
 from src.runtime.oracle_contracts import (
     CongressOracleOptions,
     CongressStageSummary,
@@ -54,6 +48,12 @@ from src.runtime.publish_verify_types import (
     PublishVerifyIssue,
     PublishVerifyResult,
     PublishVerifyStageResult,
+)
+from tests.support.congress_archive_fixtures import make_archive
+from tests.support.disclosures_bundle_fixtures import (
+    build_bundle_fixture,
+    make_house_spec,
+    make_senate_spec,
 )
 
 

@@ -18,9 +18,8 @@ import datetime
 from dataclasses import dataclass
 from typing import Any
 
-from defusedxml.ElementTree import fromstring
-
 import httpx
+from defusedxml.ElementTree import fromstring
 
 from .house_votes import roll_call_url
 from .official_fetch import fetch_official_congress_text
@@ -114,9 +113,7 @@ def fetch_house_vote_index(
     return parse_house_vote_index(fetch_official_congress_text(url, client=client))
 
 
-# ---------------------------------------------------------------------------
 # Internal helpers
-# ---------------------------------------------------------------------------
 
 
 def _required_text(entry: Any, tag: str) -> str:

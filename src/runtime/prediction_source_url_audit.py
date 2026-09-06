@@ -10,8 +10,8 @@ from typing import Any
 from src.prediction.source_url_audit import build_prediction_source_url_audit
 from src.runtime.json_artifacts import (
     attach_optional_verification_output as _attach_optional_verification_output,
+    write_json_artifact as _write_json_artifact,
 )
-from src.runtime.json_artifacts import write_json_artifact as _write_json_artifact
 
 _PREDICTION_SOURCE_URL_AUDIT_QUALITY_GATES = {
     "feature_source_url_gaps",

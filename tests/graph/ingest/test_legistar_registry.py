@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from dataclasses import FrozenInstanceError
+
 from src.graph.ingest.legistar_registry import LEGISTAR_CLIENTS, LegistarClient
 
 
@@ -46,5 +48,5 @@ def test_dataclass_is_frozen() -> None:
     import pytest
 
     c = LegistarClient("x", "city", "ca", "X")
-    with pytest.raises(Exception):
+    with pytest.raises(FrozenInstanceError):
         c.client = "y"  # type: ignore[misc]

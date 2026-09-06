@@ -34,8 +34,8 @@ from src.query.member_profile import assemble_member_profile
 from src.query.published_rows import (
     fetch_all_evidence_card_rows,
     fetch_member_committee_rows,
-    fetch_member_rule_fire_rows,
     fetch_member_row_by_slug,
+    fetch_member_rule_fire_rows,
     fetch_member_score_snapshot_rows,
 )
 from src.runtime.publish_roundtrip_types import (

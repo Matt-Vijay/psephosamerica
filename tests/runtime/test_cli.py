@@ -13,7 +13,6 @@ import pytest
 
 from src.runtime.cli import build_parser, parse_args
 
-
 # ---------------------------------------------------------------------------
 # build_parser
 # ---------------------------------------------------------------------------
@@ -1102,25 +1101,17 @@ def test_run_oracle_local_invalid_chamber_exits():
         )
 
 
-def test_readme_command_list_matches_parser_surface() -> None:
-    readme = Path(__file__).resolve().parents[2] / "README.md"
-    lines = readme.read_text(encoding="utf-8").splitlines()
-
-    start = lines.index("Current commands:") + 2
-    commands: list[str] = []
-    for line in lines[start:]:
-        if not line.startswith("- `"):
-            break
-        commands.append(line.removeprefix("- `").removesuffix("`"))
+def test_every_parser_command_has_an_execution_handler() -> None:
+    from src.runtime.commands import COMMAND_REGISTRY
 
     parser = build_parser()
     parser_commands = list(parser._subparsers._group_actions[0].choices.keys())  # type: ignore[attr-defined]
 
-    assert commands == parser_commands
+    assert set(COMMAND_REGISTRY) == set(parser_commands)
 
 
-def test_readme_runtime_examples_parse() -> None:
-    readme = Path(__file__).resolve().parents[2] / "README.md"
+def test_documented_runtime_examples_parse() -> None:
+    readme = Path(__file__).resolve().parents[2] / "docs" / "development.md"
     examples: list[list[str]] = []
     for line in readme.read_text(encoding="utf-8").splitlines():
         if not line.startswith("python3 -m src.runtime.main "):
@@ -1133,7 +1124,12 @@ def test_readme_runtime_examples_parse() -> None:
 
     assert examples
     for example in examples:
-        parse_args(example)
+        if "--help" in example:
+            with pytest.raises(SystemExit) as result:
+                parse_args(example)
+            assert result.value.code == 0
+        else:
+            parse_args(example)
 
 
 def test_run_oracle_local_limit():

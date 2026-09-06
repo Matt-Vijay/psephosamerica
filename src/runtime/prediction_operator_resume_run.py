@@ -8,7 +8,9 @@ import re
 from pathlib import Path
 from typing import Any, TypeGuard
 
-from src.runtime.json_artifacts import write_json_artifact
+from src.runtime.json_artifacts import (
+    attach_optional_verification_output as _attach_optional_output,
+)
 
 _SHA256_HEX_RE = re.compile(r"^[0-9a-f]{64}$")
 _SOURCE_FAMILY_ID_RE = re.compile(r"^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$")
@@ -1009,14 +1011,3 @@ def _optional_file_sha256(path: Path) -> str | None:
 
 def _is_sha256_hex(value: str) -> bool:
     return _SHA256_HEX_RE.fullmatch(value) is not None
-
-
-def _attach_optional_output(args: Any, result: dict[str, Any]) -> dict[str, Any]:
-    output_arg = getattr(args, "output", None)
-    if output_arg is None:
-        return result
-    output = Path(output_arg)
-    output_sha256 = write_json_artifact(output, result)
-    result["output"] = str(output)
-    result["output_sha256"] = output_sha256
-    return result

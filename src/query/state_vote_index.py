@@ -28,9 +28,10 @@ from __future__ import annotations
 
 import json
 from collections import defaultdict
+from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any
 
 DEFAULT_EDGES = Path("data/exports/openstates/state_vote_edges_combined.jsonl")
 DEFAULT_INDEX = Path("data/exports/openstates/state_vote_edges_index.jsonl")
@@ -140,7 +141,7 @@ class StateVoteIndex:
     @classmethod
     def load(
         cls, index_path: Path = DEFAULT_INDEX, edges_path: Path = DEFAULT_EDGES
-    ) -> "StateVoteIndex":
+    ) -> StateVoteIndex:
         person_offsets: dict[str, list[int]] = {}
         bill_offsets: dict[str, list[int]] = {}
         with index_path.open(encoding="utf-8") as handle:

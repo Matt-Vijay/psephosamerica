@@ -15,7 +15,6 @@ from src.ingest.congress.archive_votes import (
 )
 from src.ingest.congress.models import VoteCastRecord, VoteEventRecord
 
-
 # ---------------------------------------------------------------------------
 # Minimal XML fixtures
 # ---------------------------------------------------------------------------

@@ -11,8 +11,7 @@ from pathlib import Path
 from typing import Any
 from unittest import mock
 
-from src.api.read_service import get_homepage_bootstrap
-from src.api.read_service import get_zip_entry
+from src.api.read_service import get_homepage_bootstrap, get_zip_entry
 from src.export.contracts import (  # noqa: E402
     ConfidenceLabel,
     EvidenceBlock,
@@ -27,46 +26,45 @@ from src.export.contracts import (  # noqa: E402
     ZipFeedPayload,
 )
 from src.export.manifest import SnapshotManifest
-from src.homepage.contracts import HomepageFeedPayload
-from src.homepage.contracts import MemberMovementSummary, RecentEventSummary
-from src.pipeline.publish_snapshot_run import (  # noqa: E402
-    ZipBundleInputs,
-    _build_current_member_lookup_file,
-    _build_current_member_lookup_payload,
-    _build_evidence_cards,
-    _build_ontology_edges,
-    _build_member_histories,
-    _build_homepage_bootstrap_file,
-    _build_homepage_file,
-    _build_member_profiles,
-    _build_zip_feeds,
-    _make_planner,
-    publish_snapshot_run,
-)
 from src.export.writer import (
     ontology_agent_tools_path,
     ontology_frontend_client_path,
     ontology_frontend_contract_path,
-    ontology_frontend_types_path,
     ontology_frontend_index_path,
+    ontology_frontend_types_path,
     ontology_index_path,
-    ontology_member_features_path,
     ontology_member_edges_path,
+    ontology_member_features_path,
     ontology_schema_path,
     prediction_bootstrap_path,
     prediction_committee_context_path,
     prediction_committee_readiness_path,
     prediction_member_context_path,
     prediction_member_readiness_path,
-    prediction_readiness_path,
     prediction_readiness_index_path,
+    prediction_readiness_path,
     prediction_sector_readiness_path,
     prediction_source_context_path,
     prediction_source_index_path,
     prediction_topology_path,
     zip_entry_path,
 )
+from src.homepage.contracts import HomepageFeedPayload, MemberMovementSummary, RecentEventSummary
 from src.ontology.contracts import OntologyEdgePayload, OntologyNodeRef
+from src.pipeline.publish_snapshot_run import (  # noqa: E402
+    ZipBundleInputs,
+    _build_current_member_lookup_file,
+    _build_current_member_lookup_payload,
+    _build_evidence_cards,
+    _build_homepage_bootstrap_file,
+    _build_homepage_file,
+    _build_member_histories,
+    _build_member_profiles,
+    _build_ontology_edges,
+    _build_zip_feeds,
+    _make_planner,
+    publish_snapshot_run,
+)
 from src.prediction.contracts import (
     PredictionReadinessCoveragePayload,
     PredictionReadinessPayload,
@@ -76,7 +74,6 @@ from src.zip.resolve import (  # noqa: E402
     SenatorRow,
     ZipDistrictRow,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixture helpers

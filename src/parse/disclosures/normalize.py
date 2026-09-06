@@ -7,14 +7,10 @@ from __future__ import annotations
 
 import re
 from decimal import Decimal
-from typing import Optional
 
 from src.parse.disclosures.models import OwnerType, TransactionType
 
-
-# ---------------------------------------------------------------------------
 # Amount range normalization
-# ---------------------------------------------------------------------------
 
 _AMOUNT_RANGES: dict[str, tuple[Decimal, Decimal]] = {
     "$1 - $1,000": (Decimal("1"), Decimal("1000")),
@@ -35,15 +31,13 @@ _NORMALIZED_RANGES: dict[str, tuple[Decimal, Decimal]] = {
 }
 
 
-def normalize_amount_range(raw: str) -> Optional[tuple[Decimal, Decimal]]:
+def normalize_amount_range(raw: str) -> tuple[Decimal, Decimal] | None:
     """Returns None for unrecognized labels (caller must flag for review)."""
     key = re.sub(r"\s+", " ", raw).strip().lower()
     return _NORMALIZED_RANGES.get(key)
 
 
-# ---------------------------------------------------------------------------
 # Transaction type normalization
-# ---------------------------------------------------------------------------
 
 _TX_TYPE_MAP: dict[str, TransactionType] = {
     "p": TransactionType.PURCHASE,
@@ -70,9 +64,7 @@ def normalize_tx_type(raw: str) -> TransactionType:
     return _TX_TYPE_MAP.get(key, TransactionType.OTHER)
 
 
-# ---------------------------------------------------------------------------
 # Owner label normalization
-# ---------------------------------------------------------------------------
 
 _OWNER_MAP: dict[str, OwnerType] = {
     "self": OwnerType.SELF,
@@ -93,9 +85,7 @@ def normalize_owner_label(raw: str) -> OwnerType:
     return _OWNER_MAP.get(key, OwnerType.OTHER)
 
 
-# ---------------------------------------------------------------------------
 # Asset name cleanup
-# ---------------------------------------------------------------------------
 
 _NOISE_PATTERNS: list[re.Pattern[str]] = [
     re.compile(r"\s*\(filing\s+id[^)]*\)", re.IGNORECASE),

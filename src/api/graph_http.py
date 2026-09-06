@@ -29,8 +29,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 
 from src.api.http import JsonHttpResponse
-from src.query import graph_query as gq
-from src.query import lenses, locus, redundancy
+from src.query import graph_query as gq, lenses, locus, redundancy
 from src.query.graph_rag import GraphRagAnswerer
 from src.query.graph_store import GraphStore, Node, build_store
 

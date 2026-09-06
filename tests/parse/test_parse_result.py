@@ -20,8 +20,7 @@ from src.parse.disclosures.models import (
     Transaction,
     TransactionType,
 )
-from src.parse.disclosures.parse_result import ParserMeta, ParseResult, empty_result
-
+from src.parse.disclosures.parse_result import ParseResult, ParserMeta, empty_result
 
 # ---------------------------------------------------------------------------
 # Fixtures

@@ -13,8 +13,6 @@ Delegates all parsing to:
 
 from __future__ import annotations
 
-from typing import Union
-
 from src.parse.disclosures.house_index import HouseIndexRow
 from src.parse.disclosures.senate_index import SenateIndexRow
 from src.runtime.disclosures_member_resolution import (
@@ -44,7 +42,7 @@ def senate_identity_from_index_row(row: SenateIndexRow) -> DisclosureHeaderIdent
 
 def disclosure_identity_from_index_row(
     chamber: str,
-    row: Union[HouseIndexRow, SenateIndexRow],
+    row: HouseIndexRow | SenateIndexRow,
 ) -> DisclosureHeaderIdentity:
     """Dispatch to the correct chamber extractor based on *chamber*.
 

@@ -20,7 +20,6 @@ from src.time_machine.govinfo_text import (
     parse_package_id,
 )
 
-
 USLM_XML = b"""\
 <?xml version="1.0" encoding="UTF-8"?>
 <uslm:bill xmlns:uslm="http://xml.house.gov/schemas/uslm/1.0">

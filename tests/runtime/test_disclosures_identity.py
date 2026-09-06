@@ -18,7 +18,6 @@ from src.runtime.disclosures_identity import (
 )
 from src.runtime.disclosures_member_resolution import DisclosureHeaderIdentity
 
-
 # ---------------------------------------------------------------------------
 # Row factories
 # ---------------------------------------------------------------------------

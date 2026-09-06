@@ -7,8 +7,7 @@ from __future__ import annotations
 
 import datetime
 from dataclasses import dataclass
-from typing import Any
-from typing import Literal
+from typing import Any, Literal
 
 
 def _validate_identity_int(value: Any, field_name: str) -> None:

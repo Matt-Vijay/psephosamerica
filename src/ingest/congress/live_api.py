@@ -14,7 +14,7 @@ but do not interrupt the iteration.
 
 from __future__ import annotations
 
-from typing import Iterable
+from collections.abc import Iterable
 
 from .congress_api import CongressAPIClient
 from .models import BillRecord, CommitteeRecord, CosponsorRecord, MemberRecord

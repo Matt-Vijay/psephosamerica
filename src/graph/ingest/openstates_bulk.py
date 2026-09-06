@@ -49,11 +49,11 @@ from typing import TYPE_CHECKING, Any
 
 from src.graph.ingest.officials import openstates_official_record
 from src.graph.ingest.openstates import (
+    _OCD_PERSON_RE,
     OPENSTATES_BASE_URL,
     StateBill,
     StateRollCall,
     StateVote,
-    _OCD_PERSON_RE,
     _parse_date,
     normalize_openstates_choice,
 )

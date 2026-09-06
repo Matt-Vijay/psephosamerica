@@ -19,7 +19,7 @@ Design decisions
 from __future__ import annotations
 
 import json
-from typing import Iterator
+from collections.abc import Iterator
 
 from .archive import CongressArchive
 from .archive_loader import (
@@ -48,9 +48,7 @@ class CongressArchiveClient:
         self._archive = archive
         self._congress = archive.congress
 
-    # ------------------------------------------------------------------
     # List iterators
-    # ------------------------------------------------------------------
 
     def iter_members(self, congress: int | None = None) -> Iterator[MemberRecord]:
         """Yield all members from the archive.
@@ -114,9 +112,7 @@ class CongressArchiveClient:
                 bill_number=bill_number,
             )
 
-    # ------------------------------------------------------------------
     # Detail accessors
-    # ------------------------------------------------------------------
 
     def get_member_detail(self, bioguide_id: str) -> MemberRecord:
         """Return a fully-normalized MemberRecord from the archive.
@@ -144,9 +140,7 @@ class CongressArchiveClient:
         return normalize_bill(data.get("bill", data))
 
 
-# ---------------------------------------------------------------------------
 # Internal helpers
-# ---------------------------------------------------------------------------
 
 
 def _committee_matches_chamber(raw: dict[str, object], chamber: str) -> bool:

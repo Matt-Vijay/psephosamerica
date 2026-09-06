@@ -7,7 +7,6 @@ library is installed in the current environment.
 
 from __future__ import annotations
 
-from typing import Optional
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -20,13 +19,12 @@ from src.parse.disclosures.text_extract import (
 )
 from src.parse.disclosures.text_tokens import DETECTION_HEADERS, SECTION_HEADERS
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
 
-def _fake_pypdf(page_texts: list[Optional[str]]) -> MagicMock:
+def _fake_pypdf(page_texts: list[str | None]) -> MagicMock:
     """Return a mock module whose PdfReader yields pages with given texts."""
     pages = []
     for text in page_texts:

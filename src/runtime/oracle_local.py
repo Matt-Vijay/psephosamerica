@@ -26,9 +26,9 @@ from pathlib import Path
 from typing import Any
 
 from src.pipeline.publish_snapshot_run import ZipBundleInputs
-from src.runtime.disclosures_bundle import DisclosuresBundle
 from src.runtime.congress_archive import run_congress_archive_load
 from src.runtime.congress_options import CongressLoadOptions
+from src.runtime.disclosures_bundle import DisclosuresBundle
 from src.runtime.disclosures_bundle_process import (
     DisclosuresBundleProcessResult,
     run_disclosures_bundle_process,
@@ -78,21 +78,17 @@ def _partition_disclosures_bundle_by_source(
     return [DisclosuresBundle(artifacts=tuple(entries)) for entries in grouped.values()]
 
 
-# ---------------------------------------------------------------------------
 def _run_verify(target_dir: Path) -> PublishVerifyResult:
     """Thin wrapper around verify_local_publish for test patching."""
     return verify_local_publish(target_dir)
 
 
-# ---------------------------------------------------------------------------
 def _run_roundtrip(conn: Any, target_dir: Path) -> PublishRoundtripResult:
     """Thin wrapper around verify_publish_roundtrip for test patching."""
     return verify_publish_roundtrip(conn, target_dir)
 
 
-# ---------------------------------------------------------------------------
 # Public entry point
-# ---------------------------------------------------------------------------
 
 
 def run_oracle_local(

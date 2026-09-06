@@ -24,7 +24,8 @@ No source-specific logic lives here.
 
 from __future__ import annotations
 
-from typing import Any, Sequence, cast
+from collections.abc import Sequence
+from typing import Any, cast
 
 from psycopg.types.json import Jsonb
 
@@ -43,9 +44,7 @@ from src.db.repositories import (
 )
 from src.db.sql import build_insert, build_upsert, quote_identifier
 
-# ---------------------------------------------------------------------------
 # Internal helpers
-# ---------------------------------------------------------------------------
 
 _VALID_MODES = frozenset({"insert", "upsert", "ignore"})
 
@@ -113,9 +112,7 @@ def _adapt_param(value: Any) -> Any:
     return value
 
 
-# ---------------------------------------------------------------------------
 # Public API
-# ---------------------------------------------------------------------------
 
 
 def write_table_batch(

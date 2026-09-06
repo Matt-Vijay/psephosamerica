@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Any, Sequence, cast
+from typing import Any, cast
 
 import yaml  # type: ignore[import-untyped]
 from pydantic import ValidationError

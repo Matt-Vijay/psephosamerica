@@ -10,8 +10,9 @@ Everything else has a sensible default.
 from __future__ import annotations
 
 import datetime as dt
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Callable
+from typing import Any
 
 from src.db.repositories import rollback_if_available
 from src.pipeline.recompute_run import (
@@ -32,9 +33,7 @@ _SOURCE_SLUG = CONFLICT_RECOMPUTE.slug
 _SOURCE_NAME = CONFLICT_RECOMPUTE.name
 _SOURCE_KIND = CONFLICT_RECOMPUTE.source_kind
 
-# ---------------------------------------------------------------------------
 # Default resolvers
-# ---------------------------------------------------------------------------
 
 IssuerSectorResolver = Callable[[str, str | None], str | None]
 
@@ -44,9 +43,7 @@ def _null_issuer_sector_resolver(issuer_name: str, issuer_ticker: str | None) ->
     return None
 
 
-# ---------------------------------------------------------------------------
 # Result type
-# ---------------------------------------------------------------------------
 
 
 @dataclass
@@ -60,9 +57,7 @@ class RuntimeRecomputeResult:
         return self.recompute_result.unresolved_committee_matches
 
 
-# ---------------------------------------------------------------------------
 # Public API
-# ---------------------------------------------------------------------------
 
 
 def run_recompute_runtime(

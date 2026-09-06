@@ -24,7 +24,6 @@ from src.ingest.congress.models import (
 from src.runtime.congress_archive import run_congress_archive_load
 from src.runtime.congress_options import CongressLoadOptions
 
-
 # ---------------------------------------------------------------------------
 # Fixture builders
 # ---------------------------------------------------------------------------

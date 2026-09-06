@@ -109,13 +109,6 @@ def _ensure_sorted_unique_nonblank(values: list[str], *, field_name: str) -> Non
         raise ValueError(f"{field_name} must be sorted, unique, and nonblank")
 
 
-def _prediction_log_loss(prediction: "PredictionBacktestPredictionPayload") -> float:
-    if prediction.predicted_probability_yea is None:
-        raise ValueError("cannot compute log loss without predicted probability")
-    actual_yea = 1.0 if prediction.actual_vote_option == "yea" else 0.0
-    return _log_loss(prediction.predicted_probability_yea, actual_yea)
-
-
 def _log_loss(probability_yea: float, actual_yea: float) -> float:
     probability = max(1e-15, min(1.0 - 1e-15, probability_yea))
     return -(actual_yea * math.log(probability) + (1.0 - actual_yea) * math.log(1.0 - probability))

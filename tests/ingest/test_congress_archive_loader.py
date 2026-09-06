@@ -14,14 +14,13 @@ import pytest
 
 from src.ingest.congress.archive import CongressArchive, parse_bill_stem
 from src.ingest.congress.archive_loader import (
-    load_bills_payload,
     load_bill_detail_payload_map,
+    load_bills_payload,
     load_committees_payload,
     load_cosponsors_payload_map,
     load_member_detail_payload_map,
     load_members_payload,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers

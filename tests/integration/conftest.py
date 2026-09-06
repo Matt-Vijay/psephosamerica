@@ -9,8 +9,9 @@ from __future__ import annotations
 import os
 import re
 import uuid
+from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import Any, Iterator
+from typing import Any
 
 import pytest
 
@@ -53,11 +54,11 @@ def _block_network():
 
 
 class _IsolatedCursor:
-    def __init__(self, cursor: Any, owner: "_IsolatedConnection") -> None:
+    def __init__(self, cursor: Any, owner: _IsolatedConnection) -> None:
         self._cursor = cursor
         self._owner = owner
 
-    def __enter__(self) -> "_IsolatedCursor":
+    def __enter__(self) -> _IsolatedCursor:
         self._cursor.__enter__()
         return self
 

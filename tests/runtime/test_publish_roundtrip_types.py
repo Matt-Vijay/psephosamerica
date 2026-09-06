@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from dataclasses import FrozenInstanceError
+
 import pytest
 
 from src.runtime.publish_roundtrip_types import (
@@ -10,7 +12,6 @@ from src.runtime.publish_roundtrip_types import (
     PublishRoundtripResult,
     PublishRoundtripStageResult,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -42,7 +43,7 @@ def _stage(
 class TestPublishRoundtripIssue:
     def test_frozen(self) -> None:
         issue = _issue()
-        with pytest.raises(Exception):
+        with pytest.raises(FrozenInstanceError):
             issue.message = "mutated"  # type: ignore[misc]
 
     def test_path_defaults_to_none(self) -> None:
@@ -107,7 +108,7 @@ class TestPublishRoundtripStageResult:
 
     def test_frozen(self) -> None:
         result = _stage()
-        with pytest.raises(Exception):
+        with pytest.raises(FrozenInstanceError):
             result.checked = 99  # type: ignore[misc]
 
     def test_checked_stored(self) -> None:
@@ -205,7 +206,7 @@ class TestPublishRoundtripResult:
 
     def test_frozen(self) -> None:
         result = self._build()
-        with pytest.raises(Exception):
+        with pytest.raises(FrozenInstanceError):
             result.stages = ()  # type: ignore[misc]
 
     def test_empty_stages(self) -> None:

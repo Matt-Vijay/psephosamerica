@@ -32,7 +32,7 @@ from tests.support.published_roundtrip_fixtures import (
     make_zip_feed_row_set,
 )
 
-_OPEN_CONNECTION = "src.runtime.commands.open_connection"
+_OPEN_CONNECTION = "src.runtime.commands.core.open_connection"
 _FETCH_MEMBER_BY_SLUG = "src.runtime.publish_roundtrip_profiles.fetch_member_row_by_slug"
 _FETCH_SCORE_ROWS = "src.runtime.publish_roundtrip_profiles.fetch_member_score_snapshot_rows"
 _FETCH_RULE_FIRES = "src.runtime.publish_roundtrip_profiles.fetch_member_rule_fire_rows"

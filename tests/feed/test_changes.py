@@ -16,7 +16,6 @@ from src.feed.changes import (
     sort_by_magnitude,
 )
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -194,7 +193,7 @@ class TestEventsFromRuleFires:
         del fires[0]["severity"]
         try:
             events_from_rule_fires(fires, MEMBERS)
-            assert False, "expected ValueError for missing severity"
+            raise AssertionError("expected ValueError for missing severity")
         except ValueError as exc:
             assert "severity is required" in str(exc)
 

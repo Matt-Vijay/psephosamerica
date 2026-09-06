@@ -18,8 +18,8 @@ from dataclasses import dataclass
 from typing import Any
 
 from src.db.load_executor import Resolvers, execute_load_plan
-from src.db.lookups import LookupBundle
 from src.db.load_report import LoadSummary, WarnErrorSummary, build_load_summary
+from src.db.lookups import LookupBundle
 from src.db.repositories import (
     ConnectionLike,
     Row,
@@ -51,10 +51,7 @@ from src.load.congress import (
     plan_vote_events,
 )
 
-
-# ---------------------------------------------------------------------------
 # Typed input container
-# ---------------------------------------------------------------------------
 
 
 @dataclass(frozen=True)
@@ -72,9 +69,7 @@ class CongressIngestInputs:
     vote_casts: list[VoteCastRecord]
 
 
-# ---------------------------------------------------------------------------
 # FK-map queries (bill and vote_event are not in LookupBundle)
-# ---------------------------------------------------------------------------
 
 _BILL_SQL = "SELECT id, congress, bill_type, bill_number FROM bill"
 _VOTE_EVENT_SQL = "SELECT id, chamber, congress, session_number, roll_call_number FROM vote_event"
@@ -95,9 +90,7 @@ def _fetch_vote_event_map(conn: Any) -> dict[tuple[str, int, int, int], int]:
     }
 
 
-# ---------------------------------------------------------------------------
 # Resolver builder
-# ---------------------------------------------------------------------------
 
 
 def _build_resolvers(
@@ -185,9 +178,7 @@ def _build_resolvers(
     return resolvers
 
 
-# ---------------------------------------------------------------------------
 # Summary helpers
-# ---------------------------------------------------------------------------
 
 
 def _merge_warn_errors(summaries: list[LoadSummary]) -> WarnErrorSummary:
@@ -200,9 +191,7 @@ def _merge_warn_errors(summaries: list[LoadSummary]) -> WarnErrorSummary:
     return merged
 
 
-# ---------------------------------------------------------------------------
 # Public API
-# ---------------------------------------------------------------------------
 
 
 def run_congress_load(
@@ -224,10 +213,8 @@ def run_congress_load(
     ensure_transactional_for_commit(conn, commit=commit)
 
     try:
-        # ------------------------------------------------------------------
         # Phase 1: root entities — member, committee
         # committee self-reference is resolved by the write layer.
-        # ------------------------------------------------------------------
         phase1_ops = [
             plan_members(inputs.members),
             plan_committees(inputs.committees),
@@ -238,9 +225,7 @@ def run_congress_load(
         bundle = load_lookup_bundle(conn)
         resolvers_phase2 = _build_resolvers(bundle)
 
-        # ------------------------------------------------------------------
         # Phase 2: member-scoped rows — member_term, committee_membership
-        # ------------------------------------------------------------------
         phase2_ops = [
             plan_member_terms(inputs.member_terms),
             plan_committee_memberships(inputs.memberships),
@@ -255,9 +240,7 @@ def run_congress_load(
             )
         )
 
-        # ------------------------------------------------------------------
         # Phase 3: independent legislative entities — bill, vote_event
-        # ------------------------------------------------------------------
         phase3_ops = [
             plan_bills(inputs.bills),
             plan_vote_events(inputs.vote_events),
@@ -272,9 +255,7 @@ def run_congress_load(
             bundle, bill_map=bill_map, vote_event_map=vote_event_map
         )
 
-        # ------------------------------------------------------------------
         # Phase 4: cross-reference rows — bill_sponsor, vote_cast
-        # ------------------------------------------------------------------
         phase4_ops = [
             plan_bill_sponsors(inputs.primary_sponsors, inputs.cosponsors),
             plan_vote_casts(inputs.vote_casts),

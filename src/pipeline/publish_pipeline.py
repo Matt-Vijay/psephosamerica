@@ -5,9 +5,10 @@ No DB, no network.  All filesystem writes go to an injected ``target_dir``.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable, Optional
+from typing import Any
 
 from src.export.filesystem import verify_written_files, write_planned_files
 from src.export.writer import PlannedFile, finalize_publish_plan
@@ -19,10 +20,7 @@ from src.pipeline.stages import (
     run_pipeline,
 )
 
-
-# ---------------------------------------------------------------------------
 # Configuration and result types
-# ---------------------------------------------------------------------------
 
 
 @dataclass(frozen=True)
@@ -45,9 +43,7 @@ class PublishResult:
         return self.pipeline_result.succeeded and not self.verification_failures
 
 
-# ---------------------------------------------------------------------------
 # Stage builders
-# ---------------------------------------------------------------------------
 
 #: Zero-argument callable; all inputs must be captured in the closure before
 #: passing to run_publish so this module stays side-effect-free.
@@ -90,15 +86,13 @@ def _make_verify_stage(target_dir: Path) -> StageDefinition:
     return StageDefinition(name="verify", fn=_fn)
 
 
-# ---------------------------------------------------------------------------
 # Public entry point
-# ---------------------------------------------------------------------------
 
 
 def run_publish(
     config: PublishConfig,
     planner: Planner,
-    emitter: Optional[ProvenanceEmitter] = None,
+    emitter: ProvenanceEmitter | None = None,
 ) -> PublishResult:
     """Run the three-stage publish pipeline: plan -> write -> verify planned SHA-256 digests."""
     _emitter: ProvenanceEmitter = emitter or NullEmitter()

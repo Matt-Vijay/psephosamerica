@@ -16,9 +16,8 @@ from __future__ import annotations
 import datetime
 from dataclasses import dataclass
 
-from defusedxml.ElementTree import fromstring
-
 import httpx
+from defusedxml.ElementTree import fromstring
 
 from .official_fetch import fetch_official_congress_text
 from .senate_votes import parse_senate_vote_date, roll_call_list_url, roll_call_url

@@ -27,8 +27,8 @@ from src.query.evidence_card import (
 # Shared fixtures
 # ---------------------------------------------------------------------------
 
-_RENDERED_AT = dt.datetime(2024, 3, 15, 12, 0, tzinfo=dt.timezone.utc)
-_CREATED_AT = dt.datetime(2024, 3, 14, 9, 0, tzinfo=dt.timezone.utc)
+_RENDERED_AT = dt.datetime(2024, 3, 15, 12, 0, tzinfo=dt.UTC)
+_CREATED_AT = dt.datetime(2024, 3, 14, 9, 0, tzinfo=dt.UTC)
 
 # Minimal complete row; tests override individual fields as needed.
 BASE_ROW: dict = {
@@ -251,7 +251,7 @@ class TestSnapshotDate:
         assert result == dt.date.today()
 
     def test_timezone_aware_datetime(self):
-        row = {"rendered_at": dt.datetime(2024, 5, 10, 8, 30, tzinfo=dt.timezone.utc)}
+        row = {"rendered_at": dt.datetime(2024, 5, 10, 8, 30, tzinfo=dt.UTC)}
         assert _snapshot_date(row) == dt.date(2024, 5, 10)
 
 
@@ -263,27 +263,27 @@ class TestSnapshotDate:
 class TestCreatedAt:
     def test_prefers_created_at_over_rendered_at(self):
         row = {
-            "created_at": dt.datetime(2024, 1, 1, tzinfo=dt.timezone.utc),
-            "rendered_at": dt.datetime(2024, 6, 1, tzinfo=dt.timezone.utc),
+            "created_at": dt.datetime(2024, 1, 1, tzinfo=dt.UTC),
+            "rendered_at": dt.datetime(2024, 6, 1, tzinfo=dt.UTC),
         }
-        assert _created_at(row) == dt.datetime(2024, 1, 1, tzinfo=dt.timezone.utc)
+        assert _created_at(row) == dt.datetime(2024, 1, 1, tzinfo=dt.UTC)
 
     def test_falls_back_to_rendered_at(self):
-        row = {"rendered_at": dt.datetime(2024, 6, 1, tzinfo=dt.timezone.utc)}
-        assert _created_at(row) == dt.datetime(2024, 6, 1, tzinfo=dt.timezone.utc)
+        row = {"rendered_at": dt.datetime(2024, 6, 1, tzinfo=dt.UTC)}
+        assert _created_at(row) == dt.datetime(2024, 6, 1, tzinfo=dt.UTC)
 
     def test_falls_back_to_now_when_both_missing(self):
-        before = dt.datetime.now(dt.timezone.utc)
+        before = dt.datetime.now(dt.UTC)
         result = _created_at({})
-        after = dt.datetime.now(dt.timezone.utc)
+        after = dt.datetime.now(dt.UTC)
         assert before <= result <= after
 
     def test_none_created_at_falls_back_to_rendered_at(self):
         row = {
             "created_at": None,
-            "rendered_at": dt.datetime(2024, 3, 1, tzinfo=dt.timezone.utc),
+            "rendered_at": dt.datetime(2024, 3, 1, tzinfo=dt.UTC),
         }
-        assert _created_at(row) == dt.datetime(2024, 3, 1, tzinfo=dt.timezone.utc)
+        assert _created_at(row) == dt.datetime(2024, 3, 1, tzinfo=dt.UTC)
 
 
 # ---------------------------------------------------------------------------

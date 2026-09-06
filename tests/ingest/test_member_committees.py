@@ -13,7 +13,6 @@ from src.ingest.congress.member_committees import committee_membership_specs_fro
 from src.ingest.congress.models import MemberRecord
 from src.load.congress import CommitteeMembershipSpec
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------

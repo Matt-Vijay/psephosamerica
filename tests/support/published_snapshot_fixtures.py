@@ -47,7 +47,6 @@ from src.export.writer import plan_snapshot
 from src.ontology.contracts import OntologyEdgePayload
 from src.prediction.contracts import PredictionReadinessPayload
 
-
 # ---------------------------------------------------------------------------
 # Minimal inline defaults
 # ---------------------------------------------------------------------------
@@ -229,35 +228,35 @@ class PublishedSnapshotBuilder:
 
     def with_member_profiles(
         self, profiles: list[MemberProfilePayload]
-    ) -> "PublishedSnapshotBuilder":
+    ) -> PublishedSnapshotBuilder:
         self._member_profiles = profiles
         return self
 
-    def with_evidence_cards(self, cards: list[EvidenceCardPayload]) -> "PublishedSnapshotBuilder":
+    def with_evidence_cards(self, cards: list[EvidenceCardPayload]) -> PublishedSnapshotBuilder:
         self._evidence_cards = cards
         return self
 
     def with_member_histories(
         self, histories: list[MemberHistoryPayload]
-    ) -> "PublishedSnapshotBuilder":
+    ) -> PublishedSnapshotBuilder:
         self._member_histories = histories
         return self
 
-    def with_ontology_edges(self, edges: list[OntologyEdgePayload]) -> "PublishedSnapshotBuilder":
+    def with_ontology_edges(self, edges: list[OntologyEdgePayload]) -> PublishedSnapshotBuilder:
         self._ontology_edges = edges
         return self
 
     def with_prediction_readiness(
         self, payload: PredictionReadinessPayload
-    ) -> "PublishedSnapshotBuilder":
+    ) -> PublishedSnapshotBuilder:
         self._prediction_readiness = payload
         return self
 
-    def with_zip_feeds(self, feeds: list[ZipFeedPayload]) -> "PublishedSnapshotBuilder":
+    def with_zip_feeds(self, feeds: list[ZipFeedPayload]) -> PublishedSnapshotBuilder:
         self._zip_feeds = feeds
         return self
 
-    def no_zip_feeds(self) -> "PublishedSnapshotBuilder":
+    def no_zip_feeds(self) -> PublishedSnapshotBuilder:
         self._zip_feeds = []
         return self
 
@@ -265,7 +264,7 @@ class PublishedSnapshotBuilder:
     # Build
     # ------------------------------------------------------------------
 
-    def build(self) -> "PublishedSnapshotBuilder":
+    def build(self) -> PublishedSnapshotBuilder:
         """Plan and write all publish-tree files; returns self for chaining."""
         self._root.mkdir(parents=True, exist_ok=True)
         planned = plan_snapshot(

@@ -28,8 +28,8 @@ from src.export.filesystem import verify_written_files
 from src.export.local_store import (
     load_evidence_card,
     load_manifest,
-    load_member_page,
     load_member_history,
+    load_member_page,
     load_member_profile,
     load_zip_feed,
 )
@@ -48,7 +48,6 @@ from tests.support.published_snapshot_fixtures import (
     make_snapshot,
     make_zip_feed,
 )
-
 
 # ---------------------------------------------------------------------------
 # PublishedSnapshotBuilder — file layout

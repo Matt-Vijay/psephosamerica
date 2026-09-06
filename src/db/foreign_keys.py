@@ -66,9 +66,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-# ---------------------------------------------------------------------------
 # Public result types
-# ---------------------------------------------------------------------------
 
 
 @dataclass(frozen=True)
@@ -108,9 +106,7 @@ class ResolutionResult:
     summary: ResolutionSummary
 
 
-# ---------------------------------------------------------------------------
 # Suffix / key constants
-# ---------------------------------------------------------------------------
 
 _BIOGUIDE_SUFFIX = "_bioguide_id"
 _LIS_SUFFIX = "_lis_member_id"
@@ -119,9 +115,7 @@ _RAW_SUFFIX = "_raw"
 _DISCLOSURE_NK_KEY = "_financial_disclosure_natural_key"
 
 
-# ---------------------------------------------------------------------------
 # Internal helpers
-# ---------------------------------------------------------------------------
 
 
 def _derive_fk_col(hint_key: str, suffix: str, fallback: str) -> str:
@@ -167,9 +161,7 @@ def _resolve_row(
     out: dict[str, Any] = {}
 
     for key, value in row.items():
-        # ----------------------------------------------------------------
         # 1. bioguide_id  →  member_id (or *_id)
-        # ----------------------------------------------------------------
         if key.endswith(_BIOGUIDE_SUFFIX):
             fk_col = _derive_fk_col(key, _BIOGUIDE_SUFFIX, "member_id")
             bio_map: dict[str, int] | None = maps.get("bioguide_map")
@@ -180,9 +172,7 @@ def _resolve_row(
             else:
                 out[fk_col] = bio_map[value]
 
-        # ----------------------------------------------------------------
         # 2. lis_member_id  →  member_id (or *_id)
-        # ----------------------------------------------------------------
         elif key.endswith(_LIS_SUFFIX):
             fk_col = _derive_fk_col(key, _LIS_SUFFIX, "member_id")
             lis_map: dict[str, int] | None = maps.get("lis_member_map")
@@ -193,9 +183,7 @@ def _resolve_row(
             else:
                 out[fk_col] = lis_map[value]
 
-        # ----------------------------------------------------------------
         # 3. committee_code  →  committee_id (or *_id); needs congress ctx
-        # ----------------------------------------------------------------
         elif key.endswith(_COMMITTEE_CODE_SUFFIX):
             fk_col = _derive_fk_col(key, _COMMITTEE_CODE_SUFFIX, "committee_id")
             cc_map: dict[tuple[str, int], int] | None = maps.get("committee_code_map")
@@ -218,9 +206,7 @@ def _resolve_row(
                         else:
                             out[fk_col] = cc_map[lookup_key]
 
-        # ----------------------------------------------------------------
         # 4. *_raw  →  strip suffix; look up in raw_id_maps[fk_col]
-        # ----------------------------------------------------------------
         elif key.endswith(_RAW_SUFFIX):
             fk_col = key[: -len(_RAW_SUFFIX)]
             raw_maps: dict[str, dict[str, int]] = maps.get("raw_id_maps") or {}
@@ -232,9 +218,7 @@ def _resolve_row(
             else:
                 out[fk_col] = sub_map[value]
 
-        # ----------------------------------------------------------------
         # 5. _financial_disclosure_natural_key  →  financial_disclosure_id
-        # ----------------------------------------------------------------
         elif key == _DISCLOSURE_NK_KEY:
             nk_map: dict[tuple[int, int, str, int], int] | None = maps.get(
                 "disclosure_natural_key_map"
@@ -275,9 +259,7 @@ def _coerce_key_int(value: Any, field_name: str) -> int:
     return int(value)
 
 
-# ---------------------------------------------------------------------------
 # Public API
-# ---------------------------------------------------------------------------
 
 
 def resolve_foreign_keys(

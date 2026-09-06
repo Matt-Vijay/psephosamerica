@@ -9,6 +9,9 @@ modules wrap ingest/recompute/publish flows with provenance tracking.
 from .app import PsephosAmericaRuntime, build_runtime, open_runtime_connection
 from .bootstrap import bootstrap_database, load_initial_migration_sql, load_schema_sql
 
+# Result types (returned by operator commands)
+from .congress import CongressLoadResult
+
 # Context surface
 from .context import (
     RuntimeContext,
@@ -17,32 +20,34 @@ from .context import (
     null_issuer_sector_resolver,
     open_connection,
 )
+from .disclosures import DisclosuresLoadRuntimeResult
+from .fec import FecBulkFilePaths, FecLocalLoadResult
 from .inspect import (
+    list_local_snapshot_ids,
     load_local_current_member_lookup,
     load_local_evidence_card,
     load_local_history_backfill_report,
-    load_local_history_event,
-    load_local_history_event_page,
     load_local_history_bootstrap,
     load_local_history_coverage,
+    load_local_history_event,
+    load_local_history_event_page,
     load_local_history_preset_range,
     load_local_homepage_bootstrap,
     load_local_homepage_feed,
     load_local_manifest,
     load_local_member_change_summary,
+    load_local_member_history,
+    load_local_member_history_chart,
     load_local_member_history_coverage,
     load_local_member_history_coverage_index,
-    load_local_member_history_chart,
-    load_local_member_history,
     load_local_member_history_page,
-    load_local_member_timeline_index,
-    load_local_member_timeline_page,
-    load_local_member_timeline_dimension,
-    load_local_member_timeline_year,
     load_local_member_page,
     load_local_member_preset_compare,
     load_local_member_profile,
-    load_local_snapshot_preset_compare,
+    load_local_member_timeline_dimension,
+    load_local_member_timeline_index,
+    load_local_member_timeline_page,
+    load_local_member_timeline_year,
     load_local_member_trend_summary,
     load_local_movement_window,
     load_local_prediction_bootstrap,
@@ -58,10 +63,16 @@ from .inspect import (
     load_local_prediction_source_index,
     load_local_prediction_topology,
     load_local_snapshot_index,
+    load_local_snapshot_preset_compare,
     load_local_zip_entry,
     load_local_zip_feed,
-    list_local_snapshot_ids,
     search_local_current_member_lookup,
+)
+from .member_fec_crosswalk import MemberFecCrosswalkLoadResult
+from .oracle_contracts import (
+    CongressOracleOptions,
+    LocalOracleOptions,
+    LocalOracleRunResult,
 )
 
 # Paths surface
@@ -75,6 +86,12 @@ from .paths import (
     local_publish_root,
     repo_root,
     taxonomy_dir,
+)
+from .publish_roundtrip_types import PublishRoundtripResult
+from .publish_verify_types import PublishVerifyResult
+from .recompute import RuntimeRecomputeResult
+from .smoke_process_disclosures import (
+    smoke_process_disclosures as smoke_process_disclosures,
 )
 
 # Source surface
@@ -91,23 +108,6 @@ from .sources import (
     all_sources,
     source_by_slug,
 )
-from .smoke_process_disclosures import (
-    smoke_process_disclosures as smoke_process_disclosures,
-)
-
-# Result types (returned by operator commands)
-from .congress import CongressLoadResult
-from .disclosures import DisclosuresLoadRuntimeResult
-from .fec import FecBulkFilePaths, FecLocalLoadResult
-from .member_fec_crosswalk import MemberFecCrosswalkLoadResult
-from .oracle_contracts import (
-    CongressOracleOptions,
-    LocalOracleOptions,
-    LocalOracleRunResult,
-)
-from .publish_roundtrip_types import PublishRoundtripResult
-from .publish_verify_types import PublishVerifyResult
-from .recompute import RuntimeRecomputeResult
 
 # Status surface
 _LAZY_COMMAND_EXPORTS = {
@@ -205,8 +205,10 @@ def __getattr__(name: str) -> object:
 
         return getattr(_commands, name)
     if name in _LAZY_HISTORY_BACKFILL_EXPORTS:
-        from . import history_backfill as _history_backfill
-        from . import history_backfill_types as _history_backfill_types
+        from . import (
+            history_backfill as _history_backfill,
+            history_backfill_types as _history_backfill_types,
+        )
 
         if hasattr(_history_backfill, name):
             return getattr(_history_backfill, name)

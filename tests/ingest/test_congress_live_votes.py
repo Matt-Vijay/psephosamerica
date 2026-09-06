@@ -15,7 +15,6 @@ from src.ingest.congress.live_votes import (
 )
 from src.ingest.congress.models import VoteCastRecord, VoteEventRecord
 
-
 HOUSE_VOTE_XML = textwrap.dedent("""\
     <?xml version="1.0"?>
     <rollcall-vote>
@@ -262,7 +261,7 @@ class TestFetchHouseVotes:
 
         assert len(results) == 2
         assert client.get.call_count == 2
-        for event, casts in results:
+        for event, _casts in results:
             assert isinstance(event, VoteEventRecord)
 
     def test_empty_list(self) -> None:

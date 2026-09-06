@@ -22,7 +22,6 @@ from src.demo.conflict_demo import DemoResult, run_conflict_demo
 from src.export.filesystem import verify_written_files, write_planned_files
 from src.export.writer import PlannedFile, plan_snapshot
 
-
 _SNAPSHOT_ID = "2026-04-13"
 
 
@@ -71,9 +70,7 @@ def run_publish_demo(target_dir: Path) -> PublishDemoResult:
     )
 
 
-# ---------------------------------------------------------------------------
 # CLI entry point
-# ---------------------------------------------------------------------------
 
 
 def main() -> None:

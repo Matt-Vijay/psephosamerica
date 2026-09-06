@@ -27,13 +27,11 @@ from enum import Enum
 from typing import Any, Protocol
 
 from pydantic import BaseModel, Field
+
 from src.rules.models import Severity
 from src.scoring.semantics import severity_score_delta
 
-
-# ---------------------------------------------------------------------------
 # ID builder protocol
-# ---------------------------------------------------------------------------
 
 
 class FeedIdBuilder(Protocol):
@@ -46,7 +44,7 @@ class FeedIdBuilder(Protocol):
 
     def __call__(
         self,
-        kind: "FeedEventKind | str",
+        kind: FeedEventKind | str,
         member_bioguide_id: str,
         dimension: str,
         snapshot_date: dt.date,
@@ -54,9 +52,7 @@ class FeedIdBuilder(Protocol):
     ) -> str: ...
 
 
-# ---------------------------------------------------------------------------
 # Enums
-# ---------------------------------------------------------------------------
 
 
 class FeedEventKind(str, Enum):
@@ -65,9 +61,7 @@ class FeedEventKind(str, Enum):
     SCORE_DELTA = "score_delta"
 
 
-# ---------------------------------------------------------------------------
 # Core model
-# ---------------------------------------------------------------------------
 
 
 class FeedEvent(BaseModel):
@@ -91,9 +85,7 @@ class FeedEvent(BaseModel):
     )
 
 
-# ---------------------------------------------------------------------------
 # Stable ID builder
-# ---------------------------------------------------------------------------
 
 
 def make_feed_event_id(
@@ -118,9 +110,7 @@ def make_feed_event_id(
     return "fe_" + hashlib.sha256(raw).hexdigest()[:16]
 
 
-# ---------------------------------------------------------------------------
 # Constructors
-# ---------------------------------------------------------------------------
 
 
 def events_from_rule_fires(
@@ -294,9 +284,7 @@ def events_from_score_deltas(
     return events
 
 
-# ---------------------------------------------------------------------------
 # Ranking and selection helpers
-# ---------------------------------------------------------------------------
 
 
 def sort_by_magnitude(events: list[FeedEvent]) -> list[FeedEvent]:

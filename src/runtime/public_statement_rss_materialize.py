@@ -18,8 +18,8 @@ from urllib.parse import urlparse, urlunparse
 from uuid import uuid4
 
 import certifi
-from defusedxml.ElementTree import ParseError, fromstring
 import yaml  # type: ignore[import-untyped]
+from defusedxml.ElementTree import ParseError, fromstring
 
 from src.evidence.source_anchor_policy import is_official_source_url
 

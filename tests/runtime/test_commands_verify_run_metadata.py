@@ -6,7 +6,7 @@ import hashlib
 from pathlib import Path
 from types import SimpleNamespace
 
-from src.runtime.commands import _prediction_backtest_verify_run_metadata
+from src.runtime.commands.prediction_misc import _prediction_backtest_verify_run_metadata
 
 
 def test_prediction_backtest_verify_run_metadata_full_flags(tmp_path: Path) -> None:
@@ -52,7 +52,7 @@ def test_prediction_backtest_verify_run_metadata_defaults_and_missing_artifact(
 
 
 def test_runtime_env_preflight_verify_run_metadata(tmp_path: Path) -> None:
-    from src.runtime.commands import _runtime_env_preflight_verify_run_metadata
+    from src.runtime.commands.runtime_env import _runtime_env_preflight_verify_run_metadata
 
     artifact = tmp_path / "preflight.json"
     artifact.write_text("{}", encoding="utf-8")
@@ -78,7 +78,7 @@ def test_runtime_env_preflight_verify_run_metadata(tmp_path: Path) -> None:
 
 
 def test_read_dotenv_key_presence(tmp_path: Path) -> None:
-    from src.runtime.commands import _read_dotenv_key_presence
+    from src.runtime.commands.runtime_env import _read_dotenv_key_presence
 
     assert _read_dotenv_key_presence(None) == (set(), [])
 

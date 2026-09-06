@@ -10,20 +10,16 @@ from src.ontology import (
 )
 from src.ontology.agent_tools import (
     ONTOLOGY_AGENT_TOOL_CONTRACT_VERSION as AGENT_TOOL_CONTRACT_VERSION,
-)
-from src.ontology.agent_tools import (
     ONTOLOGY_AGENT_TOOL_MANIFEST_VERSION as AGENT_TOOL_MANIFEST_VERSION,
 )
 from src.ontology.frontend_contracts import (
     ONTOLOGY_FRONTEND_CLIENT_VERSION as FRONTEND_CLIENT_VERSION,
-)
-from src.ontology.frontend_contracts import (
     ONTOLOGY_FRONTEND_CONTRACT_VERSION as FRONTEND_CONTRACT_VERSION,
 )
 from src.ontology.static_schema import (
     ONTOLOGY_FRONTEND_INDEX_VERSION as FRONTEND_INDEX_VERSION,
+    ONTOLOGY_STATIC_SCHEMA_VERSION as STATIC_SCHEMA_VERSION,
 )
-from src.ontology.static_schema import ONTOLOGY_STATIC_SCHEMA_VERSION as STATIC_SCHEMA_VERSION
 from src.ontology.versions import (
     ONTOLOGY_AGENT_TOOL_CONTRACT_VERSION as CANONICAL_AGENT_TOOL_CONTRACT_VERSION,
 )

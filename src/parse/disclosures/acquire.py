@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
-from typing import Literal, Optional
+from typing import Literal
 
 from src.parse.disclosures.models import Chamber
 
@@ -39,9 +39,9 @@ class ArtifactMeta:
     storage_key: str
     member_bioguide_id: str
     filing_year: int
-    fetched_at: Optional[datetime] = None
-    sha256: Optional[str] = None
-    source_record_id: Optional[str] = None
+    fetched_at: datetime | None = None
+    sha256: str | None = None
+    source_record_id: str | None = None
 
 
 def _storage_key(chamber: Chamber, bioguide_id: str, year: int, record_id: str) -> str:

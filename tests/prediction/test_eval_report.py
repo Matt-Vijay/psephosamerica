@@ -8,29 +8,27 @@ import pytest
 from src.export.contracts import SourceAnchor
 from src.ontology.contracts import OntologyEdgePayload, OntologyNodeRef
 from src.prediction.backtest import PredictionBacktestMetricsPayload
+from src.prediction.dataset import PredictionDatasetExamplePayload
 from src.prediction.eval_report import (
+    LearnedSignalModelPayload,
     PredictionBillMetadataCoveragePayload,
     PredictionBillSemanticCoveragePayload,
     PredictionDatasetSplitQualityPayload,
-    PredictionEvalCalibrationBinPayload,
     PredictionEvalBackfillRecommendationPayload,
     PredictionEvalBackfillSampleCasePayload,
+    PredictionEvalCalibrationBinPayload,
     PredictionEvalComparisonPayload,
     PredictionEvalModelPayload,
     PredictionEvalReadinessCheckPayload,
     PredictionEvalReadinessPayload,
     PredictionEvalReportPayload,
     PredictionFeatureSourceCoveragePayload,
-    LearnedSignalModelPayload,
-    build_prediction_eval_report,
-)
-from src.prediction.eval_report import (
     _bill_semantic_coverage_key,
     _bill_signal_row_source_url,
     _feature_source_coverage_from_comparisons,
+    build_prediction_eval_report,
 )
-from src.prediction.dataset import PredictionDatasetExamplePayload
-from src.prediction.llm_semantics import BillSemanticPayload, BillSectorSemanticPayload
+from src.prediction.llm_semantics import BillSectorSemanticPayload, BillSemanticPayload
 
 
 def test_prediction_eval_backfill_recommendation_rejects_coerced_fields() -> None:

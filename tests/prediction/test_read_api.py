@@ -11,7 +11,7 @@ predictions.
 
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 
 import pytest
 from pydantic import ValidationError
@@ -49,7 +49,7 @@ def _served(person: str, bill: str) -> ServedPrediction:
                 label="Prior vote",
                 source_url="https://clerk.house.gov/Votes/1",
                 content_sha256=_SHA,
-                retrieved_at=datetime(2025, 1, 1, tzinfo=timezone.utc),
+                retrieved_at=datetime(2025, 1, 1, tzinfo=UTC),
                 contribution=0.5,
             )
         ],
@@ -61,7 +61,7 @@ def _served(person: str, bill: str) -> ServedPrediction:
 def _snapshot() -> PredictionSnapshot:
     return build_prediction_snapshot(
         [_served("person:a", "bill:1"), _served("person:b", "bill:2")],
-        generated_at=datetime(2025, 2, 2, tzinfo=timezone.utc),
+        generated_at=datetime(2025, 2, 2, tzinfo=UTC),
     )
 
 
@@ -77,7 +77,7 @@ def test_snapshot_rejects_duplicate_person_bill_keys() -> None:
     with pytest.raises(ValidationError):
         build_prediction_snapshot(
             [_served("person:a", "bill:1"), _served("person:a", "bill:1")],
-            generated_at=datetime(2025, 2, 2, tzinfo=timezone.utc),
+            generated_at=datetime(2025, 2, 2, tzinfo=UTC),
         )
 
 

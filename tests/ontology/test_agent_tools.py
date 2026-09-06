@@ -8,8 +8,10 @@ from src.ontology.agent_tools import (
     OntologyAgentToolPayload,
     build_ontology_agent_tool_manifest,
 )
-from src.ontology.frontend_contracts import ONTOLOGY_FRONTEND_CONTRACT_VERSION
-from src.ontology.frontend_contracts import build_ontology_frontend_contract
+from src.ontology.frontend_contracts import (
+    ONTOLOGY_FRONTEND_CONTRACT_VERSION,
+    build_ontology_frontend_contract,
+)
 
 
 def test_build_ontology_agent_tool_manifest_exports_read_only_source_tools() -> None:

@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import math
 from collections.abc import Mapping
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 
 import numpy as np
 
@@ -79,14 +79,14 @@ def _assemble(signals: Mapping[str, float]) -> object:
                 label="prior vote",
                 source_url="https://clerk.house.gov/Votes/1",
                 content_sha256=_SHA,
-                retrieved_at=datetime(2025, 1, 1, tzinfo=timezone.utc),
+                retrieved_at=datetime(2025, 1, 1, tzinfo=UTC),
             ),
             SignalEvidence(
                 signal_name="sector",
                 label="sector exposure",
                 source_url="https://www.fec.gov/x",
                 content_sha256=_SHA,
-                retrieved_at=datetime(2025, 1, 2, tzinfo=timezone.utc),
+                retrieved_at=datetime(2025, 1, 2, tzinfo=UTC),
             ),
         ],
         llm_explanation="Party alignment drives this prediction.",

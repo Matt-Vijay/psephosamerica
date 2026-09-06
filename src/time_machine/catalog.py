@@ -152,9 +152,10 @@ def status(output_root: Path) -> dict[str, Any]:
         connection = connect(output_root)
         try:
             for table in TABLE_SCHEMAS:
-                result["tables"][table] = connection.execute(
-                    f"SELECT count(*) FROM tm.{table}"
-                ).fetchone()[0]
+                row = connection.execute(f"SELECT count(*) FROM tm.{table}").fetchone()
+                if row is None:
+                    raise RuntimeError(f"count query returned no row for tm.{table}")
+                result["tables"][table] = row[0]
         finally:
             connection.close()
     return result

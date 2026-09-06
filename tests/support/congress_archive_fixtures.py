@@ -26,7 +26,6 @@ from typing import Any
 
 from src.ingest.congress.archive import CongressArchive
 
-
 # ---------------------------------------------------------------------------
 # Minimal inline fixtures (representative, not exhaustive)
 # ---------------------------------------------------------------------------
@@ -169,21 +168,21 @@ class CongressArchiveBuilder:
     # Fluent setters
     # ------------------------------------------------------------------
 
-    def with_members(self, members: list[dict[str, Any]]) -> "CongressArchiveBuilder":
+    def with_members(self, members: list[dict[str, Any]]) -> CongressArchiveBuilder:
         self._members = members
         return self
 
-    def with_committees(self, committees: list[dict[str, Any]]) -> "CongressArchiveBuilder":
+    def with_committees(self, committees: list[dict[str, Any]]) -> CongressArchiveBuilder:
         self._committees = committees
         return self
 
-    def with_bills(self, bills: list[dict[str, Any]]) -> "CongressArchiveBuilder":
+    def with_bills(self, bills: list[dict[str, Any]]) -> CongressArchiveBuilder:
         self._bills = bills
         return self
 
     def with_member_detail(
         self, bioguide_id: str, detail: dict[str, Any]
-    ) -> "CongressArchiveBuilder":
+    ) -> CongressArchiveBuilder:
         self._member_details[bioguide_id] = detail
         return self
 
@@ -193,7 +192,7 @@ class CongressArchiveBuilder:
         bill_type: str,
         bill_number: int,
         detail: dict[str, Any],
-    ) -> "CongressArchiveBuilder":
+    ) -> CongressArchiveBuilder:
         self._bill_details[(congress, bill_type, bill_number)] = detail
         return self
 
@@ -203,7 +202,7 @@ class CongressArchiveBuilder:
         bill_type: str,
         bill_number: int,
         payload: dict[str, Any],
-    ) -> "CongressArchiveBuilder":
+    ) -> CongressArchiveBuilder:
         self._cosponsors[(congress, bill_type, bill_number)] = payload
         return self
 
@@ -213,7 +212,7 @@ class CongressArchiveBuilder:
         roll_call_number: int,
         congress: int = 119,
         session: int = 1,
-    ) -> "CongressArchiveBuilder":
+    ) -> CongressArchiveBuilder:
         self._house_votes.append((year, roll_call_number, congress, session))
         return self
 
@@ -222,19 +221,19 @@ class CongressArchiveBuilder:
         congress: int,
         session: int,
         roll_call_number: int,
-    ) -> "CongressArchiveBuilder":
+    ) -> CongressArchiveBuilder:
         self._senate_votes.append((congress, session, roll_call_number))
         return self
 
-    def no_member_details(self) -> "CongressArchiveBuilder":
+    def no_member_details(self) -> CongressArchiveBuilder:
         self._member_details = {}
         return self
 
-    def no_bill_details(self) -> "CongressArchiveBuilder":
+    def no_bill_details(self) -> CongressArchiveBuilder:
         self._bill_details = {}
         return self
 
-    def no_cosponsors(self) -> "CongressArchiveBuilder":
+    def no_cosponsors(self) -> CongressArchiveBuilder:
         self._cosponsors = {}
         return self
 
@@ -242,7 +241,7 @@ class CongressArchiveBuilder:
     # Build
     # ------------------------------------------------------------------
 
-    def build(self) -> "CongressArchiveBuilder":
+    def build(self) -> CongressArchiveBuilder:
         """Write all files to disk; returns self for chaining."""
         root = self._root
         root.mkdir(parents=True, exist_ok=True)

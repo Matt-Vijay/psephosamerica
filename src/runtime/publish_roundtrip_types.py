@@ -24,10 +24,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Literal
 
-
-# ---------------------------------------------------------------------------
 # Severity
-# ---------------------------------------------------------------------------
 
 IssueSeverity = Literal["error", "warning"]
 
@@ -44,9 +41,7 @@ ROUNDTRIP_STAGES = (
 )
 
 
-# ---------------------------------------------------------------------------
 # PublishRoundtripIssue
-# ---------------------------------------------------------------------------
 
 
 @dataclass(frozen=True)
@@ -66,9 +61,7 @@ class PublishRoundtripIssue:
     path: str | None = field(default=None)
 
 
-# ---------------------------------------------------------------------------
 # PublishRoundtripStageResult
-# ---------------------------------------------------------------------------
 
 
 @dataclass(frozen=True)
@@ -99,9 +92,7 @@ class PublishRoundtripStageResult:
         return sum(1 for i in self.issues if i.severity == "warning")
 
 
-# ---------------------------------------------------------------------------
 # PublishRoundtripResult
-# ---------------------------------------------------------------------------
 
 
 @dataclass(frozen=True)

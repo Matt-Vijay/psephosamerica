@@ -2,73 +2,25 @@
 
 from __future__ import annotations
 
-import datetime as dt
 import hashlib
-
 from pathlib import Path
-from src.prediction.backtest import PredictionBacktestPayload
-from src.runtime.context import RuntimeContext
+from typing import Any
+
+from src.runtime.commands._shared import _load_json_object_or_none, _required_string_list
 from src.runtime.prediction_backtest import (
     handle_prediction_backtest_command,
-    prediction_backtest_source_state as _prediction_backtest_source_state_impl,
-    run_prediction_backtest_command as _run_prediction_backtest_command,
+    run_prediction_backtest_command as run_prediction_backtest_command,
     verify_prediction_backtest_command,
 )
 from src.runtime.prediction_input_inventory import (
     handle_prediction_input_inventory_command,
-    prediction_input_inventory_source_state as _prediction_input_inventory_source_state_impl,
-    run_prediction_input_inventory_command as _run_prediction_input_inventory_command,
+    run_prediction_input_inventory_command as run_prediction_input_inventory_command,
     verify_prediction_input_inventory_command,
 )
 from src.runtime.prediction_source_url_audit import (
     run_prediction_source_url_audit_command,
     verify_prediction_source_url_audit_command,
 )
-from typing import Any
-
-from src.runtime.commands._shared import _load_json_object_or_none, _required_string_list
-
-
-def run_prediction_backtest_command(
-    ctx: RuntimeContext,
-    *,
-    feature_cutoff: dt.date,
-    label_start: dt.date,
-    label_end: dt.date,
-    model: str = "baseline",
-    bill_semantics_root: Path | None = None,
-) -> PredictionBacktestPayload:
-    """Compatibility wrapper for the extracted prediction backtest runner."""
-    return _run_prediction_backtest_command(
-        ctx,
-        feature_cutoff=feature_cutoff,
-        label_start=label_start,
-        label_end=label_end,
-        model=model,
-        bill_semantics_root=bill_semantics_root,
-    )
-
-
-def run_prediction_input_inventory_command(
-    ctx: RuntimeContext,
-    *,
-    training_feature_cutoff: dt.date,
-    train_start: dt.date,
-    train_end: dt.date,
-    feature_cutoff: dt.date,
-    label_start: dt.date,
-    label_end: dt.date,
-) -> Any:
-    """Compatibility wrapper for the extracted prediction input inventory runner."""
-    return _run_prediction_input_inventory_command(
-        ctx,
-        training_feature_cutoff=training_feature_cutoff,
-        train_start=train_start,
-        train_end=train_end,
-        feature_cutoff=feature_cutoff,
-        label_start=label_start,
-        label_end=label_end,
-    )
 
 
 def _handle_prediction_backtest(args: Any) -> dict[str, Any]:
@@ -81,10 +33,6 @@ def _handle_prediction_input_inventory(args: Any) -> dict[str, Any]:
 
 def _handle_verify_prediction_input_inventory(args: Any) -> dict[str, Any]:
     return verify_prediction_input_inventory_command(args)
-
-
-def _prediction_input_inventory_source_state(payload: Any) -> dict[str, Any]:
-    return _prediction_input_inventory_source_state_impl(payload)
 
 
 def _prediction_backtest_run_metadata(args: Any) -> dict[str, str]:
@@ -397,9 +345,3 @@ def _has_strict_prediction_backtest_verify_command(commands: list[str]) -> bool:
         and all(fragment in command for fragment in required_fragments)
         for command in commands
     )
-
-
-def _prediction_backtest_source_state(
-    payload: PredictionBacktestPayload,
-) -> dict[str, Any]:
-    return _prediction_backtest_source_state_impl(payload)

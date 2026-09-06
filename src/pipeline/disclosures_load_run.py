@@ -41,22 +41,16 @@ from src.parse.disclosures.transform import (
     OutsidePositionSidecar,
 )
 
-# ---------------------------------------------------------------------------
 # Public type alias
-# ---------------------------------------------------------------------------
 
 LookupLoaderFn = Callable[[Any], LookupBundle]
 
-# ---------------------------------------------------------------------------
 # Conflict columns per table
-# ---------------------------------------------------------------------------
 
 _FD_CONFLICT = ["member_id", "filing_year", "filing_type", "amendment_number"]
 _CHILD_CONFLICT = ["financial_disclosure_id", "line_number"]
 
-# ---------------------------------------------------------------------------
 # Internal row resolvers
-# ---------------------------------------------------------------------------
 
 
 def _resolve_disclosure_rows(
@@ -155,9 +149,7 @@ def _resolve_child_rows(
     return out
 
 
-# ---------------------------------------------------------------------------
 # Phase execution helper
-# ---------------------------------------------------------------------------
 
 
 def _exec_phase(
@@ -253,9 +245,7 @@ def _delete_stale_child_rows(
             cur.execute(sql, params)
 
 
-# ---------------------------------------------------------------------------
 # Public API
-# ---------------------------------------------------------------------------
 
 
 def run_disclosures_load(

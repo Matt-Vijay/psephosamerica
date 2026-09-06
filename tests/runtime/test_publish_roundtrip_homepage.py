@@ -26,12 +26,12 @@ from src.export.filesystem import write_planned_files
 from src.export.manifest import ManifestEntry, SnapshotManifest, manifest_root_sha256
 from src.export.writer import PlannedFile, current_member_lookup_path, serialize_payload
 from src.homepage.builders import build_featured_lookup_entries
+from src.homepage.contracts import HomepageFeedPayload
 from src.identity.current_member_lookup import (
     CurrentMemberLookupEntry,
     CurrentMemberLookupPayload,
     normalize_lookup_name,
 )
-from src.homepage.contracts import HomepageFeedPayload
 from src.query.homepage_feed import assemble_homepage_payload
 from src.runtime.publish_roundtrip_homepage import verify_published_homepage_roundtrip
 from src.runtime.publish_roundtrip_types import PublishRoundtripStageResult

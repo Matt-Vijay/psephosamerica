@@ -7,8 +7,9 @@ Evidence card ID generation is injectable so this module stays fully testable.
 from __future__ import annotations
 
 import datetime as dt
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import Any
 
 from src.evidence.builder import build_evidence_card_payload
 from src.export.contracts import ConfidenceLabel, EvidenceCardPayload
@@ -25,10 +26,7 @@ from src.rules.evaluator import evaluate_rule
 from src.rules.models import RuleDefinition, RuleFire
 from src.scoring.semantics import severity_score_delta
 
-
-# ---------------------------------------------------------------------------
 # Public types
-# ---------------------------------------------------------------------------
 
 EvidenceCardIdGenerator = Callable[[RuleFire], str]
 
@@ -56,9 +54,7 @@ class RecomputeResult:
     by_member: dict[str, MemberRecomputeResult] = field(default_factory=dict)
 
 
-# ---------------------------------------------------------------------------
 # Constants
-# ---------------------------------------------------------------------------
 
 #: Maps each launch rule family to its ConflictBundle assembler.
 _FAMILY_ASSEMBLERS: dict[str, Callable[[dict[str, Any]], ConflictBundle]] = {
@@ -69,9 +65,7 @@ _FAMILY_ASSEMBLERS: dict[str, Callable[[dict[str, Any]], ConflictBundle]] = {
 }
 
 
-# ---------------------------------------------------------------------------
 # Internal helpers
-# ---------------------------------------------------------------------------
 
 
 def _assemble_bundles(
@@ -149,9 +143,7 @@ def _fires_for_bundle(
     return fires
 
 
-# ---------------------------------------------------------------------------
 # Public API
-# ---------------------------------------------------------------------------
 
 
 def recompute_conflicts(

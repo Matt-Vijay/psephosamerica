@@ -14,7 +14,6 @@ from src.export.filesystem import (
 from src.export.manifest import manifest_root_sha256
 from src.export.writer import PlannedFile
 
-
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
 
@@ -188,7 +187,7 @@ def test_read_manifest_missing_file_raises(tmp_path: Path) -> None:
 def test_read_manifest_invalid_json_raises(tmp_path: Path) -> None:
     mfile = tmp_path / "bad.json"
     mfile.write_text("not json", encoding="utf-8")
-    with pytest.raises(Exception):
+    with pytest.raises(json.JSONDecodeError):
         read_manifest(mfile)
 
 

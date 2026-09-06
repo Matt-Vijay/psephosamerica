@@ -45,7 +45,6 @@ from tests.support.published_roundtrip_fixtures import (
     make_zip_feed_row_set,
 )
 
-
 # ---------------------------------------------------------------------------
 # PublishedRoundtripBuilder — file layout
 # ---------------------------------------------------------------------------

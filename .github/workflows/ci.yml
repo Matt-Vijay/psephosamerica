@@ -59,7 +59,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install -e ".[dev]"
+      - run: pip install -e ".[dev,enrichment]"
       - name: pytest unit with coverage gate
         run: |
           python -m coverage run -m pytest tests/ -q --ignore=tests/integration

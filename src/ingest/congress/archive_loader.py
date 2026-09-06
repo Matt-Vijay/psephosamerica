@@ -21,10 +21,7 @@ from typing import Any
 
 from .archive import CongressArchive, parse_bill_stem
 
-
-# ---------------------------------------------------------------------------
 # List payloads
-# ---------------------------------------------------------------------------
 
 
 def load_members_payload(archive: CongressArchive) -> dict[str, Any]:
@@ -42,9 +39,7 @@ def load_bills_payload(archive: CongressArchive) -> dict[str, Any]:
     return _read_json(archive.bills_path())
 
 
-# ---------------------------------------------------------------------------
 # Map payloads (scan sub-directories, load every file found)
-# ---------------------------------------------------------------------------
 
 
 def load_member_detail_payload_map(
@@ -110,9 +105,7 @@ def load_cosponsors_payload_map(
     return result
 
 
-# ---------------------------------------------------------------------------
 # Internal
-# ---------------------------------------------------------------------------
 
 
 def _read_json(path: Path) -> dict[str, Any]:

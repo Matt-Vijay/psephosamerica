@@ -1,15 +1,15 @@
 """Tests for provenance.keys — deterministic storage key builders."""
 
+from datetime import UTC, date, datetime
+
 import pytest
-from datetime import date, datetime, timezone
 
 from src.provenance.keys import (
-    raw_artifact_key,
-    parsed_output_key,
-    snapshot_output_key,
     archive_manifest_key,
+    parsed_output_key,
+    raw_artifact_key,
+    snapshot_output_key,
 )
-
 
 # ---------------------------------------------------------------------------
 # raw_artifact_key
@@ -32,7 +32,7 @@ class TestRawArtifactKey:
         assert "2025-03-01" in key
 
     def test_datetime_object_accepted(self):
-        dt = datetime(2025, 6, 15, 12, 0, tzinfo=timezone.utc)
+        dt = datetime(2025, 6, 15, 12, 0, tzinfo=UTC)
         key = raw_artifact_key("fec-bulk", dt, self.VALID_SHA, "file.csv")
         assert "2025-06-15" in key
 

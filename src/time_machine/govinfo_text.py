@@ -365,9 +365,9 @@ def _store_immutable(path: Path, content: bytes, digest: str) -> None:
             os.fsync(handle.fileno())
         try:
             os.link(temporary, path)
-        except FileExistsError:
+        except FileExistsError as exc:
             if _sha256(path.read_bytes()) != digest:
-                raise CacheIntegrityError(f"immutable GovInfo object collision: {path}")
+                raise CacheIntegrityError(f"immutable GovInfo object collision: {path}") from exc
     finally:
         temporary.unlink(missing_ok=True)
 

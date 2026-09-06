@@ -10,7 +10,6 @@ from src.graph.bills import (
     parse_congress_bill_identifier,
 )
 
-
 # ── identifier normalization ───────────────────────────────────────
 
 

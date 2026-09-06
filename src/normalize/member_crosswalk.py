@@ -5,28 +5,25 @@ No file or network I/O.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Dict, List, Literal, Optional, Sequence, TypeAlias, Union
+from typing import Literal, TypeAlias
 
-# ---------------------------------------------------------------------------
 # Typed record
-# ---------------------------------------------------------------------------
 
 
 @dataclass(frozen=True)
 class CrosswalkRecord:
     bioguide_id: str  # canonical; must always be present
-    lis_member_id: Optional[str] = None
-    fec_candidate_id: Optional[str] = None
+    lis_member_id: str | None = None
+    fec_candidate_id: str | None = None
 
     def __post_init__(self) -> None:
         if not self.bioguide_id:
             raise ValueError("bioguide_id must be a non-empty string")
 
 
-# ---------------------------------------------------------------------------
 # Lookup result types
-# ---------------------------------------------------------------------------
 
 LookupField = Literal["bioguide_id", "lis_member_id", "fec_candidate_id"]
 
@@ -47,10 +44,10 @@ class AmbiguousMatch:
 
     field: LookupField
     value: str
-    matches: List[CrosswalkRecord]
+    matches: list[CrosswalkRecord]
 
 
-LookupResult = Union[CrosswalkRecord, NotFound, AmbiguousMatch]
+LookupResult = CrosswalkRecord | NotFound | AmbiguousMatch
 CrosswalkRow: TypeAlias = dict[str, str | None]
 _LOOKUP_FIELDS: tuple[LookupField, ...] = (
     "bioguide_id",
@@ -59,17 +56,15 @@ _LOOKUP_FIELDS: tuple[LookupField, ...] = (
 )
 
 
-# ---------------------------------------------------------------------------
 # Index helpers
-# ---------------------------------------------------------------------------
 
 
 def _index_by(
     records: Sequence[CrosswalkRecord], field: LookupField
-) -> Dict[str, List[CrosswalkRecord]]:
-    idx: Dict[str, List[CrosswalkRecord]] = {}
+) -> dict[str, list[CrosswalkRecord]]:
+    idx: dict[str, list[CrosswalkRecord]] = {}
     for rec in records:
-        value: Optional[str] = getattr(rec, field)
+        value: str | None = getattr(rec, field)
         if value is not None:
             idx.setdefault(value, []).append(rec)
     return idx
@@ -77,10 +72,10 @@ def _index_by(
 
 @dataclass
 class CrosswalkIndex:
-    _by_bioguide: Dict[str, List[CrosswalkRecord]]
-    _by_lis: Dict[str, List[CrosswalkRecord]]
-    _by_fec: Dict[str, List[CrosswalkRecord]]
-    _records: List[CrosswalkRecord]
+    _by_bioguide: dict[str, list[CrosswalkRecord]]
+    _by_lis: dict[str, list[CrosswalkRecord]]
+    _by_fec: dict[str, list[CrosswalkRecord]]
+    _records: list[CrosswalkRecord]
 
     # ---- lookup methods ----
 
@@ -94,14 +89,14 @@ class CrosswalkIndex:
         return _resolve("fec_candidate_id", fec_candidate_id, self._by_fec)
 
     @property
-    def records(self) -> List[CrosswalkRecord]:
+    def records(self) -> list[CrosswalkRecord]:
         return list(self._records)
 
 
 def _resolve(
     field: LookupField,
     value: str,
-    idx: Dict[str, List[CrosswalkRecord]],
+    idx: dict[str, list[CrosswalkRecord]],
 ) -> LookupResult:
     hits = idx.get(value)
     if not hits:
@@ -111,14 +106,12 @@ def _resolve(
     return hits[0]
 
 
-# ---------------------------------------------------------------------------
 # Public constructors
-# ---------------------------------------------------------------------------
 
 
-def build_index(rows: Sequence[Union[CrosswalkRecord, CrosswalkRow]]) -> CrosswalkIndex:
+def build_index(rows: Sequence[CrosswalkRecord | CrosswalkRow]) -> CrosswalkIndex:
     """Accepts CrosswalkRecords or raw dicts; dicts are coerced via same field names."""
-    records: List[CrosswalkRecord] = []
+    records: list[CrosswalkRecord] = []
     for row in rows:
         if isinstance(row, CrosswalkRecord):
             records.append(row)
@@ -141,9 +134,7 @@ def build_index(rows: Sequence[Union[CrosswalkRecord, CrosswalkRow]]) -> Crosswa
     )
 
 
-# ---------------------------------------------------------------------------
 # Module-level convenience wrappers
-# ---------------------------------------------------------------------------
 
 
 def lookup_by_bioguide(index: CrosswalkIndex, bioguide_id: str) -> LookupResult:
@@ -158,24 +149,22 @@ def lookup_by_fec(index: CrosswalkIndex, fec_candidate_id: str) -> LookupResult:
     return index.by_fec(fec_candidate_id)
 
 
-# ---------------------------------------------------------------------------
 # Validation
-# ---------------------------------------------------------------------------
 
 
 @dataclass(frozen=True)
 class MappingConflict:
     field: LookupField
     value: str
-    bioguide_ids: List[str]
+    bioguide_ids: list[str]
 
 
-def validate_one_to_one(records: Sequence[CrosswalkRecord]) -> List[MappingConflict]:
+def validate_one_to_one(records: Sequence[CrosswalkRecord]) -> list[MappingConflict]:
     """Returns conflicts where a non-None ID maps to multiple bioguide_ids.
 
     Duplicate bioguide_id rows are flagged under the 'bioguide_id' field.
     """
-    conflicts: List[MappingConflict] = []
+    conflicts: list[MappingConflict] = []
 
     for field in _LOOKUP_FIELDS:
         idx = _index_by(records, field)

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from dataclasses import FrozenInstanceError
+
 import pytest
 
 from src.runtime.publish_verify_types import (
@@ -11,7 +13,6 @@ from src.runtime.publish_verify_types import (
     PublishVerifyStageResult,
     path_is_confined,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -43,7 +44,7 @@ def _stage(
 class TestPublishVerifyIssue:
     def test_frozen(self) -> None:
         issue = _issue()
-        with pytest.raises(Exception):
+        with pytest.raises(FrozenInstanceError):
             issue.message = "mutated"  # type: ignore[misc]
 
     def test_path_defaults_to_none(self) -> None:
@@ -100,7 +101,7 @@ class TestPublishVerifyStageResult:
 
     def test_frozen(self) -> None:
         result = _stage()
-        with pytest.raises(Exception):
+        with pytest.raises(FrozenInstanceError):
             result.checked = 99  # type: ignore[misc]
 
     def test_checked_stored(self) -> None:
@@ -189,7 +190,7 @@ class TestPublishVerifyResult:
 
     def test_frozen(self) -> None:
         result = self._build()
-        with pytest.raises(Exception):
+        with pytest.raises(FrozenInstanceError):
             result.stages = ()  # type: ignore[misc]
 
     def test_empty_stages(self) -> None:

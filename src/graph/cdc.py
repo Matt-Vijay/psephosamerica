@@ -21,8 +21,8 @@ from typing import Any, Literal, Self
 
 from pydantic import Field, model_validator
 
-from src.graph.contracts import EntityResolutionOutput
 from src.export.contracts import ExportContractModel
+from src.graph.contracts import EntityResolutionOutput
 
 ChangeType = Literal["created", "updated", "removed"]
 

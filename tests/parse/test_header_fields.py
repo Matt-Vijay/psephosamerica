@@ -28,7 +28,6 @@ from src.parse.disclosures.header_fields import (
 )
 from src.parse.disclosures.models import Chamber, FilingType
 
-
 # ── Fixtures: realistic form text ─────────────────────────────────────────────
 
 _HOUSE_ANNUAL = [

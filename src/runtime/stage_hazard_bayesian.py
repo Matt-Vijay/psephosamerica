@@ -48,7 +48,10 @@ def run(sidecar: Path, *, n_seeds: int = 10) -> dict[str, Any]:
         p = model.predict_event_by(x_eval, _HORIZON_DAYS)
         cs.append(concordance_index(p, dur_eval, ev_eval))
         coefs.append(
-            {name: float(c) for name, c in zip(featurizer.feature_names, model.coefficients)}
+            {
+                name: float(c)
+                for name, c in zip(featurizer.feature_names, model.coefficients, strict=False)
+            }
         )
     arr = np.asarray(cs)
 

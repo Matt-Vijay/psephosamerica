@@ -123,9 +123,7 @@ class TaxonomyRuntime:
         return self._crp_index.get(crp_category)
 
 
-# ---------------------------------------------------------------------------
 # File-local loaders (explicit I/O, no global state)
-# ---------------------------------------------------------------------------
 
 
 def _load_sectors(path: Path) -> list[Sector]:

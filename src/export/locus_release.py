@@ -181,7 +181,7 @@ def write_release(
         {name: pa.array(columns[name], type=arrow_types[dtype]) for name, dtype in RELEASE_SCHEMA}
     )
     parquet_path = out_dir / PARQUET_FILENAME
-    pq.write_table(table, parquet_path)  # type: ignore[no-untyped-call]
+    pq.write_table(table, parquet_path)
 
     content_sha = hashlib.sha256(parquet_path.read_bytes()).hexdigest()
     manifest = ReleaseManifest(

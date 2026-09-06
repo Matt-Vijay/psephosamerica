@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import os
-import hashlib
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
@@ -13,8 +13,8 @@ import httpx
 from pydantic import Field, field_validator, model_validator
 
 from src.core.path_safety import safe_join_confined
-from src.export.contracts import ExportContractModel, SourceAnchor
 from src.evidence.source_anchor_policy import is_official_source_url
+from src.export.contracts import ExportContractModel, SourceAnchor
 from src.prediction.source_anchors import (
     describe_missing_legislative_source_context,
     source_anchor_identity,
@@ -278,7 +278,7 @@ class OpenAIBillSemanticExtractor:
         self._timeout = timeout
 
     @classmethod
-    def from_env(cls, *, model: str | None = None) -> "OpenAIBillSemanticExtractor":
+    def from_env(cls, *, model: str | None = None) -> OpenAIBillSemanticExtractor:
         api_key = os.environ.get("OPENAI_API_KEY")
         if api_key is None or not api_key.strip():
             raise ValueError("OPENAI_API_KEY is required for OpenAI semantic extraction")

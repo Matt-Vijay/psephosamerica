@@ -25,12 +25,10 @@ from src.parse.disclosures.header_fields import HeaderFields, extract_header_fie
 from src.parse.disclosures.holding_rows import HoldingColumnMap, holding_rows_from_table
 from src.parse.disclosures.models import Filing
 from src.parse.disclosures.outside_position_rows import outside_position_rows_from_table
-from src.parse.disclosures.parse_result import ParserMeta, ParseResult
+from src.parse.disclosures.parse_result import ParseResult, ParserMeta
 from src.parse.disclosures.text_lines import drop_empty, flatten_lines, pages_to_line_lists
 
-# ---------------------------------------------------------------------------
 # Constants
-# ---------------------------------------------------------------------------
 
 PARSER_NAME = "house_annual_text"
 PARSER_VERSION = "1.0"
@@ -76,9 +74,7 @@ _SCHEDULE_A_MIN_CELLS = 3
 _SCHEDULE_D_MIN_CELLS = 1
 
 
-# ---------------------------------------------------------------------------
 # Internal helpers
-# ---------------------------------------------------------------------------
 
 
 def _section_lines(
@@ -188,9 +184,7 @@ def _header_warnings(header: HeaderFields) -> tuple[str, ...]:
     return tuple(out)
 
 
-# ---------------------------------------------------------------------------
 # Public entry point
-# ---------------------------------------------------------------------------
 
 
 def parse_house_annual(page_texts: list[str], filing: Filing) -> ParseResult:

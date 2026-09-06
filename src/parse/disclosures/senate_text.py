@@ -18,7 +18,7 @@ from src.parse.disclosures.header_fields import extract_header_fields
 from src.parse.disclosures.holding_rows import HoldingColumnMap, holding_rows_from_table
 from src.parse.disclosures.models import Filing, Holding, OutsidePosition, Transaction
 from src.parse.disclosures.outside_position_rows import outside_position_rows_from_table
-from src.parse.disclosures.parse_result import ParserMeta, ParseResult
+from src.parse.disclosures.parse_result import ParseResult, ParserMeta
 from src.parse.disclosures.text_lines import (
     SECTION_HEADERS,
     drop_empty,
@@ -97,9 +97,7 @@ _SENATE_HOLDING_COLMAP = HoldingColumnMap(
 )
 
 
-# ---------------------------------------------------------------------------
 # Internal helpers
-# ---------------------------------------------------------------------------
 
 
 def _split_cells(line: str) -> list[str]:
@@ -143,9 +141,7 @@ def _senate_slice(all_lines: tuple[str, ...], header: str) -> tuple[str, ...]:
     return slice_section(all_lines, header, _SENATE_SECTION_HEADERS)
 
 
-# ---------------------------------------------------------------------------
 # Section-level row extractors (Senate column formats)
-# ---------------------------------------------------------------------------
 
 
 def _holdings_from_section(section_lines: tuple[str, ...]) -> list[Holding]:
@@ -233,9 +229,7 @@ def _outside_positions_from_section(
     return outside_position_rows_from_table(raw_rows)
 
 
-# ---------------------------------------------------------------------------
 # Public entry point
-# ---------------------------------------------------------------------------
 
 
 def parse_senate_text(page_texts: list[str], filing: Filing) -> ParseResult:

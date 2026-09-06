@@ -80,7 +80,11 @@ def run(
     cal = calibration_at_horizon(p_eval, dur_eval, ev_eval, horizon_days=_HORIZON_DAYS)
     cal_base = calibration_at_horizon(p_base, dur_eval, ev_eval, horizon_days=_HORIZON_DAYS)
 
-    coef = dict(zip(featurizer.feature_names, (round(float(c), 4) for c in model.coefficients)))
+    coef = dict(
+        zip(
+            featurizer.feature_names, (round(float(c), 4) for c in model.coefficients), strict=False
+        )
+    )
     top = sorted(coef.items(), key=lambda kv: -abs(kv[1]))[:12]
     return {
         "event": "first recorded floor roll-call in origin chamber",

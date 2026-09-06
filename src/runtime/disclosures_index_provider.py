@@ -25,7 +25,7 @@ Callers choose the path explicitly:
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any
 
 from src.runtime.disclosures_bundle import DisclosuresLookup
 from src.runtime.disclosures_index_rows import (
@@ -71,7 +71,7 @@ def bundle_index_matches(
 def live_index_matches(
     artifacts: list[dict[str, Any]],
     *,
-    client: Optional[Any] = None,
+    client: Any | None = None,
 ) -> IndexMatchResult:
     """Resolve artifacts via live index fetch.
 

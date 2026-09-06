@@ -7,13 +7,14 @@ from __future__ import annotations
 
 import io
 from dataclasses import dataclass
-from typing import Any
+from importlib import import_module
+from types import ModuleType
 
 from src.parse.disclosures.text_tokens import DETECTION_HEADERS as _KNOWN_HEADERS
 
-_pypdf: Any | None
+_pypdf: ModuleType | None
 try:
-    import pypdf as _pypdf
+    _pypdf = import_module("pypdf")
 except ImportError:
     _pypdf = None
 

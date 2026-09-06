@@ -134,7 +134,7 @@ def test_rejects_oversized_chunked_body_without_consuming_extra_chunk() -> None:
 
 def test_decodes_bounded_body() -> None:
     client = MagicMock()
-    client.get.return_value = _Response(chunks=["<vote/>".encode()])
+    client.get.return_value = _Response(chunks=[b"<vote/>"])
 
     assert (
         fetch_official_congress_text("https://clerk.house.gov/evs/2024/index.xml", client=client)

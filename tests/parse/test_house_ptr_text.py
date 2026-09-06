@@ -26,7 +26,6 @@ from src.parse.disclosures.house_ptr_text import parse_house_ptr
 from src.parse.disclosures.models import Chamber, FilingType, OwnerType, TransactionType
 from src.parse.disclosures.parse_result import ParseResult
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

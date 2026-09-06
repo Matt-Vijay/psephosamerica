@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import pytest
 
+import src.parse.disclosures.text_tokens as _tokens
 from src.parse.disclosures.text_lines import (
     SECTION_HEADERS,
     PageLines,
@@ -16,8 +17,6 @@ from src.parse.disclosures.text_lines import (
     slice_section,
     split_page,
 )
-import src.parse.disclosures.text_tokens as _tokens
-
 
 # ---------------------------------------------------------------------------
 # PageLines

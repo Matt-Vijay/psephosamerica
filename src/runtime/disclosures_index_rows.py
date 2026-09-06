@@ -16,11 +16,13 @@ fetch_index_rows_for_artifacts(artifacts, *, client=None)
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 from src.parse.disclosures.house_index import HouseIndexRow
-from src.parse.disclosures.index_lookup import Chamber as DisclosureChamber
-from src.parse.disclosures.index_lookup import fetch_disclosure_rows_by_doc_id
+from src.parse.disclosures.index_lookup import (
+    Chamber as DisclosureChamber,
+    fetch_disclosure_rows_by_doc_id,
+)
 from src.parse.disclosures.senate_index import SenateIndexRow
 
 IndexRow = HouseIndexRow | SenateIndexRow
@@ -35,7 +37,7 @@ class ArtifactIndexMatch:
     """
 
     artifact: dict[str, Any]
-    index_row: Optional[IndexRow]
+    index_row: IndexRow | None
 
 
 def group_artifacts_by_chamber_year(
@@ -64,7 +66,7 @@ def group_artifacts_by_chamber_year(
 def fetch_index_rows_for_artifacts(
     artifacts: list[dict[str, Any]],
     *,
-    client: Optional[Any] = None,
+    client: Any | None = None,
 ) -> list[ArtifactIndexMatch]:
     """Return index rows matched to stored artifact rows by source_record_id.
 

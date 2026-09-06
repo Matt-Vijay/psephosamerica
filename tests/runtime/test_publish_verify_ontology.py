@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from src.export.contracts import SourceAnchor
+from src.export.filesystem import write_planned_files
 from src.export.manifest import ManifestEntry, SnapshotManifest, manifest_root_sha256
 from src.export.writer import (
     PlannedFile,
@@ -10,28 +12,26 @@ from src.export.writer import (
     ontology_edges_path,
     ontology_frontend_client_path,
     ontology_frontend_contract_path,
-    ontology_frontend_types_path,
     ontology_frontend_index_path,
+    ontology_frontend_types_path,
     ontology_index_path,
     ontology_member_edges_path,
     ontology_member_features_path,
     ontology_schema_path,
     serialize_payload,
 )
-from src.ontology.frontend_contracts import (
-    build_ontology_frontend_contract,
-    build_ontology_typescript_client,
-    build_ontology_typescript_declarations,
-)
 from src.ontology.agent_tools import build_ontology_agent_tool_manifest
-from src.export.filesystem import write_planned_files
-from src.export.contracts import SourceAnchor
 from src.ontology.contracts import (
     OntologyEdgePayload,
     OntologyGraphPayload,
     OntologyMemberFeaturesPayload,
     OntologyMemberGraphPayload,
     OntologyNodeRef,
+)
+from src.ontology.frontend_contracts import (
+    build_ontology_frontend_contract,
+    build_ontology_typescript_client,
+    build_ontology_typescript_declarations,
 )
 from src.ontology.static_schema import build_ontology_frontend_index, build_ontology_static_schema
 from src.runtime.publish_verify_ontology import verify_local_ontology_edges

@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, replace
-from typing import Any, Optional, Sequence
+from typing import Any
 
 from src.parse.disclosures.models import Filing, Holding, OutsidePosition, Transaction
 from src.parse.disclosures.parse_result import ParseResult
@@ -13,9 +14,7 @@ from src.parse.disclosures.transform import (
     transform_filing,
 )
 
-# ---------------------------------------------------------------------------
 # Stable skip-reason constants (used by SkippedSession.reason_code)
-# ---------------------------------------------------------------------------
 
 SKIP_NO_PARSE_RESULT = "no_parse_result"
 SKIP_NO_PARSED_DOCUMENT = "no_parsed_document"
@@ -25,9 +24,9 @@ SKIP_OCR_REQUIRED_NOT_IMPLEMENTED = "ocr_required_not_implemented"
 
 def build_parse_context(
     *,
-    parse_run_id: Optional[int] = None,
-    source_artifact_id: Optional[int] = None,
-    ingestion_run_id: Optional[int] = None,
+    parse_run_id: int | None = None,
+    source_artifact_id: int | None = None,
+    ingestion_run_id: int | None = None,
 ) -> ParseContext:
     """Construct a ParseContext from runtime provenance IDs.
 
@@ -47,9 +46,9 @@ def transform_parsed_disclosure(
     transactions: list[Transaction],
     outside_positions: list[OutsidePosition],
     *,
-    parse_run_id: Optional[int] = None,
-    source_artifact_id: Optional[int] = None,
-    ingestion_run_id: Optional[int] = None,
+    parse_run_id: int | None = None,
+    source_artifact_id: int | None = None,
+    ingestion_run_id: int | None = None,
 ) -> DisclosureTransformResult:
     ctx = build_parse_context(
         parse_run_id=parse_run_id,
@@ -101,9 +100,7 @@ def transform_single_session(
     )
 
 
-# ---------------------------------------------------------------------------
 # Batch transform types
-# ---------------------------------------------------------------------------
 
 
 @dataclass(frozen=True)
@@ -118,7 +115,7 @@ class SkippedSession:
     - SKIP_UNRESOLVED_MEMBER_IDENTITY — member bioguide_id absent and unresolvable
     """
 
-    run_id: Optional[int]
+    run_id: int | None
     reason_code: str
 
 
@@ -134,9 +131,7 @@ class BatchTransformResult:
     skipped: list[SkippedSession]
 
 
-# ---------------------------------------------------------------------------
 # Internal helpers
-# ---------------------------------------------------------------------------
 
 
 def _resolved_bioguide_id(resolution: Any) -> str | None:
@@ -170,9 +165,7 @@ def _resolve_parsed_document(parse_result: dict[str, Any]) -> ParseResult | None
     )
 
 
-# ---------------------------------------------------------------------------
 # Batch transform
-# ---------------------------------------------------------------------------
 
 
 def transform_parse_sessions(

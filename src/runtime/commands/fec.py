@@ -3,21 +3,11 @@
 from __future__ import annotations
 
 import csv
-
 from dataclasses import asdict
 from pathlib import Path
-from src.runtime.app import build_runtime
-from src.runtime.context import RuntimeContext, open_connection
-from src.runtime.fec import FecBulkFilePaths, FecLocalLoadResult, run_fec_local_load_runtime
-from src.runtime.fec_bulk_materialize import materialize_fec_bulk_files
-from src.runtime.member_fec_crosswalk import (
-    MemberFecCrosswalkLoadResult,
-    load_member_fec_crosswalk_runtime,
-)
-from src.runtime.member_fec_crosswalk_materialize import materialize_member_fec_crosswalk
-from src.runtime.output import summarize_fec_load_result, summarize_member_fec_crosswalk_load_result
 from typing import Any
 
+from src.runtime.app import build_runtime
 from src.runtime.commands._shared import (
     _attach_optional_verification_output,
     _command_issue_result,
@@ -28,6 +18,15 @@ from src.runtime.commands._shared import (
     _sha256_file_path,
     _write_json_artifact,
 )
+from src.runtime.context import RuntimeContext, open_connection
+from src.runtime.fec import FecBulkFilePaths, FecLocalLoadResult, run_fec_local_load_runtime
+from src.runtime.fec_bulk_materialize import materialize_fec_bulk_files
+from src.runtime.member_fec_crosswalk import (
+    MemberFecCrosswalkLoadResult,
+    load_member_fec_crosswalk_runtime,
+)
+from src.runtime.member_fec_crosswalk_materialize import materialize_member_fec_crosswalk
+from src.runtime.output import summarize_fec_load_result, summarize_member_fec_crosswalk_load_result
 
 
 def load_fec_local(

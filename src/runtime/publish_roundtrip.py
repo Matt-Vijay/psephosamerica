@@ -44,8 +44,8 @@ from src.runtime.publish_roundtrip_types import (
     PublishRoundtripResult,
     PublishRoundtripStageResult,
 )
-from src.runtime.publish_verify_manifest import inspect_local_manifest
 from src.runtime.publish_roundtrip_zip import verify_published_zip_roundtrip
+from src.runtime.publish_verify_manifest import inspect_local_manifest
 
 _STAGE_SNAPSHOT = "snapshot"
 _STAGE_PROFILES = "profiles"
@@ -57,9 +57,7 @@ _STAGE_HOMEPAGE = "homepage"
 _STAGE_LOOKUP = "lookup"
 
 
-# ---------------------------------------------------------------------------
 # Internal helpers
-# ---------------------------------------------------------------------------
 
 
 def _unavailable_stage(stage: str, reason: str) -> PublishRoundtripStageResult:
@@ -139,9 +137,7 @@ def _snapshot_date_from_manifest(manifest: SnapshotManifest) -> date:
         return manifest.created_at.date()
 
 
-# ---------------------------------------------------------------------------
 # Public entry point
-# ---------------------------------------------------------------------------
 
 
 def verify_publish_roundtrip(conn: Any, root: Path) -> PublishRoundtripResult:

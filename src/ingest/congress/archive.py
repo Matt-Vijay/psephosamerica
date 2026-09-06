@@ -37,17 +37,14 @@ Build one with manifest_from_archive() or manifest_from_dict().
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from pathlib import Path
-import re
 from typing import Any
 
 from src.core.path_safety import require_confined_relative_path, safe_join_confined
 
-
-# ---------------------------------------------------------------------------
 # Immutable source descriptor types
-# ---------------------------------------------------------------------------
 
 
 @dataclass(frozen=True, slots=True)
@@ -121,9 +118,7 @@ class SenateVoteSource:
     roll_call_number: int
 
 
-# ---------------------------------------------------------------------------
 # Archive manifest — immutable bundle of all resolved sources
-# ---------------------------------------------------------------------------
 
 
 @dataclass(frozen=True, slots=True)
@@ -153,9 +148,7 @@ class CongressArchiveManifest:
     senate_votes: tuple[SenateVoteSource, ...]
 
 
-# ---------------------------------------------------------------------------
 # CongressArchive — path resolver for conventional directory layout
-# ---------------------------------------------------------------------------
 
 
 class CongressArchive:
@@ -174,9 +167,7 @@ class CongressArchive:
         self.root = root
         self.congress = congress
 
-    # ------------------------------------------------------------------
     # List payload sources
-    # ------------------------------------------------------------------
 
     def members_source(self) -> MembersSource:
         return MembersSource(path=self.root / "members.json", congress=self.congress)
@@ -187,9 +178,7 @@ class CongressArchive:
     def bills_source(self) -> BillsSource:
         return BillsSource(path=self.root / "bills.json", congress=self.congress)
 
-    # ------------------------------------------------------------------
     # Detail and sub-resource payload sources
-    # ------------------------------------------------------------------
 
     def member_detail_source(self, bioguide_id: str) -> MemberDetailSource:
         path = self.root / self.MEMBER_DETAILS_DIR / f"{bioguide_id}.json"
@@ -230,9 +219,7 @@ class CongressArchive:
             roll_call_number=roll_call_number,
         )
 
-    # ------------------------------------------------------------------
     # Directory accessors (for scanning)
-    # ------------------------------------------------------------------
 
     def member_details_dir(self) -> Path:
         return self.root / self.MEMBER_DETAILS_DIR
@@ -249,9 +236,7 @@ class CongressArchive:
     def senate_votes_dir(self) -> Path:
         return self.root / self.SENATE_VOTES_DIR
 
-    # ------------------------------------------------------------------
     # Legacy path helpers (kept for callers that just need a Path)
-    # ------------------------------------------------------------------
 
     def members_path(self) -> Path:
         return self.root / "members.json"
@@ -274,9 +259,7 @@ class CongressArchive:
         return self.root / self.COSPONSORS_DIR / f"{stem}.json"
 
 
-# ---------------------------------------------------------------------------
 # Manifest builders
-# ---------------------------------------------------------------------------
 
 
 def manifest_from_archive(
@@ -474,9 +457,7 @@ def manifest_from_dict(
     )
 
 
-# ---------------------------------------------------------------------------
 # Row constructors for manifest_from_dict (internal)
-# ---------------------------------------------------------------------------
 
 
 def _cosponsor_source_from_dict(raw: Any, idx: int, root: Path) -> CosponsorsSource:
@@ -666,9 +647,7 @@ def _manifest_path_text(path: Path, *, root: Path | None) -> str:
     return str(path.relative_to(root))
 
 
-# ---------------------------------------------------------------------------
 # Typed field extractors (internal)
-# ---------------------------------------------------------------------------
 
 
 def _require_dict(raw: Any, section: str, idx: int) -> None:
@@ -720,9 +699,7 @@ def _list_field(
     return v
 
 
-# ---------------------------------------------------------------------------
 # Stem helpers (for conventional directory layout)
-# ---------------------------------------------------------------------------
 
 
 def _bill_stem(congress: int, bill_type: str, bill_number: int) -> str:

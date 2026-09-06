@@ -4,7 +4,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import src.runtime.bootstrap as bootstrap
-import src.runtime.commands as commands
+import src.runtime.commands.core as commands
 
 
 def test_load_schema_sql_delegates_to_db():
@@ -40,7 +40,7 @@ def test_bootstrap_database_plan_uses_schema_sql_as_authority():
 
     assert plan == {
         "bootstrap_authority": "db/schema.sql",
-        "bootstrap_sql_bytes": len("SELECT 1;".encode("utf-8")),
+        "bootstrap_sql_bytes": len(b"SELECT 1;"),
     }
 
 
@@ -48,12 +48,12 @@ def test_handle_bootstrap_db_dry_run_reports_schema_plan_without_db_access():
     args = SimpleNamespace(dry_run=True)
     plan = {
         "bootstrap_authority": "db/schema.sql",
-        "bootstrap_sql_bytes": len("SELECT 1;".encode("utf-8")),
+        "bootstrap_sql_bytes": len(b"SELECT 1;"),
     }
     with (
-        patch("src.runtime.commands.build_runtime") as mock_build,
-        patch("src.runtime.commands.open_runtime_connection") as mock_open_conn,
-        patch("src.runtime.commands.describe_bootstrap_plan", return_value=plan) as mock_plan,
+        patch("src.runtime.commands.core.build_runtime") as mock_build,
+        patch("src.runtime.commands.core.open_runtime_connection") as mock_open_conn,
+        patch("src.runtime.commands.core.describe_bootstrap_plan", return_value=plan) as mock_plan,
     ):
         result = commands._handle_bootstrap_db(args)
 

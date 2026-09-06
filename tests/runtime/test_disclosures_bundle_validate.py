@@ -19,8 +19,8 @@ from src.runtime.disclosures_bundle_validate import (
     check_doc_id_source_record_id_coherence,
     check_duplicate_entries,
     check_index_row_chamber_shape,
-    check_source_url_chamber_coherence,
     check_source_slug_chamber_coherence,
+    check_source_url_chamber_coherence,
     validate_disclosures_bundle,
 )
 from src.runtime.sources import HOUSE_DISCLOSURES, SENATE_DISCLOSURES

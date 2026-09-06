@@ -22,7 +22,6 @@ from .contracts import (
 )
 from .manifest import ManifestEntry, SnapshotManifest, manifest_root_sha256
 
-
 # ── Internal helpers ───────────────────────────────────────────────
 
 

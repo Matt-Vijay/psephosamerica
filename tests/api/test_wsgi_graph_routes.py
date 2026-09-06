@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Iterable
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 
 from src.api.graph_http import GraphService
 from src.api.wsgi_app import PredictionWsgiApp
@@ -73,7 +73,7 @@ def _served() -> ServedPrediction:
                 label="Prior vote",
                 source_url="https://clerk.house.gov/Votes/1",
                 content_sha256="f" * 64,
-                retrieved_at=datetime(2025, 1, 1, tzinfo=timezone.utc),
+                retrieved_at=datetime(2025, 1, 1, tzinfo=UTC),
                 contribution=0.5,
             )
         ],
@@ -83,9 +83,7 @@ def _served() -> ServedPrediction:
 
 
 def _app() -> PredictionWsgiApp:
-    snapshot = build_prediction_snapshot(
-        [_served()], generated_at=datetime(2025, 2, 2, tzinfo=timezone.utc)
-    )
+    snapshot = build_prediction_snapshot([_served()], generated_at=datetime(2025, 2, 2, tzinfo=UTC))
     service = PredictionReadService(
         snapshot=snapshot,
         rate_limiter=TokenBucketRateLimiter(capacity=100, refill_per_second=1.0),

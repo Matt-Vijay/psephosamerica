@@ -33,6 +33,7 @@ from src.prediction.contracts import (
     PredictionSourceIndexPayload,
     PredictionTopologyPayload,
 )
+
 from .contracts import (
     EvidenceCardPayload,
     MemberHistoryPayload,
@@ -45,39 +46,39 @@ from .writer import (
     evidence_path,
     history_bootstrap_path,
     history_coverage_path,
-    history_event_path,
     history_event_page_path,
+    history_event_path,
     history_preset_range_path,
     homepage_bootstrap_path,
     manifest_path,
     member_change_summary_path,
-    member_history_coverage_path,
-    member_history_coverage_index_path,
     member_history_chart_path,
+    member_history_coverage_index_path,
+    member_history_coverage_path,
     member_history_page_path,
     member_history_path,
+    member_page_payload_path,
+    member_path,
+    member_preset_compare_path,
+    member_timeline_dimension_path,
     member_timeline_index_path,
     member_timeline_page_path,
-    member_timeline_dimension_path,
     member_timeline_year_path,
-    member_page_payload_path,
-    member_preset_compare_path,
-    member_path,
     member_trend_summary_path,
     movement_window_path,
     ontology_agent_tools_path,
     ontology_edges_path,
     ontology_frontend_client_path,
     ontology_frontend_contract_path,
-    ontology_frontend_types_path,
     ontology_frontend_index_path,
+    ontology_frontend_types_path,
     ontology_index_path,
-    ontology_member_features_path,
     ontology_member_edges_path,
+    ontology_member_features_path,
     ontology_schema_path,
+    prediction_bootstrap_path,
     prediction_committee_context_path,
     prediction_committee_readiness_path,
-    prediction_bootstrap_path,
     prediction_member_context_path,
     prediction_member_readiness_path,
     prediction_readiness_index_path,
@@ -87,36 +88,42 @@ from .writer import (
     prediction_source_context_path,
     prediction_source_index_path,
     prediction_topology_path,
-    snapshot_preset_compare_path,
     snapshot_index_path,
+    snapshot_preset_compare_path,
     zip_entry_path,
     zip_path,
 )
 
 if TYPE_CHECKING:
-    from src.api.contracts import HistoryBootstrapPayload
-    from src.api.contracts import HistoryEventPagePayload
-    from src.api.contracts import HistoryPresetRangePayload
-    from src.api.contracts import HomepageBootstrapPayload
-    from src.api.contracts import MemberHistoryPagePayload
-    from src.api.contracts import MemberPagePayload
-    from src.api.contracts import MemberWindowComparePayload
-    from src.export.contracts import MemberChangeSummaryPayload
-    from src.export.contracts import HistoryCoveragePayload
-    from src.export.contracts import MemberHistoryChartPayload
-    from src.export.contracts import MemberHistoryCoveragePayload
-    from src.export.contracts import MemberHistoryCoverageIndexPayload
-    from src.export.contracts import MemberTimelineEventPayload
-    from src.export.contracts import MemberTimelineIndexPayload
-    from src.export.contracts import MemberTimelinePagePayload
-    from src.export.contracts import MemberTimelineDimensionPayload
-    from src.export.contracts import MemberTimelineYearPayload
-    from src.export.contracts import MemberTrendSummaryPayload
-    from src.api.contracts import SnapshotIndexPayload
-    from src.api.contracts import ZipEntryPayload
-    from src.homepage.contracts import HomepageFeedPayload
-    from src.homepage.contracts import MovementWindowPayload
-    from src.homepage.contracts import SnapshotComparePayload
+    from src.api.contracts import (
+        HistoryBootstrapPayload,
+        HistoryEventPagePayload,
+        HistoryPresetRangePayload,
+        HomepageBootstrapPayload,
+        MemberHistoryPagePayload,
+        MemberPagePayload,
+        MemberWindowComparePayload,
+        SnapshotIndexPayload,
+        ZipEntryPayload,
+    )
+    from src.export.contracts import (
+        HistoryCoveragePayload,
+        MemberChangeSummaryPayload,
+        MemberHistoryChartPayload,
+        MemberHistoryCoverageIndexPayload,
+        MemberHistoryCoveragePayload,
+        MemberTimelineDimensionPayload,
+        MemberTimelineEventPayload,
+        MemberTimelineIndexPayload,
+        MemberTimelinePagePayload,
+        MemberTimelineYearPayload,
+        MemberTrendSummaryPayload,
+    )
+    from src.homepage.contracts import (
+        HomepageFeedPayload,
+        MovementWindowPayload,
+        SnapshotComparePayload,
+    )
 
 
 HOMEPAGE_FEED_PATH = "homepage/feed.json"

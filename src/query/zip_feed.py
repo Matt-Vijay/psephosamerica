@@ -9,8 +9,9 @@ Street-level resolution is deferred.
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from datetime import date
-from typing import Any, Literal, Mapping, Sequence, cast
+from typing import Any, Literal, cast
 
 from src.export.contracts import (
     ScoreSummary,

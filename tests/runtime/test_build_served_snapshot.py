@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 
 import numpy as np
 
-from src.prediction.per_member_model import MemberVoteExample, train_per_member_model
 from src.prediction.per_member_ensemble import train_per_member_seed_ensemble
+from src.prediction.per_member_model import MemberVoteExample, train_per_member_model
 from src.runtime.build_served_snapshot import build_served_snapshot
 from src.runtime.contract_corpus import ContractEntity, EvidenceAnchorData
 
@@ -24,7 +24,7 @@ def _entity(bioguide: str) -> ContractEntity:
                 label="house_clerk:roll021",
                 source_url="https://clerk.house.gov/evs/2023/roll021.xml",
                 content_sha256="a" * 64,
-                known_at=datetime(2023, 1, 1, tzinfo=timezone.utc),
+                known_at=datetime(2023, 1, 1, tzinfo=UTC),
             ),
         ),
     )
@@ -42,7 +42,7 @@ def test_snapshot_has_real_cited_predictions() -> None:
     snapshot = build_served_snapshot(
         _models(),
         {"A000055": _entity("A000055")},
-        generated_at=datetime(2026, 6, 9, tzinfo=timezone.utc),
+        generated_at=datetime(2026, 6, 9, tzinfo=UTC),
         known_at=date(2026, 6, 9),
         top_n=10,
     )
@@ -67,7 +67,7 @@ def test_member_without_dated_evidence_is_skipped() -> None:
                 label="future",
                 source_url="https://clerk.house.gov/x",
                 content_sha256="b" * 64,
-                known_at=datetime(2030, 1, 1, tzinfo=timezone.utc),  # after known_at
+                known_at=datetime(2030, 1, 1, tzinfo=UTC),  # after known_at
             ),
         ),
     )
@@ -79,7 +79,7 @@ def test_member_without_dated_evidence_is_skipped() -> None:
     snapshot = build_served_snapshot(
         models,
         {"B000001": late},
-        generated_at=datetime(2026, 6, 9, tzinfo=timezone.utc),
+        generated_at=datetime(2026, 6, 9, tzinfo=UTC),
         known_at=date(2026, 6, 9),
     )
     # All its evidence post-dates known_at, so it cannot be served (no citation).

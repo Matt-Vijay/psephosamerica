@@ -56,7 +56,6 @@ from src.query.homepage_feed import assemble_homepage_payload
 from src.query.member_profile import assemble_member_profile
 from tests.support.published_snapshot_fixtures import PublishedSnapshot
 
-
 # ---------------------------------------------------------------------------
 # Shared inline defaults
 # ---------------------------------------------------------------------------
@@ -334,31 +333,29 @@ class PublishedRoundtripBuilder:
     # Fluent setters
     # -----------------------------------------------------------------------
 
-    def with_snapshot_date(self, d: date) -> "PublishedRoundtripBuilder":
+    def with_snapshot_date(self, d: date) -> PublishedRoundtripBuilder:
         self._snapshot_date = d
         return self
 
-    def with_member_row_sets(self, sets: list[MemberRowSet]) -> "PublishedRoundtripBuilder":
+    def with_member_row_sets(self, sets: list[MemberRowSet]) -> PublishedRoundtripBuilder:
         self._member_row_sets = sets
         return self
 
     def with_evidence_card_row_sets(
         self, sets: list[EvidenceCardRowSet]
-    ) -> "PublishedRoundtripBuilder":
+    ) -> PublishedRoundtripBuilder:
         self._evidence_card_row_sets = sets
         return self
 
-    def with_zip_feed_row_sets(self, sets: list[ZipFeedRowSet]) -> "PublishedRoundtripBuilder":
+    def with_zip_feed_row_sets(self, sets: list[ZipFeedRowSet]) -> PublishedRoundtripBuilder:
         self._zip_feed_row_sets = sets
         return self
 
-    def no_zip_feeds(self) -> "PublishedRoundtripBuilder":
+    def no_zip_feeds(self) -> PublishedRoundtripBuilder:
         self._zip_feed_row_sets = []
         return self
 
-    def with_homepage_feed_row_set(
-        self, row_set: HomepageFeedRowSet
-    ) -> "PublishedRoundtripBuilder":
+    def with_homepage_feed_row_set(self, row_set: HomepageFeedRowSet) -> PublishedRoundtripBuilder:
         self._homepage_feed_row_set = row_set
         return self
 
@@ -396,7 +393,7 @@ class PublishedRoundtripBuilder:
     # Build
     # -----------------------------------------------------------------------
 
-    def build(self) -> "PublishedRoundtripBuilder":
+    def build(self) -> PublishedRoundtripBuilder:
         """Assemble payloads from rows, write the publish tree; returns self."""
         self._root.mkdir(parents=True, exist_ok=True)
         planned = plan_snapshot(

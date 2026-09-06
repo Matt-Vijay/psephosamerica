@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Callable
+from typing import Any
 
 from src.core.settings import Settings
 from src.normalize.taxonomy_runtime import TaxonomyRuntime

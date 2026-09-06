@@ -32,7 +32,7 @@ class OntologyFrontendContractPayload(BaseModel):
     json_schemas: dict[str, dict[str, Any]] = Field(default_factory=dict)
 
     @model_validator(mode="after")
-    def contract_is_sorted_and_complete(self) -> "OntologyFrontendContractPayload":
+    def contract_is_sorted_and_complete(self) -> OntologyFrontendContractPayload:
         if self.model_names != sorted(set(self.model_names)):
             raise ValueError("model_names must be sorted and unique")
         if set(self.model_names) != set(self.json_schemas):

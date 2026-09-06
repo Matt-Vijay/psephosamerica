@@ -20,7 +20,6 @@ from src.parse.disclosures.acquire import ArtifactMeta
 from src.parse.disclosures.source_urls import validate_official_disclosure_artifact_url
 from src.provenance.artifacts import create_source_artifact
 
-
 _MIME_BY_KIND = {
     "pdf": "application/pdf",
     "html": "text/html",

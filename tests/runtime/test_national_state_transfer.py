@@ -98,7 +98,7 @@ def test_stream_groups_by_rollcall_and_region(tmp_path: Path) -> None:
         rows.append(_edge("v2", m, "nay", "2024-02-01"))
     rows.append(_edge("v1", "ce-x9", "yea", "2024-01-01"))  # unlabeled -> dropped
     # Shuffle interleave: alternate the two roll-calls.
-    interleaved = [r for pair in zip(rows[:8], rows[8:16]) for r in pair] + rows[16:]
+    interleaved = [r for pair in zip(rows[:8], rows[8:16], strict=False) for r in pair] + rows[16:]
     _write(edges, interleaved)
     by_state, stats = stream_state_rollcalls(
         edges, index, min_rollcall_votes=5, max_rollcalls_per_state=10

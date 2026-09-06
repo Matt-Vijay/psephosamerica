@@ -5,9 +5,9 @@ Pure helpers only: no network, no database, no side effects.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from decimal import Decimal
-from typing import Optional, Sequence
 
 from src.parse.disclosures.models import Holding, OwnerType
 from src.parse.disclosures.normalize import (
@@ -16,16 +16,13 @@ from src.parse.disclosures.normalize import (
     normalize_owner_label,
 )
 
-
-# ---------------------------------------------------------------------------
 # Internal cell-level helpers
-# ---------------------------------------------------------------------------
 
 _LIQUID_TRUE: frozenset[str] = frozenset({"y", "yes", "1", "x", "true"})
 _LIQUID_FALSE: frozenset[str] = frozenset({"n", "no", "0", "false"})
 
 
-def _parse_is_liquid(raw: Optional[str]) -> Optional[bool]:
+def _parse_is_liquid(raw: str | None) -> bool | None:
     if raw is None:
         return None
     key = raw.strip().lower()
@@ -36,7 +33,7 @@ def _parse_is_liquid(raw: Optional[str]) -> Optional[bool]:
     return None
 
 
-def _parse_optional_str(raw: Optional[str]) -> Optional[str]:
+def _parse_optional_str(raw: str | None) -> str | None:
     if not raw:
         return None
     stripped = raw.strip()
@@ -44,8 +41,8 @@ def _parse_optional_str(raw: Optional[str]) -> Optional[str]:
 
 
 def _resolve_amount_range(
-    label: Optional[str],
-) -> tuple[Optional[Decimal], Optional[Decimal]]:
+    label: str | None,
+) -> tuple[Decimal | None, Decimal | None]:
     """Return (min, max) when the label is recognized, else (None, None)."""
     if not label:
         return None, None
@@ -55,9 +52,7 @@ def _resolve_amount_range(
     return None, None
 
 
-# ---------------------------------------------------------------------------
 # Public: single-row parser
-# ---------------------------------------------------------------------------
 
 
 def holding_from_cells(
@@ -65,13 +60,13 @@ def holding_from_cells(
     line_number: int,
     owner_raw: str,
     issuer_name_raw: str,
-    ticker_raw: Optional[str] = None,
-    asset_description_raw: Optional[str] = None,
-    asset_category_raw: Optional[str] = None,
-    value_label_raw: Optional[str] = None,
-    income_label_raw: Optional[str] = None,
-    is_liquid_raw: Optional[str] = None,
-    source_record_id: Optional[str] = None,
+    ticker_raw: str | None = None,
+    asset_description_raw: str | None = None,
+    asset_category_raw: str | None = None,
+    value_label_raw: str | None = None,
+    income_label_raw: str | None = None,
+    is_liquid_raw: str | None = None,
+    source_record_id: str | None = None,
 ) -> Holding:
     """Parse one holding row from explicit cell values into a Holding.
 
@@ -104,9 +99,7 @@ def holding_from_cells(
     )
 
 
-# ---------------------------------------------------------------------------
 # Public: table parser
-# ---------------------------------------------------------------------------
 
 
 @dataclass(frozen=True)
@@ -119,16 +112,16 @@ class HoldingColumnMap:
 
     owner: int
     issuer_name: int
-    ticker: Optional[int] = None
-    asset_description: Optional[int] = None
-    asset_category: Optional[int] = None
-    value_label: Optional[int] = None
-    income_label: Optional[int] = None
-    is_liquid: Optional[int] = None
-    source_record_id: Optional[int] = None
+    ticker: int | None = None
+    asset_description: int | None = None
+    asset_category: int | None = None
+    value_label: int | None = None
+    income_label: int | None = None
+    is_liquid: int | None = None
+    source_record_id: int | None = None
 
 
-def _cell(row: Sequence[str], col: Optional[int]) -> Optional[str]:
+def _cell(row: Sequence[str], col: int | None) -> str | None:
     """Return a cell value by column index, or None if absent or out of range."""
     if col is None or col < 0 or col >= len(row):
         return None

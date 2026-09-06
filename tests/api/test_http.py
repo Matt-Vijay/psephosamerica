@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import json
 import datetime as dt
+import json
 from datetime import date
 from pathlib import Path
 
@@ -12,28 +12,30 @@ from src.api.http import (
     serve_current_member_lookup_search,
     serve_history_backfill_bootstrap,
     serve_history_backfill_report,
+    serve_history_bootstrap,
     serve_history_event,
     serve_history_event_page,
-    serve_history_bootstrap,
     serve_history_preset_range,
+    serve_homepage,
     serve_homepage_bootstrap,
+    serve_last_updated,
+    serve_member,
     serve_member_change_summary,
+    serve_member_compare,
+    serve_member_history,
+    serve_member_history_chart,
     serve_member_history_coverage,
     serve_member_history_coverage_index,
-    serve_member_timeline_dimension,
-    serve_member_compare,
-    serve_member_history_chart,
+    serve_member_history_page,
+    serve_member_page,
     serve_member_preset_compare,
+    serve_member_timeline_dimension,
     serve_member_timeline_index,
     serve_member_timeline_page,
     serve_member_timeline_year,
     serve_member_window_compare,
-    serve_member_history,
-    serve_homepage,
-    serve_last_updated,
-    serve_member_page,
-    serve_member_history_page,
-    serve_member,
+    serve_movement_feed,
+    serve_movement_window,
     serve_ontology_graph,
     serve_ontology_index,
     serve_ontology_member_features,
@@ -50,14 +52,12 @@ from src.api.http import (
     serve_prediction_source_context,
     serve_prediction_source_index,
     serve_prediction_topology,
-    serve_movement_feed,
-    serve_movement_window,
     serve_search_session,
-    serve_snapshot_preset_compare,
-    serve_snapshot_index,
     serve_snapshot_compare,
-    serve_zip_entry,
+    serve_snapshot_index,
+    serve_snapshot_preset_compare,
     serve_snapshot_summary,
+    serve_zip_entry,
 )
 from src.export.builders import sha256_hex
 from src.export.contracts import (
@@ -68,14 +68,20 @@ from src.export.contracts import (
     SourceAnchor,
 )
 from src.export.local_store import HOMEPAGE_FEED_PATH
+from src.export.writer import (
+    current_member_lookup_path,
+    manifest_path,
+    member_history_path,
+    member_path,
+)
 from src.homepage.contracts import HomepageFeedPayload, MemberMovementSummary, RecentEventSummary
 from src.ontology.contracts import OntologyEdgePayload, OntologyNodeRef
+from src.pipeline.history_aggregate_run import write_history_aggregate
 from src.prediction.contracts import (
     PredictionMemberReadinessPayload,
     PredictionReadinessCoveragePayload,
     PredictionReadinessPayload,
 )
-from src.pipeline.history_aggregate_run import write_history_aggregate
 from src.runtime.history_backfill import history_backfill_report_path
 from src.runtime.history_backfill_types import (
     HistoryBackfillAggregatePayload,
@@ -84,12 +90,6 @@ from src.runtime.history_backfill_types import (
     HistoryBackfillReportPayload,
 )
 from src.runtime.inspect import load_latest_local_manifest
-from src.export.writer import (
-    current_member_lookup_path,
-    manifest_path,
-    member_history_path,
-    member_path,
-)
 from tests.support.published_snapshot_fixtures import (
     make_evidence_card,
     make_member_history,
@@ -391,7 +391,7 @@ def test_serve_member_returns_200_json_and_manifest_backed_etag(tmp_path: Path) 
 
     assert response.status_code == 200
     assert response.headers["Content-Type"] == "application/json; charset=utf-8"
-    expected_etag = sha256_hex(f"{manifest.root_sha256}:{member_entry.sha256}".encode("utf-8"))
+    expected_etag = sha256_hex(f"{manifest.root_sha256}:{member_entry.sha256}".encode())
     assert response.headers["ETag"] == f'"{expected_etag}"'
     assert _decode(response)["data"]["slug"] == "nancy-pelosi"
 
@@ -568,7 +568,7 @@ def test_serve_current_member_lookup_uses_manifest_backed_etag(tmp_path: Path) -
     )
 
     assert response.status_code == 200
-    expected_etag = sha256_hex(f"{manifest.root_sha256}:{lookup_entry.sha256}".encode("utf-8"))
+    expected_etag = sha256_hex(f"{manifest.root_sha256}:{lookup_entry.sha256}".encode())
     assert response.headers["ETag"] == f'"{expected_etag}"'
     assert _decode(response)["data"]["m"][0]["s"] == "nancy-pelosi"
 
@@ -1017,7 +1017,7 @@ def test_serve_member_history_returns_manifest_backed_etag_and_304(tmp_path: Pat
         if_none_match=first.headers["ETag"],
     )
 
-    expected_etag = sha256_hex(f"{manifest.root_sha256}:{history_entry.sha256}".encode("utf-8"))
+    expected_etag = sha256_hex(f"{manifest.root_sha256}:{history_entry.sha256}".encode())
     assert first.status_code == 200
     assert first.headers["ETag"] == f'"{expected_etag}"'
     assert _decode(first)["data"]["slug"] == "nancy-pelosi"

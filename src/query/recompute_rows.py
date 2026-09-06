@@ -14,10 +14,7 @@ from typing import Any
 
 from src.db.repositories import ConnectionLike, fetch_all
 
-
-# ---------------------------------------------------------------------------
 # fetch_recompute_members
-# ---------------------------------------------------------------------------
 
 _RECOMPUTE_MEMBERS_ALL_SQL = """
 SELECT
@@ -73,9 +70,7 @@ def fetch_recompute_members(
     return fetch_all(conn, _RECOMPUTE_MEMBERS_FILTERED_SQL, {"bioguide_ids": bioguide_ids})
 
 
-# ---------------------------------------------------------------------------
 # fetch_previous_score_snapshot_rows
-# ---------------------------------------------------------------------------
 
 _PREVIOUS_SCORE_SNAPSHOTS_SQL = """
 SELECT
@@ -108,9 +103,7 @@ def fetch_previous_score_snapshot_rows(
     return fetch_all(conn, _PREVIOUS_SCORE_SNAPSHOTS_SQL, {"member_ids": member_ids})
 
 
-# ---------------------------------------------------------------------------
 # index_latest_previous_snapshots
-# ---------------------------------------------------------------------------
 
 
 def index_latest_previous_snapshots(

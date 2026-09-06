@@ -26,7 +26,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import time
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
@@ -38,9 +37,7 @@ from src.graph.edges import GraphEdge
 from src.graph.ingest.votes import normalize_vote_choice, vote_edge, vote_provenance
 from src.ingest.congress.house_votes import parse_house_vote_xml, roll_call_url
 from src.runtime.bill_edges_export import build_bioguide_resolver
-from src.runtime.http_client import client_or_default
-
-_RETRYABLE_STATUS = frozenset({429, 500, 502, 503, 504})
+from src.runtime.http_client import client_or_default, get_with_backoff as _get_with_backoff
 
 
 def years_for_congress(congress: int) -> tuple[int, int]:
@@ -57,35 +54,6 @@ def congress_for_year(year: int) -> int:
 def session_for_year(year: int) -> int:
     """House session number for a calendar year (odd year -> 1, even -> 2)."""
     return 1 if year % 2 == 1 else 2
-
-
-def _get_with_backoff(
-    http: httpx.Client,
-    url: str,
-    *,
-    max_attempts: int = 6,
-    base_delay: float = 1.0,
-    sleep: object = time.sleep,
-) -> httpx.Response | None:
-    """GET ``url`` retrying rate-limit/transient failures; ``None`` if exhausted."""
-    delay = base_delay
-    for attempt in range(1, max_attempts + 1):
-        try:
-            resp = http.get(url, follow_redirects=True)
-        except httpx.TransportError:
-            if attempt == max_attempts:
-                return None
-            sleep(delay)  # type: ignore[operator]
-            delay *= 2
-            continue
-        if resp.status_code in _RETRYABLE_STATUS and attempt < max_attempts:
-            retry_after = resp.headers.get("retry-after")
-            wait = float(retry_after) if retry_after and retry_after.isdigit() else delay
-            sleep(wait)  # type: ignore[operator]
-            delay *= 2
-            continue
-        return resp
-    return None
 
 
 def _bill_canonical_id(congress: int, legis_num: str) -> str | None:

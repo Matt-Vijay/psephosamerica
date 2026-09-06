@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import date
 from decimal import Decimal
-from typing import Any, Optional, Sequence
+from typing import Any
 
 from src.parse.disclosures.models import (
     Filing,
@@ -15,19 +16,14 @@ from src.parse.disclosures.models import (
 )
 from src.parse.disclosures.normalize import normalize_amount_range
 
-
-# ---------------------------------------------------------------------------
 # Stable review_type constants
-# ---------------------------------------------------------------------------
 
 REVIEW_TYPE_AMENDMENT = "amendment"
 REVIEW_TYPE_NORMALIZATION = "normalization"
 REVIEW_TYPE_CLASSIFICATION = "classification"
 REVIEW_TYPE_OUTSIDE_POSITION = "outside_position"
 
-# ---------------------------------------------------------------------------
 # Stable reason_code constants
-# ---------------------------------------------------------------------------
 
 REASON_AMENDMENT_FILING = "amendment_filing"
 REASON_AMENDMENT_SUPERSEDES_MISMATCH = "amendment_supersedes_mismatch"
@@ -40,9 +36,7 @@ REASON_UNRESOLVED_TRUST = "unresolved_trust"
 REASON_NO_CANONICAL_TABLE_V1 = "no_canonical_table_v1"
 
 
-# ---------------------------------------------------------------------------
 # Parse context (caller-supplied provenance refs)
-# ---------------------------------------------------------------------------
 
 
 @dataclass(frozen=True)
@@ -53,14 +47,12 @@ class ParseContext:
     dry-run mode). Downstream writers populate them before insert.
     """
 
-    parse_run_id: Optional[int] = None
-    source_artifact_id: Optional[int] = None
-    ingestion_run_id: Optional[int] = None
+    parse_run_id: int | None = None
+    source_artifact_id: int | None = None
+    ingestion_run_id: int | None = None
 
 
-# ---------------------------------------------------------------------------
 # Canonical row payloads
-# ---------------------------------------------------------------------------
 
 
 @dataclass(frozen=True)
@@ -81,14 +73,14 @@ class FinancialDisclosurePayload:
     filing_type: str
     amendment_number: int
     is_amended: bool
-    filed_at: Optional[date] = None
-    filing_period_start: Optional[date] = None
-    filing_period_end: Optional[date] = None
-    source_record_id: Optional[str] = None
-    source_artifact_id: Optional[int] = None
-    source_artifact_sha256: Optional[str] = None
+    filed_at: date | None = None
+    filing_period_start: date | None = None
+    filing_period_end: date | None = None
+    source_record_id: str | None = None
+    source_artifact_id: int | None = None
+    source_artifact_sha256: str | None = None
     # Natural key of the superseded filing; caller resolves to FK.
-    supersedes_filing_source_id: Optional[str] = None
+    supersedes_filing_source_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -102,18 +94,18 @@ class HoldingPayload:
     line_number: int
     owner_type: str
     issuer_name: str
-    issuer_ticker: Optional[str] = None
-    asset_description: Optional[str] = None
-    asset_category: Optional[str] = None
-    value_min: Optional[Decimal] = None
-    value_max: Optional[Decimal] = None
-    value_label: Optional[str] = None
-    income_min: Optional[Decimal] = None
-    income_max: Optional[Decimal] = None
-    income_label: Optional[str] = None
-    is_liquid: Optional[bool] = None
-    source_record_id: Optional[str] = None
-    source_artifact_id: Optional[int] = None
+    issuer_ticker: str | None = None
+    asset_description: str | None = None
+    asset_category: str | None = None
+    value_min: Decimal | None = None
+    value_max: Decimal | None = None
+    value_label: str | None = None
+    income_min: Decimal | None = None
+    income_max: Decimal | None = None
+    income_label: str | None = None
+    is_liquid: bool | None = None
+    source_record_id: str | None = None
+    source_artifact_id: int | None = None
 
 
 @dataclass(frozen=True)
@@ -123,13 +115,13 @@ class TransactionPayload:
     issuer_name: str
     transaction_type: str
     transaction_date: date
-    issuer_ticker: Optional[str] = None
-    asset_description: Optional[str] = None
-    amount_min: Optional[Decimal] = None
-    amount_max: Optional[Decimal] = None
-    amount_label: Optional[str] = None
-    source_record_id: Optional[str] = None
-    source_artifact_id: Optional[int] = None
+    issuer_ticker: str | None = None
+    asset_description: str | None = None
+    amount_min: Decimal | None = None
+    amount_max: Decimal | None = None
+    amount_label: str | None = None
+    source_record_id: str | None = None
+    source_artifact_id: int | None = None
 
 
 @dataclass(frozen=True)
@@ -139,10 +131,10 @@ class OutsidePositionSidecar:
     line_number: int
     owner_type: str
     entity_name: str
-    position_title: Optional[str] = None
-    from_date: Optional[date] = None
-    to_date: Optional[date] = None
-    source_record_id: Optional[str] = None
+    position_title: str | None = None
+    from_date: date | None = None
+    to_date: date | None = None
+    source_record_id: str | None = None
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -170,16 +162,14 @@ class ReviewQueuePayload:
     reason_code: str
     priority: int  # 1 = most urgent, 100 = least urgent
     payload: dict[str, Any]
-    summary: Optional[str] = None
+    summary: str | None = None
     status: str = "open"
-    parse_run_id: Optional[int] = None
-    source_artifact_id: Optional[int] = None
-    ingestion_run_id: Optional[int] = None
+    parse_run_id: int | None = None
+    source_artifact_id: int | None = None
+    ingestion_run_id: int | None = None
 
 
-# ---------------------------------------------------------------------------
 # Transform result
-# ---------------------------------------------------------------------------
 
 
 @dataclass
@@ -194,9 +184,7 @@ class DisclosureTransformResult:
     review_items: list[ReviewQueuePayload] = field(default_factory=list)
 
 
-# ---------------------------------------------------------------------------
 # Internal review helpers
-# ---------------------------------------------------------------------------
 
 # Priority constants (1 = most urgent).
 _PRIORITY_AMENDMENT_INCONSISTENCY = 10
@@ -217,7 +205,7 @@ def _review(
     reason_code: str,
     priority: int,
     payload: dict[str, Any],
-    summary: Optional[str] = None,
+    summary: str | None = None,
 ) -> ReviewQueuePayload:
     return ReviewQueuePayload(
         review_type=review_type,
@@ -234,9 +222,7 @@ def _review(
     )
 
 
-# ---------------------------------------------------------------------------
 # Individual item transforms
-# ---------------------------------------------------------------------------
 
 
 def _transform_holding(
@@ -453,9 +439,7 @@ def _transform_outside_position(
     return sidecar
 
 
-# ---------------------------------------------------------------------------
 # Top-level transform function
-# ---------------------------------------------------------------------------
 
 
 def transform_filing(
@@ -587,9 +571,7 @@ def transform_filing(
     )
 
 
-# ---------------------------------------------------------------------------
 # Explicit batch API at the parse layer
-# ---------------------------------------------------------------------------
 
 
 @dataclass(frozen=True)

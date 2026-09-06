@@ -8,14 +8,14 @@ from __future__ import annotations
 
 import hashlib
 import json
-from datetime import datetime, timezone
-from typing import Any, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 from .models import RunStatus, StageEvent
 
 
 def _utcnow() -> datetime:
-    return datetime.now(tz=timezone.utc)
+    return datetime.now(tz=UTC)
 
 
 def _payload_hash(payload: Any) -> str:
@@ -24,15 +24,13 @@ def _payload_hash(payload: Any) -> str:
     return hashlib.sha256(raw).hexdigest()
 
 
-# ---------------------------------------------------------------------------
 # Stage event factories
-# ---------------------------------------------------------------------------
 
 
 def fetch_event(
     artifact_sha256: str,
-    source_url: Optional[str] = None,
-    notes: Optional[str] = None,
+    source_url: str | None = None,
+    notes: str | None = None,
 ) -> StageEvent:
     """Record a successful artifact fetch."""
     return StageEvent(
@@ -47,7 +45,7 @@ def fetch_event(
 
 def fetch_failed_event(
     error_message: str,
-    source_url: Optional[str] = None,
+    source_url: str | None = None,
 ) -> StageEvent:
     """Record a failed artifact fetch."""
     return StageEvent(
@@ -65,7 +63,7 @@ def parse_event(
     parser_name: str,
     parser_version: str,
     parsed_payload: Any,
-    notes: Optional[str] = None,
+    notes: str | None = None,
 ) -> StageEvent:
     """Record a successful parse of one artifact."""
     phash = _payload_hash(parsed_payload)
@@ -106,7 +104,7 @@ def parse_failed_event(
 def normalize_event(
     artifact_sha256: str,
     normalized_payload: Any,
-    notes: Optional[str] = None,
+    notes: str | None = None,
 ) -> StageEvent:
     """Record a successful normalisation step."""
     phash = _payload_hash(normalized_payload)
@@ -123,7 +121,7 @@ def normalize_event(
 def export_event(
     snapshot_sha256: str,
     export_key: str,
-    notes: Optional[str] = None,
+    notes: str | None = None,
 ) -> StageEvent:
     """Record a successful export of a snapshot artifact."""
     return StageEvent(
@@ -139,11 +137,11 @@ def export_event(
 def generic_event(
     stage: str,
     status: RunStatus,
-    artifact_sha256: Optional[str] = None,
-    payload: Optional[Any] = None,
-    error_message: Optional[str] = None,
-    notes: Optional[str] = None,
-    metadata: Optional[dict[str, Any]] = None,
+    artifact_sha256: str | None = None,
+    payload: Any | None = None,
+    error_message: str | None = None,
+    notes: str | None = None,
+    metadata: dict[str, Any] | None = None,
 ) -> StageEvent:
     """Low-level builder for any stage/status combination."""
     phash = _payload_hash(payload) if payload is not None else None

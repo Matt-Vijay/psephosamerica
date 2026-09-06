@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
@@ -23,7 +23,7 @@ def test_stage_event_rejects_invalid_artifact_sha256() -> None:
             stage="fetch",
             status="succeeded",
             artifact_sha256="z" * 64,
-            occurred_at=datetime.now(tz=timezone.utc),
+            occurred_at=datetime.now(tz=UTC),
         )
 
 
@@ -34,14 +34,14 @@ def test_stage_event_rejects_invalid_payload_hash() -> None:
             status="succeeded",
             artifact_sha256="a" * 64,
             payload_hash="not-a-sha256",
-            occurred_at=datetime.now(tz=timezone.utc),
+            occurred_at=datetime.now(tz=UTC),
         )
 
 
 def test_stage_log_append_and_final_status() -> None:
     from src.provenance.models import StageLog
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     log = StageLog(run_id=1)
     assert log.final_status is None  # empty log has no final status
 

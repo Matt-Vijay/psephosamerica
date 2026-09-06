@@ -35,8 +35,8 @@ Vote XML generators (return str):
 
 from __future__ import annotations
 
-from copy import deepcopy
 import textwrap
+from copy import deepcopy
 from typing import Any
 
 # ---------------------------------------------------------------------------

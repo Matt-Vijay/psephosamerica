@@ -11,10 +11,7 @@ from dataclasses import dataclass, field
 from pathlib import PurePosixPath
 from typing import Literal
 
-
-# ---------------------------------------------------------------------------
 # Severity
-# ---------------------------------------------------------------------------
 
 IssueSeverity = Literal["error", "warning"]
 
@@ -31,9 +28,7 @@ def path_is_confined(path: str) -> bool:
     return not p.is_absolute() and ".." not in p.parts
 
 
-# ---------------------------------------------------------------------------
 # PublishVerifyIssue
-# ---------------------------------------------------------------------------
 
 
 @dataclass(frozen=True)
@@ -53,9 +48,7 @@ class PublishVerifyIssue:
     path: str | None = field(default=None)
 
 
-# ---------------------------------------------------------------------------
 # PublishVerifyStageResult
-# ---------------------------------------------------------------------------
 
 
 @dataclass(frozen=True)
@@ -86,9 +79,7 @@ class PublishVerifyStageResult:
         return sum(1 for i in self.issues if i.severity == "warning")
 
 
-# ---------------------------------------------------------------------------
 # PublishVerifyResult
-# ---------------------------------------------------------------------------
 
 
 @dataclass(frozen=True)

@@ -7,21 +7,19 @@ import json
 import os
 import re
 import shutil
-
 from pathlib import Path
-from src.runtime.prediction_operator_resume_run import verify_prediction_operator_resume_run
 from types import SimpleNamespace
 from typing import Any, cast
 
 from src.runtime.commands._shared import (
-    _list_or_empty,
-    _dict_or_empty,
     _OPERATOR_EVAL_WINDOW_RUN_GATE_SOURCE_STATE_KEYS,
     _PREDICTION_OPERATOR_RESUME_PLAN_SAMPLE_STRING_KEYS,
     _attach_optional_verification_output,
+    _dict_or_empty,
     _is_non_negative_plain_int,
     _is_plain_int,
     _is_sha256_hex,
+    _list_or_empty,
     _load_json_object_or_none,
     _optional_file_sha256,
     _plain_int_or_zero,
@@ -29,15 +27,10 @@ from src.runtime.commands._shared import (
     _string_list,
     _write_json_artifact,
 )
-from src.runtime.commands.runtime_env import _read_dotenv_key_presence
 from src.runtime.commands.core import (
     _path_from_payload,
     _source_family_id_list,
     _write_text_artifact,
-)
-from src.runtime.commands.prediction_readiness import (
-    _prediction_readiness_eval_window_run_summary,
-    _prediction_resume_script_secret_literal_failures,
 )
 from src.runtime.commands.operator_reports import (
     _load_operator_handoff_payload,
@@ -80,6 +73,12 @@ from src.runtime.commands.operator_reports import (
     _operator_status_source_state_mismatch_issues,
     _prediction_operator_sample_scoped_id_issues,
 )
+from src.runtime.commands.prediction_readiness import (
+    _prediction_readiness_eval_window_run_summary,
+    _prediction_resume_script_secret_literal_failures,
+)
+from src.runtime.commands.runtime_env import _read_dotenv_key_presence
+from src.runtime.prediction_operator_resume_run import verify_prediction_operator_resume_run
 
 
 def _handle_verify_prediction_operator_resume_run(args: Any) -> dict[str, Any]:

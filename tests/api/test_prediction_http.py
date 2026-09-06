@@ -8,7 +8,7 @@ an unknown pair, 429 with a Retry-After header when the client is rate limited.
 from __future__ import annotations
 
 import json
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 
 from src.api.prediction_http import serve_prediction
 from src.prediction.read_api import (
@@ -43,7 +43,7 @@ def _served(person: str, bill: str) -> ServedPrediction:
                 label="Prior vote",
                 source_url="https://clerk.house.gov/Votes/1",
                 content_sha256=_SHA,
-                retrieved_at=datetime(2025, 1, 1, tzinfo=timezone.utc),
+                retrieved_at=datetime(2025, 1, 1, tzinfo=UTC),
                 contribution=0.5,
             )
         ],
@@ -55,7 +55,7 @@ def _served(person: str, bill: str) -> ServedPrediction:
 def _service(*, capacity: int = 10, refill: float = 1.0) -> PredictionReadService:
     snapshot = build_prediction_snapshot(
         [_served("person:a", "bill:1")],
-        generated_at=datetime(2025, 2, 2, tzinfo=timezone.utc),
+        generated_at=datetime(2025, 2, 2, tzinfo=UTC),
     )
     return PredictionReadService(
         snapshot=snapshot,

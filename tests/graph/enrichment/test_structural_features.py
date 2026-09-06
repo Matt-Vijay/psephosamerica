@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from datetime import UTC, date, datetime
 
-
 from src.graph.bills import BillRef
 from src.graph.contracts import build_entity_resolution_output
 from src.graph.edges import RECOMMENDED_EDGE_TYPES

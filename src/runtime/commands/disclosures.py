@@ -3,10 +3,17 @@
 from __future__ import annotations
 
 import datetime as dt
-
 from pathlib import Path
+from typing import Any
+
 from src.parse.disclosures.transform import DisclosureTransformResult
 from src.runtime.app import build_runtime, open_runtime_connection
+from src.runtime.commands._shared import (
+    _artifact_root_or_default,
+    _command_issue_result,
+    _optional_limit_issue,
+    _positive_int_sequence_issues,
+)
 from src.runtime.context import RuntimeContext, open_connection
 from src.runtime.disclosures import DisclosuresLoadRuntimeResult, run_disclosures_load_runtime
 from src.runtime.disclosures_artifacts import run_disclosure_artifact_ingest
@@ -27,14 +34,6 @@ from src.runtime.output import (
     summarize_disclosures_bundle_process_result,
     summarize_parse_disclosures_result,
     summarize_process_disclosures_result,
-)
-from typing import Any
-
-from src.runtime.commands._shared import (
-    _artifact_root_or_default,
-    _command_issue_result,
-    _optional_limit_issue,
-    _positive_int_sequence_issues,
 )
 
 

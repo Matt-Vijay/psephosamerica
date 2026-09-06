@@ -103,7 +103,6 @@ def test_backfill_writes_persons_and_edges(tmp_path: Path) -> None:
     assert {p["display_name"] for p in person_rows} == {
         "Ada Alpha",
         "Bob Alpha",
-        "Ada Alpha",
     } or len(person_rows) == 3
 
 

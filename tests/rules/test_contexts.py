@@ -20,11 +20,10 @@ from src.rules.contexts import (
     count_matching_transactions,
     days_gap,
     midpoint_value,
-    overlap_days,
     overdue_days,
+    overlap_days,
     sectors_overlap,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers

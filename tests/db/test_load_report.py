@@ -5,14 +5,13 @@ from __future__ import annotations
 import pytest
 
 from src.db.load_report import (
+    LoadSummary,
     TableWriteResult,
     WarnErrorSummary,
-    LoadSummary,
     build_load_summary,
     merge_table_results,
     status_dict,
 )
-
 
 # ---------------------------------------------------------------------------
 # TableWriteResult

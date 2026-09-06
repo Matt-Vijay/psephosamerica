@@ -35,8 +35,8 @@ from src.runtime.disclosures_bundle import (
 from src.runtime.disclosures_bundle_files import Sha256Mismatch
 from src.runtime.disclosures_bundle_process import (
     DisclosuresBundleProcessResult,
-    _BundleIndexProvider,
     _build_parse_inputs,
+    _BundleIndexProvider,
     run_disclosures_bundle_process,
 )
 from src.runtime.disclosures_stage import DisclosureStagingResult

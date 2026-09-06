@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional
 
 from src.parse.disclosures.models import Chamber
 
@@ -75,7 +74,7 @@ class PdfHeuristicInput:
     has_impossible_dates: bool = False
     has_duplicate_header_rows: bool = False
     has_unresolved_options_or_trusts: bool = False
-    member_name_match_score: Optional[float] = None
+    member_name_match_score: float | None = None
     is_ptr: bool = False
 
 

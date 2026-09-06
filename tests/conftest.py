@@ -7,8 +7,9 @@ helpers live in tests/support/.
 
 from __future__ import annotations
 
-import pytest
 from pathlib import Path
+
+import pytest
 
 from tests.support.network_guard import NetworkGuard
 

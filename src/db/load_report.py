@@ -5,13 +5,11 @@ Pure in-memory types — no database calls.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import Any, Sequence
+from typing import Any
 
-
-# ---------------------------------------------------------------------------
 # Core types
-# ---------------------------------------------------------------------------
 
 
 @dataclass(frozen=True)
@@ -96,9 +94,7 @@ class LoadSummary:
         return not self.warn_error.has_errors
 
 
-# ---------------------------------------------------------------------------
 # Helpers
-# ---------------------------------------------------------------------------
 
 
 def merge_table_results(results: Sequence[TableWriteResult]) -> TableWriteResult:
@@ -176,3 +172,17 @@ def status_dict(summary: LoadSummary) -> dict[str, Any]:
             for r in summary.table_results
         ],
     }
+
+
+def merge_load_summaries(
+    summaries: list[LoadSummary],
+    *,
+    run_id: int,
+) -> LoadSummary:
+    warn_error = WarnErrorSummary()
+    table_results: list[TableWriteResult] = []
+    for summary in summaries:
+        table_results.extend(summary.table_results)
+        warn_error.warnings.extend(summary.warn_error.warnings)
+        warn_error.errors.extend(summary.warn_error.errors)
+    return build_load_summary(table_results, warn_error=warn_error, run_id=run_id)

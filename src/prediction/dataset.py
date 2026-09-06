@@ -10,7 +10,6 @@ from src.evidence.source_anchor_policy import (
     is_official_source_url,
 )
 from src.export.contracts import SourceAnchor
-from src.prediction.source_anchors import describe_missing_legislative_source_context
 from src.prediction.backtest import (
     PredictionBacktestPayload,
     PredictionBacktestPredictionPayload,
@@ -18,6 +17,7 @@ from src.prediction.backtest import (
     build_vote_ontology_backtest,
 )
 from src.prediction.llm_semantics import BillSemanticPayload
+from src.prediction.source_anchors import describe_missing_legislative_source_context
 
 if TYPE_CHECKING:
     from src.ontology.contracts import OntologyEdgePayload
@@ -197,7 +197,7 @@ class PredictionEvalDatasetPayload(BaseModel):
 
     @model_validator(mode="after")
     def feature_matrix_is_dense(self) -> Self:
-        _validate_eval_dataset_windows(
+        validate_eval_windows(
             training_feature_cutoff=self.training_feature_cutoff,
             train_start=self.train_start,
             train_end=self.train_end,
@@ -249,7 +249,7 @@ def build_prediction_eval_dataset(
     evaluation_statement_signal_rows: list[dict[str, Any]] | None = None,
 ) -> PredictionEvalDatasetPayload:
     """Build dense train/eval feature matrices from the same cutoff-safe scorer inputs."""
-    _validate_eval_dataset_windows(
+    validate_eval_windows(
         training_feature_cutoff=training_feature_cutoff,
         train_start=train_start,
         train_end=train_end,
@@ -331,7 +331,7 @@ def build_prediction_eval_dataset_from_backtests(
     evaluation_backtest: PredictionBacktestPayload,
 ) -> PredictionEvalDatasetPayload:
     """Build the dataset artifact when ontology backtests were already computed."""
-    _validate_eval_dataset_windows(
+    validate_eval_windows(
         training_feature_cutoff=training_feature_cutoff,
         train_start=train_start,
         train_end=train_end,
@@ -361,7 +361,7 @@ def build_prediction_eval_dataset_from_backtests(
     )
 
 
-def _validate_eval_dataset_windows(
+def validate_eval_windows(
     *,
     training_feature_cutoff: date,
     train_start: date,

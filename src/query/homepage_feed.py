@@ -29,13 +29,13 @@ class _RankedDate(dt.date):
         day: int,
         *,
         rank: float | None = None,
-    ) -> "_RankedDate":
+    ) -> _RankedDate:
         obj = super().__new__(cls, year, month, day)
         obj._rank = float(rank if rank is not None else dt.date.toordinal(obj))
         return obj
 
     @classmethod
-    def from_datetime(cls, value: dt.datetime) -> "_RankedDate":
+    def from_datetime(cls, value: dt.datetime) -> _RankedDate:
         rank = (
             value.toordinal() * 86400
             + value.hour * 3600

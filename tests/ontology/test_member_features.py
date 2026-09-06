@@ -3,8 +3,8 @@ from __future__ import annotations
 from src.export.contracts import SourceAnchor
 from src.ontology.contracts import (
     OntologyEdgePayload,
-    OntologyMemberGraphPayload,
     OntologyMemberFeaturesPayload,
+    OntologyMemberGraphPayload,
     OntologyNodeRef,
     OntologySectorExposurePayload,
 )

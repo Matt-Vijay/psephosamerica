@@ -6,6 +6,7 @@ No network calls: index fetch functions and live vote batch functions are mocked
 from __future__ import annotations
 
 import datetime
+from dataclasses import FrozenInstanceError
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -18,7 +19,6 @@ from src.runtime.congress_votes import (
     fetch_house_vote_records,
     fetch_senate_vote_records,
 )
-
 
 # ---------------------------------------------------------------------------
 # Shared record builders
@@ -101,7 +101,7 @@ class TestVoteFetchResult:
 
     def test_is_frozen(self) -> None:
         result = VoteFetchResult(vote_events=[], vote_casts=[])
-        with pytest.raises(Exception):
+        with pytest.raises(FrozenInstanceError):
             result.vote_events = []  # type: ignore[misc]
 
 

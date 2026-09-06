@@ -135,7 +135,7 @@ def _ingest_govinfo_text(
 ) -> int:
     count = 0
     for record in load_govinfo_manifest(output_root):
-        relative = str(getattr(record, "relative_path"))
+        relative = str(record.relative_path)
         raw_path = Path(relative)
         if not raw_path.is_absolute():
             raw_path = output_root / raw_path
@@ -145,16 +145,14 @@ def _ingest_govinfo_text(
                 f"GovInfo text object is not inventoried: {raw_path}; rerun inventory after fetch-text"
             )
         parsed = parse_bill_text_xml(raw_path.read_bytes())
-        package = parse_package_id(str(getattr(record, "package_id")))
+        package = parse_package_id(str(record.package_id))
         issued = parsed.issued_date or getattr(record, "issued_date", None)
-        observed = getattr(record, "observed_at")
+        observed = record.observed_at
         available = issued if issued is not None else observed
         basis = "official_publication" if issued is not None else "local_observation"
-        revision = int(getattr(record, "revision"))
+        revision = int(record.revision)
         artifact_url = (
-            entry.source_url
-            or getattr(record, "acquisition_url", None)
-            or str(getattr(record, "source_url"))
+            entry.source_url or getattr(record, "acquisition_url", None) or str(record.source_url)
         )
         sink.write(
             {

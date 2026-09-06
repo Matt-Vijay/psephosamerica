@@ -12,15 +12,13 @@ sector_holdings_overlap).
 
 from __future__ import annotations
 
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from src.db.repositories import ConnectionLike, fetch_all
 from src.normalize.taxonomy_runtime import CommitteeMapping
 
-
-# ---------------------------------------------------------------------------
 # late_or_amended_disclosure — fully DB-backed
-# ---------------------------------------------------------------------------
 
 _LATE_OR_AMENDED_SQL = """
 SELECT
@@ -56,9 +54,7 @@ def fetch_late_or_amended_rows(
     )
 
 
-# ---------------------------------------------------------------------------
 # committee_membership — base rows (sector enrichment injected by caller)
-# ---------------------------------------------------------------------------
 
 _COMMITTEE_MEMBERSHIP_SQL = """
 SELECT
@@ -97,9 +93,7 @@ def fetch_committee_membership_rows(
     return fetch_all(conn, _COMMITTEE_MEMBERSHIP_SQL, {"bioguide_ids": bioguide_ids})
 
 
-# ---------------------------------------------------------------------------
 # holdings — base rows
-# ---------------------------------------------------------------------------
 
 _HOLDINGS_SQL = """
 SELECT
@@ -143,9 +137,7 @@ def fetch_holding_rows(
     )
 
 
-# ---------------------------------------------------------------------------
 # transactions — base rows
-# ---------------------------------------------------------------------------
 
 _TRANSACTIONS_SQL = """
 SELECT
@@ -192,9 +184,7 @@ def fetch_transaction_rows(
     )
 
 
-# ---------------------------------------------------------------------------
 # FEC contributions — base rows
-# ---------------------------------------------------------------------------
 
 _CONTRIBUTIONS_SQL = """
 SELECT
@@ -263,9 +253,7 @@ def _relation_exists(conn: ConnectionLike, relation_name: str) -> bool:
     return bool(rows[0].get("exists"))
 
 
-# ---------------------------------------------------------------------------
 # assemble_* helpers — sector-dependent families
-# ---------------------------------------------------------------------------
 
 IssuerSectorResolver = Callable[[str, str | None], str | None]
 """callable(issuer_name, issuer_ticker) -> sector slug or None"""

@@ -14,9 +14,10 @@ import json
 import os
 import re
 import tempfile
+from collections.abc import Iterable, Sequence
 from datetime import UTC, datetime
 from pathlib import Path, PurePosixPath
-from typing import Any, Iterable, Sequence
+from typing import Any
 from urllib.parse import parse_qsl, urlsplit
 
 import httpx
@@ -421,7 +422,12 @@ def _verify_acquisition_artifact(store_root: Path, row: dict[str, Any]) -> None:
             raise ProbeError("invalid source relationship")
         relation = relationship["type"]
         target = relationship["target"]
-        if not isinstance(relation, str) or not relation or not isinstance(target, str) or not target:
+        if (
+            not isinstance(relation, str)
+            or not relation
+            or not isinstance(target, str)
+            or not target
+        ):
             raise ProbeError("empty source relationship")
         key = (relation, target)
         if key in seen_relationships:
@@ -485,8 +491,13 @@ def acquire_one(
             if existing.get("identifier") != identifier:
                 raise ProbeError("existing receipt uses a different identifier for this source URL")
             if existing.get("kind") != kind:
-                raise ProbeError("existing receipt uses a different kind for this identifier and URL")
-            if requested_relationships and existing.get("source_relationships") != requested_relationships:
+                raise ProbeError(
+                    "existing receipt uses a different kind for this identifier and URL"
+                )
+            if (
+                requested_relationships
+                and existing.get("source_relationships") != requested_relationships
+            ):
                 raise ProbeError("existing receipt uses different source relationships")
             return existing
 
@@ -515,7 +526,9 @@ def acquire_one(
                     except ValueError as exc:
                         raise ProbeError("invalid Content-Length from official source") from exc
                     if network_bytes + declared_size > cap_bytes:
-                        raise ProbeError("declared response size exceeds cumulative acquisition cap")
+                        raise ProbeError(
+                            "declared response size exceeds cumulative acquisition cap"
+                        )
                 for chunk in response.iter_bytes():
                     byte_count += len(chunk)
                     if network_bytes + byte_count > cap_bytes:
@@ -536,7 +549,9 @@ def acquire_one(
             media_type=media_type,
             path=temporary,
         )
-        object_path = store_root / "sha256" / hexdigest[:2] / f"{hexdigest}{_suffix(final_url, media_type)}"
+        object_path = (
+            store_root / "sha256" / hexdigest[:2] / f"{hexdigest}{_suffix(final_url, media_type)}"
+        )
         object_path.parent.mkdir(parents=True, exist_ok=True)
         if object_path.exists():
             actual_digest, actual_size = _sha256_file(object_path)
@@ -586,7 +601,9 @@ def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
 
-    inventory = commands.add_parser("inventory", help="re-hash the existing official GPO sample cache")
+    inventory = commands.add_parser(
+        "inventory", help="re-hash the existing official GPO sample cache"
+    )
     inventory.add_argument("--time-machine-root", type=Path, default=Path("data/time_machine"))
     inventory.add_argument("--output", type=Path, required=True)
 

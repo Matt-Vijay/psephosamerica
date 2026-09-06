@@ -5,8 +5,8 @@ from datetime import date
 import pytest
 
 from src.graph.ingest.senate import (
-    SenateRollCall,
     SenateMemberVote,
+    SenateRollCall,
     bill_canonical_id_for,
     parse_senate_rollcall_xml,
 )

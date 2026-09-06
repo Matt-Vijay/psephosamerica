@@ -25,7 +25,7 @@ from src.runtime.publish_roundtrip_types import PublishRoundtripStageResult
 # Shared constants
 # ---------------------------------------------------------------------------
 
-_UTC = dt.timezone.utc
+_UTC = dt.UTC
 _RENDERED_AT = dt.datetime(2025, 4, 1, 10, 0, 0, tzinfo=_UTC)
 _CREATED_AT = dt.datetime(2025, 4, 1, 10, 0, 0, tzinfo=_UTC)
 _SNAPSHOT_ID = "2025-04-01"

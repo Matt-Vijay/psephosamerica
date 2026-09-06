@@ -5,7 +5,6 @@ from collections.abc import Iterable
 from src.evidence.source_anchor_policy import is_official_source_url
 from src.export.contracts import SourceAnchor
 
-
 _LEGISLATIVE_SOURCE_TYPES = frozenset({"legislative_bill", "legislative_vote"})
 SourceAnchorIdentity = tuple[str, str] | tuple[str, str, str | None, str | None, str | None]
 

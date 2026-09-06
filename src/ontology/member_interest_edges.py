@@ -4,8 +4,8 @@ import datetime as dt
 import hashlib
 from typing import Any
 
-from src.export.contracts import SourceAnchor
 from src.evidence.source_anchor_policy import is_official_source_url
+from src.export.contracts import SourceAnchor
 from src.ontology.contracts import OntologyEdgePayload, OntologyNodeRef
 
 

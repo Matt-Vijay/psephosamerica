@@ -11,34 +11,50 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Literal
 
-from src.export.contracts import (
-    EvidenceCardPayload,
-    HistoryCoveragePayload,
-    MemberChangeSummaryPayload,
-    MemberHistoryChartPayload,
-    MemberHistoryCoveragePayload,
-    MemberHistoryCoverageIndexPayload,
-    MemberTimelineDimensionPayload,
-    MemberTimelineEventPayload,
-    MemberTimelineIndexPayload,
-    MemberTimelinePagePayload,
-    MemberTimelineYearPayload,
-    MemberHistoryPayload,
-    MemberTrendSummaryPayload,
-)
-from src.export.local_store import manifest_published_at, manifest_snapshot_date
-from src.homepage.contracts import (
-    MemberMovementSummary,
-    MovementWindowPayload,
-    RecentEventSummary,
-    SnapshotComparePayload,
-)
 from src.api.contracts import (
     ApiEnvelope,
     ArtifactCounts,
     BatchMeta,
     CurrentMemberLookupResponse,
     EvidenceResponse,
+    HistoryBackfillBootstrapPayload,
+    HistoryBackfillBootstrapResponse,
+    HistoryBackfillFailurePayload,
+    HistoryBootstrapPayload,
+    HistoryBootstrapResponse,
+    HistoryEventPagePayload,
+    HistoryEventPageResponse,
+    HistoryEventResponse,
+    HistoryPresetRangePayload,
+    HistoryPresetRangeResponse,
+    HomepageBootstrapPayload,
+    HomepageBootstrapResponse,
+    HomepageResponse,
+    LastUpdatedResponse,
+    MemberChangeSummaryResponse,
+    MemberComparePayload,
+    MemberCompareResponse,
+    MemberCompareScoreRow,
+    MemberHistoryChartResponse,
+    MemberHistoryCoverageIndexResponse,
+    MemberHistoryCoverageResponse,
+    MemberHistoryPagePayload,
+    MemberHistoryPageResponse,
+    MemberHistoryResponse,
+    MemberPagePayload,
+    MemberPageResponse,
+    MemberResponse,
+    MemberTimelineDimensionResponse,
+    MemberTimelineIndexResponse,
+    MemberTimelinePageResponse,
+    MemberTimelineYearResponse,
+    MemberTrendSummaryResponse,
+    MemberWindowComparePayload,
+    MemberWindowCompareResponse,
+    MovementFeedPayload,
+    MovementFeedResponse,
+    MovementWindowResponse,
+    NotFoundBody,
     OntologyGraphResponse,
     OntologyIndexResponse,
     OntologyMemberFeaturesResponse,
@@ -55,44 +71,6 @@ from src.api.contracts import (
     PredictionSourceContextResponse,
     PredictionSourceIndexResponse,
     PredictionTopologyResponse,
-    HistoryBackfillFailurePayload,
-    HistoryBackfillBootstrapPayload,
-    HistoryBackfillBootstrapResponse,
-    HistoryBootstrapPayload,
-    HistoryBootstrapResponse,
-    HistoryEventPagePayload,
-    HistoryEventPageResponse,
-    HistoryEventResponse,
-    HistoryPresetRangePayload,
-    HistoryPresetRangeResponse,
-    HomepageBootstrapPayload,
-    HomepageBootstrapResponse,
-    HomepageResponse,
-    LastUpdatedResponse,
-    MemberChangeSummaryResponse,
-    MemberHistoryChartResponse,
-    MemberHistoryCoverageResponse,
-    MemberHistoryCoverageIndexResponse,
-    MemberHistoryResponse,
-    MemberComparePayload,
-    MemberCompareResponse,
-    MemberHistoryPagePayload,
-    MemberHistoryPageResponse,
-    MemberTimelineDimensionResponse,
-    MemberTimelineIndexResponse,
-    MemberTimelinePageResponse,
-    MemberTimelineYearResponse,
-    MemberWindowComparePayload,
-    MemberWindowCompareResponse,
-    MemberCompareScoreRow,
-    MemberPagePayload,
-    MemberPageResponse,
-    MovementFeedPayload,
-    MovementFeedResponse,
-    MemberTrendSummaryResponse,
-    MovementWindowResponse,
-    MemberResponse,
-    NotFoundBody,
     SearchSessionPayload,
     SearchSessionResponse,
     SearchSessionResult,
@@ -111,6 +89,32 @@ from src.api.read_api import (
     not_found,
     wrap_current_member_lookup,
     wrap_evidence,
+    wrap_history_backfill_bootstrap,
+    wrap_history_backfill_report,
+    wrap_history_bootstrap,
+    wrap_history_event,
+    wrap_history_event_page,
+    wrap_history_preset_range,
+    wrap_homepage,
+    wrap_homepage_bootstrap,
+    wrap_last_updated,
+    wrap_member,
+    wrap_member_change_summary,
+    wrap_member_compare,
+    wrap_member_history,
+    wrap_member_history_chart,
+    wrap_member_history_coverage,
+    wrap_member_history_coverage_index,
+    wrap_member_history_page,
+    wrap_member_page,
+    wrap_member_timeline_dimension,
+    wrap_member_timeline_index,
+    wrap_member_timeline_page,
+    wrap_member_timeline_year,
+    wrap_member_trend_summary,
+    wrap_member_window_compare,
+    wrap_movement_feed,
+    wrap_movement_window,
     wrap_ontology_graph,
     wrap_ontology_index,
     wrap_ontology_member_features,
@@ -127,77 +131,97 @@ from src.api.read_api import (
     wrap_prediction_source_context,
     wrap_prediction_source_index,
     wrap_prediction_topology,
-    wrap_history_backfill_bootstrap,
-    wrap_history_backfill_report,
-    wrap_homepage,
-    wrap_history_bootstrap,
-    wrap_history_event_page,
-    wrap_history_event,
-    wrap_history_preset_range,
-    wrap_homepage_bootstrap,
-    wrap_last_updated,
-    wrap_member_history,
-    wrap_member_history_chart,
-    wrap_member_history_coverage,
-    wrap_member_history_coverage_index,
-    wrap_member_history_page,
-    wrap_member_timeline_dimension,
-    wrap_member_timeline_index,
-    wrap_member_timeline_page,
-    wrap_member_timeline_year,
-    wrap_member_change_summary,
-    wrap_member_compare,
-    wrap_member_window_compare,
-    wrap_member,
-    wrap_member_page,
-    wrap_member_trend_summary,
-    wrap_movement_feed,
-    wrap_movement_window,
     wrap_search_session,
     wrap_snapshot_compare,
     wrap_snapshot_index,
     wrap_snapshot_summary,
-    wrap_zip_entry,
     wrap_zip,
+    wrap_zip_entry,
+)
+from src.export.contracts import (
+    EvidenceCardPayload,
+    HistoryCoveragePayload,
+    MemberChangeSummaryPayload,
+    MemberHistoryChartPayload,
+    MemberHistoryCoverageIndexPayload,
+    MemberHistoryCoveragePayload,
+    MemberHistoryPayload,
+    MemberTimelineDimensionPayload,
+    MemberTimelineEventPayload,
+    MemberTimelineIndexPayload,
+    MemberTimelinePagePayload,
+    MemberTimelineYearPayload,
+    MemberTrendSummaryPayload,
+)
+from src.export.local_store import manifest_published_at, manifest_snapshot_date
+from src.export.writer import build_member_page_payload
+from src.homepage.builders import build_featured_lookup_entries
+from src.homepage.contracts import (
+    MemberMovementSummary,
+    MovementWindowPayload,
+    RecentEventSummary,
+    SnapshotComparePayload,
 )
 from src.identity.current_member_lookup import (
     CurrentMemberLookupEntry,
     search_current_member_lookup as _search_current_member_lookup,
 )
-from src.export.writer import build_member_page_payload
+from src.query.history_products import (
+    build_history_coverage,
+    build_latest_movement_window,
+    build_member_change_summary,
+    build_member_history_chart,
+    build_member_history_coverage,
+    build_member_history_coverage_index,
+    build_member_timeline_dimension,
+    build_member_timeline_events,
+    build_member_timeline_index,
+    build_member_timeline_page,
+    build_member_timeline_year,
+    build_member_trend_summary,
+    build_member_window_change_summary,
+    build_movement_window,
+    build_snapshot_compare_payload,
+    build_snapshot_compare_presets,
+)
+from src.runtime.history_backfill_types import (
+    HistoryBackfillReportPayload,
+    history_backfill_report_path,
+)
 from src.runtime.inspect import (
+    list_local_snapshot_ids,
     load_latest_local_manifest,
     load_latest_local_snapshot_metadata,
     load_local_current_member_lookup,
     load_local_evidence_card,
     load_local_history_backfill_report,
-    load_local_history_event,
-    load_local_history_event_page,
     load_local_history_bootstrap,
     load_local_history_coverage,
+    load_local_history_event,
+    load_local_history_event_page,
     load_local_history_preset_range,
     load_local_homepage_bootstrap,
     load_local_homepage_feed,
     load_local_manifest,
     load_local_member_change_summary,
+    load_local_member_history,
+    load_local_member_history_chart,
     load_local_member_history_coverage,
     load_local_member_history_coverage_index,
-    load_local_member_history_chart,
-    load_local_member_history,
     load_local_member_history_page,
+    load_local_member_page,
+    load_local_member_preset_compare,
+    load_local_member_profile,
     load_local_member_timeline_dimension,
     load_local_member_timeline_index,
     load_local_member_timeline_page,
     load_local_member_timeline_year,
-    load_local_member_page,
-    load_local_member_preset_compare,
     load_local_member_trend_summary,
     load_local_movement_window,
-    load_local_member_profile,
     load_local_ontology_edges,
     load_local_ontology_index,
-    load_local_ontology_member_features,
     load_local_ontology_member_edges,
+    load_local_ontology_member_features,
     load_local_prediction_bootstrap,
     load_local_prediction_committee_context,
     load_local_prediction_committee_readiness,
@@ -210,36 +234,12 @@ from src.runtime.inspect import (
     load_local_prediction_source_context,
     load_local_prediction_source_index,
     load_local_prediction_topology,
-    load_local_snapshot_preset_compare,
     load_local_snapshot_index,
+    load_local_snapshot_preset_compare,
     load_local_zip_entry,
     load_local_zip_feed,
-    list_local_snapshot_ids,
-)
-from src.runtime.history_backfill_types import (
-    HistoryBackfillReportPayload,
-    history_backfill_report_path,
 )
 from src.runtime.paths import local_publish_root
-from src.query.history_products import (
-    build_movement_window,
-    build_latest_movement_window,
-    build_history_coverage,
-    build_member_change_summary,
-    build_member_history_coverage,
-    build_member_history_coverage_index,
-    build_member_history_chart,
-    build_member_timeline_dimension,
-    build_member_timeline_events,
-    build_member_timeline_index,
-    build_member_timeline_page,
-    build_member_timeline_year,
-    build_member_window_change_summary,
-    build_snapshot_compare_presets,
-    build_member_trend_summary,
-    build_snapshot_compare_payload,
-)
-from src.homepage.builders import build_featured_lookup_entries
 
 _SNAPSHOT_PRESET_KEYS = frozenset({"latest", "4w", "12w", "cycle"})
 
@@ -1016,7 +1016,7 @@ def _load_member_history_chart_payload(
         history = load_local_member_history(slug, snapshot_root=snapshot_root)
         snapshot_index = _snapshot_index_payload_or_not_found(snapshot_root=snapshot_root)
         if isinstance(snapshot_index, NotFoundBody):
-            raise FileNotFoundError(slug)
+            raise FileNotFoundError(slug) from None
         return build_member_history_chart(
             history,
             snapshot_ids_by_date={
@@ -1209,11 +1209,11 @@ def _load_movement_window_payload(
     except FileNotFoundError:
         snapshot_index = _snapshot_index_payload_or_not_found(snapshot_root=snapshot_root)
         if isinstance(snapshot_index, NotFoundBody):
-            raise FileNotFoundError("No published snapshots available")
+            raise FileNotFoundError("No published snapshots available") from None
 
         histories = _load_all_member_histories(snapshot_root=snapshot_root)
         if not histories:
-            raise FileNotFoundError("No member histories available")
+            raise FileNotFoundError("No member histories available") from None
 
         latest_snapshot = snapshot_index.snapshots[-1]
         if name == "latest":
@@ -1233,7 +1233,7 @@ def _load_movement_window_payload(
                 dimension=dimension,
             )
             if dimension is not None and not payload.top_changes and not payload.recent_events:
-                raise FileNotFoundError(f"No movement window for dimension: {dimension}")
+                raise FileNotFoundError(f"No movement window for dimension: {dimension}") from None
             return payload
 
         preset_set = build_snapshot_compare_presets(
@@ -1244,7 +1244,7 @@ def _load_movement_window_payload(
             None,
         )
         if preset is None:
-            raise FileNotFoundError(f"Unknown movement window: {name}")
+            raise FileNotFoundError(f"Unknown movement window: {name}") from None
         payload = build_movement_window(
             histories,
             window_key=preset.preset_key,
@@ -1256,7 +1256,7 @@ def _load_movement_window_payload(
             dimension=dimension,
         )
         if dimension is not None and not payload.top_changes and not payload.recent_events:
-            raise FileNotFoundError(f"No movement window for dimension: {dimension}")
+            raise FileNotFoundError(f"No movement window for dimension: {dimension}") from None
         return payload
 
 

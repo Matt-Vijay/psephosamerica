@@ -38,8 +38,10 @@ from src.export.writer import (
 )
 from src.homepage.builders import build_featured_lookup_entries
 from src.homepage.contracts import HomepageFeedPayload
-from src.identity.current_member_lookup import build_current_member_lookup
-from src.identity.current_member_lookup import CurrentMemberLookupPayload
+from src.identity.current_member_lookup import (
+    CurrentMemberLookupPayload,
+    build_current_member_lookup,
+)
 from src.ontology.contracts import OntologyEdgePayload, OntologyNodeRef
 from src.ontology.member_features import build_member_feature_slices
 from src.pipeline.publish_pipeline import Planner, PublishConfig, PublishResult, run_publish
@@ -72,14 +74,11 @@ from src.zip.resolve import (
     assemble_federal_bundle,
 )
 
-
 _HOMEPAGE_PATH = "homepage/feed.json"
 _HOMEPAGE_FEED_LIMIT = 20
 
 
-# ---------------------------------------------------------------------------
 # ZIP bundle inputs
-# ---------------------------------------------------------------------------
 
 
 @dataclass(frozen=True)
@@ -97,9 +96,7 @@ class ZipBundleInputs:
     senator_rows: list[SenatorRow]
 
 
-# ---------------------------------------------------------------------------
 # Fetch + assemble helpers — one per payload family
-# ---------------------------------------------------------------------------
 
 
 def _build_member_profiles(
@@ -326,9 +323,7 @@ def _build_zip_entry_file(
     return PlannedFile.from_bytes(zip_entry_path(zip_feed.zip_code), serialize_payload(zip_entry))
 
 
-# ---------------------------------------------------------------------------
 # Planner closure
-# ---------------------------------------------------------------------------
 
 
 def _make_planner(
@@ -387,9 +382,7 @@ def _make_planner(
     return planner
 
 
-# ---------------------------------------------------------------------------
 # Public entry point
-# ---------------------------------------------------------------------------
 
 
 def publish_snapshot_run(

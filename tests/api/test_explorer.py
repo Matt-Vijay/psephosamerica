@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from urllib.parse import quote
 
 from src.api.explorer import render_dashboard_html, render_explorer_html
@@ -41,7 +41,7 @@ def _served(person: str, bill: str, *, explanation: str = "Votes with party.") -
                 label="Prior energy vote",
                 source_url="https://clerk.house.gov/Votes/1",
                 content_sha256=_SHA,
-                retrieved_at=datetime(2025, 1, 1, tzinfo=timezone.utc),
+                retrieved_at=datetime(2025, 1, 1, tzinfo=UTC),
                 contribution=0.5,
             )
         ],
@@ -90,7 +90,7 @@ def test_render_dashboard_has_tiles() -> None:
 def _app() -> PredictionWsgiApp:
     snapshot = build_prediction_snapshot(
         [_served("person:a", "bill:1")],
-        generated_at=datetime(2025, 2, 2, tzinfo=timezone.utc),
+        generated_at=datetime(2025, 2, 2, tzinfo=UTC),
     )
     service = PredictionReadService(
         snapshot=snapshot,
@@ -153,8 +153,9 @@ def test_path_style_prediction_unknown_is_404() -> None:
 
 
 def test_top_flip_factors_ranked_by_influence() -> None:
+    from datetime import date as _date, datetime as _dt
+
     from src.api.explorer import top_flip_factors
-    from datetime import date as _date, datetime as _dt, timezone as _tz
     from src.prediction.served_prediction import (
         PredictionEvidenceAnchor as PEA,
         PredictionUncertainty as PU,
@@ -166,7 +167,7 @@ def test_top_flip_factors_ranked_by_influence() -> None:
             label=f"e{i}",
             source_url=f"https://example.gov/{i}",
             content_sha256="a" * 64,
-            retrieved_at=_dt(2025, 1, 1, tzinfo=_tz.utc),
+            retrieved_at=_dt(2025, 1, 1, tzinfo=UTC),
             contribution=c,
         )
         for i, c in enumerate([-0.6, 0.3, 0.1, 0.05])  # contract requires |c| descending

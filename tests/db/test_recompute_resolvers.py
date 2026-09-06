@@ -108,12 +108,12 @@ class TestBuildRecomputeResolversStructure:
 
     def test_all_resolver_fns_are_callable(self) -> None:
         resolvers = build_recompute_resolvers(_maps())
-        for key, (col, fn) in resolvers.items():
+        for key, (_col, fn) in resolvers.items():
             assert callable(fn), f"resolver for {key!r} is not callable"
 
     def test_resolver_values_are_two_tuples(self) -> None:
         resolvers = build_recompute_resolvers(_maps())
-        for key, value in resolvers.items():
+        for _key, value in resolvers.items():
             assert isinstance(value, tuple) and len(value) == 2
 
 

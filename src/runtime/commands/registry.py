@@ -5,39 +5,10 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 
-from src.runtime.commands.statements import (
-    _handle_materialize_public_statement_rows,
-    _handle_materialize_public_statement_rss,
-    _handle_verify_public_statement_rows,
-)
-from src.runtime.commands.fec import (
-    _handle_load_fec_local,
-    _handle_load_member_fec_crosswalk_local,
-    _handle_materialize_fec_bulk_files,
-    _handle_materialize_member_fec_crosswalk,
-    _handle_verify_fec_inputs,
-)
-from src.runtime.commands.disclosures import (
-    _handle_load_disclosures,
-    _handle_materialize_disclosures_bundle,
-    _handle_parse_disclosures,
-    _handle_process_disclosures,
-    _handle_process_disclosures_local,
-)
-from src.runtime.commands.history import (
-    _handle_aggregate_history,
-    _handle_check_history_backfill_inputs,
-    _handle_materialize_congress_archive,
-    _handle_materialize_history_backfill_inputs,
-    _handle_plan_history_backfill,
-    _handle_run_history_backfill_local,
-    _handle_run_history_launch_local,
-    _handle_verify_history_aggregate,
-    _handle_write_congress_archive_manifest,
-)
-from src.runtime.commands.runtime_env import (
-    _handle_runtime_env_preflight,
-    _handle_verify_runtime_env_preflight,
+from src.runtime.commands.bill_semantics import (
+    _handle_materialize_bill_semantics,
+    _handle_verify_bill_semantics,
+    _handle_verify_bill_semantics_plan,
 )
 from src.runtime.commands.core import (
     _handle_bootstrap_db,
@@ -50,38 +21,30 @@ from src.runtime.commands.core import (
     _handle_verify_publish,
     _handle_verify_publish_roundtrip,
 )
-from src.runtime.commands.bill_semantics import (
-    _handle_materialize_bill_semantics,
-    _handle_verify_bill_semantics,
-    _handle_verify_bill_semantics_plan,
+from src.runtime.commands.disclosures import (
+    _handle_load_disclosures,
+    _handle_materialize_disclosures_bundle,
+    _handle_parse_disclosures,
+    _handle_process_disclosures,
+    _handle_process_disclosures_local,
 )
-from src.runtime.commands.prediction_misc import (
-    _handle_prediction_backtest,
-    _handle_prediction_input_inventory,
-    _handle_prediction_source_url_audit,
-    _handle_verify_prediction_backtest,
-    _handle_verify_prediction_input_inventory,
-    _handle_verify_prediction_source_url_audit,
+from src.runtime.commands.fec import (
+    _handle_load_fec_local,
+    _handle_load_member_fec_crosswalk_local,
+    _handle_materialize_fec_bulk_files,
+    _handle_materialize_member_fec_crosswalk,
+    _handle_verify_fec_inputs,
 )
-from src.runtime.commands.prediction_eval import (
-    _handle_prediction_eval_report,
-    _handle_verify_prediction_eval_manifest,
-)
-from src.runtime.commands.prediction_eval_windows import (
-    _handle_prediction_eval_window_plan,
-    _handle_prediction_eval_window_summary,
-    _handle_verify_prediction_eval_window_plan,
-    _handle_verify_prediction_eval_window_run,
-    _handle_verify_prediction_eval_window_summary,
-)
-from src.runtime.commands.prediction_benchmark import (
-    _handle_verify_prediction_backfill_plan,
-    _handle_verify_prediction_benchmark,
-)
-from src.runtime.commands.prediction_readiness import (
-    _handle_prediction_offline_readiness_summary,
-    _handle_verify_prediction_offline_readiness_summary,
-    _handle_verify_prediction_resume_script,
+from src.runtime.commands.history import (
+    _handle_aggregate_history,
+    _handle_check_history_backfill_inputs,
+    _handle_materialize_congress_archive,
+    _handle_materialize_history_backfill_inputs,
+    _handle_plan_history_backfill,
+    _handle_run_history_backfill_local,
+    _handle_run_history_launch_local,
+    _handle_verify_history_aggregate,
+    _handle_write_congress_archive_manifest,
 )
 from src.runtime.commands.operator_packet import (
     _handle_prediction_operator_packet_export,
@@ -97,7 +60,43 @@ from src.runtime.commands.operator_packet import (
     _handle_verify_prediction_operator_runbook,
     _handle_verify_prediction_operator_status,
 )
-
+from src.runtime.commands.prediction_benchmark import (
+    _handle_verify_prediction_backfill_plan,
+    _handle_verify_prediction_benchmark,
+)
+from src.runtime.commands.prediction_eval import (
+    _handle_prediction_eval_report,
+    _handle_verify_prediction_eval_manifest,
+)
+from src.runtime.commands.prediction_eval_windows import (
+    _handle_prediction_eval_window_plan,
+    _handle_prediction_eval_window_summary,
+    _handle_verify_prediction_eval_window_plan,
+    _handle_verify_prediction_eval_window_run,
+    _handle_verify_prediction_eval_window_summary,
+)
+from src.runtime.commands.prediction_misc import (
+    _handle_prediction_backtest,
+    _handle_prediction_input_inventory,
+    _handle_prediction_source_url_audit,
+    _handle_verify_prediction_backtest,
+    _handle_verify_prediction_input_inventory,
+    _handle_verify_prediction_source_url_audit,
+)
+from src.runtime.commands.prediction_readiness import (
+    _handle_prediction_offline_readiness_summary,
+    _handle_verify_prediction_offline_readiness_summary,
+    _handle_verify_prediction_resume_script,
+)
+from src.runtime.commands.runtime_env import (
+    _handle_runtime_env_preflight,
+    _handle_verify_runtime_env_preflight,
+)
+from src.runtime.commands.statements import (
+    _handle_materialize_public_statement_rows,
+    _handle_materialize_public_statement_rss,
+    _handle_verify_public_statement_rows,
+)
 
 COMMAND_REGISTRY: dict[str, Callable[[Any], dict[str, Any]]] = {
     "bootstrap-db": _handle_bootstrap_db,

@@ -6,12 +6,12 @@ from typing import Literal, Self
 
 from pydantic import Field, field_validator, model_validator
 
-from src.export.contracts import ExportContractModel, SourceAnchor
 from src.evidence.source_anchor_policy import (
     duplicate_source_anchor_keys,
     has_official_claim_source_anchor,
     is_official_source_url,
 )
+from src.export.contracts import ExportContractModel, SourceAnchor
 from src.ontology.contracts import OntologyMemberFeaturesPayload
 
 PredictionReadinessStatus = Literal["ready", "partial", "blocked"]

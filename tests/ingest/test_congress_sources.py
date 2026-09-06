@@ -37,7 +37,6 @@ from src.ingest.congress.senate_votes import (
     roll_call_url as senate_roll_call_url,
 )
 
-
 # ===================================================================
 # URL builder tests
 # ===================================================================

@@ -5,7 +5,6 @@ from pydantic import ValidationError
 
 from src.graph.jurisdictions import Jurisdiction, slugify_place
 
-
 # ── slugify ────────────────────────────────────────────────────────
 
 

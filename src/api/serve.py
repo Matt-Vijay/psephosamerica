@@ -19,7 +19,7 @@ GraphRAG, lenses, and explorer are the point of this launcher.
 from __future__ import annotations
 
 import argparse
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from wsgiref.simple_server import make_server
 
 from src.api.wsgi_app import PredictionWsgiApp
@@ -39,7 +39,7 @@ def build_app() -> PredictionWsgiApp:
     read API is wired with an empty served snapshot so its routes return 404
     rather than erroring, without depending on a published prediction artifact.
     """
-    snapshot = build_prediction_snapshot([], generated_at=datetime.now(timezone.utc))
+    snapshot = build_prediction_snapshot([], generated_at=datetime.now(UTC))
     read_service = PredictionReadService(
         snapshot=snapshot,
         rate_limiter=TokenBucketRateLimiter(capacity=120, refill_per_second=1.0),

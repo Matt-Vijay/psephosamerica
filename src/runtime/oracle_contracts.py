@@ -7,18 +7,16 @@ pipeline reads them.  All types are immutable (frozen dataclasses).
 from __future__ import annotations
 
 import datetime as dt
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any
 
 from src.runtime.disclosures_bundle import DisclosuresBundle
 from src.runtime.publish_roundtrip_types import PublishRoundtripResult
 from src.runtime.publish_verify_types import PublishVerifyResult
 
-
-# ---------------------------------------------------------------------------
 # Congress-specific oracle options
-# ---------------------------------------------------------------------------
 
 
 @dataclass(frozen=True)
@@ -44,9 +42,7 @@ class CongressOracleOptions:
     congress_source: str = "explicit"
 
 
-# ---------------------------------------------------------------------------
 # Local oracle run inputs
-# ---------------------------------------------------------------------------
 
 
 @dataclass(frozen=True)
@@ -68,9 +64,7 @@ class LocalOracleInputs:
     disclosures_bundle: DisclosuresBundle
 
 
-# ---------------------------------------------------------------------------
 # Full local oracle run options
-# ---------------------------------------------------------------------------
 
 
 @dataclass(frozen=True)
@@ -103,9 +97,7 @@ class LocalOracleOptions:
         return self.snapshot_id if self.snapshot_id is not None else self.snapshot_date.isoformat()
 
 
-# ---------------------------------------------------------------------------
 # Congress stage summary
-# ---------------------------------------------------------------------------
 
 
 @dataclass(frozen=True)
@@ -137,9 +129,7 @@ class CongressStageSummary:
     include_votes: bool = False
 
 
-# ---------------------------------------------------------------------------
 # Local oracle run result
-# ---------------------------------------------------------------------------
 
 
 @dataclass(frozen=True)

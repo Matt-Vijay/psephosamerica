@@ -28,8 +28,8 @@ from pathlib import Path
 import httpx
 
 from src.graph.bills import parse_congress_bill_identifier
-from src.ingest.congress.senate_votes import roll_call_list_url, roll_call_url
 from src.graph.ingest.senate import bill_canonical_id_for, parse_senate_rollcall_xml
+from src.ingest.congress.senate_votes import roll_call_list_url, roll_call_url
 from src.runtime.http_client import client_or_default
 
 _VOTE_NUMBER_RE = re.compile(r"<vote_number>\s*(\d+)\s*</vote_number>")

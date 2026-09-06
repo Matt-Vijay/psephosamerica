@@ -1,78 +1,65 @@
-# Architecture: the three working domains
+# Code ownership and dependency boundaries
 
-Psephos America's `src/` tree is developed along three parallel domains. Each domain
-has a clear owner-track so concurrent work does not collide; the layering rules
-in `tests/architecture/test_layering.py` enforce the hard boundaries.
+The repository contains a current executable-evaluation path and several older
+research paths. They share source/identity foundations; they are not one product
+pipeline. See the root README for what is measured versus still exploratory.
 
-## Track A — data, graph, ingestion
+## Start at a boundary, then follow its implementation
 
-Owns the path from public records to canonical entities:
+| Path | Entry point | Responsibility |
+|---|---|---|
+| Regulatory patch evaluation | `src/regpatch/cli.py` | Acquisition → causal compiler → isolated execution → deterministic grading |
+| Local legislative evidence | `src/time_machine/cli.py` | Inventory → immutable sources → Parquet/DuckDB → cutoff-safe queries |
+| Format-transfer pilot | `src/transfer_eval/cli.py` | Fixed OpenStates task, bundles, executable scoring |
+| Legacy operator workflows | `src/runtime/main.py` | Parse arguments, dispatch one command, serialize its result |
+| Legacy read/serving layer | `src/api/`, `src/query/`, `src/export/` | Assemble and publish typed read models |
 
-- `src/ingest/` — fetchers for official sources (Congress.gov, FEC, GovInfo, …)
-- `src/parse/` — format parsers (PDF disclosures, XML records, …)
-- `src/normalize/` — canonicalization of raw rows
-- `src/load/` — database writers
-- `src/pipeline/` — multi-step ingestion orchestration
-- `src/export/` — published artifact writers
-- `src/provenance/` — source/run provenance tracking
-- `src/identity/` — entity resolution
-- `src/ontology/` — ontology edge derivation
-- `src/graph/` — the canonical entity graph and the Track A↔B output contract
+RegPatch's detailed map is in its [operator guide](../src/regpatch/README.md).
+None of these paths should acquire new product responsibilities during cleanup.
 
-## Track B — prediction, API, benchmarks
+## Legacy domain ownership
 
-Owns model training, inference, and the serving surface:
+- `ingest`, `parse`, `normalize`, `identity`: source formats and canonical identities.
+- `graph`, `ontology`: graph representation, source-backed edges and enrichment.
+- `db`, `provenance`, `load`: persistence, source/run receipts and write planning.
+- `pipeline`, `runtime`: orchestration of those domain operations.
+- `prediction`: historical datasets, models and evaluation; not a dependency of
+  the conflict-rule engine or the current RegPatch grader.
+- `rules`, `scoring`, `evidence`: conflict rules, score assembly and source-anchor policy.
+- `feed`, `homepage`, `zip`, `demo`: retained historical presentation and bundle paths.
+- `core`: foundation utilities; no imports from another `src` package.
 
-- `src/prediction/` — vote-prediction datasets, models, calibration, eval
-- `src/api/` — the public API contract and serving layer
-- `benchmarks/` — frozen benchmark definitions and no-regression gates
-- Experiment runners living under `src/runtime/` whose names match
-  `*_experiment.py`, `defection_*`, `continuous_learning_*`, `corpus_watch.py`,
-  and similar research entry points are Track B's, even though they sit in the
-  runtime package.
+`tests/architecture/test_layering.py` enforces domain → foundation dependencies:
+domain packages may not import `runtime`, `api` or `pipeline`; `prediction` and
+`rules` remain mutually decoupled. The existing export/API contract exception is
+explicit in that test, not permission to add more cycles.
 
-## Track C — shared infrastructure
+## One command route, no forwarding magic
 
-Owns everything the other two tracks stand on:
+`runtime/cli/parser.py` assembles argument groups. `runtime/commands/registry.py`
+maps each command to a handler in its owning family: core operations,
+disclosures, FEC, history, bill semantics, prediction or operator reports.
+`runtime/main.py` is the single execution/exit-code boundary.
 
-- `src/runtime/` — operator commands, CLI, runners, checkpointing
-  (`src/runtime/commands/` is the operator command package; `cli.py` builds the
-  argument parser; `main.py` dispatches)
-- `src/query/` — read-side queries over published artifacts
-- `src/db/` — connection/schema management
-- `src/core/` — pure foundation utilities (must not import any other `src.*`)
-- `src/rules/` — conflict-of-interest rule engine
-- `src/scoring/` — conflict scoring
-- `src/evidence/` — source-anchor policy shared by rules and prediction
-- `src/feed/`, `src/homepage/`, `src/demo/` — presentation surfaces
-- `src/zip/` — bundle reading/writing
-- `tests/support/`, `tests/conftest.py` — shared test fixtures
+The command package exports public command functions and dispatch only. It does
+not export every imported dependency, expose private helpers, or mutate sibling
+modules when an attribute is assigned. CLI exports are only `build_parser` and
+`parse_args`. The supported command names and public functions remain intact.
 
-## Layering invariants
+Tests patch the name where it is used, for example
+`src.runtime.commands.core.open_connection`. Imports of private helpers likewise
+name the owning module. A shared test harness accepts its command family
+explicitly; production has no special behavior for monkeypatching.
 
-- Foundation/domain packages never import the orchestration layer
-  (`runtime`, `api`, `pipeline`).
-- `src/core` imports nothing outside itself.
-- `src/prediction` and `src/rules` stay mutually decoupled; the shared
-  source-anchor policy lives in `src/evidence/`.
+## Reuse behavior at its existing owner
 
-## The runtime commands package
+- `db/repositories.py`: SQL execution and transaction boundaries, including
+  checked `INSERT … RETURNING id` handling.
+- `db/load_report.py`: load-summary aggregation for FEC, recomputation and runners.
+- `runtime/http_client.py`: injectable clients and bounded transient retry policy.
+- `runtime/json_artifacts.py`: atomic JSON writes and optional output receipts.
+- `prediction/dataset.py`: shared training/evaluation window validation.
 
-`src/runtime/commands.py` was a 23.9k-line monolith; it is now the
-`src/runtime/commands/` package, split along command families (core ops,
-disclosures, FEC, history, bill semantics, prediction eval/benchmark/readiness,
-operator reports/packet). `src/runtime/commands/__init__.py` re-exports every
-top-level symbol, so all historical import paths (`from src.runtime.commands
-import X`) keep working, and `registry.py` holds `COMMAND_REGISTRY` plus
-`dispatch_command` — the single dispatch point used by `src/runtime/main.py`.
-`src/runtime/cli.py` got the same treatment (`src/runtime/cli/`, with
-`parser.py` assembling the subcommands).
-
-**Patching in tests.** The commands package installs a small
-`_PatchForwardingModule` shim: assigning an attribute on
-`src.runtime.commands` (which is what `mock.patch` / `monkeypatch` do) is
-forwarded to every submodule that defines that name, so the historical patch
-targets like `mock.patch("src.runtime.commands.build_runtime")` still reach
-the real call sites. New tests should prefer patching the owning submodule
-directly (e.g. `src.runtime.commands.history._verify_local_history_aggregate`);
-once all tests do, the shim can be deleted.
+Prefer a direct import over another forwarding function. Consolidate only when
+semantics agree: clock meanings, identity namespaces, transaction ownership and
+candidate/evaluator isolation must not be hidden behind a generic helper.

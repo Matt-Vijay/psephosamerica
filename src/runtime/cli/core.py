@@ -6,10 +6,7 @@ import argparse
 
 from src.runtime.cli._shared import _parse_date
 
-
-# ---------------------------------------------------------------------------
 # Subcommand definitions
-# ---------------------------------------------------------------------------
 
 
 def _add_bootstrap_db(sub: argparse._SubParsersAction) -> None:  # type: ignore[type-arg]
@@ -131,9 +128,7 @@ def _add_publish(sub: argparse._SubParsersAction) -> None:  # type: ignore[type-
     )
 
 
-# ---------------------------------------------------------------------------
 # Local-oracle subcommand definitions
-# ---------------------------------------------------------------------------
 
 
 def _add_load_congress_local(sub: argparse._SubParsersAction) -> None:  # type: ignore[type-arg]

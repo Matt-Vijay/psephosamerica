@@ -5,12 +5,10 @@ from __future__ import annotations
 import hashlib
 import json
 import re
-
 from pathlib import Path
 from typing import Any, cast
 
 from src.runtime.commands._shared import (
-    _dict_or_empty,
     _BENCHMARK_INVENTORY_FEATURE_SOURCE_COVERAGE_COUNT_KEYS,
     _BENCHMARK_INVENTORY_FEATURE_SOURCE_COVERAGE_RATE_KEYS,
     _BENCHMARK_INVENTORY_SOURCE_COVERAGE_COUNT_KEYS,
@@ -21,6 +19,7 @@ from src.runtime.commands._shared import (
     _OPERATOR_EVAL_WINDOW_RUN_GATE_SOURCE_KEYS,
     _artifact_reference,
     _attach_optional_verification_output,
+    _dict_or_empty,
     _is_non_negative_plain_int,
     _is_plain_int,
     _is_sha256_hex,
@@ -30,7 +29,6 @@ from src.runtime.commands._shared import (
     _write_bytes_artifact,
     _write_json_artifact,
 )
-from src.runtime.commands.runtime_env import _runtime_env_next_actions_by_env_summary
 from src.runtime.commands.core import (
     _BENCHMARK_BACKTEST_SOURCE_COVERAGE_COUNT_KEYS,
     _BENCHMARK_BACKTEST_SOURCE_COVERAGE_KEYS,
@@ -47,6 +45,7 @@ from src.runtime.commands.prediction_benchmark import (
     _prediction_backfill_action_order,
     _prediction_backfill_suggested_command_supported,
 )
+from src.runtime.commands.runtime_env import _runtime_env_next_actions_by_env_summary
 
 
 def _handle_prediction_offline_readiness_summary(args: Any) -> dict[str, Any]:

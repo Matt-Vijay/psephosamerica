@@ -5,6 +5,7 @@ from pathlib import Path
 from uuid import uuid4
 
 from src.core.path_safety import is_confined_relative_path, safe_join_confined
+
 from .builders import sha256_hex
 from .manifest import SnapshotManifest
 from .writer import PlannedFile

@@ -30,9 +30,6 @@ from src.parse.disclosures.models import (
     TransactionType,
 )
 from src.parse.disclosures.transform import (
-    DisclosureTransformResult,
-    FilingBundle,
-    ParseContext,
     REASON_AMENDMENT_FILING,
     REASON_AMENDMENT_NUMBER_WITHOUT_FLAG,
     REASON_AMENDMENT_SUPERSEDES_MISMATCH,
@@ -46,10 +43,12 @@ from src.parse.disclosures.transform import (
     REVIEW_TYPE_CLASSIFICATION,
     REVIEW_TYPE_NORMALIZATION,
     REVIEW_TYPE_OUTSIDE_POSITION,
+    DisclosureTransformResult,
+    FilingBundle,
+    ParseContext,
     batch_transform_filings,
     transform_filing,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures

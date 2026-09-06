@@ -35,10 +35,7 @@ from .models import VoteCastRecord, VoteEventRecord
 from .senate_vote_index import parse_senate_vote_index
 from .senate_votes import parse_senate_vote_xml
 
-
-# ---------------------------------------------------------------------------
 # Result type
-# ---------------------------------------------------------------------------
 
 
 @dataclass(frozen=True, slots=True)
@@ -51,9 +48,7 @@ class VoteArchiveResult:
     missing_roll_calls: list[int]
 
 
-# ---------------------------------------------------------------------------
 # Path helpers (pure functions; no I/O)
-# ---------------------------------------------------------------------------
 
 
 def _house_index_path(archive_dir: Path, year: int) -> Path:
@@ -75,9 +70,7 @@ def _senate_vote_path(archive_dir: Path, congress: int, session: int, vote_numbe
     return archive_dir / "senate" / prefix / filename
 
 
-# ---------------------------------------------------------------------------
 # Public loaders
-# ---------------------------------------------------------------------------
 
 
 def load_house_vote_records(

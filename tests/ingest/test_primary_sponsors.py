@@ -15,7 +15,6 @@ from src.ingest.congress.primary_sponsors import (
 )
 from src.load.congress import PrimarySponsorSpec as LoadPrimarySponsorSpec
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------

@@ -4,8 +4,8 @@ import hashlib
 import io
 import json
 from pathlib import Path
-from uuid import UUID
 from unittest.mock import patch
+from uuid import UUID
 
 import pytest
 
@@ -21,7 +21,7 @@ class _Response(io.BytesIO):
         super().__init__(body)
         self._final_url = final_url
 
-    def __enter__(self) -> "_Response":
+    def __enter__(self) -> _Response:
         return self
 
     def __exit__(self, *args: object) -> None:

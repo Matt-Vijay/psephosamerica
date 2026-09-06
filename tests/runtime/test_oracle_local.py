@@ -19,8 +19,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.pipeline.recompute_run import RecomputeRunResult
 from src.export.manifest import manifest_root_sha256
+from src.pipeline.recompute_run import RecomputeRunResult
 from src.runtime.disclosures_bundle import (
     DisclosureArtifactEntry,
     DisclosuresBundle,

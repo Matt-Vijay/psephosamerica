@@ -10,11 +10,11 @@ import pytest
 
 from src.export.contracts import SourceAnchor
 from src.prediction.llm_semantics import (
-    BillSemanticInput,
+    BillSectorSemanticPayload,
     BillSemanticIndexPayload,
     BillSemanticIndexRowPayload,
+    BillSemanticInput,
     BillSemanticPayload,
-    BillSectorSemanticPayload,
     OpenAIBillSemanticExtractor,
     bill_semantic_input_from_row,
     extract_json_from_openai_response,

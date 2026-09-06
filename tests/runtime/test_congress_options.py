@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from dataclasses import FrozenInstanceError
+
 import pytest
 
 from src.runtime.congress_options import CongressLoadOptions
@@ -54,22 +56,22 @@ class TestCongressLoadOptionsExplicitValues:
 class TestCongressLoadOptionsImmutability:
     def test_frozen_congress(self) -> None:
         opts = CongressLoadOptions(congress=119)
-        with pytest.raises(Exception):
+        with pytest.raises(FrozenInstanceError):
             opts.congress = 120  # type: ignore[misc]
 
     def test_frozen_include_votes(self) -> None:
         opts = CongressLoadOptions(congress=119)
-        with pytest.raises(Exception):
+        with pytest.raises(FrozenInstanceError):
             opts.include_votes = True  # type: ignore[misc]
 
     def test_frozen_house_vote_year(self) -> None:
         opts = CongressLoadOptions(congress=119, house_vote_year=2025)
-        with pytest.raises(Exception):
+        with pytest.raises(FrozenInstanceError):
             opts.house_vote_year = 2026  # type: ignore[misc]
 
     def test_frozen_senate_session(self) -> None:
         opts = CongressLoadOptions(congress=119, senate_session=1)
-        with pytest.raises(Exception):
+        with pytest.raises(FrozenInstanceError):
             opts.senate_session = 2  # type: ignore[misc]
 
 

@@ -28,13 +28,14 @@ from __future__ import annotations
 
 import hashlib
 import json
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 
 from src.runtime.bill_content_experiment import _iter_records
+from src.runtime.crs_multitask_experiment import _canonical_to_key
 from src.runtime.market_backtest import (
     _member_rates,
     _rollcalls_by_key,
@@ -43,7 +44,6 @@ from src.runtime.market_backtest import (
     parse_market,
     title_match_keys,
 )
-from src.runtime.crs_multitask_experiment import _canonical_to_key
 
 _KELLY_FRACTION = 0.25
 _BANKROLL = 100.0
@@ -142,7 +142,7 @@ def freeze(
         )
 
     registry = {
-        "frozen_at": datetime.now(timezone.utc).isoformat(),
+        "frozen_at": datetime.now(UTC).isoformat(),
         "as_of": as_of.isoformat(),
         "n_markets": len(rows),
         "spread_capture": "unavailable: sidecar has no bid/ask; arms when order-book fields land",

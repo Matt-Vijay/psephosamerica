@@ -21,18 +21,18 @@ from src.query.conflict_inputs import (
     fetch_late_or_amended_rows,
     fetch_transaction_rows,
 )
-from src.query.member_profile import assemble_member_profile
-from src.query.member_history import assemble_member_history
 from src.query.history_products import (
-    build_movement_window,
     build_latest_movement_window,
     build_member_change_summary,
     build_member_history_chart,
     build_member_trend_summary,
     build_member_window_change_summary,
-    build_snapshot_compare_presets,
+    build_movement_window,
     build_snapshot_compare_payload,
+    build_snapshot_compare_presets,
 )
+from src.query.member_history import assemble_member_history
+from src.query.member_profile import assemble_member_profile
 from src.query.published_rows import (
     fetch_all_evidence_card_rows,
     fetch_current_member_slugs,

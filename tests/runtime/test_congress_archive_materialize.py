@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from uuid import UUID
 from unittest.mock import patch
+from uuid import UUID
 
 import pytest
 
@@ -14,7 +14,6 @@ from src.runtime.congress_archive_materialize import (
     _write_text,
     materialize_congress_archive,
 )
-
 
 _FETCH_MEMBERS = "src.runtime.congress_archive_materialize._fetch_members_body"
 _FETCH_COMMITTEES = "src.runtime.congress_archive_materialize._fetch_committees_body"

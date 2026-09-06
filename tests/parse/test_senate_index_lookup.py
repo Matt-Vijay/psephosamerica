@@ -13,7 +13,6 @@ from src.parse.disclosures.senate_index_lookup import (
     index_senate_rows_by_doc_id,
 )
 
-
 # ---------------------------------------------------------------------------
 # Shared row fixtures
 # ---------------------------------------------------------------------------

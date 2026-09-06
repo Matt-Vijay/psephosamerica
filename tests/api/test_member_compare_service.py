@@ -5,8 +5,8 @@ from pathlib import Path
 import src.api as api
 from src.api.contracts import NotFoundBody
 from src.api.read_service import get_member_compare
-from src.export.writer import member_page_payload_path
 from src.export.contracts import CommitteeMembership, RecentRuleFire, ScoreSummary
+from src.export.writer import member_page_payload_path
 from tests.support.published_snapshot_fixtures import (
     make_evidence_card,
     make_member_profile,

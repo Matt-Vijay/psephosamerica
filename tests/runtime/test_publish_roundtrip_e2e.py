@@ -41,6 +41,7 @@ the publish root. These tests write that real path.
 from __future__ import annotations
 
 import shutil
+from dataclasses import FrozenInstanceError
 from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock, patch
@@ -306,7 +307,7 @@ class TestVerifyRoundtripValidTree:
     def test_result_is_frozen(self, tmp_path: Path) -> None:
         rt = _make_valid_tree(tmp_path)
         result = _run_roundtrip(tmp_path, rt)
-        with pytest.raises(Exception):
+        with pytest.raises(FrozenInstanceError):
             result.stages = ()  # type: ignore[misc]
 
     def test_all_issues_empty_for_valid_tree(self, tmp_path: Path) -> None:

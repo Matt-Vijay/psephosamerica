@@ -14,8 +14,8 @@ from datetime import date
 from pathlib import Path
 
 from src.prediction.real_data_eval import (
-    VoteRow,
     EvalWindow,
+    VoteRow,
     evaluate_windows,
     load_vote_rows,
 )

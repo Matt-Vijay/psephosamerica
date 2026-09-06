@@ -8,7 +8,6 @@ Tests cover three properties:
 
 import src.runtime as runtime
 
-
 # ---------------------------------------------------------------------------
 # 1. __all__ is complete and importable
 # ---------------------------------------------------------------------------

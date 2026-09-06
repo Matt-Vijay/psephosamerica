@@ -119,7 +119,7 @@ def _load_raw_statement_rows(path: Path) -> list[dict[str, Any]]:
 def _materialized_rows(
     source_rows: list[dict[str, Any]],
     *,
-    taxonomy: "_Taxonomy",
+    taxonomy: _Taxonomy,
 ) -> tuple[list[dict[str, Any]], Counter[str], int]:
     rows: list[dict[str, Any]] = []
     skipped_reasons: Counter[str] = Counter()
@@ -178,7 +178,7 @@ def _materialized_rows(
     return rows, skipped_reasons, derived_source_id_count
 
 
-def _statement_sectors(source: dict[str, Any], *, taxonomy: "_Taxonomy") -> list[str]:
+def _statement_sectors(source: dict[str, Any], *, taxonomy: _Taxonomy) -> list[str]:
     explicit: list[str] = []
     for value in _explicit_sector_values(source):
         sector = taxonomy.normalize(value)

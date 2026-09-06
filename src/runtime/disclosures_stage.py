@@ -40,16 +40,13 @@ from src.provenance.store import (
 from src.runtime.disclosures_bundle import DisclosuresBundle
 from src.runtime.sources import source_by_slug
 
-
 _MIME_BY_KIND: dict[str, str] = {
     "pdf": "application/pdf",
     "html": "text/html",
 }
 
 
-# ---------------------------------------------------------------------------
 # Result type
-# ---------------------------------------------------------------------------
 
 
 @dataclass(frozen=True)
@@ -63,9 +60,7 @@ class DisclosureStagingResult:
     mirrored_count: int  # always 0; bytes are pre-placed, not written here
 
 
-# ---------------------------------------------------------------------------
 # Public entry point
-# ---------------------------------------------------------------------------
 
 
 def stage_disclosures_bundle(

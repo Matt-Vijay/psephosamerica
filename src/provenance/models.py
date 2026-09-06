@@ -9,8 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Literal, Optional
-
+from typing import Any, Literal
 
 RunType = Literal["ingest", "recompute", "export"]
 RunStatus = Literal["queued", "running", "succeeded", "failed", "skipped"]
@@ -30,11 +29,11 @@ class IngestionRunContext:
     run_type: RunType
     status: RunStatus
     parameters: dict[str, Any] = field(default_factory=dict)
-    db_id: Optional[int] = None
-    started_at: Optional[datetime] = None
-    finished_at: Optional[datetime] = None
+    db_id: int | None = None
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
     record_count: int = 0
-    error_message: Optional[str] = None
+    error_message: str | None = None
 
 
 @dataclass(frozen=True)
@@ -48,12 +47,12 @@ class SourceArtifactMeta:
     artifact_kind: ArtifactKind
     storage_uri: str
     sha256: str  # 64-char hex
-    source_url: Optional[str] = None
-    mime_type: Optional[str] = None
-    fetched_at: Optional[datetime] = None
-    source_record_id: Optional[str] = None
-    ingestion_run_id: Optional[int] = None
-    db_id: Optional[int] = None
+    source_url: str | None = None
+    mime_type: str | None = None
+    fetched_at: datetime | None = None
+    source_record_id: str | None = None
+    ingestion_run_id: int | None = None
+    db_id: int | None = None
 
     def __post_init__(self) -> None:
         _require_sha256_hex(self.sha256, field_name="sha256")
@@ -70,14 +69,14 @@ class ParseRunContext:
     parser_name: str
     parser_version: str
     status: RunStatus
-    page_count: Optional[int] = None
-    ocr_page_count: Optional[int] = None
+    page_count: int | None = None
+    ocr_page_count: int | None = None
     confidence_summary: dict[str, Any] = field(default_factory=dict)
-    error_message: Optional[str] = None
-    ingestion_run_id: Optional[int] = None
-    started_at: Optional[datetime] = None
-    finished_at: Optional[datetime] = None
-    db_id: Optional[int] = None
+    error_message: str | None = None
+    ingestion_run_id: int | None = None
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
+    db_id: int | None = None
 
 
 @dataclass(frozen=True)
@@ -90,11 +89,11 @@ class StageEvent:
 
     stage: str  # e.g. "fetch", "parse", "normalize"
     status: RunStatus
-    artifact_sha256: Optional[str]  # sha256 of the artifact touched
+    artifact_sha256: str | None  # sha256 of the artifact touched
     occurred_at: datetime
-    payload_hash: Optional[str] = None  # sha256 of any derived payload
-    notes: Optional[str] = None
-    error_message: Optional[str] = None
+    payload_hash: str | None = None  # sha256 of any derived payload
+    notes: str | None = None
+    error_message: str | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
@@ -108,14 +107,14 @@ class StageEvent:
 class StageLog:
     """Ordered sequence of StageEvents for one pipeline run."""
 
-    run_id: Optional[int]
+    run_id: int | None
     events: list[StageEvent] = field(default_factory=list)
 
     def append(self, event: StageEvent) -> None:
         self.events.append(event)
 
     @property
-    def final_status(self) -> Optional[RunStatus]:
+    def final_status(self) -> RunStatus | None:
         if not self.events:
             return None
         return self.events[-1].status

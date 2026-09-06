@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from typing import Any, Protocol
+from typing import Any, Protocol, cast
 
 Row = dict[str, Any]
 Params = Sequence[Any] | Mapping[str, Any] | None
@@ -115,3 +115,31 @@ def fetch_all(
     except Exception:
         _recover_test_connection(conn)
         raise
+
+
+def insert_returning_id(
+    conn: Any,
+    sql: str,
+    params: tuple[Any, ...],
+    *,
+    commit: bool = True,
+) -> int:
+    """Execute an INSERT ... RETURNING id and return the new id."""
+    from psycopg.rows import dict_row
+
+    try:
+        with conn.cursor(row_factory=dict_row) as cur:
+            cur.execute(sql, params)
+            row = cast(dict[str, object] | None, cur.fetchone())
+        if row is None:
+            raise ValueError("INSERT ... RETURNING id produced no row")
+        row_id = row.get("id")
+        if isinstance(row_id, bool) or not isinstance(row_id, int):
+            raise TypeError(f"expected integer id from INSERT ... RETURNING, got {row_id!r}")
+    except Exception:
+        if commit:
+            rollback_if_available(conn)
+        raise
+    if commit:
+        conn.commit()
+    return row_id

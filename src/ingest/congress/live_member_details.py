@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-from src.load.congress import CommitteeMembershipSpec
-from src.load.congress import MemberTermSpec
+from src.load.congress import CommitteeMembershipSpec, MemberTermSpec
 
 from .congress_api import CongressAPIClient
 from .member_committees import committee_membership_specs_from_detail

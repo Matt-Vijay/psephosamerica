@@ -23,8 +23,8 @@ from pathlib import Path
 
 import httpx
 
-from src.graph.ingest.gdelt import news_mention_edge, news_provenance, parse_gdelt_article
 from src.graph.export import RECORDS_FILENAME
+from src.graph.ingest.gdelt import news_mention_edge, news_provenance, parse_gdelt_article
 from src.runtime.http_client import client_or_default
 
 _DOC_API = "https://api.gdeltproject.org/api/v2/doc/doc"

@@ -3,18 +3,18 @@
 from __future__ import annotations
 
 import dataclasses
-from datetime import date, datetime
-from dataclasses import dataclass
-from pathlib import Path
 import re
-from typing import Any, Optional, Protocol, runtime_checkable
+from dataclasses import dataclass
+from datetime import date, datetime
+from pathlib import Path
+from typing import Any, Protocol, runtime_checkable
 
 from src.parse.disclosures.classify import classify_pdf
 from src.parse.disclosures.classify_runtime import build_heuristic_input
 from src.parse.disclosures.header_fields import HeaderFields, extract_header_fields
 from src.parse.disclosures.models import Chamber, Filing, FilingType
-from src.parse.disclosures.parser_dispatch import parse_disclosure_pages
 from src.parse.disclosures.parse_result import ParseResult
+from src.parse.disclosures.parser_dispatch import parse_disclosure_pages
 from src.parse.disclosures.text_extract import extract_text_metrics, extract_text_pages
 from src.parse.disclosures.text_lines import drop_empty, flatten_lines, pages_to_line_lists
 from src.runtime.disclosures_index_rows import ArtifactIndexMatch
@@ -33,9 +33,7 @@ _dispatch_parser = parse_disclosure_pages
 SKIP_OCR_REQUIRED_NOT_IMPLEMENTED = "ocr_required_not_implemented"
 
 
-# ---------------------------------------------------------------------------
 # Provider protocol
-# ---------------------------------------------------------------------------
 
 
 @runtime_checkable
@@ -65,9 +63,7 @@ class IndexMatchProvider(Protocol):
         ...
 
 
-# ---------------------------------------------------------------------------
 # Result type
-# ---------------------------------------------------------------------------
 
 
 @dataclass(frozen=True)
@@ -231,9 +227,7 @@ def _provisional_filing(
     )
 
 
-# ---------------------------------------------------------------------------
 # Public entry point
-# ---------------------------------------------------------------------------
 
 
 def run_disclosure_parse_runtime(
@@ -244,8 +238,8 @@ def run_disclosure_parse_runtime(
     limit: int | None = None,
     parser_name: str = "text_extract_v1",
     parser_version: str = "1",
-    index_provider: Optional[IndexMatchProvider] = None,
-    parse_inputs: Optional[list[DisclosureParseInput]] = None,
+    index_provider: IndexMatchProvider | None = None,
+    parse_inputs: list[DisclosureParseInput] | None = None,
 ) -> DisclosureParseRuntimeResult:
     """Run a parse_run lifecycle for each unparsed disclosure artifact.
 

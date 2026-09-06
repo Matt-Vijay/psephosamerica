@@ -12,7 +12,6 @@ from src.runtime.disclosures_bundle import load_disclosures_bundle
 from src.runtime.disclosures_bundle_materialize import materialize_disclosures_bundle
 from src.runtime.sources import HOUSE_DISCLOSURES, SENATE_DISCLOSURES
 
-
 _HOUSE_FETCH = "src.runtime.disclosures_bundle_materialize.fetch_house_index"
 _SENATE_FETCH = "src.runtime.disclosures_bundle_materialize.fetch_senate_index"
 _DOWNLOAD = "src.runtime.disclosures_bundle_materialize.download_artifact_bytes"

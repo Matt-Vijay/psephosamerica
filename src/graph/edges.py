@@ -22,9 +22,9 @@ from __future__ import annotations
 import re
 from collections.abc import Iterable
 from datetime import date, datetime
+from typing import Self
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
-from typing import Self
 
 from src.graph.entity_resolution.ids import stable_id
 from src.graph.provenance import ProvenanceEnvelope

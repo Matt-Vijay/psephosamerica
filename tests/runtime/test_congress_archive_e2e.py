@@ -241,7 +241,7 @@ class _ArchiveFixture:
         self.root = root
         self.congress = congress
 
-    def write_core(self) -> "_ArchiveFixture":
+    def write_core(self) -> _ArchiveFixture:
         """Write members.json, committees.json, bills.json."""
         (self.root / "members.json").write_text(json.dumps(_members_payload()), encoding="utf-8")
         (self.root / "committees.json").write_text(
@@ -250,32 +250,32 @@ class _ArchiveFixture:
         (self.root / "bills.json").write_text(json.dumps(_bills_payload()), encoding="utf-8")
         return self
 
-    def write_member_detail(self) -> "_ArchiveFixture":
+    def write_member_detail(self) -> _ArchiveFixture:
         d = self.root / "member_details"
         d.mkdir(exist_ok=True)
         (d / f"{_BIOGUIDE}.json").write_text(json.dumps(_member_detail_payload()), encoding="utf-8")
         return self
 
-    def write_bill_detail(self) -> "_ArchiveFixture":
+    def write_bill_detail(self) -> _ArchiveFixture:
         d = self.root / "bill_details"
         d.mkdir(exist_ok=True)
         (d / f"{_BILL_STEM}.json").write_text(json.dumps(_bill_detail_payload()), encoding="utf-8")
         return self
 
-    def write_cosponsors(self) -> "_ArchiveFixture":
+    def write_cosponsors(self) -> _ArchiveFixture:
         d = self.root / "cosponsors"
         d.mkdir(exist_ok=True)
         (d / f"{_BILL_STEM}.json").write_text(json.dumps(_cosponsors_payload()), encoding="utf-8")
         return self
 
-    def write_house_votes(self) -> "_ArchiveFixture":
+    def write_house_votes(self) -> _ArchiveFixture:
         house_year_dir = self.root / "house" / str(_YEAR)
         house_year_dir.mkdir(parents=True, exist_ok=True)
         (house_year_dir / "index.xml").write_text(_HOUSE_INDEX_XML, encoding="utf-8")
         (house_year_dir / "roll001.xml").write_text(_HOUSE_VOTE_XML, encoding="utf-8")
         return self
 
-    def write_senate_votes(self) -> "_ArchiveFixture":
+    def write_senate_votes(self) -> _ArchiveFixture:
         prefix = f"vote{self.congress}{_SESSION}"
         senate_dir = self.root / "senate" / prefix
         senate_dir.mkdir(parents=True, exist_ok=True)

@@ -13,6 +13,7 @@ Goals
 from __future__ import annotations
 
 import json
+from dataclasses import FrozenInstanceError
 from pathlib import Path
 
 import pytest
@@ -25,7 +26,6 @@ from tests.support.published_snapshot_fixtures import (
     make_snapshot,
     make_zip_feed,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -114,7 +114,7 @@ class TestVerifyLocalPublishValidTree:
     def test_result_is_frozen(self, tmp_path: Path) -> None:
         root = _ok_snap(tmp_path)
         result = verify_local_publish(root)
-        with pytest.raises(Exception):
+        with pytest.raises(FrozenInstanceError):
             result.stages = ()  # type: ignore[misc]
 
     def test_all_issues_empty_for_valid_tree(self, tmp_path: Path) -> None:

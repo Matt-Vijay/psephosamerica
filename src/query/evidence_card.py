@@ -74,7 +74,9 @@ def _blocks_from_columns(
     Section order is always FACT → INFERENCE → NORMATIVE_JUDGMENT.
     """
     blocks: list[EvidenceBlock] = []
-    for section, data in zip(_SECTION_ORDER, (facts, inferences, normative_judgments)):
+    for section, data in zip(
+        _SECTION_ORDER, (facts, inferences, normative_judgments), strict=False
+    ):
         blocks.extend(_section_blocks(data, section))
     return blocks
 

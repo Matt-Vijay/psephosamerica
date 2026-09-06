@@ -12,7 +12,7 @@ from src.prediction.backtest import (
     build_vote_baseline_backtest,
     build_vote_ontology_backtest,
 )
-from src.prediction.llm_semantics import BillSemanticPayload, BillSectorSemanticPayload
+from src.prediction.llm_semantics import BillSectorSemanticPayload, BillSemanticPayload
 
 
 def _feature_row(

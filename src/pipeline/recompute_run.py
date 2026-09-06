@@ -12,11 +12,12 @@ Six-step orchestration:
 from __future__ import annotations
 
 import datetime as dt
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import Any
 
 from src.db.load_executor import Resolvers, execute_load_plan
-from src.db.load_report import LoadSummary, TableWriteResult, WarnErrorSummary, build_load_summary
+from src.db.load_report import LoadSummary, merge_load_summaries as _merge_load_summaries
 from src.db.recompute_resolvers import load_recompute_resolver_maps
 from src.db.repositories import (
     commit_or_rollback,
@@ -52,9 +53,7 @@ from src.rules.models import RuleFire
 ContributionSectorResolver = Callable[[dict[str, Any]], str | None]
 
 
-# ---------------------------------------------------------------------------
 # Result type
-# ---------------------------------------------------------------------------
 
 
 @dataclass(frozen=True)
@@ -90,9 +89,7 @@ class RecomputeRunResult:
             )
 
 
-# ---------------------------------------------------------------------------
 # Internal helpers
-# ---------------------------------------------------------------------------
 
 
 def _build_committee_sector_resolver(
@@ -318,23 +315,7 @@ def _delta_rows_by_member_id(
     return grouped
 
 
-def _merge_load_summaries(
-    summaries: list[LoadSummary],
-    *,
-    run_id: int,
-) -> LoadSummary:
-    warn_error = WarnErrorSummary()
-    table_results: list[TableWriteResult] = []
-    for summary in summaries:
-        table_results.extend(summary.table_results)
-        warn_error.warnings.extend(summary.warn_error.warnings)
-        warn_error.errors.extend(summary.warn_error.errors)
-    return build_load_summary(table_results, warn_error=warn_error, run_id=run_id)
-
-
-# ---------------------------------------------------------------------------
 # Public API
-# ---------------------------------------------------------------------------
 
 
 def run_recompute(

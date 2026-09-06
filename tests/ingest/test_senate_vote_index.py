@@ -18,7 +18,6 @@ from src.ingest.congress.senate_vote_index import (
     senate_vote_index_url,
 )
 
-
 # Mirrors the live vote_menu_<congress>_<session>.xml shape: congress_year at the
 # root, day-month vote dates, results under <result>. Row 2 keeps a full date and
 # the legacy <vote_result> name to pin the compatibility fallbacks.

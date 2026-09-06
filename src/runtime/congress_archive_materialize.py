@@ -17,18 +17,18 @@ from src.ingest.congress.archive_manifest import write_manifest
 from src.ingest.congress.archive_validate import validate_congress_archive_manifest
 from src.ingest.congress.congress_api import (
     CongressAPIClient,
+    bill_detail_url,
     bills_url,
     committees_url,
     cosponsors_url,
     member_detail_url,
     members_url,
-    bill_detail_url,
     next_pagination_url,
 )
 from src.ingest.congress.house_vote_index import fetch_house_vote_index, house_vote_index_url
+from src.ingest.congress.house_votes import roll_call_url as house_roll_call_url
 from src.ingest.congress.official_fetch import fetch_official_congress_text
 from src.ingest.congress.senate_vote_index import fetch_senate_vote_index, senate_vote_index_url
-from src.ingest.congress.house_votes import roll_call_url as house_roll_call_url
 from src.ingest.congress.senate_votes import roll_call_url as senate_roll_call_url
 from src.runtime.congress_options import resolve_congress_vote_coverage
 

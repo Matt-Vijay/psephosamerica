@@ -7,13 +7,28 @@ import hashlib
 import json
 import re
 import shlex
-
 from dataclasses import replace
 from pathlib import Path
+from typing import Any, cast
+
 from src.evidence.source_anchor_policy import is_official_source_url
 from src.pipeline.publish_snapshot_run import ZipBundleInputs
 from src.runtime.app import PsephosAmericaRuntime, build_runtime, open_runtime_connection
 from src.runtime.bootstrap import bootstrap_database, describe_bootstrap_plan
+from src.runtime.commands._shared import (
+    _BENCHMARK_INVENTORY_FEATURE_SOURCE_COVERAGE_COUNT_KEYS,
+    _BENCHMARK_INVENTORY_FEATURE_SOURCE_COVERAGE_RATE_KEYS,
+    _BENCHMARK_INVENTORY_SOURCE_COVERAGE_COUNT_KEYS,
+    _BENCHMARK_INVENTORY_SOURCE_COVERAGE_RATE_KEYS,
+    _command_issue_result,
+    _emit_verification_summary,
+    _is_plain_int,
+    _optional_limit_issue,
+    _positive_int_arg_issues,
+    _required_string_list,
+    _write_bytes_artifact,
+)
+from src.runtime.commands.statements import _load_statement_rows, _statement_rows_source_metadata
 from src.runtime.congress import CongressLoadResult
 from src.runtime.congress_archive import run_congress_archive_load
 from src.runtime.congress_live_full import run_live_congress_load_full
@@ -42,23 +57,6 @@ from src.runtime.publish_verify_types import PublishVerifyResult
 from src.runtime.recompute import RuntimeRecomputeResult, run_recompute_runtime
 from src.runtime.status_command import get_runtime_status
 from src.runtime.zip_bundle import load_zip_bundle
-from typing import Any, cast
-
-from src.runtime.commands._shared import (
-    _BENCHMARK_INVENTORY_FEATURE_SOURCE_COVERAGE_COUNT_KEYS,
-    _BENCHMARK_INVENTORY_FEATURE_SOURCE_COVERAGE_RATE_KEYS,
-    _BENCHMARK_INVENTORY_SOURCE_COVERAGE_COUNT_KEYS,
-    _BENCHMARK_INVENTORY_SOURCE_COVERAGE_RATE_KEYS,
-    _command_issue_result,
-    _emit_verification_summary,
-    _is_plain_int,
-    _optional_limit_issue,
-    _positive_int_arg_issues,
-    _required_string_list,
-    _write_bytes_artifact,
-)
-from src.runtime.commands.statements import _load_statement_rows, _statement_rows_source_metadata
-
 
 _SOURCE_FAMILY_ID_RE = re.compile(r"^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$")
 
@@ -509,8 +507,8 @@ def _top_learned_signal_coefficients(result: Any, *, limit: int = 10) -> list[di
         cast(dict[str, Any], coefficient.model_dump(mode="json"))
         if hasattr(coefficient, "model_dump")
         else {
-            "signal_name": getattr(coefficient, "signal_name"),
-            "coefficient": getattr(coefficient, "coefficient"),
+            "signal_name": coefficient.signal_name,
+            "coefficient": coefficient.coefficient,
         }
         for coefficient in coefficients[:limit]
     ]
@@ -935,14 +933,6 @@ def _strict_string_values(value: Any) -> list[str]:
         return []
     item = _strict_nonblank_string(value)
     return [item] if item is not None else []
-
-
-def _string_values(value: Any) -> list[str]:
-    if isinstance(value, list):
-        return [str(item) for item in value]
-    if value is None:
-        return []
-    return [str(value)]
 
 
 def _append_unique_objects(existing: list[Any], additions: list[Any]) -> list[Any]:

@@ -4,15 +4,14 @@ from __future__ import annotations
 
 import datetime as dt
 import json
-
 from pathlib import Path
+from typing import Any, cast
+
 from src.prediction.eval_report import PredictionEvalReportPayload
 from src.prediction.window_plan import (
     PredictionEvalWindowPlanPayload,
     build_prediction_eval_window_plan,
 )
-from typing import Any, cast
-
 from src.runtime.commands._shared import (
     _attach_optional_verification_output,
     _command_issue_result,
@@ -540,7 +539,7 @@ def _handle_prediction_eval_window_summary(args: Any) -> dict[str, Any]:
 
     sorted_reports = sorted(reports, key=lambda item: (item[2].label_start, item[2].label_end))
     if bool(getattr(args, "require_non_overlapping_label_windows", False)):
-        for previous, current in zip(sorted_reports, sorted_reports[1:]):
+        for previous, current in zip(sorted_reports, sorted_reports[1:], strict=False):
             previous_report = previous[2]
             current_report = current[2]
             if previous_report.label_end >= current_report.label_start:
@@ -1123,6 +1122,7 @@ def _validate_prediction_eval_window_summary_non_overlapping_windows(
     for previous, current in zip(
         sorted(parsed_windows, key=lambda item: (item[1], item[2])),
         sorted(parsed_windows, key=lambda item: (item[1], item[2]))[1:],
+        strict=False,
     ):
         if previous[2] >= current[1]:
             issues.append(
@@ -1171,7 +1171,7 @@ def _validate_prediction_eval_window_summary_plan_match(
             "label_start": window.label_start.isoformat(),
             "label_end": window.label_end.isoformat(),
         }
-        for path, window in zip(expected_paths, plan.windows)
+        for path, window in zip(expected_paths, plan.windows, strict=False)
     ]
     actual_windows = [
         {
@@ -1647,7 +1647,7 @@ def _prediction_eval_window_run_expected_summary_windows(
             "label_start": window.label_start.isoformat(),
             "label_end": window.label_end.isoformat(),
         }
-        for path, window in zip(report_paths, plan.windows)
+        for path, window in zip(report_paths, plan.windows, strict=False)
     ]
 
 

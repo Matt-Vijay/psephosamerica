@@ -15,9 +15,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from src.db.load_report import LoadSummary
 from src.db.repositories import rollback_if_available
 from src.pipeline.congress_load_run import CongressIngestInputs, run_congress_load
-from src.db.load_report import LoadSummary
 from src.provenance.store import (
     ensure_data_source,
     fail_ingestion_run,
@@ -32,9 +32,7 @@ _SOURCE_KIND = CONGRESS_CORE.source_kind
 _SOURCE_BASE_URL = CONGRESS_CORE.base_url
 
 
-# ---------------------------------------------------------------------------
 # Result type
-# ---------------------------------------------------------------------------
 
 
 @dataclass(frozen=True)
@@ -46,9 +44,7 @@ class CongressLoadResult:
     load_summary: LoadSummary
 
 
-# ---------------------------------------------------------------------------
 # Runtime function
-# ---------------------------------------------------------------------------
 
 
 def run_congress_load_runtime(

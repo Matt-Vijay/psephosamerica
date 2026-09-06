@@ -277,7 +277,7 @@ def _post_with_backoff(
     import httpx
 
     delay = 2.0
-    for attempt in range(max_retries):
+    for _attempt in range(max_retries):
         try:
             resp = http.post(endpoint, json=payload)
         except httpx.TransportError:
@@ -444,8 +444,9 @@ def iter_award_records(
     without the resumable raw cache. The comprehensive runner uses
     :func:`fetch_raw_records` instead so a stall never loses progress.
     """
-    import httpx
     from datetime import date as _date
+
+    import httpx
 
     http = client if client is not None else httpx.Client(timeout=120.0)
     owns = client is None

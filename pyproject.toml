@@ -23,15 +23,15 @@ pdf = [
     "pypdf>=4,<6",
     "pdfplumber>=0.11,<1",
 ]
-# Local semantic embedder (enrichment layer only). Pinned exactly so a recorded
-# fingerprint reproduces the same vectors; torch stays out of the core + Track B.
+# Optional local semantic embedder. Exact pins preserve recorded vector fingerprints;
+# neither the core package nor routine development tooling installs this runtime.
 enrichment = [
     "sentence-transformers==5.5.1",
     "torch==2.12.0",
 ]
 dev = [
     "pytest>=8,<9",
-    "ruff>=0.4,<1",
+    "ruff==0.16.5",
     "mypy>=1.10,<2",
     "types-defusedxml>=0.7,<1",
     "pypdf>=4,<6",
@@ -39,8 +39,6 @@ dev = [
     "fpdf2>=2.7,<3",
     "bandit[toml]>=1.7,<2",
     "coverage>=7,<8",
-    "sentence-transformers==5.5.1",
-    "torch==2.12.0",
 ]
 
 [build-system]
@@ -63,10 +61,26 @@ ignore_missing_imports = false
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
+# PyArrow's Parquet API is untyped; keep our own sink/caller signatures strict.
+untyped_calls_exclude = ["pyarrow.parquet"]
+
+[[tool.mypy.overrides]]
+# Optional adapters must type-check without installing model runtimes or PDF extras.
+module = ["sentence_transformers.*", "torch.*", "pdfplumber.*", "huggingface_hub.*"]
+ignore_missing_imports = true
 
 [tool.ruff]
 target-version = "py312"
 line-length = 100
+
+[tool.ruff.lint]
+# Freeze the reviewable rule set instead of inheriting changing tool defaults.
+select = ["E4", "E7", "E9", "F", "I", "UP", "B"]
+# Preserve public enum/type-alias/generic runtime behavior during modernization.
+ignore = ["UP040", "UP042", "UP046", "UP047"]
+
+[tool.ruff.lint.isort]
+combine-as-imports = true
 
 [tool.coverage.run]
 source = ["src"]

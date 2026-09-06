@@ -9,8 +9,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, cast
 
-from src.db.repositories import ConnectionLike, rollback_if_available
-from src.db.repositories import fetch_all
+from src.db.repositories import ConnectionLike, fetch_all, rollback_if_available
 from src.normalize.member_crosswalk import CrosswalkRecord, validate_one_to_one
 from src.provenance.artifacts import create_source_artifact
 from src.provenance.store import (

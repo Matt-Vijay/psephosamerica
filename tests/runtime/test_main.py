@@ -35,7 +35,7 @@ def _mock_runtime() -> MagicMock:
 
 
 @contextmanager
-def _run_harness():
+def _run_harness(module="core"):
     """Patch the four seams common to every run() test.
 
     Yields a namespace with rt, conn, mock_build, mock_open_conn, and
@@ -44,8 +44,10 @@ def _run_harness():
     rt = _mock_runtime()
     conn = MagicMock()
     with (
-        patch(f"{_MOD}.build_runtime", return_value=rt) as mock_build,
-        patch(f"{_MOD}.open_runtime_connection", return_value=conn) as mock_open_conn,
+        patch(f"src.runtime.commands.{module}.build_runtime", return_value=rt) as mock_build,
+        patch(
+            f"src.runtime.commands.{module}.open_runtime_connection", return_value=conn
+        ) as mock_open_conn,
         patch(f"{_MAIN_MOD}.as_json", side_effect=lambda obj: obj),
         patch("builtins.print") as mock_print,
     ):
@@ -105,7 +107,7 @@ class TestNoCommand:
         assert code == 1
 
     def test_does_not_call_build_runtime_on_empty_argv(self) -> None:
-        with patch(f"{_MOD}.build_runtime") as mock_build:
+        with patch("src.runtime.commands.core.build_runtime") as mock_build:
             run([])
         mock_build.assert_not_called()
 
@@ -161,25 +163,31 @@ class TestStatusCommand:
 
     def test_returns_0_on_success(self) -> None:
         with _run_harness():
-            with patch(f"{_MOD}.get_runtime_status", return_value=self._STATUS_PAYLOAD):
+            with patch(
+                "src.runtime.commands.core.get_runtime_status", return_value=self._STATUS_PAYLOAD
+            ):
                 code = run(["status"])
         assert code == 0
 
     def test_passes_connection_to_get_runtime_status(self) -> None:
         with _run_harness() as h:
-            with patch(f"{_MOD}.get_runtime_status", return_value={}) as mock_status:
+            with patch(
+                "src.runtime.commands.core.get_runtime_status", return_value={}
+            ) as mock_status:
                 run(["status"])
         mock_status.assert_called_once_with(h.conn, limit=20)
 
     def test_opens_connection_from_runtime(self) -> None:
         with _run_harness() as h:
-            with patch(f"{_MOD}.get_runtime_status", return_value={}):
+            with patch("src.runtime.commands.core.get_runtime_status", return_value={}):
                 run(["status"])
         h.mock_open_conn.assert_called_once_with(h.rt)
 
     def test_prints_status_result_as_json(self) -> None:
         with _run_harness() as h:
-            with patch(f"{_MOD}.get_runtime_status", return_value=self._STATUS_PAYLOAD):
+            with patch(
+                "src.runtime.commands.core.get_runtime_status", return_value=self._STATUS_PAYLOAD
+            ):
                 run(["status"])
         printed = _printed(h)
         assert printed["ok"] is True
@@ -205,7 +213,9 @@ class TestStatusCommand:
 
     def test_returns_1_and_prints_error_on_exception(self) -> None:
         with _run_harness() as h:
-            with patch(f"{_MOD}.get_runtime_status", side_effect=RuntimeError("db down")):
+            with patch(
+                "src.runtime.commands.core.get_runtime_status", side_effect=RuntimeError("db down")
+            ):
                 code = run(["status"])
         assert code == 1
         printed = _printed(h)
@@ -231,8 +241,14 @@ class TestRecomputeCommand:
     def test_returns_0_on_success(self) -> None:
         with _run_harness():
             with (
-                patch(f"{_MOD}.recompute_snapshot", return_value=self._recompute_result()),
-                patch(f"{_MOD}.summarize_recompute_result", return_value=self._summary()),
+                patch(
+                    "src.runtime.commands.core.recompute_snapshot",
+                    return_value=self._recompute_result(),
+                ),
+                patch(
+                    "src.runtime.commands.core.summarize_recompute_result",
+                    return_value=self._summary(),
+                ),
             ):
                 code = run(["recompute", "--snapshot-date", self._DATE_STR])
         assert code == 0
@@ -241,9 +257,13 @@ class TestRecomputeCommand:
         with _run_harness() as h:
             with (
                 patch(
-                    f"{_MOD}.recompute_snapshot", return_value=self._recompute_result()
+                    "src.runtime.commands.core.recompute_snapshot",
+                    return_value=self._recompute_result(),
                 ) as mock_cmd,
-                patch(f"{_MOD}.summarize_recompute_result", return_value=self._summary()),
+                patch(
+                    "src.runtime.commands.core.summarize_recompute_result",
+                    return_value=self._summary(),
+                ),
             ):
                 run(["recompute", "--snapshot-date", self._DATE_STR])
         mock_cmd.assert_called_once_with(h.rt.context, self._DATE)
@@ -252,9 +272,12 @@ class TestRecomputeCommand:
         recompute_result = self._recompute_result()
         with _run_harness():
             with (
-                patch(f"{_MOD}.recompute_snapshot", return_value=recompute_result),
                 patch(
-                    f"{_MOD}.summarize_recompute_result", return_value=self._summary()
+                    "src.runtime.commands.core.recompute_snapshot", return_value=recompute_result
+                ),
+                patch(
+                    "src.runtime.commands.core.summarize_recompute_result",
+                    return_value=self._summary(),
                 ) as mock_summarize,
             ):
                 run(["recompute", "--snapshot-date", self._DATE_STR])
@@ -263,8 +286,14 @@ class TestRecomputeCommand:
     def test_prints_result_with_ok_and_command(self) -> None:
         with _run_harness() as h:
             with (
-                patch(f"{_MOD}.recompute_snapshot", return_value=self._recompute_result()),
-                patch(f"{_MOD}.summarize_recompute_result", return_value=self._summary(run_id=99)),
+                patch(
+                    "src.runtime.commands.core.recompute_snapshot",
+                    return_value=self._recompute_result(),
+                ),
+                patch(
+                    "src.runtime.commands.core.summarize_recompute_result",
+                    return_value=self._summary(run_id=99),
+                ),
             ):
                 run(["recompute", "--snapshot-date", self._DATE_STR])
         printed = _printed(h)
@@ -274,7 +303,10 @@ class TestRecomputeCommand:
 
     def test_returns_1_on_recompute_failure(self) -> None:
         with _run_harness() as h:
-            with patch(f"{_MOD}.recompute_snapshot", side_effect=RuntimeError("recompute failed")):
+            with patch(
+                "src.runtime.commands.core.recompute_snapshot",
+                side_effect=RuntimeError("recompute failed"),
+            ):
                 code = run(["recompute", "--snapshot-date", self._DATE_STR])
         assert code == 1
         printed = _printed(h)
@@ -285,9 +317,13 @@ class TestRecomputeCommand:
         with _run_harness() as h:
             with (
                 patch(
-                    f"{_MOD}.recompute_snapshot", return_value=self._recompute_result()
+                    "src.runtime.commands.core.recompute_snapshot",
+                    return_value=self._recompute_result(),
                 ) as mock_cmd,
-                patch(f"{_MOD}.summarize_recompute_result", return_value=self._summary()),
+                patch(
+                    "src.runtime.commands.core.summarize_recompute_result",
+                    return_value=self._summary(),
+                ),
             ):
                 code = run(["recompute"])
         assert code == 0
@@ -330,9 +366,15 @@ class TestPublishCommand:
         publish_result = publish_result or self._publish_result()
         summary = summary or self._summary()
         with (
-            patch(f"{_MOD}.load_zip_bundle", return_value=zip_inputs) as mock_load_zip,
-            patch(f"{_MOD}.publish_snapshot", return_value=publish_result) as mock_cmd,
-            patch(f"{_MOD}.summarize_publish_result", return_value=summary) as mock_summarize,
+            patch(
+                "src.runtime.commands.core.load_zip_bundle", return_value=zip_inputs
+            ) as mock_load_zip,
+            patch(
+                "src.runtime.commands.core.publish_snapshot", return_value=publish_result
+            ) as mock_cmd,
+            patch(
+                "src.runtime.commands.core.summarize_publish_result", return_value=summary
+            ) as mock_summarize,
         ):
             yield SimpleNamespace(
                 zip_inputs=zip_inputs,
@@ -379,7 +421,10 @@ class TestPublishCommand:
 
     def test_returns_1_when_zip_bundle_missing(self) -> None:
         with _run_harness() as h:
-            with patch(f"{_MOD}.load_zip_bundle", side_effect=FileNotFoundError("no such file")):
+            with patch(
+                "src.runtime.commands.core.load_zip_bundle",
+                side_effect=FileNotFoundError("no such file"),
+            ):
                 code = run(self._argv())
         assert code == 1
         printed = _printed(h)
@@ -388,8 +433,11 @@ class TestPublishCommand:
     def test_returns_1_on_publish_failure(self) -> None:
         with _run_harness() as h:
             with (
-                patch(f"{_MOD}.load_zip_bundle", return_value=MagicMock()),
-                patch(f"{_MOD}.publish_snapshot", side_effect=RuntimeError("snapshot mismatch")),
+                patch("src.runtime.commands.core.load_zip_bundle", return_value=MagicMock()),
+                patch(
+                    "src.runtime.commands.core.publish_snapshot",
+                    side_effect=RuntimeError("snapshot mismatch"),
+                ),
             ):
                 code = run(self._argv())
         assert code == 1
@@ -441,21 +489,23 @@ class TestLoadDisclosuresCommand:
         elif ingest_rv is not None:
             kw["return_value"] = ingest_rv
         with (
-            patch(f"{_MOD}.run_disclosure_artifact_ingest", **kw) as mock_ingest,
-            patch(f"{_MOD}.local_artifact_root") as mock_root,
+            patch(
+                "src.runtime.commands.disclosures.run_disclosure_artifact_ingest", **kw
+            ) as mock_ingest,
+            patch("src.runtime.commands._shared.local_artifact_root") as mock_root,
         ):
             yield SimpleNamespace(mock_ingest=mock_ingest, mock_root=mock_root)
 
     def test_returns_0_on_success_single_chamber(self) -> None:
         summary = self._artifact_result("house-disclosures", 1)
-        with _run_harness():
+        with _run_harness("disclosures"):
             with self._disclosure_env(ingest_side_effect=[summary, summary]):
                 code = run(["load-disclosures", "--chamber", "house", "--year", str(self._YEAR)])
         assert code == 0
 
     def test_senate_calls_ingest_once(self) -> None:
         summary = self._artifact_result("senate-disclosures", 2)
-        with _run_harness():
+        with _run_harness("disclosures"):
             with self._disclosure_env(ingest_rv=summary) as d:
                 run(["load-disclosures", "--chamber", "senate", "--year", str(self._YEAR)])
         assert d.mock_ingest.call_count == 1
@@ -465,7 +515,7 @@ class TestLoadDisclosuresCommand:
     def test_house_calls_ingest_twice_for_annual_and_ptr(self) -> None:
         annual = self._artifact_result("house-disclosures", 1)
         ptr = self._artifact_result("house-disclosures", 2)
-        with _run_harness():
+        with _run_harness("disclosures"):
             with self._disclosure_env(ingest_side_effect=[annual, ptr]) as d:
                 run(["load-disclosures", "--chamber", "house", "--year", str(self._YEAR)])
         assert d.mock_ingest.call_count == 2
@@ -477,7 +527,7 @@ class TestLoadDisclosuresCommand:
             self._artifact_result("house-disclosures", 2, discovered=8, stored=8),
             self._artifact_result("senate-disclosures", 3, discovered=6, stored=6),
         ]
-        with _run_harness() as h:
+        with _run_harness("disclosures") as h:
             with self._disclosure_env(ingest_side_effect=results):
                 run(["load-disclosures", "--chamber", "both", "--year", str(self._YEAR)])
         printed = _printed(h)
@@ -489,7 +539,7 @@ class TestLoadDisclosuresCommand:
     def test_missing_year_defaults_to_current_year(self) -> None:
         annual = self._artifact_result("house-disclosures", 1)
         ptr = self._artifact_result("house-disclosures", 2)
-        with _run_harness():
+        with _run_harness("disclosures"):
             with self._disclosure_env(ingest_side_effect=[annual, ptr]) as d:
                 run(["load-disclosures", "--chamber", "house"])
         called_year = d.mock_ingest.call_args.kwargs["year"]
@@ -499,7 +549,7 @@ class TestLoadDisclosuresCommand:
         default_root = Path("/tmp/artifacts")
         annual = self._artifact_result("house-disclosures", 1)
         ptr = self._artifact_result("house-disclosures", 2)
-        with _run_harness():
+        with _run_harness("disclosures"):
             with self._disclosure_env(ingest_side_effect=[annual, ptr]) as d:
                 d.mock_root.return_value = default_root
                 run(["load-disclosures", "--chamber", "house", "--year", str(self._YEAR)])
@@ -507,9 +557,10 @@ class TestLoadDisclosuresCommand:
 
     def test_respects_explicit_local_root(self) -> None:
         summary = self._artifact_result("senate-disclosures", 1)
-        with _run_harness():
+        with _run_harness("disclosures"):
             with patch(
-                f"{_MOD}.run_disclosure_artifact_ingest", return_value=summary
+                "src.runtime.commands.disclosures.run_disclosure_artifact_ingest",
+                return_value=summary,
             ) as mock_ingest:
                 run(
                     [
@@ -525,7 +576,7 @@ class TestLoadDisclosuresCommand:
         assert mock_ingest.call_args.kwargs["local_root"] == Path("/tmp/custom-artifacts")
 
     def test_returns_1_on_exception(self) -> None:
-        with _run_harness() as h:
+        with _run_harness("disclosures") as h:
             with self._disclosure_env(ingest_side_effect=RuntimeError("portal down")):
                 code = run(["load-disclosures", "--chamber", "house", "--year", str(self._YEAR)])
         assert code == 1
@@ -535,7 +586,7 @@ class TestLoadDisclosuresCommand:
 
     def test_single_chamber_result_contains_year(self) -> None:
         summary = self._artifact_result("senate-disclosures", 1)
-        with _run_harness() as h:
+        with _run_harness("disclosures") as h:
             with self._disclosure_env(ingest_rv=summary):
                 run(["load-disclosures", "--chamber", "senate", "--year", str(self._YEAR)])
         printed = _printed(h)
@@ -563,11 +614,17 @@ class TestParseDisclosuresCommand:
         parse_result = parse_result or self._parse_result()
         summary = summary or self._summary()
         with (
-            patch(f"{_MOD}.run_disclosure_parse_runtime", return_value=parse_result) as mock_parse,
             patch(
-                f"{_MOD}.summarize_parse_disclosures_result", return_value=summary
+                "src.runtime.commands.disclosures.run_disclosure_parse_runtime",
+                return_value=parse_result,
+            ) as mock_parse,
+            patch(
+                "src.runtime.commands.disclosures.summarize_parse_disclosures_result",
+                return_value=summary,
             ) as mock_summarize,
-            patch(f"{_MOD}.local_artifact_root", return_value=MagicMock()) as mock_root,
+            patch(
+                "src.runtime.commands._shared.local_artifact_root", return_value=MagicMock()
+            ) as mock_root,
         ):
             yield SimpleNamespace(
                 parse_result=parse_result,
@@ -577,56 +634,60 @@ class TestParseDisclosuresCommand:
             )
 
     def test_returns_0_on_success(self) -> None:
-        with _run_harness():
+        with _run_harness("disclosures"):
             with self._parse_env():
                 code = run(self._DEFAULT_ARGV)
         assert code == 0
 
     def test_passes_connection_to_run_disclosure_parse_runtime(self) -> None:
-        with _run_harness() as h:
+        with _run_harness("disclosures") as h:
             with self._parse_env() as p:
                 run(self._DEFAULT_ARGV)
         assert p.mock_parse.call_args.args[0] is h.conn
 
     def test_both_chamber_maps_to_none(self) -> None:
-        with _run_harness():
+        with _run_harness("disclosures"):
             with self._parse_env() as p:
                 run(["parse-disclosures", "--chamber", "both"])
         assert p.mock_parse.call_args.kwargs["chamber"] is None
 
     def test_house_chamber_forwarded(self) -> None:
-        with _run_harness():
+        with _run_harness("disclosures"):
             with self._parse_env() as p:
                 run(["parse-disclosures", "--chamber", "house"])
         assert p.mock_parse.call_args.kwargs["chamber"] == "house"
 
     def test_limit_forwarded(self) -> None:
-        with _run_harness():
+        with _run_harness("disclosures"):
             with self._parse_env() as p:
                 run(["parse-disclosures", "--limit", "25"])
         assert p.mock_parse.call_args.kwargs["limit"] == 25
 
     def test_explicit_local_root_forwarded(self) -> None:
-        with _run_harness():
+        with _run_harness("disclosures"):
             with (
                 patch(
-                    f"{_MOD}.run_disclosure_parse_runtime", return_value=self._parse_result()
+                    "src.runtime.commands.disclosures.run_disclosure_parse_runtime",
+                    return_value=self._parse_result(),
                 ) as mock_parse,
-                patch(f"{_MOD}.summarize_parse_disclosures_result", return_value=self._summary()),
+                patch(
+                    "src.runtime.commands.disclosures.summarize_parse_disclosures_result",
+                    return_value=self._summary(),
+                ),
             ):
                 run(["parse-disclosures", "--local-root", "/tmp/artifacts"])
         assert mock_parse.call_args.kwargs["local_root"] == Path("/tmp/artifacts")
 
     def test_uses_local_artifact_root_as_default(self) -> None:
         default_root = Path("/default/artifacts")
-        with _run_harness():
+        with _run_harness("disclosures"):
             with self._parse_env() as p:
                 p.mock_root.return_value = default_root
                 run(self._DEFAULT_ARGV)
         assert p.mock_parse.call_args.kwargs["local_root"] == default_root
 
     def test_prints_result_with_ok_and_command(self) -> None:
-        with _run_harness() as h:
+        with _run_harness("disclosures") as h:
             with self._parse_env():
                 run(self._DEFAULT_ARGV)
         printed = _printed(h)
@@ -638,18 +699,19 @@ class TestParseDisclosuresCommand:
 
     def test_summarizes_parse_result(self) -> None:
         parse_result = self._parse_result()
-        with _run_harness():
+        with _run_harness("disclosures"):
             with self._parse_env(parse_result=parse_result) as p:
                 run(self._DEFAULT_ARGV)
         p.mock_summarize.assert_called_once_with(parse_result)
 
     def test_returns_1_on_exception(self) -> None:
-        with _run_harness() as h:
+        with _run_harness("disclosures") as h:
             with (
                 patch(
-                    f"{_MOD}.run_disclosure_parse_runtime", side_effect=RuntimeError("disk full")
+                    "src.runtime.commands.disclosures.run_disclosure_parse_runtime",
+                    side_effect=RuntimeError("disk full"),
                 ),
-                patch(f"{_MOD}.local_artifact_root", return_value=MagicMock()),
+                patch("src.runtime.commands._shared.local_artifact_root", return_value=MagicMock()),
             ):
                 code = run(self._DEFAULT_ARGV)
         assert code == 1
@@ -666,15 +728,15 @@ class TestParseDisclosuresCommand:
 class TestRuntimeBuiltOnce:
     def test_status_builds_runtime_once(self) -> None:
         with _run_harness() as h:
-            with patch(f"{_MOD}.get_runtime_status", return_value={}):
+            with patch("src.runtime.commands.core.get_runtime_status", return_value={}):
                 run(["status"])
         assert h.mock_build.call_count == 1
 
     def test_recompute_builds_runtime_once(self) -> None:
         with _run_harness() as h:
             with (
-                patch(f"{_MOD}.recompute_snapshot", return_value=MagicMock()),
-                patch(f"{_MOD}.summarize_recompute_result", return_value={}),
+                patch("src.runtime.commands.core.recompute_snapshot", return_value=MagicMock()),
+                patch("src.runtime.commands.core.summarize_recompute_result", return_value={}),
             ):
                 run(["recompute", "--snapshot-date", "2024-01-01"])
         assert h.mock_build.call_count == 1
@@ -705,12 +767,16 @@ class TestProcessDisclosuresCommand:
         summary = summary or self._summary()
         with (
             patch(
-                f"{_MOD}.run_disclosures_parse_load_runtime", return_value=process_result
+                "src.runtime.commands.disclosures.run_disclosures_parse_load_runtime",
+                return_value=process_result,
             ) as mock_run,
             patch(
-                f"{_MOD}.summarize_process_disclosures_result", return_value=summary
+                "src.runtime.commands.disclosures.summarize_process_disclosures_result",
+                return_value=summary,
             ) as mock_summarize,
-            patch(f"{_MOD}.local_artifact_root", return_value=MagicMock()) as mock_root,
+            patch(
+                "src.runtime.commands._shared.local_artifact_root", return_value=MagicMock()
+            ) as mock_root,
         ):
             yield SimpleNamespace(
                 process_result=process_result,
@@ -720,58 +786,61 @@ class TestProcessDisclosuresCommand:
             )
 
     def test_returns_0_on_success(self) -> None:
-        with _run_harness():
+        with _run_harness("disclosures"):
             with self._process_env():
                 code = run(self._DEFAULT_ARGV)
         assert code == 0
 
     def test_calls_parse_load_runtime_with_connection(self) -> None:
-        with _run_harness() as h:
+        with _run_harness("disclosures") as h:
             with self._process_env() as p:
                 run(self._DEFAULT_ARGV)
         p.mock_run.assert_called_once()
         assert p.mock_run.call_args.args[0] is h.conn
 
     def test_both_chamber_maps_to_none_for_parse(self) -> None:
-        with _run_harness():
+        with _run_harness("disclosures"):
             with self._process_env() as p:
                 run(["process-disclosures", "--chamber", "both"])
         assert p.mock_run.call_args.kwargs["chamber"] is None
 
     def test_house_chamber_forwarded(self) -> None:
-        with _run_harness():
+        with _run_harness("disclosures"):
             with self._process_env() as p:
                 run(["process-disclosures", "--chamber", "house"])
         assert p.mock_run.call_args.kwargs["chamber"] == "house"
 
     def test_limit_forwarded(self) -> None:
-        with _run_harness():
+        with _run_harness("disclosures"):
             with self._process_env() as p:
                 run(["process-disclosures", "--limit", "20"])
         assert p.mock_run.call_args.kwargs["limit"] == 20
 
     def test_explicit_local_root_forwarded(self) -> None:
-        with _run_harness():
+        with _run_harness("disclosures"):
             with (
                 patch(
-                    f"{_MOD}.run_disclosures_parse_load_runtime",
+                    "src.runtime.commands.disclosures.run_disclosures_parse_load_runtime",
                     return_value=self._process_result(),
                 ) as mock_run,
-                patch(f"{_MOD}.summarize_process_disclosures_result", return_value=self._summary()),
+                patch(
+                    "src.runtime.commands.disclosures.summarize_process_disclosures_result",
+                    return_value=self._summary(),
+                ),
             ):
                 run(["process-disclosures", "--local-root", "/tmp/artifacts"])
         assert mock_run.call_args.kwargs["local_root"] == Path("/tmp/artifacts")
 
     def test_uses_local_artifact_root_as_default(self) -> None:
         default_root = Path("/default/artifacts")
-        with _run_harness():
+        with _run_harness("disclosures"):
             with self._process_env() as p:
                 p.mock_root.return_value = default_root
                 run(self._DEFAULT_ARGV)
         assert p.mock_run.call_args.kwargs["local_root"] == default_root
 
     def test_prints_result_with_ok_and_command(self) -> None:
-        with _run_harness() as h:
+        with _run_harness("disclosures") as h:
             with self._process_env():
                 run(self._DEFAULT_ARGV)
         printed = _printed(h)
@@ -782,20 +851,20 @@ class TestProcessDisclosuresCommand:
 
     def test_summarizes_combined_result(self) -> None:
         process_result = self._process_result()
-        with _run_harness():
+        with _run_harness("disclosures"):
             with self._process_env(process_result=process_result) as p:
                 run(self._DEFAULT_ARGV)
         called_result = p.mock_summarize.call_args[0][0]
         assert called_result is process_result
 
     def test_returns_1_on_parse_exception(self) -> None:
-        with _run_harness() as h:
+        with _run_harness("disclosures") as h:
             with (
                 patch(
-                    f"{_MOD}.run_disclosures_parse_load_runtime",
+                    "src.runtime.commands.disclosures.run_disclosures_parse_load_runtime",
                     side_effect=RuntimeError("parse failed"),
                 ),
-                patch(f"{_MOD}.local_artifact_root", return_value=MagicMock()),
+                patch("src.runtime.commands._shared.local_artifact_root", return_value=MagicMock()),
             ):
                 code = run(self._DEFAULT_ARGV)
         assert code == 1
@@ -804,13 +873,13 @@ class TestProcessDisclosuresCommand:
         assert "parse failed" in printed["error"]
 
     def test_returns_1_on_process_exception(self) -> None:
-        with _run_harness() as h:
+        with _run_harness("disclosures") as h:
             with (
                 patch(
-                    f"{_MOD}.run_disclosures_parse_load_runtime",
+                    "src.runtime.commands.disclosures.run_disclosures_parse_load_runtime",
                     side_effect=RuntimeError("db write failed"),
                 ),
-                patch(f"{_MOD}.local_artifact_root", return_value=MagicMock()),
+                patch("src.runtime.commands._shared.local_artifact_root", return_value=MagicMock()),
             ):
                 code = run(self._DEFAULT_ARGV)
         assert code == 1
@@ -856,8 +925,10 @@ class TestLoadCongressCommand:
         load_result = load_result or self._load_result()
         summary = summary or self._summary()
         with (
-            patch(f"{_MOD}.load_congress", return_value=load_result) as mock_run,
-            patch(f"{_MOD}.summarize_load_result", return_value=summary) as mock_summarize,
+            patch("src.runtime.commands.core.load_congress", return_value=load_result) as mock_run,
+            patch(
+                "src.runtime.commands.core.summarize_load_result", return_value=summary
+            ) as mock_summarize,
         ):
             yield SimpleNamespace(
                 mock_run=mock_run,
@@ -942,7 +1013,9 @@ class TestLoadCongressCommand:
 
     def test_returns_1_on_exception(self) -> None:
         with _run_harness() as h:
-            with patch(f"{_MOD}.load_congress", side_effect=RuntimeError("api down")):
+            with patch(
+                "src.runtime.commands.core.load_congress", side_effect=RuntimeError("api down")
+            ):
                 code = run(self._argv())
         assert code == 1
         printed = _printed(h)
@@ -992,8 +1065,12 @@ class TestLoadCongressLocalCommand:
         load_result = load_result or self._load_result()
         summary = summary or self._summary()
         with (
-            patch(f"{_MOD}.load_congress_local", return_value=load_result) as mock_run,
-            patch(f"{_MOD}.summarize_load_result", return_value=summary) as mock_summarize,
+            patch(
+                "src.runtime.commands.core.load_congress_local", return_value=load_result
+            ) as mock_run,
+            patch(
+                "src.runtime.commands.core.summarize_load_result", return_value=summary
+            ) as mock_summarize,
         ):
             yield SimpleNamespace(mock_run=mock_run, mock_summarize=mock_summarize)
 
@@ -1047,7 +1124,8 @@ class TestLoadCongressLocalCommand:
     def test_returns_1_on_exception(self) -> None:
         with _run_harness() as h:
             with patch(
-                f"{_MOD}.load_congress_local", side_effect=RuntimeError("bundle parse failed")
+                "src.runtime.commands.core.load_congress_local",
+                side_effect=RuntimeError("bundle parse failed"),
             ):
                 code = run(self._argv())
         assert code == 1
@@ -1092,10 +1170,16 @@ class TestProcessDisclosuresLocalCommand:
         summary = summary or self._summary()
         bundle = bundle or MagicMock()
         with (
-            patch(f"{_MOD}.load_disclosures_bundle", return_value=bundle) as mock_load,
-            patch(f"{_MOD}.process_disclosures_local", return_value=process_result) as mock_run,
             patch(
-                f"{_MOD}.summarize_disclosures_bundle_process_result", return_value=summary
+                "src.runtime.commands.disclosures.load_disclosures_bundle", return_value=bundle
+            ) as mock_load,
+            patch(
+                "src.runtime.commands.disclosures.process_disclosures_local",
+                return_value=process_result,
+            ) as mock_run,
+            patch(
+                "src.runtime.commands.disclosures.summarize_disclosures_bundle_process_result",
+                return_value=summary,
             ) as mock_summarize,
         ):
             yield SimpleNamespace(
@@ -1105,13 +1189,13 @@ class TestProcessDisclosuresLocalCommand:
             )
 
     def test_returns_0_on_success(self) -> None:
-        with _run_harness():
+        with _run_harness("disclosures"):
             with self._process_local_env():
                 code = run(self._argv())
         assert code == 0
 
     def test_prints_result_with_ok_and_command(self) -> None:
-        with _run_harness() as h:
+        with _run_harness("disclosures") as h:
             with self._process_local_env():
                 run(self._argv())
         printed = _printed(h)
@@ -1119,27 +1203,27 @@ class TestProcessDisclosuresLocalCommand:
         assert printed["command"] == "process-disclosures-local"
 
     def test_loads_bundle_from_path(self) -> None:
-        with _run_harness():
+        with _run_harness("disclosures"):
             with self._process_local_env() as p:
                 run(self._argv())
         p.mock_load.assert_called_once_with(self._BUNDLE_PATH)
 
     def test_passes_loaded_bundle_to_process(self) -> None:
         bundle = MagicMock()
-        with _run_harness():
+        with _run_harness("disclosures"):
             with self._process_local_env(bundle=bundle) as p:
                 run(self._argv())
         assert p.mock_run.call_args.args[1] is bundle
 
     def test_passes_runtime_context(self) -> None:
-        with _run_harness() as h:
+        with _run_harness("disclosures") as h:
             with self._process_local_env() as p:
                 run(self._argv())
         assert p.mock_run.call_args.args[0] is h.rt.context
 
     def test_summarizes_result(self) -> None:
         process_result = self._process_result()
-        with _run_harness():
+        with _run_harness("disclosures"):
             with self._process_local_env(process_result=process_result) as p:
                 run(self._argv())
         p.mock_summarize.assert_called_once_with(process_result)
@@ -1149,9 +1233,10 @@ class TestProcessDisclosuresLocalCommand:
         assert code != 0
 
     def test_returns_1_on_load_exception(self) -> None:
-        with _run_harness() as h:
+        with _run_harness("disclosures") as h:
             with patch(
-                f"{_MOD}.load_disclosures_bundle", side_effect=FileNotFoundError("no bundle")
+                "src.runtime.commands.disclosures.load_disclosures_bundle",
+                side_effect=FileNotFoundError("no bundle"),
             ):
                 code = run(self._argv())
         assert code == 1
@@ -1160,10 +1245,16 @@ class TestProcessDisclosuresLocalCommand:
         assert "no bundle" in printed["error"]
 
     def test_returns_1_on_process_exception(self) -> None:
-        with _run_harness() as h:
+        with _run_harness("disclosures") as h:
             with (
-                patch(f"{_MOD}.load_disclosures_bundle", return_value=MagicMock()),
-                patch(f"{_MOD}.process_disclosures_local", side_effect=RuntimeError("disk error")),
+                patch(
+                    "src.runtime.commands.disclosures.load_disclosures_bundle",
+                    return_value=MagicMock(),
+                ),
+                patch(
+                    "src.runtime.commands.disclosures.process_disclosures_local",
+                    side_effect=RuntimeError("disk error"),
+                ),
             ):
                 code = run(self._argv())
         assert code == 1
@@ -1242,10 +1333,14 @@ class TestRunOracleLocalCommand:
         summary = summary or self._summary()
         bundle = bundle or MagicMock()
         with (
-            patch(f"{_MOD}.load_disclosures_bundle", return_value=bundle) as mock_load_bundle,
-            patch(f"{_MOD}.run_oracle_local_command", return_value=oracle_result) as mock_oracle,
             patch(
-                f"{_MOD}.summarize_local_oracle_run_result", return_value=summary
+                "src.runtime.commands.core.load_disclosures_bundle", return_value=bundle
+            ) as mock_load_bundle,
+            patch(
+                "src.runtime.commands.core.run_oracle_local_command", return_value=oracle_result
+            ) as mock_oracle,
+            patch(
+                "src.runtime.commands.core.summarize_local_oracle_run_result", return_value=summary
             ) as mock_summarize,
         ):
             yield SimpleNamespace(
@@ -1362,9 +1457,12 @@ class TestRunOracleLocalCommand:
     def test_returns_1_on_exception(self) -> None:
         with _run_harness() as h:
             with (
-                patch(f"{_MOD}.load_disclosures_bundle", return_value=MagicMock()),
                 patch(
-                    f"{_MOD}.run_oracle_local_command", side_effect=RuntimeError("oracle failed")
+                    "src.runtime.commands.core.load_disclosures_bundle", return_value=MagicMock()
+                ),
+                patch(
+                    "src.runtime.commands.core.run_oracle_local_command",
+                    side_effect=RuntimeError("oracle failed"),
                 ),
             ):
                 code = run(self._argv())
@@ -1546,7 +1644,9 @@ class TestVerifyPublishCommand:
     @contextmanager
     def _verify_env(self, verify_result=None):
         verify_result = verify_result or self._verify_result()
-        with patch(f"{_MOD}.verify_publish_local", return_value=verify_result) as mock_verify:
+        with patch(
+            "src.runtime.commands.core.verify_publish_local", return_value=verify_result
+        ) as mock_verify:
             yield SimpleNamespace(mock_verify=mock_verify, verify_result=verify_result)
 
     def test_returns_0_on_success(self) -> None:
@@ -1612,7 +1712,10 @@ class TestVerifyPublishCommand:
 
     def test_returns_1_on_exception(self) -> None:
         with _run_harness() as h:
-            with patch(f"{_MOD}.verify_publish_local", side_effect=RuntimeError("corrupt tree")):
+            with patch(
+                "src.runtime.commands.core.verify_publish_local",
+                side_effect=RuntimeError("corrupt tree"),
+            ):
                 code = run(self._argv())
         assert code == 1
         printed = _printed(h)
@@ -1668,10 +1771,12 @@ class TestVerifyPublishRoundtripCommand:
         }
         with (
             patch(
-                f"{_MOD}.verify_publish_roundtrip_local", return_value=verify_result
+                "src.runtime.commands.core.verify_publish_roundtrip_local",
+                return_value=verify_result,
             ) as mock_verify,
             patch(
-                f"{_MOD}.summarize_publish_roundtrip_result", return_value=roundtrip_summary
+                "src.runtime.commands.core.summarize_publish_roundtrip_result",
+                return_value=roundtrip_summary,
             ) as mock_summarize,
         ):
             yield SimpleNamespace(
@@ -1745,7 +1850,8 @@ class TestVerifyPublishRoundtripCommand:
     def test_returns_1_on_exception(self) -> None:
         with _run_harness() as h:
             with patch(
-                f"{_MOD}.verify_publish_roundtrip_local", side_effect=RuntimeError("broken tree")
+                "src.runtime.commands.core.verify_publish_roundtrip_local",
+                side_effect=RuntimeError("broken tree"),
             ):
                 code = run(self._argv())
         assert code == 1
@@ -1771,9 +1877,9 @@ class TestVerifyPublishRoundtripCommand:
 
         runtime = SimpleNamespace(context=MagicMock(name="ctx"))
         with (
-            patch(f"{_MOD}.build_runtime", return_value=runtime),
-            patch("src.runtime.commands.open_connection", return_value=MagicMock(name="conn")),
-            patch("src.runtime.commands._verify_roundtrip", return_value=failing),
+            patch("src.runtime.commands.core.build_runtime", return_value=runtime),
+            patch("src.runtime.commands.core.open_connection", return_value=MagicMock(name="conn")),
+            patch("src.runtime.commands.core._verify_roundtrip", return_value=failing),
         ):
             code = run(self._argv())
 

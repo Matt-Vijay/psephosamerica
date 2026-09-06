@@ -105,10 +105,16 @@ def evaluate_confirmation_head(
     probs = [head.probability(v) for v in eval_votes]
     labels = [v.is_yea for v in eval_votes]
     baseline = [1.0 if v.party_match else 0.0 for v in eval_votes]
-    brier = sum((p - (1.0 if y else 0.0)) ** 2 for p, y in zip(probs, labels)) / len(labels)
-    base_brier = sum((b - (1.0 if y else 0.0)) ** 2 for b, y in zip(baseline, labels)) / len(labels)
-    accuracy = sum(1 for p, y in zip(probs, labels) if (p >= 0.5) == y) / len(labels)
-    base_acc = sum(1 for b, y in zip(baseline, labels) if (b >= 0.5) == y) / len(labels)
+    brier = sum((p - (1.0 if y else 0.0)) ** 2 for p, y in zip(probs, labels, strict=False)) / len(
+        labels
+    )
+    base_brier = sum(
+        (b - (1.0 if y else 0.0)) ** 2 for b, y in zip(baseline, labels, strict=False)
+    ) / len(labels)
+    accuracy = sum(1 for p, y in zip(probs, labels, strict=False) if (p >= 0.5) == y) / len(labels)
+    base_acc = sum(1 for b, y in zip(baseline, labels, strict=False) if (b >= 0.5) == y) / len(
+        labels
+    )
     return {
         "eval_votes": float(len(labels)),
         "auc": ranking_metrics(probs, labels).auc,

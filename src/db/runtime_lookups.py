@@ -19,9 +19,7 @@ from typing import Any
 from src.db.lookups import LookupBundle, build_lookup_bundle
 from src.db.repositories import ConnectionLike, fetch_all
 
-# ---------------------------------------------------------------------------
 # Row fetchers — each pulls only the columns the builder needs
-# ---------------------------------------------------------------------------
 
 _MEMBER_SQL = """
 SELECT id, bioguide_id, lis_member_id, fec_candidate_id
@@ -60,9 +58,7 @@ def fetch_financial_disclosure_lookup_rows(conn: ConnectionLike) -> list[dict[st
     return fetch_all(conn, _FINANCIAL_DISCLOSURE_SQL)
 
 
-# ---------------------------------------------------------------------------
 # Bundle loader — one call to populate all maps
-# ---------------------------------------------------------------------------
 
 
 def load_lookup_bundle(conn: ConnectionLike) -> LookupBundle:

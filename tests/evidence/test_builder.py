@@ -27,7 +27,6 @@ from src.export.contracts import (
 )
 from src.rules.models import RuleFire, Severity
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------

@@ -43,7 +43,6 @@ from src.runtime.publish_verify_types import (
     PublishVerifyStageResult,
 )
 
-
 # ---------------------------------------------------------------------------
 # 1. All __all__ names are importable from src.runtime
 # ---------------------------------------------------------------------------
@@ -891,9 +890,7 @@ class TestVerifyTopology:
         manifest_file.parent.mkdir(parents=True, exist_ok=True)
         manifest_data = {
             "snapshot_id": self._SNAPSHOT_ID,
-            "created_at": datetime.datetime(
-                2026, 4, 15, 0, 0, 0, tzinfo=datetime.timezone.utc
-            ).isoformat(),
+            "created_at": datetime.datetime(2026, 4, 15, 0, 0, 0, tzinfo=datetime.UTC).isoformat(),
             "entries": entries,
             "total_files": len(entries),
             "total_bytes": sum(e["size_bytes"] for e in entries),
@@ -926,7 +923,7 @@ class TestVerifyTopology:
         self._write_manifest(tmp_path, [])
         result = runtime.verify_publish_local(tmp_path)
         assert len(result.stages) == len(PUBLISH_STAGES)
-        for stage_result, expected_name in zip(result.stages, PUBLISH_STAGES):
+        for stage_result, expected_name in zip(result.stages, PUBLISH_STAGES, strict=False):
             assert stage_result.stage == expected_name
 
     # -- publish: empty snapshot tree passes all stages ----------------------
@@ -993,7 +990,7 @@ class TestRoundtripVerifyTopology:
     orchestration path real.
     """
 
-    _MOD = "src.runtime.commands"
+    _MOD = "src.runtime.commands.core"
 
     def _ok_roundtrip_result(self) -> PublishRoundtripResult:
         """Return a fully-passing five-stage roundtrip result."""
@@ -1056,7 +1053,7 @@ class TestRoundtripVerifyTopology:
             result = runtime.verify_publish_roundtrip_local(MagicMock(), tmp_path)
 
         assert len(result.stages) == len(ROUNDTRIP_STAGES)
-        for stage_result, expected_name in zip(result.stages, ROUNDTRIP_STAGES):
+        for stage_result, expected_name in zip(result.stages, ROUNDTRIP_STAGES, strict=False):
             assert stage_result.stage == expected_name
 
     # -- verify: ok reflects all five stages ---------------------------------
@@ -1104,7 +1101,7 @@ class TestRoundtripVerifyTopology:
 
 
 class TestHistoryAggregateVerifyTopology:
-    _MOD = "src.runtime.commands"
+    _MOD = "src.runtime.commands.history"
 
     def _ok_history_verify_result(self) -> HistoryVerifyResult:
         stages = tuple(
@@ -1158,7 +1155,7 @@ class TestHistoryAggregateVerifyTopology:
             result = runtime.verify_history_aggregate_local(tmp_path)
 
         assert len(result.stages) == len(HISTORY_VERIFY_STAGES)
-        for stage_result, expected_name in zip(result.stages, HISTORY_VERIFY_STAGES):
+        for stage_result, expected_name in zip(result.stages, HISTORY_VERIFY_STAGES, strict=False):
             assert stage_result.stage == expected_name
 
     def test_not_ok_when_snapshot_index_stage_fails(self, tmp_path: Path):

@@ -18,8 +18,8 @@ from unittest.mock import MagicMock, call, patch
 from src.runtime.disclosures_bundle import disclosures_bundle_from_dict
 from src.runtime.disclosures_bundle_process import (
     DisclosuresBundleProcessResult,
-    _BundleIndexProvider,
     _build_parse_inputs,
+    _BundleIndexProvider,
     _validate_bundle,
     run_disclosures_bundle_process,
 )
@@ -995,8 +995,9 @@ class TestBuildParseInputs:
         assert inputs[0].artifact_row is artifact_row
 
     def test_sha256_mismatch_raises(self, tmp_path):
-        from src.runtime.disclosures_bundle_files import Sha256Mismatch
         import pytest
+
+        from src.runtime.disclosures_bundle_files import Sha256Mismatch
 
         dest = tmp_path / "house" / "2024" / "X.pdf"
         dest.parent.mkdir(parents=True, exist_ok=True)

@@ -23,7 +23,7 @@ from __future__ import annotations
 import hashlib
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from src.query.disclosure_member_rows import fetch_member_rows_for_disclosures
 from src.runtime.disclosures import (
@@ -50,10 +50,7 @@ from src.runtime.disclosures_transform import (
     transform_parse_sessions,
 )
 
-
-# ---------------------------------------------------------------------------
 # Result type
-# ---------------------------------------------------------------------------
 
 
 @dataclass(frozen=True)
@@ -78,9 +75,7 @@ class DisclosuresBundleProcessResult:
     load_result: DisclosuresLoadRuntimeResult
 
 
-# ---------------------------------------------------------------------------
 # Bundle validation
-# ---------------------------------------------------------------------------
 
 
 def _validate_bundle(bundle: Any) -> None:
@@ -91,9 +86,7 @@ def _validate_bundle(bundle: Any) -> None:
         validate_disclosures_bundle(bundle)
 
 
-# ---------------------------------------------------------------------------
 # Parse input construction from staged bundle
-# ---------------------------------------------------------------------------
 
 
 def _build_parse_inputs(
@@ -162,9 +155,7 @@ def _read_entry_bytes(
     return data
 
 
-# ---------------------------------------------------------------------------
 # Bundle-backed IndexMatchProvider
-# ---------------------------------------------------------------------------
 
 
 class _BundleIndexProvider:
@@ -216,9 +207,7 @@ class _BundleIndexProvider:
         return fetch_member_rows_for_disclosures(conn, chamber=chamber)
 
 
-# ---------------------------------------------------------------------------
 # Public entry point
-# ---------------------------------------------------------------------------
 
 
 def run_disclosures_bundle_process(
@@ -226,7 +215,7 @@ def run_disclosures_bundle_process(
     bundle: Any,
     *,
     local_root: Path | None = None,
-    parse_inputs: Optional[list[DisclosureParseInput]] = None,
+    parse_inputs: list[DisclosureParseInput] | None = None,
 ) -> DisclosuresBundleProcessResult:
     """Stage a local disclosure bundle, parse, transform, and load.
 

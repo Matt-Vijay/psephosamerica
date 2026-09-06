@@ -24,13 +24,13 @@ from unittest.mock import patch
 
 import pytest
 
+from src.export.writer import current_member_lookup_path
 from src.runtime.publish_roundtrip import _verify_snapshot, verify_publish_roundtrip
 from src.runtime.publish_roundtrip_types import (
     PublishRoundtripIssue,
     PublishRoundtripResult,
     PublishRoundtripStageResult,
 )
-from src.export.writer import current_member_lookup_path
 from tests.support.published_snapshot_fixtures import PublishedSnapshotBuilder
 
 # ---------------------------------------------------------------------------

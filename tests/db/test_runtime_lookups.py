@@ -18,6 +18,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from src.db.lookups import LookupBuildError
 from src.db.runtime_lookups import (
     fetch_committee_lookup_rows,
     fetch_fec_committee_lookup_rows,
@@ -25,7 +26,6 @@ from src.db.runtime_lookups import (
     fetch_member_lookup_rows,
     load_lookup_bundle,
 )
-from src.db.lookups import LookupBuildError
 
 # ---------------------------------------------------------------------------
 # Fixtures

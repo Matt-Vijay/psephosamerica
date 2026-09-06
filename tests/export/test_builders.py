@@ -17,7 +17,6 @@ from src.export.builders import (
 from src.export.contracts import ConfidenceLabel, EvidenceSection
 from src.export.manifest import SnapshotManifest, manifest_root_sha256
 
-
 # ── Fixtures ───────────────────────────────────────────────────────
 
 SNAPSHOT_DATE = date(2026, 4, 13)

@@ -18,7 +18,6 @@ from src.demo.publish_demo import PublishDemoResult, main, run_publish_demo
 from src.export.filesystem import read_manifest, verify_written_files
 from src.export.writer import PlannedFile
 
-
 # ---------------------------------------------------------------------------
 # Module-scoped fixture: run once, share across all test classes
 # ---------------------------------------------------------------------------

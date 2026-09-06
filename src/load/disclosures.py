@@ -21,9 +21,7 @@ from src.parse.disclosures.transform import (
     TransactionPayload,
 )
 
-# ---------------------------------------------------------------------------
 # Plan types
-# ---------------------------------------------------------------------------
 
 
 @dataclass(frozen=True)
@@ -59,9 +57,7 @@ class DisclosureLoadPlan:
     sidecars: tuple[OutsidePositionSidecar, ...]
 
 
-# ---------------------------------------------------------------------------
 # Row serialisers (pure functions)
-# ---------------------------------------------------------------------------
 
 
 def _disclosure_row(p: FinancialDisclosurePayload) -> dict[str, Any]:
@@ -150,9 +146,7 @@ def _review_queue_row(p: ReviewQueuePayload) -> dict[str, Any]:
     }
 
 
-# ---------------------------------------------------------------------------
 # Plan builder
-# ---------------------------------------------------------------------------
 
 # Canonical table names in FK-safe insertion order.
 _TABLE_ORDER: tuple[str, ...] = (
@@ -197,6 +191,7 @@ def plan_disclosure_load(results: list[DisclosureTransformResult]) -> Disclosure
         for table, rows in zip(
             _TABLE_ORDER,
             [disclosure_rows, holding_rows, transaction_rows, review_queue_rows],
+            strict=False,
         )
     )
 

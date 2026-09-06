@@ -12,8 +12,8 @@ from unittest.mock import patch
 import pytest
 
 from src.parse.disclosures.house_index import HouseFilingKind, HouseIndexRow
-from src.parse.disclosures.senate_index import SenateIndexRow
 from src.parse.disclosures.index_lookup import fetch_disclosure_rows_by_doc_id
+from src.parse.disclosures.senate_index import SenateIndexRow
 
 # ---------------------------------------------------------------------------
 # Fixtures

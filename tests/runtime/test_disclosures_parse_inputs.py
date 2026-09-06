@@ -78,7 +78,7 @@ def _load_artifacts(
     """
     if blobs is None:
         blobs = [_PDF_BYTES] * len(rows)
-    for row, data in zip(rows, blobs):
+    for row, data in zip(rows, blobs, strict=False):
         _write_artifact(tmp_path, row, data)
     conn = MagicMock()
     with patch(_FETCH, return_value=rows):

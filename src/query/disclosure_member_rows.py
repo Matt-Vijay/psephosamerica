@@ -15,9 +15,7 @@ from typing import Any
 
 from src.db.repositories import ConnectionLike, fetch_all
 
-# ---------------------------------------------------------------------------
 # fetch_house_member_rows
-# ---------------------------------------------------------------------------
 
 _HOUSE_MEMBER_SQL = """
 SELECT DISTINCT ON (m.bioguide_id)
@@ -43,9 +41,7 @@ def fetch_house_member_rows(conn: ConnectionLike) -> list[dict[str, Any]]:
     return fetch_all(conn, _HOUSE_MEMBER_SQL)
 
 
-# ---------------------------------------------------------------------------
 # fetch_senate_member_rows
-# ---------------------------------------------------------------------------
 
 _SENATE_MEMBER_SQL = """
 SELECT
@@ -69,9 +65,7 @@ def fetch_senate_member_rows(conn: ConnectionLike) -> list[dict[str, Any]]:
     return fetch_all(conn, _SENATE_MEMBER_SQL)
 
 
-# ---------------------------------------------------------------------------
 # fetch_member_rows_for_disclosures
-# ---------------------------------------------------------------------------
 
 
 def fetch_member_rows_for_disclosures(

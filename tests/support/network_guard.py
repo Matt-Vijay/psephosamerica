@@ -58,7 +58,7 @@ class NetworkGuard:
 
     # -- context-manager protocol ---------------------------------------------
 
-    def __enter__(self) -> "NetworkGuard":
+    def __enter__(self) -> NetworkGuard:
         self.install()
         return self
 

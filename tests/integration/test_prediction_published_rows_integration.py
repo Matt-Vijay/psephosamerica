@@ -15,7 +15,6 @@ from src.query.published_rows import (
     fetch_vote_prediction_backtest_label_rows,
 )
 
-
 pytestmark = pytest.mark.skipif(
     not os.environ.get("PSEPHOS_TEST_POSTGRES_DSN"),
     reason="PSEPHOS_TEST_POSTGRES_DSN not set",

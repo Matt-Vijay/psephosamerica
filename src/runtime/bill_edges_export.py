@@ -26,12 +26,12 @@ from pathlib import Path
 from typing import Any
 
 from src.graph.edges import GraphEdge
+from src.graph.export import RECORDS_FILENAME
 from src.graph.ingest.billstatus_edges import (
     classification_edges_from_fields,
     committee_referral_edges,
     sponsorship_edges,
 )
-from src.graph.export import RECORDS_FILENAME
 from src.graph.ingest.govinfo_billstatus import billstatus_from_record, bulk_billstatus_url
 from src.graph.provenance import ProvenanceEnvelope
 

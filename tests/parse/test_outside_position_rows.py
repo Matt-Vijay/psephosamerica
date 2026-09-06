@@ -15,7 +15,6 @@ from src.parse.disclosures.outside_position_rows import (
     outside_position_rows_from_table,
 )
 
-
 # ---------------------------------------------------------------------------
 # Shared builder — thin default wrapper around outside_position_from_cells
 # ---------------------------------------------------------------------------

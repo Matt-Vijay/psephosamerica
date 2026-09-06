@@ -13,12 +13,12 @@ from datetime import UTC, date, datetime
 from pathlib import Path
 
 from src.graph.contracts import ContractSourceAnchor, build_bill_output
+from src.graph.entity_resolution.records import SourceRecord
 from src.graph.export import write_contract_corpus
 from src.graph.ingest.votes import vote_edge, vote_provenance
+from src.graph.materialize import materialize_person_nodes
 from src.graph.provenance import ProvenanceEnvelope
 from src.graph.regenerate import regenerate_corpus
-from src.graph.entity_resolution.records import SourceRecord
-from src.graph.materialize import materialize_person_nodes
 
 _T1 = datetime(2024, 4, 1, tzinfo=UTC)  # after the March vote, before the June one
 _T2 = datetime(2024, 7, 1, tzinfo=UTC)  # after both votes

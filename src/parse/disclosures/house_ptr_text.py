@@ -83,9 +83,7 @@ _RE_HEADER_FOOTER_BLEED = re.compile(
 )
 
 
-# ---------------------------------------------------------------------------
 # Public entry point
-# ---------------------------------------------------------------------------
 
 
 def parse_house_ptr(
@@ -142,9 +140,7 @@ def parse_house_ptr(
     )
 
 
-# ---------------------------------------------------------------------------
 # Header → Filing
-# ---------------------------------------------------------------------------
 
 
 def _build_filing(header: HeaderFields, member_bioguide_id: str) -> Filing:
@@ -180,9 +176,7 @@ def _header_warnings(header: HeaderFields, member_bioguide_id: str) -> list[str]
     return warnings
 
 
-# ---------------------------------------------------------------------------
 # Table detection
-# ---------------------------------------------------------------------------
 
 
 def _find_table_header(lines: Sequence[str]) -> int:
@@ -198,9 +192,7 @@ def _find_table_header(lines: Sequence[str]) -> int:
     return -1
 
 
-# ---------------------------------------------------------------------------
 # Row parsing
-# ---------------------------------------------------------------------------
 
 
 def _extract_row_dicts(

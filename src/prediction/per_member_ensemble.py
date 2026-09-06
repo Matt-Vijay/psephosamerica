@@ -72,7 +72,7 @@ def predict_interval(
 
 def ensemble_uncertainty_report(
     models: list[PerMemberModel],
-    vote_rows: list["VoteRow"],
+    vote_rows: list[VoteRow],
     *,
     confidence_level: float = 0.9,
 ) -> dict[str, UncertaintySlice]:

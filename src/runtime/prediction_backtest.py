@@ -16,8 +16,8 @@ from src.evidence.source_anchor_policy import (
 from src.pipeline.publish_snapshot_run import _ontology_edge_from_row
 from src.prediction.backtest import (
     OPTIONAL_ONTOLOGY_FEATURE_SIGNAL_NAMES,
-    PredictionBacktestPayload,
     REQUIRED_ONTOLOGY_FEATURE_SIGNAL_NAMES,
+    PredictionBacktestPayload,
     build_vote_baseline_backtest,
     build_vote_ontology_backtest,
 )
@@ -33,25 +33,16 @@ from src.query.published_rows import (
 from src.runtime.app import build_runtime
 from src.runtime.bill_semantics_cache import (
     bill_semantics_cache_failures as _prediction_backtest_bill_semantics_cache_failures,
-)
-from src.runtime.bill_semantics_cache import (
     bill_semantics_index_model_names as _bill_semantics_index_model_names,
-)
-from src.runtime.bill_semantics_cache import (
     bill_semantics_index_sha256 as _bill_semantics_index_sha256,
-)
-from src.runtime.bill_semantics_cache import (
     has_bill_semantics_cache as _prediction_backtest_has_bill_semantics_cache,
-)
-from src.runtime.bill_semantics_cache import (
     validate_bill_semantics_run_metadata as _validate_bill_semantics_run_metadata,
 )
 from src.runtime.context import RuntimeContext, open_connection
 from src.runtime.json_artifacts import (
     attach_optional_verification_output as _attach_optional_verification_output,
+    write_json_artifact as _write_json_artifact,
 )
-from src.runtime.json_artifacts import write_json_artifact as _write_json_artifact
-
 
 _SOURCE_FAMILY_ID_RE = re.compile(r"^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$")
 

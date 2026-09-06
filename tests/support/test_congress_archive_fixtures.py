@@ -18,8 +18,8 @@ from pathlib import Path
 
 from src.ingest.congress.archive import CongressArchive
 from src.ingest.congress.archive_loader import (
-    load_bills_payload,
     load_bill_detail_payload_map,
+    load_bills_payload,
     load_committees_payload,
     load_cosponsors_payload_map,
     load_member_detail_payload_map,
@@ -29,7 +29,6 @@ from tests.support.congress_archive_fixtures import (
     CongressArchiveBuilder,
     make_archive,
 )
-
 
 # ---------------------------------------------------------------------------
 # CongressArchiveBuilder — file layout

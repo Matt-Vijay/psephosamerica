@@ -8,7 +8,7 @@ granularity.
 
 from __future__ import annotations
 
-from typing import Literal, Optional, Union
+from typing import Literal
 
 import httpx
 
@@ -29,9 +29,9 @@ def fetch_disclosure_rows_by_doc_id(
     chamber: Chamber,
     year: int,
     *,
-    filing_kind: Optional[str] = None,
+    filing_kind: str | None = None,
     client: httpx.Client | None = None,
-) -> Union[dict[str, HouseIndexRow], dict[str, SenateIndexRow]]:
+) -> dict[str, HouseIndexRow] | dict[str, SenateIndexRow]:
     """Return a doc_id-keyed dict of index rows for *chamber* and *year*.
 
     House
@@ -67,15 +67,13 @@ def fetch_disclosure_rows_by_doc_id(
     raise ValueError(f"Unknown chamber: {chamber!r}; expected 'house' or 'senate'")
 
 
-# ---------------------------------------------------------------------------
 # Chamber-specific helpers
-# ---------------------------------------------------------------------------
 
 
 def _house_lookup(
     year: int,
     *,
-    filing_kind: Optional[str],
+    filing_kind: str | None,
     client: httpx.Client | None,
 ) -> dict[str, HouseIndexRow]:
     if filing_kind is not None:

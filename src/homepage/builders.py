@@ -26,9 +26,7 @@ _DEFAULT_RECENT_N = 20
 _MAX_CARD_IDS_PER_MEMBER = 3
 
 
-# ---------------------------------------------------------------------------
 # Internal helpers
-# ---------------------------------------------------------------------------
 
 
 def _coerce_date(value: dt.date | str) -> dt.date:
@@ -56,9 +54,7 @@ def _member_state(meta: dict[str, Any]) -> str:
     return str(meta.get("state", ""))
 
 
-# ---------------------------------------------------------------------------
 # Top-changes builder
-# ---------------------------------------------------------------------------
 
 
 def build_top_changes(
@@ -124,9 +120,7 @@ def build_top_changes(
     return summaries[:n]
 
 
-# ---------------------------------------------------------------------------
 # Recent-events builder
-# ---------------------------------------------------------------------------
 
 
 def build_recent_events(
@@ -158,9 +152,7 @@ def build_recent_events(
     ]
 
 
-# ---------------------------------------------------------------------------
 # Card-ID linkage helper
-# ---------------------------------------------------------------------------
 
 
 def extract_recent_evidence_card_ids(recent_events: list[RecentEventSummary]) -> list[str]:
@@ -206,9 +198,7 @@ def build_featured_lookup_entries(
     return result
 
 
-# ---------------------------------------------------------------------------
 # Top-level payload builder
-# ---------------------------------------------------------------------------
 
 
 def build_homepage_feed(

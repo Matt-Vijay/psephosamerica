@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import FrozenInstanceError
 from datetime import date
 
 import pytest
@@ -75,5 +76,5 @@ def test_invalid_date_is_none() -> None:
 
 def test_contribution_row_is_frozen() -> None:
     row = parse_contribution_line(_C2C)
-    with pytest.raises(Exception):
+    with pytest.raises(FrozenInstanceError):
         row.amount_cents = 0  # type: ignore[misc]

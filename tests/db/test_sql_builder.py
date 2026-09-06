@@ -1,8 +1,8 @@
 """Tests for src/db/sql.py — pure SQL generation, no DB I/O."""
 
 import pytest
-from src.db.sql import build_insert, build_upsert, derive_update_columns
 
+from src.db.sql import build_insert, build_upsert, derive_update_columns
 
 # ---------------------------------------------------------------------------
 # build_insert

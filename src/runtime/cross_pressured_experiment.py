@@ -19,11 +19,11 @@ from __future__ import annotations
 
 import json
 import math
-from typing import Any
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
+from typing import Any
 
 from src.prediction.calibration import expected_calibration_error
 from src.prediction.per_member_model import MemberVoteExample, train_per_member_model

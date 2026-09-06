@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import numpy as np
 
+from src.prediction.nn.token_projection import project
 from src.runtime.contract_corpus import ContractEntity, bill_embedding_index
 from src.runtime.four_stream_real import init_embedding_projections
-from src.prediction.nn.token_projection import project
 
 
 def _bill(cid: str) -> ContractEntity:

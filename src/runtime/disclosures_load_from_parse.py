@@ -15,11 +15,11 @@ from pathlib import Path
 from typing import Any
 
 from src.query.disclosure_member_rows import fetch_member_rows_for_disclosures
-from src.runtime.disclosures_index_provider import live_index_matches
 from src.runtime.disclosures import (
     DisclosuresLoadRuntimeResult,
     run_disclosures_load_runtime,
 )
+from src.runtime.disclosures_index_provider import live_index_matches
 from src.runtime.disclosures_parse import (
     DisclosureParseRuntimeResult,
     IndexMatchProvider,
@@ -31,10 +31,7 @@ from src.runtime.disclosures_transform import (
     transform_parse_sessions,
 )
 
-
-# ---------------------------------------------------------------------------
 # Live index provider
-# ---------------------------------------------------------------------------
 
 
 class _LiveIndexProvider:
@@ -52,9 +49,7 @@ class _LiveIndexProvider:
         return fetch_member_rows_for_disclosures(conn, chamber=chamber)
 
 
-# ---------------------------------------------------------------------------
 # Result type
-# ---------------------------------------------------------------------------
 
 
 @dataclass(frozen=True)
@@ -77,9 +72,7 @@ class DisclosuresParseLoadResult:
     load_result: DisclosuresLoadRuntimeResult
 
 
-# ---------------------------------------------------------------------------
 # Public entry point
-# ---------------------------------------------------------------------------
 
 
 def run_disclosures_parse_load_runtime(

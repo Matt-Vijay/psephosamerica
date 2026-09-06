@@ -13,7 +13,6 @@ from src.ingest.congress.member_terms import member_term_specs_from_detail
 from src.ingest.congress.models import MemberRecord
 from src.load.congress import MemberTermSpec as LoadMemberTermSpec
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------

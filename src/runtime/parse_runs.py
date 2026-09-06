@@ -5,8 +5,9 @@ Entry point: run_parse_session.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Callable, Protocol
+from typing import Any, Protocol
 
 from src.provenance.artifacts import create_parse_run, fail_parse_run, finish_parse_run
 

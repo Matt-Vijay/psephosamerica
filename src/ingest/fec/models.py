@@ -8,7 +8,6 @@ from __future__ import annotations
 import datetime
 from dataclasses import dataclass
 from decimal import Decimal
-from typing import Optional
 
 
 @dataclass(frozen=True, slots=True)
@@ -17,14 +16,14 @@ class CommitteeRecord:
 
     fec_committee_id: str
     committee_name: str
-    treasurer_name: Optional[str]
-    city: Optional[str]
-    state: Optional[str]
-    committee_type: Optional[str]
-    designation_code: Optional[str]
+    treasurer_name: str | None
+    city: str | None
+    state: str | None
+    committee_type: str | None
+    designation_code: str | None
     # FEC fields we carry but don't use in v1 scoring
-    party: Optional[str] = None
-    filing_frequency: Optional[str] = None
+    party: str | None = None
+    filing_frequency: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -34,7 +33,7 @@ class CandidateCommitteeLinkage:
     fec_candidate_id: str
     fec_committee_id: str
     linkage_type: str  # e.g. 'P' (principal), 'A' (authorized)
-    election_year: Optional[int] = None
+    election_year: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -43,14 +42,14 @@ class ContributionRecord:
 
     fec_committee_id: str  # recipient committee
     donor_name: str
-    city: Optional[str]
-    state: Optional[str]
-    zip_code: Optional[str]
-    employer: Optional[str]
-    occupation: Optional[str]
-    contribution_date: Optional[datetime.date]
+    city: str | None
+    state: str | None
+    zip_code: str | None
+    employer: str | None
+    occupation: str | None
+    contribution_date: datetime.date | None
     amount: Decimal
-    transaction_type: Optional[str]
-    memo_text: Optional[str] = None
-    sub_id: Optional[str] = None  # FEC unique row key
-    entity_type: Optional[str] = None  # IND, COM, etc.
+    transaction_type: str | None
+    memo_text: str | None = None
+    sub_id: str | None = None  # FEC unique row key
+    entity_type: str | None = None  # IND, COM, etc.

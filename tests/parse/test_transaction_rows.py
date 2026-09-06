@@ -16,7 +16,6 @@ from src.parse.disclosures.transaction_rows import (
     transaction_rows_from_table,
 )
 
-
 # ---------------------------------------------------------------------------
 # Minimal valid row helper
 # ---------------------------------------------------------------------------

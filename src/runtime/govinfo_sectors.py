@@ -24,8 +24,8 @@ import httpx
 
 from src.graph.ingest.govinfo_billstatus import billstatus_record, parse_billstatus_xml
 from src.runtime.govinfo_bills_materialize import BILLSTATUS_BILL_TYPES
-from src.runtime.http_client import client_or_default
 from src.runtime.govinfo_bills_run import Candidate, collect_candidates
+from src.runtime.http_client import client_or_default
 
 
 def bill_sector_record(xml: str) -> dict[str, object]:

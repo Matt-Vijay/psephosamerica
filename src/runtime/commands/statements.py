@@ -6,14 +6,11 @@ import csv
 import datetime as dt
 import hashlib
 import json
-
 from dataclasses import asdict
 from pathlib import Path
-from src.evidence.source_anchor_policy import is_official_source_url
-from src.runtime.public_statement_rows_materialize import materialize_public_statement_rows
-from src.runtime.public_statement_rss_materialize import materialize_public_statement_rss
 from typing import Any
 
+from src.evidence.source_anchor_policy import is_official_source_url
 from src.runtime.commands._shared import (
     _command_issue_result,
     _is_non_negative_plain_int,
@@ -22,6 +19,8 @@ from src.runtime.commands._shared import (
     _positive_finite_timeout,
     _write_json_artifact,
 )
+from src.runtime.public_statement_rows_materialize import materialize_public_statement_rows
+from src.runtime.public_statement_rss_materialize import materialize_public_statement_rss
 
 
 def _handle_materialize_public_statement_rows(args: Any) -> dict[str, Any]:

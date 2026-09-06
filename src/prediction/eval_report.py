@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING, Literal, Self
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 import src.export.contracts  # noqa: F401  # Load contracts before ontology-backed models.
-from src.export.contracts import SourceAnchor
 from src.evidence.source_anchor_policy import (
     SOURCE_TYPES_REQUIRING_URL,
     anchor_source_type,
@@ -15,19 +14,14 @@ from src.evidence.source_anchor_policy import (
     describe_missing_source_anchor_urls,
     is_official_source_url,
 )
-from src.prediction.dataset import (
-    PredictionDatasetExamplePayload,
-    PredictionDatasetSplitPayload,
-    PredictionEvalDatasetPayload,
-    build_prediction_eval_dataset_from_backtests,
-)
+from src.export.contracts import SourceAnchor
 from src.prediction.backtest import (
     PredictionBacktestMetricsPayload,
     PredictionBacktestPayload,
     PredictionBacktestPredictionPayload,
     VoteOption,
-    _date_from_value,
     _bill_semantic_available_at_or_before,
+    _date_from_value,
     _distribution_with_binary_probability,
     _edge_available_at_or_before,
     _edge_has_known_availability,
@@ -38,6 +32,13 @@ from src.prediction.backtest import (
 from src.prediction.benchmark_gate import BenchmarkSliceMetrics
 from src.prediction.benchmark_slices import compute_benchmark_slices
 from src.prediction.calibration_dashboard import CalibrationDashboard, build_calibration_dashboard
+from src.prediction.dataset import (
+    PredictionDatasetExamplePayload,
+    PredictionDatasetSplitPayload,
+    PredictionEvalDatasetPayload,
+    build_prediction_eval_dataset_from_backtests,
+    validate_eval_windows as _validate_eval_windows,
+)
 from src.prediction.llm_semantics import BillSemanticPayload
 from src.prediction.per_member_model import (
     member_vote_examples_from_predictions,
@@ -109,7 +110,7 @@ class PredictionEvalModelPayload(BaseModel):
     metrics: PredictionBacktestMetricsPayload
     coverage_rate: float | None = Field(default=None, ge=0.0, le=1.0)
     skip_reason_counts: dict[str, int] = Field(default_factory=dict)
-    calibration_bins: list["PredictionEvalCalibrationBinPayload"] = Field(default_factory=list)
+    calibration_bins: list[PredictionEvalCalibrationBinPayload] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def model_summary_matches_metrics(self) -> Self:
@@ -944,8 +945,8 @@ class PredictionEvalReportPayload(BaseModel):
             raise ValueError("training_example_count must match dataset training examples")
         if self.evaluation_label_count != self.dataset.evaluation.label_count:
             raise ValueError("evaluation_label_count must match dataset evaluation labels")
-        if [_comparison_identity(comparison) for comparison in self.comparisons] != [
-            _dataset_example_identity(example) for example in self.dataset.evaluation.examples
+        if [_vote_identity(comparison) for comparison in self.comparisons] != [
+            _vote_identity(example) for example in self.dataset.evaluation.examples
         ]:
             raise ValueError("comparisons must match dataset evaluation examples")
         feature_count = len(self.dataset.feature_names)
@@ -1030,7 +1031,9 @@ class PredictionEvalReportPayload(BaseModel):
         return self
 
 
-def _comparison_identity(comparison: PredictionEvalComparisonPayload) -> dict[str, object]:
+def _vote_identity(
+    comparison: PredictionEvalComparisonPayload | PredictionDatasetExamplePayload,
+) -> dict[str, object]:
     return {
         "vote_event_id": comparison.vote_event_id,
         "event_key": comparison.event_key,
@@ -1046,25 +1049,6 @@ def _comparison_identity(comparison: PredictionEvalComparisonPayload) -> dict[st
         "member_bioguide_id": comparison.member_bioguide_id,
         "member_name": comparison.member_name,
         "actual_vote_option": comparison.actual_vote_option,
-    }
-
-
-def _dataset_example_identity(example: object) -> dict[str, object]:
-    return {
-        "vote_event_id": getattr(example, "vote_event_id"),
-        "event_key": getattr(example, "event_key"),
-        "jurisdiction_id": getattr(example, "jurisdiction_id"),
-        "legislative_body_id": getattr(example, "legislative_body_id"),
-        "legislative_session_id": getattr(example, "legislative_session_id"),
-        "vote_date": getattr(example, "vote_date").isoformat(),
-        "chamber": getattr(example, "chamber"),
-        "question": getattr(example, "question"),
-        "source_url": getattr(example, "source_url"),
-        "bill_key": getattr(example, "bill_key"),
-        "bill_context_key": getattr(example, "bill_context_key"),
-        "member_bioguide_id": getattr(example, "member_bioguide_id"),
-        "member_name": getattr(example, "member_name"),
-        "actual_vote_option": getattr(example, "actual_vote_option"),
     }
 
 
@@ -1606,27 +1590,6 @@ def build_prediction_eval_report(
             per_member.model_name, compute_benchmark_slices(per_member.predictions)
         ),
     )
-
-
-def _validate_eval_windows(
-    *,
-    training_feature_cutoff: date,
-    train_start: date,
-    train_end: date,
-    feature_cutoff: date,
-    label_start: date,
-    label_end: date,
-) -> None:
-    if training_feature_cutoff >= train_start:
-        raise ValueError("training_feature_cutoff must be before train_start")
-    if train_start > train_end:
-        raise ValueError("train_start must be on or before train_end")
-    if feature_cutoff >= label_start:
-        raise ValueError("feature_cutoff must be before label_start")
-    if label_start > label_end:
-        raise ValueError("label_start must be on or before label_end")
-    if train_end > feature_cutoff:
-        raise ValueError("train_end must be on or before feature_cutoff")
 
 
 def _train_learned_signal_model(
@@ -2500,13 +2463,6 @@ def _feature_source_family_id(source_type: str, *, jurisdiction_id: str) -> str:
     if source_type in {"vote_event", "congress_vote"}:
         return "congress_vote" if jurisdiction_id == "us_congress" else "legislative_vote"
     return source_type
-
-
-def _prediction_log_loss(prediction: PredictionBacktestPredictionPayload) -> float:
-    if prediction.predicted_probability_yea is None:
-        raise ValueError("cannot compute log loss without predicted probability")
-    actual_yea = 1.0 if prediction.actual_vote_option == "yea" else 0.0
-    return _log_loss(prediction.predicted_probability_yea, actual_yea)
 
 
 def _log_loss(probability_yea: float, actual_yea: float) -> float:

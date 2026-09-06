@@ -4,7 +4,12 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from src.db.load_executor import Resolvers, execute_load_plan
-from src.db.load_report import LoadSummary, TableWriteResult, WarnErrorSummary, build_load_summary
+from src.db.load_report import (
+    LoadSummary,
+    WarnErrorSummary,
+    build_load_summary,
+    merge_load_summaries as _merge_load_summaries,
+)
 from src.db.repositories import (
     commit_or_rollback,
     ensure_transactional_for_commit,
@@ -136,17 +141,3 @@ def _filter_linkages_to_known_committees(
     ]
     op["rows"] = filtered
     return len(rows) - len(filtered)
-
-
-def _merge_load_summaries(
-    summaries: list[LoadSummary],
-    *,
-    run_id: int,
-) -> LoadSummary:
-    warn_error = WarnErrorSummary()
-    table_results: list[TableWriteResult] = []
-    for summary in summaries:
-        table_results.extend(summary.table_results)
-        warn_error.warnings.extend(summary.warn_error.warnings)
-        warn_error.errors.extend(summary.warn_error.errors)
-    return build_load_summary(table_results, warn_error=warn_error, run_id=run_id)

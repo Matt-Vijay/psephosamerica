@@ -40,7 +40,7 @@ def _ece_brier(probs: list[float], labels: list[bool]) -> dict[str, float]:
     n = len(labels)
     if n == 0:
         return {"ece": 0.0, "brier": 0.0, "n": 0}
-    brier = sum((p - (1.0 if y else 0.0)) ** 2 for p, y in zip(probs, labels)) / n
+    brier = sum((p - (1.0 if y else 0.0)) ** 2 for p, y in zip(probs, labels, strict=False)) / n
     return {"ece": expected_calibration_error(probs, labels), "brier": brier, "n": n}
 
 

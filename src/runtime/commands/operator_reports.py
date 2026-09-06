@@ -5,15 +5,14 @@ from __future__ import annotations
 import hashlib
 import json
 import re
-
 from pathlib import Path
 from typing import Any
 
 from src.runtime.commands._shared import (
-    _dict_or_empty,
     _OPERATOR_EVAL_WINDOW_RUN_GATE_SOURCE_KEYS,
     _OPERATOR_EVAL_WINDOW_RUN_GATE_SOURCE_STATE_KEYS,
     _PREDICTION_OPERATOR_RESUME_PLAN_SAMPLE_STRING_KEYS,
+    _dict_or_empty,
     _is_non_negative_plain_int,
     _is_plain_int,
     _is_sha256_hex,

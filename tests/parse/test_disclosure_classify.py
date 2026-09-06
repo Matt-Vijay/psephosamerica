@@ -22,7 +22,6 @@ from src.parse.disclosures.normalize import (
     normalize_tx_type,
 )
 
-
 # --- classify_pdf ---
 
 

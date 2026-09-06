@@ -324,7 +324,7 @@ def _get_with_backoff(
     import time
 
     delay = 2.0
-    for attempt in range(max_retries):
+    for _attempt in range(max_retries):
         resp = http.get(url, params=params)
         if resp.status_code == 200:
             return resp

@@ -100,8 +100,8 @@ def iter_shard_rows(
     cache_dir: str | None = None,
 ) -> Iterator[dict[str, Any]]:  # pragma: no cover - network + parquet I/O
     """Stream LOCUS rows as plain dicts from up to ``max_shards`` HF parquet shards."""
-    from huggingface_hub import hf_hub_download  # local import: build-time dep
     import pyarrow.parquet as pq  # local import: build-time dep
+    from huggingface_hub import hf_hub_download  # local import: build-time dep
 
     shard_limit = SHARD_COUNT if max_shards is None else min(max_shards, SHARD_COUNT)
     yielded = 0
@@ -112,10 +112,8 @@ def iter_shard_rows(
             repo_type="dataset",
             cache_dir=cache_dir,
         )
-        parquet = pq.ParquetFile(path)  # type: ignore[no-untyped-call]
-        for batch in parquet.iter_batches(  # type: ignore[no-untyped-call]
-            columns=_LOCUS_COLUMNS, batch_size=8192
-        ):
+        parquet = pq.ParquetFile(path)
+        for batch in parquet.iter_batches(columns=_LOCUS_COLUMNS, batch_size=8192):
             for record in batch.to_pylist():
                 if max_rows is not None and yielded >= max_rows:
                     return

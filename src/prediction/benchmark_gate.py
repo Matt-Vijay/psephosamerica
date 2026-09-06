@@ -22,8 +22,9 @@ is updated only by an explicit, reviewed change -- that review *is* the
 
 from __future__ import annotations
 
-from pydantic import BaseModel, Field, model_validator
 from typing import Self
+
+from pydantic import BaseModel, Field, model_validator
 
 _METRICS = ("brier_score", "log_loss")
 

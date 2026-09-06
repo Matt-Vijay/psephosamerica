@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+from src.api.contracts import HomepageBootstrapPayload, MemberPagePayload, ZipEntryPayload
 from src.export.contracts import (
     ConfidenceLabel,
     EvidenceBlock,
@@ -16,7 +17,7 @@ from src.export.contracts import (
     ZipFeedPayload,
 )
 from src.export.filesystem import write_planned_files
-from src.identity.current_member_lookup import CurrentMemberLookupEntry, CurrentMemberLookupPayload
+from src.export.local_store import HOMEPAGE_FEED_PATH
 from src.export.manifest import ManifestEntry, SnapshotManifest, manifest_root_sha256
 from src.export.writer import (
     PlannedFile,
@@ -26,14 +27,13 @@ from src.export.writer import (
     manifest_path,
     member_page_payload_path,
     member_path,
-    zip_entry_path,
-    zip_path,
     ontology_edges_path,
     ontology_member_edges_path,
+    zip_entry_path,
+    zip_path,
 )
-from src.export.local_store import HOMEPAGE_FEED_PATH
-from src.homepage.contracts import HomepageFeedPayload
-from src.api.contracts import HomepageBootstrapPayload, MemberPagePayload, ZipEntryPayload
+from src.homepage.contracts import HomepageFeedPayload, MemberMovementSummary, RecentEventSummary
+from src.identity.current_member_lookup import CurrentMemberLookupEntry, CurrentMemberLookupPayload
 from src.ontology.contracts import (
     OntologyEdgePayload,
     OntologyGraphPayload,
@@ -56,8 +56,6 @@ from src.runtime.inspect import (
     load_local_zip_feed,
     search_local_current_member_lookup,
 )
-from src.homepage.contracts import MemberMovementSummary, RecentEventSummary
-
 
 # ── Fixture payloads ───────────────────────────────────────────────
 
@@ -287,8 +285,9 @@ def test_load_local_member_profile_missing(tmp_path: Path) -> None:
 
 
 def test_load_local_member_profile_default_root_is_publish_dir() -> None:
-    from src.runtime.paths import local_publish_root
     import unittest.mock as mock
+
+    from src.runtime.paths import local_publish_root
 
     sentinel = object()
     with mock.patch("src.runtime.inspect.load_member_profile", return_value=sentinel) as patched:

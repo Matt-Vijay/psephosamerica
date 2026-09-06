@@ -34,7 +34,11 @@ from src.export.writer import (
     prediction_source_index_path,
     prediction_topology_path,
 )
-from src.prediction.contracts import PredictionTopologyPayload
+from src.prediction.contracts import (
+    PredictionBootstrapPayload,
+    PredictionReadinessPayload,
+    PredictionTopologyPayload,
+)
 from src.runtime.publish_verify_types import (
     IssueSeverity,
     PublishVerifyIssue,
@@ -924,8 +928,8 @@ def _check_readiness_jurisdiction_capabilities(
 
 
 def _check_bootstrap_readiness_summary(
-    bootstrap: object,
-    readiness: object,
+    bootstrap: PredictionBootstrapPayload,
+    readiness: PredictionReadinessPayload,
     issues: list[PublishVerifyIssue],
 ) -> None:
     for field in (
@@ -943,7 +947,7 @@ def _check_bootstrap_readiness_summary(
                     path=prediction_bootstrap_path(),
                 )
             )
-    if getattr(bootstrap, "coverage") != getattr(readiness, "coverage"):
+    if bootstrap.coverage != readiness.coverage:
         issues.append(
             _issue(
                 "prediction bootstrap coverage does not match readiness",

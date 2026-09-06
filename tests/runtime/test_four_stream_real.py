@@ -6,12 +6,12 @@ from datetime import date
 
 import numpy as np
 
+from src.prediction.real_data_eval import VoteRow
 from src.runtime.contract_corpus import ContractEntity
 from src.runtime.four_stream_real import (
     build_four_stream_real_examples,
     init_embedding_projections,
 )
-from src.prediction.real_data_eval import VoteRow
 
 
 def _entity(bioguide: str) -> ContractEntity:

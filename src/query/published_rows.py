@@ -11,7 +11,6 @@ from typing import Any
 from src.db.repositories import ConnectionLike, fetch_all
 from src.query.member_terms import member_active_on_sql
 
-
 _ONTOLOGY_EDGE_AVAILABILITY_DATE_KEYS = (
     "transaction_date",
     "contribution_date",

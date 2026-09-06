@@ -6,7 +6,7 @@ No network calls; httpx and provenance boundaries are mocked.
 from __future__ import annotations
 
 import hashlib
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 
 import httpx
@@ -20,13 +20,12 @@ from src.parse.disclosures.download import (
 )
 from src.parse.disclosures.models import Chamber
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
 
 PDF_BYTES = b"%PDF-1.4 fake pdf content"
-FIXED_NOW = datetime(2025, 9, 1, 10, 0, 0, tzinfo=timezone.utc)
+FIXED_NOW = datetime(2025, 9, 1, 10, 0, 0, tzinfo=UTC)
 
 HOUSE_META = ArtifactMeta(
     source_slug="house-disclosures",

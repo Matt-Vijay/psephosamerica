@@ -13,9 +13,8 @@ from __future__ import annotations
 
 import re
 from datetime import date, datetime
-from typing import Union
 
-_DATE_T = Union[date, datetime, str]
+_DATE_T = date | datetime | str
 
 
 def _as_date_str(d: _DATE_T) -> str:
@@ -36,9 +35,7 @@ def _safe_slug(value: str) -> str:
     return slug
 
 
-# ---------------------------------------------------------------------------
 # Raw artifact keys
-# ---------------------------------------------------------------------------
 
 
 def raw_artifact_key(
@@ -65,9 +62,7 @@ def raw_artifact_key(
     )
 
 
-# ---------------------------------------------------------------------------
 # Parsed output keys
-# ---------------------------------------------------------------------------
 
 
 def parsed_output_key(
@@ -100,9 +95,7 @@ def parsed_output_key(
     )
 
 
-# ---------------------------------------------------------------------------
 # Snapshot output keys
-# ---------------------------------------------------------------------------
 
 
 def snapshot_output_key(
@@ -128,9 +121,7 @@ def snapshot_output_key(
     )
 
 
-# ---------------------------------------------------------------------------
 # Archive manifest keys
-# ---------------------------------------------------------------------------
 
 
 def archive_manifest_key(snapshot_date: _DATE_T) -> str:

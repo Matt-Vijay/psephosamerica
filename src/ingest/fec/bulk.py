@@ -15,17 +15,18 @@ from __future__ import annotations
 import contextlib
 import csv
 import datetime
+from collections.abc import Generator
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
-from typing import Generator, TextIO, Union
+from typing import TextIO
 
 from .models import CandidateCommitteeLinkage, CommitteeRecord, ContributionRecord
 
 _PIPE = "|"
 
 
-def _open_bulk(path: Union[str, Path]) -> TextIO:
-    return open(path, "r", encoding="latin-1", newline="")
+def _open_bulk(path: str | Path) -> TextIO:
+    return open(path, encoding="latin-1", newline="")
 
 
 def _field(row: list[str], idx: int) -> str | None:
@@ -74,7 +75,7 @@ def _parse_amount(raw: str | None) -> Decimal:
 # 14 CAND_ID
 
 
-def iter_committee_master(path: Union[str, Path]) -> Generator[CommitteeRecord, None, None]:
+def iter_committee_master(path: str | Path) -> Generator[CommitteeRecord, None, None]:
     with _open_bulk(path) as fh:
         reader = csv.reader(fh, delimiter=_PIPE, quoting=csv.QUOTE_NONE)
         for row in reader:
@@ -106,7 +107,7 @@ def iter_committee_master(path: Union[str, Path]) -> Generator[CommitteeRecord, 
 
 
 def iter_candidate_committee_linkage(
-    path: Union[str, Path],
+    path: str | Path,
 ) -> Generator[CandidateCommitteeLinkage, None, None]:
     with _open_bulk(path) as fh:
         reader = csv.reader(fh, delimiter=_PIPE, quoting=csv.QUOTE_NONE)
@@ -153,7 +154,7 @@ def iter_candidate_committee_linkage(
 
 
 def iter_individual_contributions(
-    path: Union[str, Path],
+    path: str | Path,
 ) -> Generator[ContributionRecord, None, None]:
     with _open_bulk(path) as fh:
         reader = csv.reader(fh, delimiter=_PIPE, quoting=csv.QUOTE_NONE)

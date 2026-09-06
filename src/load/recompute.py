@@ -20,10 +20,7 @@ from src.ontology.contracts import OntologyEdgePayload
 from src.rules.models import RuleFire
 from src.scoring.snapshots import build_snapshot_rows
 
-
-# ---------------------------------------------------------------------------
 # rule_fire
-# ---------------------------------------------------------------------------
 
 
 def _rule_fire_row(rf: RuleFire) -> dict[str, Any]:
@@ -73,9 +70,7 @@ def plan_rule_fires(fires: list[RuleFire]) -> dict[str, Any]:
     }
 
 
-# ---------------------------------------------------------------------------
 # evidence_card
-# ---------------------------------------------------------------------------
 
 
 def _evidence_card_row(card: EvidenceCardPayload) -> dict[str, Any]:
@@ -121,9 +116,7 @@ def plan_evidence_cards(cards: list[EvidenceCardPayload]) -> dict[str, Any]:
     }
 
 
-# ---------------------------------------------------------------------------
 # score_snapshot
-# ---------------------------------------------------------------------------
 
 
 def _snapshot_op_row(row: dict[str, Any], bioguide_id: str) -> dict[str, Any]:
@@ -166,9 +159,7 @@ def plan_score_snapshots(
     }
 
 
-# ---------------------------------------------------------------------------
 # ontology_edge
-# ---------------------------------------------------------------------------
 
 
 def _member_hint(node_type: str, node_id: str) -> str | None:
@@ -214,9 +205,7 @@ def plan_ontology_edges(
     }
 
 
-# ---------------------------------------------------------------------------
 # Top-level plan
-# ---------------------------------------------------------------------------
 
 
 def recompute_load_plan(

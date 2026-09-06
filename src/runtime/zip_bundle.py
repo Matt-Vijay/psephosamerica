@@ -35,17 +35,12 @@ from typing import Any
 from src.pipeline.publish_snapshot_run import ZipBundleInputs
 from src.zip.resolve import DistrictMemberRow, SenatorRow, ZipDistrictRow
 
-
-# ---------------------------------------------------------------------------
 # Required top-level keys
-# ---------------------------------------------------------------------------
 
 _TOP_LEVEL_KEYS = ("zip5_codes", "zip_district_rows", "district_member_rows", "senator_rows")
 
 
-# ---------------------------------------------------------------------------
 # Row constructors with field-level validation
-# ---------------------------------------------------------------------------
 
 
 def _zip_district_row(raw: Any, idx: int) -> ZipDistrictRow:
@@ -82,9 +77,7 @@ def _senator_row(raw: Any, idx: int) -> SenatorRow:
     )
 
 
-# ---------------------------------------------------------------------------
 # Public helpers
-# ---------------------------------------------------------------------------
 
 
 def zip_bundle_from_dict(data: dict[str, Any]) -> ZipBundleInputs:
@@ -129,9 +122,7 @@ def load_zip_bundle(path: Path) -> ZipBundleInputs:
     return zip_bundle_from_dict(data)
 
 
-# ---------------------------------------------------------------------------
 # Typed field extractors (internal)
-# ---------------------------------------------------------------------------
 
 
 def _require_dict(raw: Any, section: str, idx: int) -> None:

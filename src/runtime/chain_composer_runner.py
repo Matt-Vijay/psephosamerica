@@ -38,13 +38,13 @@ from src.prediction.chain_composer import (
 )
 from src.prediction.stage_hazard import fit_hazard
 from src.prediction.vote_count_pmf import correlated_count_pmf
+from src.runtime.bill_content_experiment import _iter_records
 from src.runtime.bill_journey import (
     BillJourney,
     JourneyFeaturizer,
     load_bill_journeys,
     load_floor_events,
 )
-from src.runtime.bill_content_experiment import _iter_records
 from src.runtime.count_pmf_experiment import _accumulate_rates
 from src.runtime.stage_hazard_experiment import _HOUSE_CORPORA, _SENATE_CORPORA, _arrays
 

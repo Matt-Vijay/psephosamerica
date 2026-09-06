@@ -349,8 +349,8 @@ class TestLoadCongressLocalE2E:
     def test_exits_zero_with_valid_archive(self, tmp_path: Path) -> None:
         archive = build_congress_archive(tmp_path / "archive")
         with (
-            patch(f"{_COMMANDS}.build_runtime", return_value=MagicMock()),
-            patch(f"{_COMMANDS}.open_connection", return_value=MagicMock()),
+            patch("src.runtime.commands.core.build_runtime", return_value=MagicMock()),
+            patch("src.runtime.commands.core.open_connection", return_value=MagicMock()),
             patch(
                 f"{_CONGRESS_ARCHIVE}.run_congress_load_runtime",
                 return_value=_fake_congress_load_result(),
@@ -362,8 +362,8 @@ class TestLoadCongressLocalE2E:
     def test_output_contains_ok_true(self, tmp_path: Path, capsys) -> None:
         archive = build_congress_archive(tmp_path / "archive")
         with (
-            patch(f"{_COMMANDS}.build_runtime", return_value=MagicMock()),
-            patch(f"{_COMMANDS}.open_connection", return_value=MagicMock()),
+            patch("src.runtime.commands.core.build_runtime", return_value=MagicMock()),
+            patch("src.runtime.commands.core.open_connection", return_value=MagicMock()),
             patch(
                 f"{_CONGRESS_ARCHIVE}.run_congress_load_runtime",
                 return_value=_fake_congress_load_result(),
@@ -379,8 +379,8 @@ class TestLoadCongressLocalE2E:
         passed to the DB boundary function."""
         archive = build_congress_archive(tmp_path / "archive")
         with (
-            patch(f"{_COMMANDS}.build_runtime", return_value=MagicMock()),
-            patch(f"{_COMMANDS}.open_connection", return_value=MagicMock()),
+            patch("src.runtime.commands.core.build_runtime", return_value=MagicMock()),
+            patch("src.runtime.commands.core.open_connection", return_value=MagicMock()),
             patch(
                 f"{_CONGRESS_ARCHIVE}.run_congress_load_runtime",
                 return_value=_fake_congress_load_result(),
@@ -399,8 +399,8 @@ class TestLoadCongressLocalE2E:
     def test_archive_enrichment_is_forwarded_to_db_boundary(self, tmp_path: Path) -> None:
         archive = build_congress_archive(tmp_path / "archive")
         with (
-            patch(f"{_COMMANDS}.build_runtime", return_value=MagicMock()),
-            patch(f"{_COMMANDS}.open_connection", return_value=MagicMock()),
+            patch("src.runtime.commands.core.build_runtime", return_value=MagicMock()),
+            patch("src.runtime.commands.core.open_connection", return_value=MagicMock()),
             patch(
                 f"{_CONGRESS_ARCHIVE}.run_congress_load_runtime",
                 return_value=_fake_congress_load_result(),
@@ -414,8 +414,8 @@ class TestLoadCongressLocalE2E:
     def test_congress_number_forwarded_to_load(self, tmp_path: Path) -> None:
         archive = build_congress_archive(tmp_path / "archive")
         with (
-            patch(f"{_COMMANDS}.build_runtime", return_value=MagicMock()),
-            patch(f"{_COMMANDS}.open_connection", return_value=MagicMock()),
+            patch("src.runtime.commands.core.build_runtime", return_value=MagicMock()),
+            patch("src.runtime.commands.core.open_connection", return_value=MagicMock()),
             patch(
                 f"{_CONGRESS_ARCHIVE}.run_congress_load_runtime",
                 return_value=_fake_congress_load_result(),
@@ -436,8 +436,8 @@ class TestLoadCongressLocalE2E:
     def test_nonexistent_archive_exits_nonzero(self, tmp_path: Path, capsys) -> None:
         missing = tmp_path / "does_not_exist"
         with (
-            patch(f"{_COMMANDS}.build_runtime", return_value=MagicMock()),
-            patch(f"{_COMMANDS}.open_connection", return_value=MagicMock()),
+            patch("src.runtime.commands.core.build_runtime", return_value=MagicMock()),
+            patch("src.runtime.commands.core.open_connection", return_value=MagicMock()),
         ):
             code = run(["load-congress-local", "--archive", str(missing), "--congress", "119"])
         assert code != 0
@@ -465,10 +465,10 @@ class TestProcessDisclosuresLocalE2E:
     def test_exits_zero_with_valid_bundle(self, tmp_path: Path) -> None:
         bundle = build_disclosures_bundle(tmp_path / "bundle.json")
         with (
-            patch(f"{_COMMANDS}.build_runtime", return_value=MagicMock()),
-            patch(f"{_COMMANDS}.open_connection", return_value=MagicMock()),
+            patch("src.runtime.commands.disclosures.build_runtime", return_value=MagicMock()),
+            patch("src.runtime.commands.disclosures.open_connection", return_value=MagicMock()),
             patch(
-                f"{_COMMANDS}.run_disclosures_bundle_process",
+                "src.runtime.commands.disclosures.run_disclosures_bundle_process",
                 return_value=_fake_bundle_process_result(),
             ),
         ):
@@ -478,10 +478,10 @@ class TestProcessDisclosuresLocalE2E:
     def test_output_contains_ok_true(self, tmp_path: Path, capsys) -> None:
         bundle = build_disclosures_bundle(tmp_path / "bundle.json")
         with (
-            patch(f"{_COMMANDS}.build_runtime", return_value=MagicMock()),
-            patch(f"{_COMMANDS}.open_connection", return_value=MagicMock()),
+            patch("src.runtime.commands.disclosures.build_runtime", return_value=MagicMock()),
+            patch("src.runtime.commands.disclosures.open_connection", return_value=MagicMock()),
             patch(
-                f"{_COMMANDS}.run_disclosures_bundle_process",
+                "src.runtime.commands.disclosures.run_disclosures_bundle_process",
                 return_value=_fake_bundle_process_result(),
             ),
         ):
@@ -495,10 +495,10 @@ class TestProcessDisclosuresLocalE2E:
         the DisclosuresBundle passed to the DB boundary function."""
         bundle_path = build_disclosures_bundle(tmp_path / "bundle.json")
         with (
-            patch(f"{_COMMANDS}.build_runtime", return_value=MagicMock()),
-            patch(f"{_COMMANDS}.open_connection", return_value=MagicMock()),
+            patch("src.runtime.commands.disclosures.build_runtime", return_value=MagicMock()),
+            patch("src.runtime.commands.disclosures.open_connection", return_value=MagicMock()),
             patch(
-                f"{_COMMANDS}.run_disclosures_bundle_process",
+                "src.runtime.commands.disclosures.run_disclosures_bundle_process",
                 return_value=_fake_bundle_process_result(),
             ) as mock_process,
         ):
@@ -518,10 +518,10 @@ class TestProcessDisclosuresLocalE2E:
             tmp_path / "empty_bundle.json", include_artifact=False
         )
         with (
-            patch(f"{_COMMANDS}.build_runtime", return_value=MagicMock()),
-            patch(f"{_COMMANDS}.open_connection", return_value=MagicMock()),
+            patch("src.runtime.commands.disclosures.build_runtime", return_value=MagicMock()),
+            patch("src.runtime.commands.disclosures.open_connection", return_value=MagicMock()),
             patch(
-                f"{_COMMANDS}.run_disclosures_bundle_process",
+                "src.runtime.commands.disclosures.run_disclosures_bundle_process",
                 return_value=_fake_bundle_process_result(),
             ) as mock_process,
         ):
@@ -536,7 +536,7 @@ class TestProcessDisclosuresLocalE2E:
 
     def test_nonexistent_bundle_exits_nonzero(self, tmp_path: Path, capsys) -> None:
         missing = tmp_path / "no_bundle.json"
-        with patch(f"{_COMMANDS}.build_runtime", return_value=MagicMock()):
+        with patch("src.runtime.commands.disclosures.build_runtime", return_value=MagicMock()):
             code = run(["process-disclosures-local", "--bundle", str(missing)])
         assert code != 0
         out = json.loads(capsys.readouterr().out)
@@ -545,7 +545,7 @@ class TestProcessDisclosuresLocalE2E:
     def test_malformed_bundle_json_exits_nonzero(self, tmp_path: Path, capsys) -> None:
         bad_path = tmp_path / "bad.json"
         bad_path.write_text('{"artifacts": "not-a-list"}', encoding="utf-8")
-        with patch(f"{_COMMANDS}.build_runtime", return_value=MagicMock()):
+        with patch("src.runtime.commands.disclosures.build_runtime", return_value=MagicMock()):
             code = run(["process-disclosures-local", "--bundle", str(bad_path)])
         assert code != 0
         out = json.loads(capsys.readouterr().out)
@@ -606,8 +606,8 @@ class TestRunOracleLocalE2E:
         """Enter all four DB-facing boundary patches as one context manager."""
         sid = snapshot_id or self._DATE_STR
         with (
-            patch(f"{_COMMANDS}.build_runtime", return_value=MagicMock()),
-            patch(f"{_COMMANDS}.open_connection", return_value=MagicMock()),
+            patch("src.runtime.commands.core.build_runtime", return_value=MagicMock()),
+            patch("src.runtime.commands.core.open_connection", return_value=MagicMock()),
             patch(
                 f"{_CONGRESS_ARCHIVE}.run_congress_load_runtime",
                 return_value=_fake_congress_load_result(),
@@ -694,8 +694,8 @@ class TestRunOracleLocalE2E:
         target = tmp_path / "out"
         target.mkdir()
         with (
-            patch(f"{_COMMANDS}.build_runtime", return_value=MagicMock()),
-            patch(f"{_COMMANDS}.open_connection", return_value=MagicMock()),
+            patch("src.runtime.commands.core.build_runtime", return_value=MagicMock()),
+            patch("src.runtime.commands.core.open_connection", return_value=MagicMock()),
             patch(
                 f"{_CONGRESS_ARCHIVE}.run_congress_load_runtime",
                 return_value=_fake_congress_load_result(),
@@ -730,8 +730,8 @@ class TestRunOracleLocalE2E:
         target = tmp_path / "out"
         target.mkdir()
         with (
-            patch(f"{_COMMANDS}.build_runtime", return_value=MagicMock()),
-            patch(f"{_COMMANDS}.open_connection", return_value=MagicMock()),
+            patch("src.runtime.commands.core.build_runtime", return_value=MagicMock()),
+            patch("src.runtime.commands.core.open_connection", return_value=MagicMock()),
             patch(
                 f"{_CONGRESS_ARCHIVE}.run_congress_load_runtime",
                 return_value=_fake_congress_load_result(),
@@ -762,8 +762,8 @@ class TestRunOracleLocalE2E:
         target = tmp_path / "out"
         target.mkdir()
         with (
-            patch(f"{_COMMANDS}.build_runtime", return_value=MagicMock()),
-            patch(f"{_COMMANDS}.open_connection", return_value=MagicMock()),
+            patch("src.runtime.commands.core.build_runtime", return_value=MagicMock()),
+            patch("src.runtime.commands.core.open_connection", return_value=MagicMock()),
             patch(
                 f"{_CONGRESS_ARCHIVE}.run_congress_load_runtime",
                 return_value=_fake_congress_load_result(),

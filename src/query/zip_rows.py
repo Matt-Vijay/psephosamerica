@@ -11,7 +11,6 @@ from typing import Any
 
 from src.db.repositories import ConnectionLike, fetch_all
 
-
 _MEMBER_SUMMARY_SQL = """
 WITH latest_snapshot AS (
     SELECT DISTINCT ON (member_id)

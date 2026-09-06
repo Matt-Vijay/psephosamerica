@@ -14,7 +14,6 @@ from src.pipeline.publish_snapshot_run import ZipBundleInputs
 from src.runtime.zip_bundle import load_zip_bundle, zip_bundle_from_dict
 from src.zip.resolve import DistrictMemberRow, SenatorRow, ZipDistrictRow
 
-
 # ---------------------------------------------------------------------------
 # Canonical valid payload
 # ---------------------------------------------------------------------------
@@ -311,7 +310,9 @@ class TestLoadZipBundle:
     def test_invalid_json_raises_json_decode_error(self, tmp_path: Path) -> None:
         p = tmp_path / "bad.json"
         p.write_text("{not valid json}", encoding="utf-8")
-        with pytest.raises(Exception):  # json.JSONDecodeError is a subclass of ValueError
+        with pytest.raises(
+            json.JSONDecodeError
+        ):  # json.JSONDecodeError is a subclass of ValueError
             load_zip_bundle(p)
 
     def test_json_array_at_root_raises(self, tmp_path: Path) -> None:

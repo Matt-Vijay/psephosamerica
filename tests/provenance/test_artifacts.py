@@ -5,24 +5,23 @@ All DB boundaries are mocked; no live database is required.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from src.provenance.artifacts import (
-    create_source_artifact,
     create_parse_run,
-    finish_parse_run,
+    create_source_artifact,
     fail_parse_run,
+    finish_parse_run,
 )
-
 
 # ---------------------------------------------------------------------------
 # Shared fixtures
 # ---------------------------------------------------------------------------
 
-FIXED_NOW = datetime(2025, 6, 1, 12, 0, 0, tzinfo=timezone.utc)
+FIXED_NOW = datetime(2025, 6, 1, 12, 0, 0, tzinfo=UTC)
 SHA256 = "a" * 64
 
 
@@ -137,7 +136,7 @@ class TestCreateSourceArtifact:
 
     def test_explicit_fetched_at_is_passed_through(self):
         conn, cur = self._make_conn_for_artifact()
-        explicit_ts = datetime(2025, 1, 15, 8, 30, tzinfo=timezone.utc)
+        explicit_ts = datetime(2025, 1, 15, 8, 30, tzinfo=UTC)
         with patch("src.provenance.artifacts.fetch_all", return_value=[self.ARTIFACT_ROW]):
             create_source_artifact(
                 conn,

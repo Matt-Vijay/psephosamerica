@@ -16,7 +16,6 @@ from src.ingest.congress.archive_validate import (
     validate_congress_archive_manifest,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

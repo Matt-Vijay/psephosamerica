@@ -7,12 +7,10 @@ import hashlib
 from pathlib import Path
 from types import SimpleNamespace
 
-from src.runtime.commands import (
-    _congress_archive_manifest_metadata,
-    _prediction_backtest_run_metadata,
-    _prediction_window_run_metadata,
-    _validate_congress_archive_manifest_metadata,
-)
+from src.runtime.commands._shared import _congress_archive_manifest_metadata
+from src.runtime.commands.history import _validate_congress_archive_manifest_metadata
+from src.runtime.commands.prediction_eval import _prediction_window_run_metadata
+from src.runtime.commands.prediction_misc import _prediction_backtest_run_metadata
 
 
 def test_prediction_window_run_metadata() -> None:

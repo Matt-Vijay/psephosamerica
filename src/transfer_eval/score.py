@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import math
 from collections import defaultdict
+from collections.abc import Iterable
 from dataclasses import dataclass
 from statistics import fmean
-from typing import Any, Iterable
+from typing import Any
 
-from src.transfer_eval.contract import ParsedOutput, RECORD_TYPES, canonical_output, semantic_key
+from src.transfer_eval.contract import RECORD_TYPES, ParsedOutput, canonical_output, semantic_key
 from src.transfer_eval.reference import ReferenceSlice
 
 _TYPE_WEIGHTS = {

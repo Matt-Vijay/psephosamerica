@@ -137,7 +137,7 @@ class CongressLiveFixture:
         limit: int = 250,
         next_url: str | None = None,
         url: str | None = None,
-    ) -> "CongressLiveFixture":
+    ) -> CongressLiveFixture:
         route_url = url or members_url(congress, limit=limit, offset=offset)
         self._register(route_url, self._paginated_body("members", members, next_url))
         return self
@@ -152,7 +152,7 @@ class CongressLiveFixture:
         limit: int = 250,
         next_url: str | None = None,
         url: str | None = None,
-    ) -> "CongressLiveFixture":
+    ) -> CongressLiveFixture:
         if url is None:
             assert congress is not None, "congress required when url is not provided"
             url = committees_url(congress, chamber, limit=limit, offset=offset)
@@ -169,7 +169,7 @@ class CongressLiveFixture:
         limit: int = 250,
         next_url: str | None = None,
         url: str | None = None,
-    ) -> "CongressLiveFixture":
+    ) -> CongressLiveFixture:
         if url is None:
             assert congress is not None, "congress required when url is not provided"
             url = bills_url(congress, bill_type, limit=limit, offset=offset)
@@ -187,7 +187,7 @@ class CongressLiveFixture:
         limit: int = 250,
         next_url: str | None = None,
         url: str | None = None,
-    ) -> "CongressLiveFixture":
+    ) -> CongressLiveFixture:
         if url is None:
             assert congress is not None and bill_type is not None and bill_number is not None, (
                 "congress, bill_type, and bill_number required when url is not provided"

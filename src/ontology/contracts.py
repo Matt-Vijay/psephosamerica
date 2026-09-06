@@ -4,11 +4,11 @@ from typing import Any, Literal, Self
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-from src.export.contracts import SourceAnchor
 from src.evidence.source_anchor_policy import (
     duplicate_source_anchor_keys,
     has_official_claim_source_anchor,
 )
+from src.export.contracts import SourceAnchor
 
 OntologyNodeType = Literal["member", "committee", "sector", "issuer"]
 OntologyEdgeType = Literal[
@@ -50,7 +50,7 @@ def _require_sorted_unique(values: list[str], *, field_name: str) -> None:
         raise ValueError(f"{field_name} must be sorted and unique")
 
 
-def _node_ref_keys(nodes: list["OntologyNodeRef"]) -> list[tuple[str, str]]:
+def _node_ref_keys(nodes: list[OntologyNodeRef]) -> list[tuple[str, str]]:
     return [(node.node_type, node.node_id) for node in nodes]
 
 

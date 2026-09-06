@@ -22,8 +22,8 @@ from src.runtime.app import build_runtime
 from src.runtime.context import RuntimeContext, open_connection
 from src.runtime.json_artifacts import (
     attach_optional_verification_output as _attach_optional_verification_output,
+    write_json_artifact as _write_json_artifact,
 )
-from src.runtime.json_artifacts import write_json_artifact as _write_json_artifact
 
 _TRAINING_FEATURE_TERM_WINDOW_WARNING = "training_feature_members_excluded_by_cutoff_or_term_window"
 _SOURCE_FAMILY_ID_RE = re.compile(r"^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$")

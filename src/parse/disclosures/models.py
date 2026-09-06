@@ -6,8 +6,6 @@ from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
 from enum import Enum
-from typing import Optional
-
 
 # --- Enums matching schema CHECK constraints ---
 
@@ -49,14 +47,14 @@ class Filing:
     chamber: Chamber
     filing_year: int
     filing_type: FilingType
-    filed_at: Optional[date] = None
-    filing_period_start: Optional[date] = None
-    filing_period_end: Optional[date] = None
+    filed_at: date | None = None
+    filing_period_start: date | None = None
+    filing_period_end: date | None = None
     amendment_number: int = 0
     is_amended: bool = False
-    supersedes_filing_source_id: Optional[str] = None
-    source_artifact_sha256: Optional[str] = None
-    source_record_id: Optional[str] = None
+    supersedes_filing_source_id: str | None = None
+    source_artifact_sha256: str | None = None
+    source_record_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -66,17 +64,17 @@ class Holding:
     line_number: int
     owner_type: OwnerType
     issuer_name: str
-    issuer_ticker: Optional[str] = None
-    asset_description: Optional[str] = None
-    asset_category: Optional[str] = None
-    value_min: Optional[Decimal] = None
-    value_max: Optional[Decimal] = None
-    value_label: Optional[str] = None
-    income_min: Optional[Decimal] = None
-    income_max: Optional[Decimal] = None
-    income_label: Optional[str] = None
-    is_liquid: Optional[bool] = None
-    source_record_id: Optional[str] = None
+    issuer_ticker: str | None = None
+    asset_description: str | None = None
+    asset_category: str | None = None
+    value_min: Decimal | None = None
+    value_max: Decimal | None = None
+    value_label: str | None = None
+    income_min: Decimal | None = None
+    income_max: Decimal | None = None
+    income_label: str | None = None
+    is_liquid: bool | None = None
+    source_record_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -88,12 +86,12 @@ class Transaction:
     issuer_name: str
     transaction_type: TransactionType
     transaction_date: date
-    issuer_ticker: Optional[str] = None
-    asset_description: Optional[str] = None
-    amount_min: Optional[Decimal] = None
-    amount_max: Optional[Decimal] = None
-    amount_label: Optional[str] = None
-    source_record_id: Optional[str] = None
+    issuer_ticker: str | None = None
+    asset_description: str | None = None
+    amount_min: Decimal | None = None
+    amount_max: Decimal | None = None
+    amount_label: str | None = None
+    source_record_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -103,7 +101,7 @@ class OutsidePosition:
     line_number: int
     owner_type: OwnerType
     entity_name: str
-    position_title: Optional[str] = None
-    from_date: Optional[date] = None
-    to_date: Optional[date] = None
-    source_record_id: Optional[str] = None
+    position_title: str | None = None
+    from_date: date | None = None
+    to_date: date | None = None
+    source_record_id: str | None = None

@@ -8,10 +8,10 @@ from src.query.graph_rag import (
     ANTHROPIC_MODEL,
     GraphRagAnswerer,
     build_grounding_context,
+    load_dotenv as _real_load_dotenv,  # real ref, pre-patch
     retrieve_subgraph,
     stub_generate,
 )
-from src.query.graph_rag import load_dotenv as _real_load_dotenv  # real ref, pre-patch
 from src.query.graph_store import Edge, GraphStore, Node, Provenance
 from src.query.query_embedder import QueryEmbedder
 

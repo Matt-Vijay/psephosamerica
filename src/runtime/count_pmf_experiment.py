@@ -62,7 +62,7 @@ def build_rollcall_counts(
         leans = {p: _lean_yea(votes, p) for p in {v[1] for v in votes}}
         probs = np.empty(len(votes), dtype=np.float64)
         signs = np.empty(len(votes), dtype=np.float64)
-        for i, (member, party, _state, choice) in enumerate(votes):
+        for i, (member, party, _state, _choice) in enumerate(votes):
             lean = leans.get(party, True)
             yes, n = rates.get((member, lean), (0, 0))
             if n == 0:

@@ -3,17 +3,17 @@
 from __future__ import annotations
 
 import contextlib
-from types import SimpleNamespace
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 from src.parse.disclosures.models import Chamber, Filing, FilingType
 from src.parse.disclosures.parse_result import ParseResult, ParserMeta
-from src.runtime.disclosures_parse import IndexMatchProvider
 from src.runtime.disclosures_load_from_parse import (  # noqa: E402
     DisclosuresParseLoadResult,
     run_disclosures_parse_load_runtime,
 )
+from src.runtime.disclosures_parse import IndexMatchProvider
 from src.runtime.disclosures_transform import BatchTransformResult, SkippedSession
 
 # ---------------------------------------------------------------------------

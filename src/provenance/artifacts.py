@@ -10,48 +10,17 @@ No ORM behaviour; no business logic; no network calls.
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
-from typing import Any, cast
+from datetime import UTC, datetime
+from typing import Any
 
-from src.db.repositories import execute_one, fetch_all
+from src.db.repositories import execute_one, fetch_all, insert_returning_id as _insert_returning_id
 
 
 def _utcnow() -> datetime:
-    return datetime.now(tz=timezone.utc)
+    return datetime.now(tz=UTC)
 
 
-def _insert_returning_id(
-    conn: Any,
-    sql: str,
-    params: tuple[Any, ...],
-    *,
-    commit: bool = True,
-) -> int:
-    from psycopg.rows import dict_row
-
-    try:
-        with conn.cursor(row_factory=dict_row) as cur:
-            cur.execute(sql, params)
-            row = cast(dict[str, object] | None, cur.fetchone())
-        if row is None:
-            raise ValueError("INSERT ... RETURNING id produced no row")
-        row_id = row.get("id")
-        if isinstance(row_id, bool) or not isinstance(row_id, int):
-            raise TypeError(f"expected integer id from INSERT ... RETURNING, got {row_id!r}")
-    except Exception:
-        if commit:
-            rollback = getattr(conn, "rollback", None)
-            if callable(rollback):
-                rollback()
-        raise
-    if commit:
-        conn.commit()
-    return row_id
-
-
-# ---------------------------------------------------------------------------
 # Source artifact
-# ---------------------------------------------------------------------------
 
 
 def create_source_artifact(
@@ -103,9 +72,7 @@ def create_source_artifact(
     return rows[0]
 
 
-# ---------------------------------------------------------------------------
 # Parse run lifecycle
-# ---------------------------------------------------------------------------
 
 
 def create_parse_run(

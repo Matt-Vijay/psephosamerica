@@ -11,7 +11,6 @@ from typing import Any
 from src.ingest.congress.models import MemberRecord
 from src.load.congress import CommitteeMembershipSpec
 
-
 # Maps Congress.gov role strings (lowercased) to the canonical values used by
 # the load layer.  Anything not in this table falls back to "member".
 _ROLE_MAP: dict[str, str] = {

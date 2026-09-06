@@ -13,7 +13,6 @@ import pytest
 from src.db.load_report import LoadSummary, TableWriteResult, WarnErrorSummary
 from src.db.writer import write_table_batch, write_table_batches
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------

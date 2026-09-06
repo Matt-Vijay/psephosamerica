@@ -13,8 +13,11 @@ from __future__ import annotations
 import numpy as np
 
 from src.prediction.nn.ablation import STREAMS, FourStreamExample, run_ablation
-from src.prediction.nn.vote_transformer import init_vote_transformer, train_vote_transformer
-from src.prediction.nn.vote_transformer import VoteTransformerExample
+from src.prediction.nn.vote_transformer import (
+    VoteTransformerExample,
+    init_vote_transformer,
+    train_vote_transformer,
+)
 
 
 def _example(rng: np.random.Generator, *, signal_in_context: float) -> FourStreamExample:

@@ -12,12 +12,12 @@ from src.runtime.disclosures_bundle_process import DisclosuresBundleProcessResul
 from src.runtime.disclosures_load_from_parse import DisclosuresParseLoadResult
 from src.runtime.disclosures_parse import DisclosureParseRuntimeResult
 from src.runtime.fec import FecLocalLoadResult
-from src.runtime.member_fec_crosswalk import MemberFecCrosswalkLoadResult
 from src.runtime.history_backfill import (
     LocalHistoryBackfillResult,
     build_history_backfill_report,
 )
 from src.runtime.history_verify_types import HistoryVerifyResult
+from src.runtime.member_fec_crosswalk import MemberFecCrosswalkLoadResult
 from src.runtime.oracle_contracts import LocalOracleRunResult
 from src.runtime.publish import PublishRuntimeResult
 from src.runtime.publish_roundtrip_types import PublishRoundtripResult

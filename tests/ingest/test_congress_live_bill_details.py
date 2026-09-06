@@ -9,7 +9,6 @@ from src.ingest.congress.live_bill_details import fetch_primary_sponsor_specs
 from src.ingest.congress.models import BillRecord
 from src.load.congress import PrimarySponsorSpec as LoadPrimarySponsorSpec
 
-
 # ---------------------------------------------------------------------------
 # Shared fixtures
 # ---------------------------------------------------------------------------

@@ -60,9 +60,7 @@ _BOOTSTRAP_PATH = "homepage/bootstrap.json"
 _HOMEPAGE_FEED_LIMIT = 20
 
 
-# ---------------------------------------------------------------------------
 # Internal helpers
-# ---------------------------------------------------------------------------
 
 
 def _issue(
@@ -333,15 +331,13 @@ def _first_sequence_mismatch(
     if len(published) != len(db):
         return f"length published={len(published)!r} db={len(db)!r}"
 
-    for index, (published_item, db_item) in enumerate(zip(published, db)):
+    for index, (published_item, db_item) in enumerate(zip(published, db, strict=False)):
         if published_item != db_item:
             return f"index={index} published={published_item!r} db={db_item!r}"
     return None
 
 
-# ---------------------------------------------------------------------------
 # Public entry point
-# ---------------------------------------------------------------------------
 
 
 def verify_published_homepage_roundtrip(

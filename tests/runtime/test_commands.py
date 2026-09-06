@@ -1,7 +1,6 @@
-"""Tests for src/runtime/commands.py.
+"""Tests for the runtime command implementations.
 
-No live DB.  All connection and runtime boundaries are mocked via patch()
-on top-level names imported into commands.py.
+No live DB. Connection and runtime boundaries are patched in the owning module.
 """
 
 from __future__ import annotations
@@ -21,6 +20,7 @@ from uuid import UUID
 import pytest
 
 from src.export.contracts import SourceAnchor
+from src.ingest.congress.archive import CongressArchiveManifest
 from src.ontology.contracts import OntologyEdgePayload, OntologyNodeRef
 from src.pipeline.publish_snapshot_run import ZipBundleInputs
 from src.prediction.backtest import (
@@ -30,61 +30,62 @@ from src.prediction.backtest import (
 )
 from src.prediction.eval_report import build_prediction_eval_report
 from src.prediction.input_inventory import PredictionInputInventoryPayload
-from src.runtime.commands import (
+from src.runtime.commands._shared import _write_json_artifact
+from src.runtime.commands.core import (
     _oracle_summary_ok,
-    _coalesce_prediction_benchmark_backfill_recommendations,
-    _prediction_benchmark_backfill_step,
-    _ordered_prediction_benchmark_backfill_steps,
-    _prediction_benchmark_backfill_commands,
-    _prediction_benchmark_inventory_backfill_recommendations,
-    _prediction_benchmark_source_state,
-    _prediction_backtest_source_state,
-    _prediction_eval_source_family_ids,
-    _prediction_eval_source_state,
-    _prediction_input_inventory_source_state,
-    _prediction_operator_handoff_runbook_text,
-    _prediction_operator_packet_standalone_resume_runner,
-    _prediction_resume_script_bytes,
-    _write_json_artifact,
-    dispatch_command,
     load_congress,
     load_congress_local,
-    load_disclosures,
-    process_disclosures_local,
     publish_snapshot,
     recompute_snapshot,
-    run_history_backfill_local_command,
     run_oracle_local_command,
-    run_prediction_backtest_command,
-    run_prediction_eval_report_command,
-    run_prediction_input_inventory_command,
-    verify_history_aggregate_local,
     verify_publish_local,
     verify_publish_roundtrip_local,
 )
-from src.runtime.history_verify_types import HistoryVerifyResult, HistoryVerifyStageResult
+from src.runtime.commands.disclosures import load_disclosures, process_disclosures_local
+from src.runtime.commands.history import (
+    run_history_backfill_local_command,
+    verify_history_aggregate_local,
+)
+from src.runtime.commands.operator_packet import (
+    _prediction_operator_handoff_runbook_text,
+    _prediction_operator_packet_standalone_resume_runner,
+)
+from src.runtime.commands.prediction_benchmark import (
+    _coalesce_prediction_benchmark_backfill_recommendations,
+    _ordered_prediction_benchmark_backfill_steps,
+    _prediction_benchmark_backfill_commands,
+    _prediction_benchmark_backfill_step,
+    _prediction_benchmark_inventory_backfill_recommendations,
+    _prediction_benchmark_source_state,
+)
+from src.runtime.commands.prediction_eval import (
+    _prediction_eval_source_family_ids,
+    _prediction_eval_source_state,
+    run_prediction_eval_report_command,
+)
+from src.runtime.commands.prediction_misc import (
+    run_prediction_backtest_command,
+    run_prediction_input_inventory_command,
+)
+from src.runtime.commands.prediction_readiness import _prediction_resume_script_bytes
+from src.runtime.commands.registry import dispatch_command
 from src.runtime.congress import CongressLoadResult
+from src.runtime.congress_archive_materialize import MaterializedCongressArchiveResult
 from src.runtime.congress_options import CongressLoadOptions
 from src.runtime.disclosures import DisclosuresLoadRuntimeResult
+from src.runtime.disclosures_bundle_materialize import MaterializedDisclosuresBundleResult
 from src.runtime.disclosures_bundle_process import DisclosuresBundleProcessResult
 from src.runtime.fec import FecLocalLoadResult
 from src.runtime.fec_bulk_materialize import (
     FecBulkMaterializedFile,
     FecBulkMaterializeResult,
 )
-from src.runtime.member_fec_crosswalk import MemberFecCrosswalkLoadResult
-from src.runtime.member_fec_crosswalk_materialize import (
-    MemberFecCrosswalkMaterializeResult,
-)
-from src.runtime.public_statement_rss_materialize import (
-    PublicStatementRssMaterializeResult,
-)
 from src.runtime.history_backfill import (
     CongressDateWindow,
+    HistoricalSnapshotTarget,
     HistoryBackfillAttempt,
     HistoryBackfillExecutionResult,
     HistoryBackfillPlan,
-    HistoricalSnapshotTarget,
     LocalHistoryBackfillResult,
 )
 from src.runtime.history_backfill_types import (
@@ -92,20 +93,31 @@ from src.runtime.history_backfill_types import (
     HistoryBackfillDisclosuresBundleInputsPayload,
     HistoryBackfillInputReadinessPayload,
 )
+from src.runtime.history_verify_types import HistoryVerifyResult, HistoryVerifyStageResult
+from src.runtime.member_fec_crosswalk import MemberFecCrosswalkLoadResult
+from src.runtime.member_fec_crosswalk_materialize import (
+    MemberFecCrosswalkMaterializeResult,
+)
 from src.runtime.oracle_contracts import (
     CongressOracleOptions,
     LocalOracleOptions,
     LocalOracleRunResult,
 )
+from src.runtime.prediction_backtest import (
+    prediction_backtest_source_state as _prediction_backtest_source_state,
+)
+from src.runtime.prediction_input_inventory import (
+    prediction_input_inventory_source_state as _prediction_input_inventory_source_state,
+)
+from src.runtime.public_statement_rss_materialize import (
+    PublicStatementRssMaterializeResult,
+)
 from src.runtime.publish import PublishRuntimeResult
 from src.runtime.publish_roundtrip_types import PublishRoundtripResult, PublishRoundtripStageResult
 from src.runtime.publish_verify_types import PublishVerifyResult, PublishVerifyStageResult
 from src.runtime.recompute import RuntimeRecomputeResult
-from src.runtime.disclosures_bundle_materialize import MaterializedDisclosuresBundleResult
-from src.runtime.congress_archive_materialize import MaterializedCongressArchiveResult
-from src.ingest.congress.archive import CongressArchiveManifest
 
-_MODULE = "src.runtime.commands"
+_MODULE = "src.runtime.commands.bill_semantics"
 _PREDICTION_BACKTEST_MODULE = "src.runtime.prediction_backtest"
 _PREDICTION_INPUT_INVENTORY_MODULE = "src.runtime.prediction_input_inventory"
 
@@ -630,11 +642,11 @@ def _history_backfill_result_for_command(report_path: Path) -> LocalHistoryBackf
 
 
 @contextmanager
-def _command_env():
+def _command_env(module="core"):
     """Patch open_connection and yield ctx + conn for command-level tests."""
     ctx = _ctx()
     conn = MagicMock()
-    with patch(f"{_MODULE}.open_connection", return_value=conn) as mock_open:
+    with patch(f"src.runtime.commands.{module}.open_connection", return_value=conn) as mock_open:
         yield SimpleNamespace(ctx=ctx, conn=conn, mock_open=mock_open)
 
 
@@ -678,7 +690,9 @@ class TestLoadCongress:
         expected = MagicMock(spec=CongressLoadResult)
 
         with _command_env() as env:
-            with patch(f"{_MODULE}.run_live_congress_load_full", return_value=expected) as mock_run:
+            with patch(
+                "src.runtime.commands.core.run_live_congress_load_full", return_value=expected
+            ) as mock_run:
                 result = load_congress(env.ctx, options)
 
         env.mock_open.assert_called_once_with(env.ctx)
@@ -697,7 +711,7 @@ class TestLoadCongress:
 
         with _command_env() as env:
             with patch(
-                f"{_MODULE}.run_live_congress_load_full", return_value=MagicMock()
+                "src.runtime.commands.core.run_live_congress_load_full", return_value=MagicMock()
             ) as mock_run:
                 load_congress(env.ctx, options)
 
@@ -714,14 +728,17 @@ class TestLoadCongress:
         options = CongressLoadOptions(congress=119)
 
         with _command_env() as env:
-            with patch(f"{_MODULE}.run_live_congress_load_full", side_effect=RuntimeError("boom")):
+            with patch(
+                "src.runtime.commands.core.run_live_congress_load_full",
+                side_effect=RuntimeError("boom"),
+            ):
                 with pytest.raises(RuntimeError, match="boom"):
                     load_congress(env.ctx, options)
 
     def test_dispatch_rejects_invalid_numeric_inputs(self) -> None:
         with (
-            patch(f"{_MODULE}.build_runtime") as mock_runtime,
-            patch(f"{_MODULE}.load_congress") as mock_load,
+            patch("src.runtime.commands.core.build_runtime") as mock_runtime,
+            patch("src.runtime.commands.core.load_congress") as mock_load,
         ):
             result = dispatch_command(
                 SimpleNamespace(
@@ -756,9 +773,10 @@ class TestLoadDisclosures:
         results: list = []
         expected = MagicMock(spec=DisclosuresLoadRuntimeResult)
 
-        with _command_env() as env:
+        with _command_env("disclosures") as env:
             with patch(
-                f"{_MODULE}.run_disclosures_load_runtime", return_value=expected
+                "src.runtime.commands.disclosures.run_disclosures_load_runtime",
+                return_value=expected,
             ) as mock_run:
                 result = load_disclosures(env.ctx, results)
 
@@ -767,18 +785,19 @@ class TestLoadDisclosures:
         assert result is expected
 
     def test_propagates_exception(self) -> None:
-        with _command_env() as env:
+        with _command_env("disclosures") as env:
             with patch(
-                f"{_MODULE}.run_disclosures_load_runtime", side_effect=ValueError("bad data")
+                "src.runtime.commands.disclosures.run_disclosures_load_runtime",
+                side_effect=ValueError("bad data"),
             ):
                 with pytest.raises(ValueError, match="bad data"):
                     load_disclosures(env.ctx, [])
 
     def test_dispatch_rejects_invalid_year(self) -> None:
         with (
-            patch(f"{_MODULE}.build_runtime") as mock_runtime,
-            patch(f"{_MODULE}._load_house_disclosures") as mock_house,
-            patch(f"{_MODULE}._load_senate_disclosures") as mock_senate,
+            patch("src.runtime.commands.disclosures.build_runtime") as mock_runtime,
+            patch("src.runtime.commands.disclosures._load_house_disclosures") as mock_house,
+            patch("src.runtime.commands.disclosures._load_senate_disclosures") as mock_senate,
         ):
             result = dispatch_command(
                 SimpleNamespace(
@@ -802,10 +821,16 @@ class TestLoadDisclosures:
         conn = sentinel.conn
         summary = {"load_ok": True, "count": 2}
         with (
-            patch(f"{_MODULE}.build_runtime", return_value=runtime) as mock_runtime,
-            patch(f"{_MODULE}.open_runtime_connection", return_value=conn) as mock_open,
-            patch(f"{_MODULE}._load_house_disclosures", return_value=summary) as mock_house,
-            patch(f"{_MODULE}._load_senate_disclosures") as mock_senate,
+            patch(
+                "src.runtime.commands.disclosures.build_runtime", return_value=runtime
+            ) as mock_runtime,
+            patch(
+                "src.runtime.commands.disclosures.open_runtime_connection", return_value=conn
+            ) as mock_open,
+            patch(
+                "src.runtime.commands.disclosures._load_house_disclosures", return_value=summary
+            ) as mock_house,
+            patch("src.runtime.commands.disclosures._load_senate_disclosures") as mock_senate,
         ):
             result = dispatch_command(
                 SimpleNamespace(
@@ -839,7 +864,9 @@ class TestRecompute:
         expected = MagicMock(spec=RuntimeRecomputeResult)
 
         with _command_env() as env:
-            with patch(f"{_MODULE}.run_recompute_runtime", return_value=expected) as mock_run:
+            with patch(
+                "src.runtime.commands.core.run_recompute_runtime", return_value=expected
+            ) as mock_run:
                 result = recompute_snapshot(env.ctx, _SNAPSHOT_DATE)
 
         env.mock_open.assert_called_once_with(env.ctx)
@@ -866,7 +893,9 @@ class TestRecompute:
         ]
 
         with _command_env() as env:
-            with patch(f"{_MODULE}.run_recompute_runtime", return_value=expected) as mock_run:
+            with patch(
+                "src.runtime.commands.core.run_recompute_runtime", return_value=expected
+            ) as mock_run:
                 result = recompute_snapshot(
                     env.ctx,
                     _SNAPSHOT_DATE,
@@ -886,7 +915,9 @@ class TestRecompute:
         }
 
         with _command_env() as env:
-            with patch(f"{_MODULE}.run_recompute_runtime", return_value=expected) as mock_run:
+            with patch(
+                "src.runtime.commands.core.run_recompute_runtime", return_value=expected
+            ) as mock_run:
                 result = recompute_snapshot(
                     env.ctx,
                     _SNAPSHOT_DATE,
@@ -902,7 +933,9 @@ class TestRecompute:
             env.ctx.taxonomy = sentinel.my_taxonomy
             env.ctx.issuer_sector_resolver = sentinel.my_resolver
             env.ctx.contribution_sector_resolver = sentinel.my_contribution_resolver
-            with patch(f"{_MODULE}.run_recompute_runtime", return_value=MagicMock()) as mock_run:
+            with patch(
+                "src.runtime.commands.core.run_recompute_runtime", return_value=MagicMock()
+            ) as mock_run:
                 recompute_snapshot(env.ctx, _SNAPSHOT_DATE)
 
         _, kwargs = mock_run.call_args
@@ -913,7 +946,8 @@ class TestRecompute:
     def test_propagates_exception(self) -> None:
         with _command_env() as env:
             with patch(
-                f"{_MODULE}.run_recompute_runtime", side_effect=RuntimeError("recompute failed")
+                "src.runtime.commands.core.run_recompute_runtime",
+                side_effect=RuntimeError("recompute failed"),
             ):
                 with pytest.raises(RuntimeError, match="recompute failed"):
                     recompute_snapshot(env.ctx, _SNAPSHOT_DATE)
@@ -936,9 +970,14 @@ class TestRecompute:
         recompute_result = MagicMock(spec=RuntimeRecomputeResult)
         summary = {"run_id": 7, "rule_fires": 0, "evidence_cards": 0}
         with (
-            patch(f"{_MODULE}.build_runtime", return_value=SimpleNamespace(context=sentinel.ctx)),
-            patch(f"{_MODULE}.recompute_snapshot", return_value=recompute_result) as mock_recompute,
-            patch(f"{_MODULE}.summarize_recompute_result", return_value=summary),
+            patch(
+                "src.runtime.commands.core.build_runtime",
+                return_value=SimpleNamespace(context=sentinel.ctx),
+            ),
+            patch(
+                "src.runtime.commands.core.recompute_snapshot", return_value=recompute_result
+            ) as mock_recompute,
+            patch("src.runtime.commands.core.summarize_recompute_result", return_value=summary),
         ):
             result = dispatch_command(
                 SimpleNamespace(
@@ -978,7 +1017,10 @@ class TestRecompute:
             ),
             encoding="utf-8",
         )
-        with patch(f"{_MODULE}.build_runtime", return_value=SimpleNamespace(context=sentinel.ctx)):
+        with patch(
+            "src.runtime.commands.core.build_runtime",
+            return_value=SimpleNamespace(context=sentinel.ctx),
+        ):
             with pytest.raises(ValueError, match="official House/Senate URL"):
                 dispatch_command(
                     SimpleNamespace(
@@ -1002,7 +1044,10 @@ class TestRecompute:
             ),
             encoding="utf-8",
         )
-        with patch(f"{_MODULE}.build_runtime", return_value=SimpleNamespace(context=sentinel.ctx)):
+        with patch(
+            "src.runtime.commands.core.build_runtime",
+            return_value=SimpleNamespace(context=sentinel.ctx),
+        ):
             with pytest.raises(ValueError, match="statement_id/source_record_id/source_id"):
                 dispatch_command(
                     SimpleNamespace(
@@ -1316,7 +1361,7 @@ class TestMaterializePublicStatementRss:
         )
 
         with patch(
-            f"{_MODULE}.materialize_public_statement_rss",
+            "src.runtime.commands.statements.materialize_public_statement_rss",
             return_value=PublicStatementRssMaterializeResult(
                 source_url="https://example.test/legislators.yaml",
                 source_path=str(source),
@@ -1384,7 +1429,7 @@ class TestMaterializePublicStatementRss:
 
     def test_dispatch_reports_no_public_statement_rss_rows(self) -> None:
         with patch(
-            f"{_MODULE}.materialize_public_statement_rss",
+            "src.runtime.commands.statements.materialize_public_statement_rss",
             return_value=PublicStatementRssMaterializeResult(
                 source_url="https://example.test/legislators.yaml",
                 source_path=None,
@@ -1419,7 +1464,9 @@ class TestMaterializePublicStatementRss:
         assert result["quality_gate_failures"] == ["no_statement_rows_materialized"]
 
     def test_dispatch_rejects_invalid_timeout(self) -> None:
-        with patch(f"{_MODULE}.materialize_public_statement_rss") as materialize:
+        with patch(
+            "src.runtime.commands.statements.materialize_public_statement_rss"
+        ) as materialize:
             result = dispatch_command(
                 SimpleNamespace(
                     command="materialize-public-statement-rss",
@@ -1442,7 +1489,9 @@ class TestMaterializePublicStatementRss:
         materialize.assert_not_called()
 
     def test_dispatch_rejects_invalid_limits(self) -> None:
-        with patch(f"{_MODULE}.materialize_public_statement_rss") as materialize:
+        with patch(
+            "src.runtime.commands.statements.materialize_public_statement_rss"
+        ) as materialize:
             result = dispatch_command(
                 SimpleNamespace(
                     command="materialize-public-statement-rss",
@@ -1480,7 +1529,9 @@ class TestPublishSnapshot:
         expected = MagicMock(spec=PublishRuntimeResult)
 
         with _command_env() as env:
-            with patch(f"{_MODULE}.run_publish_runtime", return_value=expected) as mock_run:
+            with patch(
+                "src.runtime.commands.core.run_publish_runtime", return_value=expected
+            ) as mock_run:
                 result = publish_snapshot(env.ctx, _SNAPSHOT_DATE, target_dir, zip_inputs)
 
         env.mock_open.assert_called_once_with(env.ctx)
@@ -1490,7 +1541,8 @@ class TestPublishSnapshot:
     def test_propagates_exception(self) -> None:
         with _command_env() as env:
             with patch(
-                f"{_MODULE}.run_publish_runtime", side_effect=RuntimeError("publish failed")
+                "src.runtime.commands.core.run_publish_runtime",
+                side_effect=RuntimeError("publish failed"),
             ):
                 with pytest.raises(RuntimeError, match="publish failed"):
                     publish_snapshot(env.ctx, _SNAPSHOT_DATE, Path("/tmp"), MagicMock())
@@ -1508,7 +1560,9 @@ class TestLoadCongressLocal:
         expected = MagicMock(spec=CongressLoadResult)
 
         with _command_env() as env:
-            with patch(f"{_MODULE}.run_congress_archive_load", return_value=expected) as mock_run:
+            with patch(
+                "src.runtime.commands.core.run_congress_archive_load", return_value=expected
+            ) as mock_run:
                 result = load_congress_local(env.ctx, archive, options)
 
         env.mock_open.assert_called_once_with(env.ctx)
@@ -1521,7 +1575,7 @@ class TestLoadCongressLocal:
 
         with _command_env() as env:
             with patch(
-                f"{_MODULE}.run_congress_archive_load", return_value=MagicMock()
+                "src.runtime.commands.core.run_congress_archive_load", return_value=MagicMock()
             ) as mock_run:
                 load_congress_local(env.ctx, archive, options)
 
@@ -1539,7 +1593,7 @@ class TestLoadCongressLocal:
 
         with _command_env() as env:
             with patch(
-                f"{_MODULE}.run_congress_archive_load", return_value=MagicMock()
+                "src.runtime.commands.core.run_congress_archive_load", return_value=MagicMock()
             ) as mock_run:
                 load_congress_local(env.ctx, archive, options)
 
@@ -1549,7 +1603,8 @@ class TestLoadCongressLocal:
     def test_propagates_exception(self) -> None:
         with _command_env() as env:
             with patch(
-                f"{_MODULE}.run_congress_archive_load", side_effect=RuntimeError("archive missing")
+                "src.runtime.commands.core.run_congress_archive_load",
+                side_effect=RuntimeError("archive missing"),
             ):
                 with pytest.raises(RuntimeError, match="archive missing"):
                     load_congress_local(
@@ -1558,8 +1613,8 @@ class TestLoadCongressLocal:
 
     def test_dispatch_rejects_invalid_congress(self) -> None:
         with (
-            patch(f"{_MODULE}.build_runtime") as mock_runtime,
-            patch(f"{_MODULE}.load_congress_local") as mock_load,
+            patch("src.runtime.commands.core.build_runtime") as mock_runtime,
+            patch("src.runtime.commands.core.load_congress_local") as mock_load,
         ):
             result = dispatch_command(
                 SimpleNamespace(
@@ -1604,7 +1659,7 @@ class TestMaterializeFecBulkFiles:
         )
 
         with patch(
-            f"{_MODULE}.materialize_fec_bulk_files",
+            "src.runtime.commands.fec.materialize_fec_bulk_files",
             return_value=materialized,
         ) as materialize:
             result = dispatch_command(
@@ -1660,7 +1715,7 @@ class TestMaterializeFecBulkFiles:
         }
 
     def test_dispatch_rejects_invalid_timeout(self) -> None:
-        with patch(f"{_MODULE}.materialize_fec_bulk_files") as materialize:
+        with patch("src.runtime.commands.fec.materialize_fec_bulk_files") as materialize:
             result = dispatch_command(
                 SimpleNamespace(
                     command="materialize-fec-bulk-files",
@@ -1685,7 +1740,7 @@ class TestMaterializeFecBulkFiles:
         materialize.assert_not_called()
 
     def test_dispatch_rejects_invalid_cycle(self) -> None:
-        with patch(f"{_MODULE}.materialize_fec_bulk_files") as materialize:
+        with patch("src.runtime.commands.fec.materialize_fec_bulk_files") as materialize:
             result = dispatch_command(
                 SimpleNamespace(
                     command="materialize-fec-bulk-files",
@@ -1735,9 +1790,9 @@ class TestLoadFecLocal:
         }
 
         with (
-            patch(f"{_MODULE}.build_runtime", return_value=runtime),
-            patch(f"{_MODULE}.load_fec_local", return_value=load_result) as mock_load,
-            patch(f"{_MODULE}.summarize_fec_load_result", return_value=summary),
+            patch("src.runtime.commands.fec.build_runtime", return_value=runtime),
+            patch("src.runtime.commands.fec.load_fec_local", return_value=load_result) as mock_load,
+            patch("src.runtime.commands.fec.summarize_fec_load_result", return_value=summary),
         ):
             result = dispatch_command(
                 SimpleNamespace(
@@ -1764,7 +1819,7 @@ class TestLoadFecLocal:
         assert result == {"ok": True, "command": "load-fec-local", **summary}
 
     def test_dispatch_rejects_invalid_contribution_chunk_size(self) -> None:
-        with patch(f"{_MODULE}.load_fec_local") as mock_load:
+        with patch("src.runtime.commands.fec.load_fec_local") as mock_load:
             result = dispatch_command(
                 SimpleNamespace(
                     command="load-fec-local",
@@ -1935,12 +1990,15 @@ class TestLoadMemberFecCrosswalkLocal:
         }
 
         with (
-            patch(f"{_MODULE}.build_runtime", return_value=runtime),
+            patch("src.runtime.commands.fec.build_runtime", return_value=runtime),
             patch(
-                f"{_MODULE}.load_member_fec_crosswalk_local",
+                "src.runtime.commands.fec.load_member_fec_crosswalk_local",
                 return_value=load_result,
             ) as mock_load,
-            patch(f"{_MODULE}.summarize_member_fec_crosswalk_load_result", return_value=summary),
+            patch(
+                "src.runtime.commands.fec.summarize_member_fec_crosswalk_load_result",
+                return_value=summary,
+            ),
         ):
             result = dispatch_command(
                 SimpleNamespace(
@@ -1979,7 +2037,7 @@ class TestMaterializeMemberFecCrosswalk:
         )
 
         with patch(
-            f"{_MODULE}.materialize_member_fec_crosswalk",
+            "src.runtime.commands.fec.materialize_member_fec_crosswalk",
             return_value=materialized,
         ) as materialize:
             result = dispatch_command(
@@ -2050,7 +2108,7 @@ class TestMaterializeMemberFecCrosswalk:
         )
 
         with patch(
-            f"{_MODULE}.materialize_member_fec_crosswalk",
+            "src.runtime.commands.fec.materialize_member_fec_crosswalk",
             return_value=materialized,
         ):
             result = dispatch_command(
@@ -2071,7 +2129,7 @@ class TestMaterializeMemberFecCrosswalk:
         assert written["run_metadata"]["artifact_sha256"] == {}
 
     def test_dispatch_rejects_invalid_timeout(self) -> None:
-        with patch(f"{_MODULE}.materialize_member_fec_crosswalk") as materialize:
+        with patch("src.runtime.commands.fec.materialize_member_fec_crosswalk") as materialize:
             result = dispatch_command(
                 SimpleNamespace(
                     command="materialize-member-fec-crosswalk",
@@ -2506,7 +2564,7 @@ class TestPredictionInputInventory:
         expected = {"ok": True, "command": "prediction-input-inventory"}
 
         with patch(
-            f"{_MODULE}.handle_prediction_input_inventory_command",
+            "src.runtime.commands.prediction_misc.handle_prediction_input_inventory_command",
             return_value=expected,
         ) as run:
             result = dispatch_command(args)
@@ -2738,7 +2796,7 @@ class TestPredictionInputInventory:
         expected = {"ok": True, "command": "verify-prediction-input-inventory"}
 
         with patch(
-            f"{_MODULE}.verify_prediction_input_inventory_command",
+            "src.runtime.commands.prediction_misc.verify_prediction_input_inventory_command",
             return_value=expected,
         ) as run:
             result = dispatch_command(args)
@@ -4857,9 +4915,10 @@ class TestProcessDisclosuresLocal:
         local_root = Path("/data/disclosures")
         expected = MagicMock(spec=DisclosuresBundleProcessResult)
 
-        with _command_env() as env:
+        with _command_env("disclosures") as env:
             with patch(
-                f"{_MODULE}.run_disclosures_bundle_process", return_value=expected
+                "src.runtime.commands.disclosures.run_disclosures_bundle_process",
+                return_value=expected,
             ) as mock_run:
                 result = process_disclosures_local(env.ctx, bundle, local_root=local_root)
 
@@ -4870,9 +4929,10 @@ class TestProcessDisclosuresLocal:
     def test_local_root_none_forwarded(self) -> None:
         bundle = MagicMock(name="bundle")
 
-        with _command_env() as env:
+        with _command_env("disclosures") as env:
             with patch(
-                f"{_MODULE}.run_disclosures_bundle_process", return_value=MagicMock()
+                "src.runtime.commands.disclosures.run_disclosures_bundle_process",
+                return_value=MagicMock(),
             ) as mock_run:
                 process_disclosures_local(env.ctx, bundle)
 
@@ -4882,9 +4942,10 @@ class TestProcessDisclosuresLocal:
     def test_bundle_forwarded_as_second_arg(self) -> None:
         bundle = MagicMock(name="bundle")
 
-        with _command_env() as env:
+        with _command_env("disclosures") as env:
             with patch(
-                f"{_MODULE}.run_disclosures_bundle_process", return_value=MagicMock()
+                "src.runtime.commands.disclosures.run_disclosures_bundle_process",
+                return_value=MagicMock(),
             ) as mock_run:
                 process_disclosures_local(env.ctx, bundle)
 
@@ -4892,9 +4953,10 @@ class TestProcessDisclosuresLocal:
         assert args[1] is bundle
 
     def test_propagates_exception(self) -> None:
-        with _command_env() as env:
+        with _command_env("disclosures") as env:
             with patch(
-                f"{_MODULE}.run_disclosures_bundle_process", side_effect=ValueError("bad bundle")
+                "src.runtime.commands.disclosures.run_disclosures_bundle_process",
+                side_effect=ValueError("bad bundle"),
             ):
                 with pytest.raises(ValueError, match="bad bundle"):
                     process_disclosures_local(env.ctx, MagicMock())
@@ -4921,7 +4983,9 @@ class TestRunOracleLocalCommand:
         expected = MagicMock(spec=LocalOracleRunResult)
 
         with _command_env() as env:
-            with patch(f"{_MODULE}.run_oracle_local", return_value=expected) as mock_run:
+            with patch(
+                "src.runtime.commands.core.run_oracle_local", return_value=expected
+            ) as mock_run:
                 result = run_oracle_local_command(env.ctx, archive, bundle, options)
 
         env.mock_open.assert_called_once_with(env.ctx)
@@ -4934,7 +4998,9 @@ class TestRunOracleLocalCommand:
         options = _oracle_options()
 
         with _command_env() as env:
-            with patch(f"{_MODULE}.run_oracle_local", return_value=MagicMock()) as mock_run:
+            with patch(
+                "src.runtime.commands.core.run_oracle_local", return_value=MagicMock()
+            ) as mock_run:
                 run_oracle_local_command(env.ctx, archive, bundle, options)
 
         args, _ = mock_run.call_args
@@ -4946,7 +5012,9 @@ class TestRunOracleLocalCommand:
         options = _oracle_options()
 
         with _command_env() as env:
-            with patch(f"{_MODULE}.run_oracle_local", return_value=MagicMock()) as mock_run:
+            with patch(
+                "src.runtime.commands.core.run_oracle_local", return_value=MagicMock()
+            ) as mock_run:
                 run_oracle_local_command(env.ctx, archive, bundle, options)
 
         args, _ = mock_run.call_args
@@ -4958,7 +5026,9 @@ class TestRunOracleLocalCommand:
         options = _oracle_options()
 
         with _command_env() as env:
-            with patch(f"{_MODULE}.run_oracle_local", return_value=MagicMock()) as mock_run:
+            with patch(
+                "src.runtime.commands.core.run_oracle_local", return_value=MagicMock()
+            ) as mock_run:
                 run_oracle_local_command(env.ctx, archive, bundle, options)
 
         args, _ = mock_run.call_args
@@ -4966,7 +5036,10 @@ class TestRunOracleLocalCommand:
 
     def test_propagates_exception(self) -> None:
         with _command_env() as env:
-            with patch(f"{_MODULE}.run_oracle_local", side_effect=RuntimeError("oracle failed")):
+            with patch(
+                "src.runtime.commands.core.run_oracle_local",
+                side_effect=RuntimeError("oracle failed"),
+            ):
                 with pytest.raises(RuntimeError, match="oracle failed"):
                     run_oracle_local_command(
                         env.ctx,
@@ -4991,7 +5064,9 @@ class TestVerifyPublishLocal:
     def test_delegates_to_verify_local_publish(self) -> None:
         publish_root = Path("/tmp/publish/2024-06-01")
         expected = _clean_verify_result()
-        with patch(f"{_MODULE}._verify_local_publish", return_value=expected) as mock_verify:
+        with patch(
+            "src.runtime.commands.core._verify_local_publish", return_value=expected
+        ) as mock_verify:
             result = verify_publish_local(publish_root)
 
         mock_verify.assert_called_once_with(publish_root)
@@ -5000,8 +5075,11 @@ class TestVerifyPublishLocal:
     def test_does_not_open_connection(self) -> None:
         publish_root = Path("/tmp/publish/2024-06-01")
         with (
-            patch(f"{_MODULE}._verify_local_publish", return_value=_clean_verify_result()),
-            patch(f"{_MODULE}.open_connection") as mock_open,
+            patch(
+                "src.runtime.commands.core._verify_local_publish",
+                return_value=_clean_verify_result(),
+            ),
+            patch("src.runtime.commands.core.open_connection") as mock_open,
         ):
             verify_publish_local(publish_root)
 
@@ -5010,7 +5088,7 @@ class TestVerifyPublishLocal:
     def test_returns_publish_verify_result_instance(self) -> None:
         publish_root = Path("/tmp/publish/2024-06-01")
         expected = _clean_verify_result()
-        with patch(f"{_MODULE}._verify_local_publish", return_value=expected):
+        with patch("src.runtime.commands.core._verify_local_publish", return_value=expected):
             result = verify_publish_local(publish_root)
 
         assert isinstance(result, PublishVerifyResult)
@@ -5018,7 +5096,7 @@ class TestVerifyPublishLocal:
     def test_propagates_exception(self) -> None:
         publish_root = Path("/tmp/publish/2024-06-01")
         with patch(
-            f"{_MODULE}._verify_local_publish",
+            "src.runtime.commands.core._verify_local_publish",
             side_effect=FileNotFoundError("missing tree"),
         ):
             with pytest.raises(FileNotFoundError, match="missing tree"):
@@ -5047,7 +5125,9 @@ class TestVerifyPublishRoundtripLocal:
         expected = _clean_roundtrip_result()
 
         with _command_env() as env:
-            with patch(f"{_MODULE}._verify_roundtrip", return_value=expected) as mock_verify:
+            with patch(
+                "src.runtime.commands.core._verify_roundtrip", return_value=expected
+            ) as mock_verify:
                 result = verify_publish_roundtrip_local(env.ctx, publish_root)
 
         env.mock_open.assert_called_once_with(env.ctx)
@@ -5059,7 +5139,7 @@ class TestVerifyPublishRoundtripLocal:
         expected = _clean_roundtrip_result()
 
         with _command_env() as env:
-            with patch(f"{_MODULE}._verify_roundtrip", return_value=expected):
+            with patch("src.runtime.commands.core._verify_roundtrip", return_value=expected):
                 result = verify_publish_roundtrip_local(env.ctx, publish_root)
 
         assert isinstance(result, PublishRoundtripResult)
@@ -5069,7 +5149,8 @@ class TestVerifyPublishRoundtripLocal:
 
         with _command_env() as env:
             with patch(
-                f"{_MODULE}._verify_roundtrip", return_value=_clean_roundtrip_result()
+                "src.runtime.commands.core._verify_roundtrip",
+                return_value=_clean_roundtrip_result(),
             ) as mock_verify:
                 verify_publish_roundtrip_local(env.ctx, publish_root)
 
@@ -5082,7 +5163,8 @@ class TestVerifyPublishRoundtripLocal:
 
         with _command_env() as env:
             with patch(
-                f"{_MODULE}._verify_roundtrip", return_value=_clean_roundtrip_result()
+                "src.runtime.commands.core._verify_roundtrip",
+                return_value=_clean_roundtrip_result(),
             ) as mock_verify:
                 verify_publish_roundtrip_local(env.ctx, publish_root)
 
@@ -5093,7 +5175,9 @@ class TestVerifyPublishRoundtripLocal:
         publish_root = Path("/tmp/publish/2024-06-01")
 
         with _command_env() as env:
-            with patch(f"{_MODULE}._verify_roundtrip", side_effect=RuntimeError("db down")):
+            with patch(
+                "src.runtime.commands.core._verify_roundtrip", side_effect=RuntimeError("db down")
+            ):
                 with pytest.raises(RuntimeError, match="db down"):
                     verify_publish_roundtrip_local(env.ctx, publish_root)
 
@@ -5104,7 +5188,7 @@ class TestVerifyHistoryAggregateLocal:
         expected = _clean_history_verify_result()
 
         with patch(
-            f"{_MODULE}._verify_local_history_aggregate", return_value=expected
+            "src.runtime.commands.history._verify_local_history_aggregate", return_value=expected
         ) as mock_verify:
             result = verify_history_aggregate_local(publish_root)
 
@@ -5115,7 +5199,9 @@ class TestVerifyHistoryAggregateLocal:
         publish_root = Path("/tmp/history")
         expected = _clean_history_verify_result()
 
-        with patch(f"{_MODULE}._verify_local_history_aggregate", return_value=expected):
+        with patch(
+            "src.runtime.commands.history._verify_local_history_aggregate", return_value=expected
+        ):
             result = verify_history_aggregate_local(publish_root)
 
         assert isinstance(result, HistoryVerifyResult)
@@ -5124,7 +5210,7 @@ class TestVerifyHistoryAggregateLocal:
         publish_root = Path("/data/history/aggregate")
 
         with patch(
-            f"{_MODULE}._verify_local_history_aggregate",
+            "src.runtime.commands.history._verify_local_history_aggregate",
             return_value=_clean_history_verify_result(),
         ) as mock_verify:
             verify_history_aggregate_local(publish_root)
@@ -5135,7 +5221,7 @@ class TestVerifyHistoryAggregateLocal:
         publish_root = Path("/tmp/history")
 
         with patch(
-            f"{_MODULE}._verify_local_history_aggregate",
+            "src.runtime.commands.history._verify_local_history_aggregate",
             side_effect=RuntimeError("bad history root"),
         ):
             with pytest.raises(RuntimeError, match="bad history root"):
@@ -5145,8 +5231,8 @@ class TestVerifyHistoryAggregateLocal:
 class TestHistoryDispatchCommands:
     def test_parse_disclosures_rejects_invalid_limit(self) -> None:
         with (
-            patch(f"{_MODULE}.build_runtime") as mock_runtime,
-            patch(f"{_MODULE}.run_disclosure_parse_runtime") as mock_parse,
+            patch("src.runtime.commands.disclosures.build_runtime") as mock_runtime,
+            patch("src.runtime.commands.disclosures.run_disclosure_parse_runtime") as mock_parse,
         ):
             result = dispatch_command(
                 SimpleNamespace(
@@ -5166,8 +5252,10 @@ class TestHistoryDispatchCommands:
 
     def test_process_disclosures_rejects_invalid_limit(self) -> None:
         with (
-            patch(f"{_MODULE}.build_runtime") as mock_runtime,
-            patch(f"{_MODULE}.run_disclosures_parse_load_runtime") as mock_process,
+            patch("src.runtime.commands.disclosures.build_runtime") as mock_runtime,
+            patch(
+                "src.runtime.commands.disclosures.run_disclosures_parse_load_runtime"
+            ) as mock_process,
         ):
             result = dispatch_command(
                 SimpleNamespace(
@@ -5198,10 +5286,16 @@ class TestHistoryDispatchCommands:
             "roundtrip": {"ok": True},
         }
         with (
-            patch(f"{_MODULE}.build_runtime", return_value=runtime),
-            patch(f"{_MODULE}.load_disclosures_bundle", return_value=sentinel.bundle),
-            patch(f"{_MODULE}.run_oracle_local_command", return_value=oracle_result) as mock_run,
-            patch(f"{_MODULE}.summarize_local_oracle_run_result", return_value=summary),
+            patch("src.runtime.commands.core.build_runtime", return_value=runtime),
+            patch(
+                "src.runtime.commands.core.load_disclosures_bundle", return_value=sentinel.bundle
+            ),
+            patch(
+                "src.runtime.commands.core.run_oracle_local_command", return_value=oracle_result
+            ) as mock_run,
+            patch(
+                "src.runtime.commands.core.summarize_local_oracle_run_result", return_value=summary
+            ),
         ):
             result = dispatch_command(
                 SimpleNamespace(
@@ -5226,8 +5320,8 @@ class TestHistoryDispatchCommands:
 
     def test_run_oracle_local_rejects_invalid_limit(self) -> None:
         with (
-            patch(f"{_MODULE}.build_runtime") as mock_runtime,
-            patch(f"{_MODULE}.run_oracle_local_command") as mock_run,
+            patch("src.runtime.commands.core.build_runtime") as mock_runtime,
+            patch("src.runtime.commands.core.run_oracle_local_command") as mock_run,
         ):
             result = dispatch_command(
                 SimpleNamespace(
@@ -5253,8 +5347,8 @@ class TestHistoryDispatchCommands:
 
     def test_run_oracle_local_rejects_invalid_congress(self) -> None:
         with (
-            patch(f"{_MODULE}.build_runtime") as mock_runtime,
-            patch(f"{_MODULE}.run_oracle_local_command") as mock_run,
+            patch("src.runtime.commands.core.build_runtime") as mock_runtime,
+            patch("src.runtime.commands.core.run_oracle_local_command") as mock_run,
         ):
             result = dispatch_command(
                 SimpleNamespace(
@@ -5299,7 +5393,7 @@ class TestHistoryDispatchCommands:
         ]
 
     def test_plan_history_backfill_rejects_invalid_congress(self, tmp_path: Path) -> None:
-        with patch(f"{_MODULE}.plan_congress_history_backfill") as mock_plan:
+        with patch("src.runtime.commands.history.plan_congress_history_backfill") as mock_plan:
             result = dispatch_command(
                 SimpleNamespace(
                     command="plan-history-backfill",
@@ -5337,11 +5431,11 @@ class TestHistoryDispatchCommands:
                 return_value=expected,
             ) as mock_write,
             patch(
-                f"{_MODULE}.verify_history_aggregate_local",
+                "src.runtime.commands.history.verify_history_aggregate_local",
                 return_value=verify_result,
             ) as mock_verify,
             patch(
-                f"{_MODULE}.summarize_history_verify_result",
+                "src.runtime.commands.history.summarize_history_verify_result",
                 return_value=verify_summary,
             ),
         ):
@@ -5389,11 +5483,11 @@ class TestHistoryDispatchCommands:
         result_obj = _clean_history_verify_result()
         with (
             patch(
-                f"{_MODULE}.verify_history_aggregate_local",
+                "src.runtime.commands.history.verify_history_aggregate_local",
                 return_value=result_obj,
             ) as mock_verify,
             patch(
-                f"{_MODULE}.summarize_history_verify_result",
+                "src.runtime.commands.history.summarize_history_verify_result",
                 return_value=summary,
             ),
         ):
@@ -5431,15 +5525,19 @@ class TestHistoryDispatchCommands:
             "input_readiness": readiness.model_dump(mode="json"),
         }
         with (
-            patch(f"{_MODULE}.check_history_backfill_inputs", return_value=readiness),
-            patch(f"{_MODULE}.build_runtime", return_value=runtime),
-            patch(f"{_MODULE}.load_disclosures_bundle", return_value=sentinel.bundle),
             patch(
-                f"{_MODULE}.run_history_backfill_local_command",
+                "src.runtime.commands.history.check_history_backfill_inputs", return_value=readiness
+            ),
+            patch("src.runtime.commands.history.build_runtime", return_value=runtime),
+            patch(
+                "src.runtime.commands.history.load_disclosures_bundle", return_value=sentinel.bundle
+            ),
+            patch(
+                "src.runtime.commands.history.run_history_backfill_local_command",
                 return_value=result_obj,
             ) as mock_run,
             patch(
-                f"{_MODULE}.summarize_local_history_backfill_result",
+                "src.runtime.commands.history.summarize_local_history_backfill_result",
                 return_value={k: v for k, v in summary.items() if k != "input_readiness"},
             ),
         ):
@@ -5488,10 +5586,12 @@ class TestHistoryDispatchCommands:
     ) -> None:
         readiness = _history_input_readiness(ready=False, status="blocked")
         with (
-            patch(f"{_MODULE}.check_history_backfill_inputs", return_value=readiness),
-            patch(f"{_MODULE}.build_runtime") as mock_runtime,
-            patch(f"{_MODULE}.load_disclosures_bundle") as mock_load_bundle,
-            patch(f"{_MODULE}.run_history_backfill_local_command") as mock_run,
+            patch(
+                "src.runtime.commands.history.check_history_backfill_inputs", return_value=readiness
+            ),
+            patch("src.runtime.commands.history.build_runtime") as mock_runtime,
+            patch("src.runtime.commands.history.load_disclosures_bundle") as mock_load_bundle,
+            patch("src.runtime.commands.history.run_history_backfill_local_command") as mock_run,
         ):
             result = dispatch_command(
                 SimpleNamespace(
@@ -5521,8 +5621,8 @@ class TestHistoryDispatchCommands:
 
     def test_run_history_backfill_local_rejects_invalid_limit(self, tmp_path: Path) -> None:
         with (
-            patch(f"{_MODULE}.check_history_backfill_inputs") as mock_check,
-            patch(f"{_MODULE}.run_history_backfill_local_command") as mock_run,
+            patch("src.runtime.commands.history.check_history_backfill_inputs") as mock_check,
+            patch("src.runtime.commands.history.run_history_backfill_local_command") as mock_run,
         ):
             result = dispatch_command(
                 SimpleNamespace(
@@ -5551,9 +5651,9 @@ class TestHistoryDispatchCommands:
 
     def test_run_history_backfill_local_rejects_invalid_congress(self, tmp_path: Path) -> None:
         with (
-            patch(f"{_MODULE}.check_history_backfill_inputs") as mock_check,
-            patch(f"{_MODULE}.plan_congress_history_backfill") as mock_plan,
-            patch(f"{_MODULE}.run_history_backfill_local_command") as mock_run,
+            patch("src.runtime.commands.history.check_history_backfill_inputs") as mock_check,
+            patch("src.runtime.commands.history.plan_congress_history_backfill") as mock_plan,
+            patch("src.runtime.commands.history.run_history_backfill_local_command") as mock_run,
         ):
             result = dispatch_command(
                 SimpleNamespace(
@@ -5584,7 +5684,9 @@ class TestHistoryDispatchCommands:
     def test_check_history_backfill_inputs_dispatch_delegates_and_serializes(self) -> None:
         payload = _history_input_readiness()
 
-        with patch(f"{_MODULE}.check_history_backfill_inputs", return_value=payload) as mock_check:
+        with patch(
+            "src.runtime.commands.history.check_history_backfill_inputs", return_value=payload
+        ) as mock_check:
             result = dispatch_command(
                 SimpleNamespace(
                     command="check-history-backfill-inputs",
@@ -5608,7 +5710,7 @@ class TestHistoryDispatchCommands:
         }
 
     def test_check_history_backfill_inputs_rejects_invalid_limit(self) -> None:
-        with patch(f"{_MODULE}.check_history_backfill_inputs") as mock_check:
+        with patch("src.runtime.commands.history.check_history_backfill_inputs") as mock_check:
             result = dispatch_command(
                 SimpleNamespace(
                     command="check-history-backfill-inputs",
@@ -5638,7 +5740,7 @@ class TestHistoryDispatchCommands:
         )
 
         with patch(
-            f"{_MODULE}.materialize_disclosures_bundle",
+            "src.runtime.commands.disclosures.materialize_disclosures_bundle",
             return_value=materialized,
         ) as mock_materialize:
             result = dispatch_command(
@@ -5670,7 +5772,9 @@ class TestHistoryDispatchCommands:
         }
 
     def test_materialize_disclosures_bundle_rejects_invalid_years(self) -> None:
-        with patch(f"{_MODULE}.materialize_disclosures_bundle") as mock_materialize:
+        with patch(
+            "src.runtime.commands.disclosures.materialize_disclosures_bundle"
+        ) as mock_materialize:
             result = dispatch_command(
                 SimpleNamespace(
                     command="materialize-disclosures-bundle",
@@ -5706,13 +5810,14 @@ class TestHistoryDispatchCommands:
 
         with (
             patch(
-                f"{_MODULE}.manifest_from_existing_archive", return_value=manifest
+                "src.runtime.commands.history.manifest_from_existing_archive", return_value=manifest
             ) as mock_manifest,
             patch(
-                f"{_MODULE}.validate_congress_archive_manifest", return_value=validation
+                "src.runtime.commands.history.validate_congress_archive_manifest",
+                return_value=validation,
             ) as mock_validate,
             patch(
-                f"{_MODULE}.write_manifest",
+                "src.runtime.commands.history.write_manifest",
                 return_value=Path("/tmp/congress_119/manifest.json"),
             ) as mock_write,
         ):
@@ -5745,8 +5850,8 @@ class TestHistoryDispatchCommands:
 
     def test_write_congress_archive_manifest_rejects_invalid_congress(self) -> None:
         with (
-            patch(f"{_MODULE}.manifest_from_existing_archive") as mock_manifest,
-            patch(f"{_MODULE}.write_manifest") as mock_write,
+            patch("src.runtime.commands.history.manifest_from_existing_archive") as mock_manifest,
+            patch("src.runtime.commands.history.write_manifest") as mock_write,
         ):
             result = dispatch_command(
                 SimpleNamespace(
@@ -5784,13 +5889,14 @@ class TestHistoryDispatchCommands:
 
         with (
             patch(
-                f"{_MODULE}.build_runtime",
+                "src.runtime.commands.history.build_runtime",
                 return_value=SimpleNamespace(
                     context=SimpleNamespace(settings=SimpleNamespace(congress_api_key="env-key"))
                 ),
             ),
             patch(
-                f"{_MODULE}.materialize_congress_archive", return_value=materialized
+                "src.runtime.commands.history.materialize_congress_archive",
+                return_value=materialized,
             ) as mock_materialize,
         ):
             result = dispatch_command(
@@ -5858,8 +5964,8 @@ class TestHistoryDispatchCommands:
 
     def test_materialize_congress_archive_rejects_invalid_numeric_inputs(self) -> None:
         with (
-            patch(f"{_MODULE}.build_runtime") as mock_runtime,
-            patch(f"{_MODULE}.materialize_congress_archive") as mock_materialize,
+            patch("src.runtime.commands.history.build_runtime") as mock_runtime,
+            patch("src.runtime.commands.history.materialize_congress_archive") as mock_materialize,
         ):
             result = dispatch_command(
                 SimpleNamespace(
@@ -5917,18 +6023,22 @@ class TestHistoryDispatchCommands:
 
         with (
             patch(
-                f"{_MODULE}.build_runtime",
+                "src.runtime.commands.history.build_runtime",
                 return_value=SimpleNamespace(
                     context=SimpleNamespace(settings=SimpleNamespace(congress_api_key="env-key"))
                 ),
             ),
             patch(
-                f"{_MODULE}.materialize_congress_archive", return_value=congress_result
+                "src.runtime.commands.history.materialize_congress_archive",
+                return_value=congress_result,
             ) as mock_congress,
             patch(
-                f"{_MODULE}.materialize_disclosures_bundle", return_value=disclosures_result
+                "src.runtime.commands.history.materialize_disclosures_bundle",
+                return_value=disclosures_result,
             ) as mock_disclosures,
-            patch(f"{_MODULE}.check_history_backfill_inputs", return_value=readiness) as mock_check,
+            patch(
+                "src.runtime.commands.history.check_history_backfill_inputs", return_value=readiness
+            ) as mock_check,
         ):
             result = dispatch_command(
                 SimpleNamespace(
@@ -6026,10 +6136,12 @@ class TestHistoryDispatchCommands:
 
     def test_materialize_history_backfill_inputs_rejects_invalid_limit(self) -> None:
         with (
-            patch(f"{_MODULE}.build_runtime") as mock_runtime,
-            patch(f"{_MODULE}.materialize_congress_archive") as mock_congress,
-            patch(f"{_MODULE}.materialize_disclosures_bundle") as mock_disclosures,
-            patch(f"{_MODULE}.check_history_backfill_inputs") as mock_check,
+            patch("src.runtime.commands.history.build_runtime") as mock_runtime,
+            patch("src.runtime.commands.history.materialize_congress_archive") as mock_congress,
+            patch(
+                "src.runtime.commands.history.materialize_disclosures_bundle"
+            ) as mock_disclosures,
+            patch("src.runtime.commands.history.check_history_backfill_inputs") as mock_check,
         ):
             result = dispatch_command(
                 SimpleNamespace(
@@ -6059,10 +6171,12 @@ class TestHistoryDispatchCommands:
 
     def test_materialize_history_backfill_inputs_rejects_invalid_congress_fields(self) -> None:
         with (
-            patch(f"{_MODULE}.build_runtime") as mock_runtime,
-            patch(f"{_MODULE}.materialize_congress_archive") as mock_congress,
-            patch(f"{_MODULE}.materialize_disclosures_bundle") as mock_disclosures,
-            patch(f"{_MODULE}.check_history_backfill_inputs") as mock_check,
+            patch("src.runtime.commands.history.build_runtime") as mock_runtime,
+            patch("src.runtime.commands.history.materialize_congress_archive") as mock_congress,
+            patch(
+                "src.runtime.commands.history.materialize_disclosures_bundle"
+            ) as mock_disclosures,
+            patch("src.runtime.commands.history.check_history_backfill_inputs") as mock_check,
         ):
             result = dispatch_command(
                 SimpleNamespace(
@@ -6096,10 +6210,12 @@ class TestHistoryDispatchCommands:
 
     def test_materialize_history_backfill_inputs_rejects_invalid_disclosures_years(self) -> None:
         with (
-            patch(f"{_MODULE}.build_runtime") as mock_runtime,
-            patch(f"{_MODULE}.materialize_congress_archive") as mock_congress,
-            patch(f"{_MODULE}.materialize_disclosures_bundle") as mock_disclosures,
-            patch(f"{_MODULE}.check_history_backfill_inputs") as mock_check,
+            patch("src.runtime.commands.history.build_runtime") as mock_runtime,
+            patch("src.runtime.commands.history.materialize_congress_archive") as mock_congress,
+            patch(
+                "src.runtime.commands.history.materialize_disclosures_bundle"
+            ) as mock_disclosures,
+            patch("src.runtime.commands.history.check_history_backfill_inputs") as mock_check,
         ):
             result = dispatch_command(
                 SimpleNamespace(
@@ -6163,14 +6279,24 @@ class TestHistoryDispatchCommands:
 
         with (
             patch(
-                f"{_MODULE}.build_runtime",
+                "src.runtime.commands.history.build_runtime",
                 return_value=SimpleNamespace(context=runtime_context),
             ),
-            patch(f"{_MODULE}.materialize_congress_archive", return_value=congress_result),
-            patch(f"{_MODULE}.materialize_disclosures_bundle", return_value=disclosures_result),
-            patch(f"{_MODULE}.check_history_backfill_inputs", return_value=readiness),
-            patch(f"{_MODULE}.load_disclosures_bundle") as mock_load_bundle,
-            patch(f"{_MODULE}.run_history_backfill_local_command") as mock_backfill,
+            patch(
+                "src.runtime.commands.history.materialize_congress_archive",
+                return_value=congress_result,
+            ),
+            patch(
+                "src.runtime.commands.history.materialize_disclosures_bundle",
+                return_value=disclosures_result,
+            ),
+            patch(
+                "src.runtime.commands.history.check_history_backfill_inputs", return_value=readiness
+            ),
+            patch("src.runtime.commands.history.load_disclosures_bundle") as mock_load_bundle,
+            patch(
+                "src.runtime.commands.history.run_history_backfill_local_command"
+            ) as mock_backfill,
         ):
             result = dispatch_command(
                 SimpleNamespace(
@@ -6251,11 +6377,15 @@ class TestHistoryDispatchCommands:
 
     def test_run_history_launch_local_rejects_invalid_limit(self, tmp_path: Path) -> None:
         with (
-            patch(f"{_MODULE}.build_runtime") as mock_runtime,
-            patch(f"{_MODULE}.materialize_congress_archive") as mock_congress,
-            patch(f"{_MODULE}.materialize_disclosures_bundle") as mock_disclosures,
-            patch(f"{_MODULE}.check_history_backfill_inputs") as mock_check,
-            patch(f"{_MODULE}.run_history_backfill_local_command") as mock_backfill,
+            patch("src.runtime.commands.history.build_runtime") as mock_runtime,
+            patch("src.runtime.commands.history.materialize_congress_archive") as mock_congress,
+            patch(
+                "src.runtime.commands.history.materialize_disclosures_bundle"
+            ) as mock_disclosures,
+            patch("src.runtime.commands.history.check_history_backfill_inputs") as mock_check,
+            patch(
+                "src.runtime.commands.history.run_history_backfill_local_command"
+            ) as mock_backfill,
         ):
             result = dispatch_command(
                 SimpleNamespace(
@@ -6292,11 +6422,15 @@ class TestHistoryDispatchCommands:
 
     def test_run_history_launch_local_rejects_invalid_congress_fields(self, tmp_path: Path) -> None:
         with (
-            patch(f"{_MODULE}.build_runtime") as mock_runtime,
-            patch(f"{_MODULE}.materialize_congress_archive") as mock_congress,
-            patch(f"{_MODULE}.materialize_disclosures_bundle") as mock_disclosures,
-            patch(f"{_MODULE}.check_history_backfill_inputs") as mock_check,
-            patch(f"{_MODULE}.run_history_backfill_local_command") as mock_backfill,
+            patch("src.runtime.commands.history.build_runtime") as mock_runtime,
+            patch("src.runtime.commands.history.materialize_congress_archive") as mock_congress,
+            patch(
+                "src.runtime.commands.history.materialize_disclosures_bundle"
+            ) as mock_disclosures,
+            patch("src.runtime.commands.history.check_history_backfill_inputs") as mock_check,
+            patch(
+                "src.runtime.commands.history.run_history_backfill_local_command"
+            ) as mock_backfill,
         ):
             result = dispatch_command(
                 SimpleNamespace(
@@ -6340,11 +6474,15 @@ class TestHistoryDispatchCommands:
         tmp_path: Path,
     ) -> None:
         with (
-            patch(f"{_MODULE}.build_runtime") as mock_runtime,
-            patch(f"{_MODULE}.materialize_congress_archive") as mock_congress,
-            patch(f"{_MODULE}.materialize_disclosures_bundle") as mock_disclosures,
-            patch(f"{_MODULE}.check_history_backfill_inputs") as mock_check,
-            patch(f"{_MODULE}.run_history_backfill_local_command") as mock_backfill,
+            patch("src.runtime.commands.history.build_runtime") as mock_runtime,
+            patch("src.runtime.commands.history.materialize_congress_archive") as mock_congress,
+            patch(
+                "src.runtime.commands.history.materialize_disclosures_bundle"
+            ) as mock_disclosures,
+            patch("src.runtime.commands.history.check_history_backfill_inputs") as mock_check,
+            patch(
+                "src.runtime.commands.history.run_history_backfill_local_command"
+            ) as mock_backfill,
         ):
             result = dispatch_command(
                 SimpleNamespace(
@@ -6430,25 +6568,29 @@ class TestHistoryDispatchCommands:
 
         with (
             patch(
-                f"{_MODULE}.build_runtime",
+                "src.runtime.commands.history.build_runtime",
                 return_value=SimpleNamespace(context=runtime_context),
             ),
             patch(
-                f"{_MODULE}.materialize_congress_archive", return_value=congress_result
+                "src.runtime.commands.history.materialize_congress_archive",
+                return_value=congress_result,
             ) as mock_congress,
             patch(
-                f"{_MODULE}.materialize_disclosures_bundle", return_value=disclosures_result
+                "src.runtime.commands.history.materialize_disclosures_bundle",
+                return_value=disclosures_result,
             ) as mock_disclosures,
-            patch(f"{_MODULE}.check_history_backfill_inputs", return_value=readiness) as mock_check,
             patch(
-                f"{_MODULE}.load_disclosures_bundle", return_value=sentinel.bundle
+                "src.runtime.commands.history.check_history_backfill_inputs", return_value=readiness
+            ) as mock_check,
+            patch(
+                "src.runtime.commands.history.load_disclosures_bundle", return_value=sentinel.bundle
             ) as mock_load_bundle,
             patch(
-                f"{_MODULE}.run_history_backfill_local_command",
+                "src.runtime.commands.history.run_history_backfill_local_command",
                 return_value=history_result,
             ) as mock_backfill,
             patch(
-                f"{_MODULE}.summarize_local_history_backfill_result",
+                "src.runtime.commands.history.summarize_local_history_backfill_result",
                 return_value=history_summary,
             ),
         ):
@@ -6613,21 +6755,27 @@ class TestHistoryDispatchCommands:
 
         with (
             patch(
-                f"{_MODULE}.build_runtime",
+                "src.runtime.commands.history.build_runtime",
                 return_value=SimpleNamespace(
                     context=SimpleNamespace(settings=SimpleNamespace(congress_api_key="env-key"))
                 ),
             ),
-            patch(f"{_MODULE}.manifest_from_existing_archive", return_value=manifest),
             patch(
-                f"{_MODULE}.validate_congress_archive_manifest",
+                "src.runtime.commands.history.manifest_from_existing_archive", return_value=manifest
+            ),
+            patch(
+                "src.runtime.commands.history.validate_congress_archive_manifest",
                 return_value=SimpleNamespace(valid=True, missing=[]),
             ),
-            patch(f"{_MODULE}.load_disclosures_bundle", return_value=bundle),
-            patch(f"{_MODULE}.validate_disclosures_bundle"),
-            patch(f"{_MODULE}.materialize_congress_archive") as mock_congress,
-            patch(f"{_MODULE}.materialize_disclosures_bundle") as mock_disclosures,
-            patch(f"{_MODULE}.check_history_backfill_inputs", return_value=readiness) as mock_check,
+            patch("src.runtime.commands.disclosures.load_disclosures_bundle", return_value=bundle),
+            patch("src.runtime.commands.disclosures.validate_disclosures_bundle"),
+            patch("src.runtime.commands.history.materialize_congress_archive") as mock_congress,
+            patch(
+                "src.runtime.commands.history.materialize_disclosures_bundle"
+            ) as mock_disclosures,
+            patch(
+                "src.runtime.commands.history.check_history_backfill_inputs", return_value=readiness
+            ) as mock_check,
         ):
             result = dispatch_command(
                 SimpleNamespace(
@@ -6738,7 +6886,7 @@ class TestHistoryDispatchCommands:
         )
 
         with patch(
-            f"{_MODULE}.build_runtime",
+            "src.runtime.commands.history.build_runtime",
             return_value=SimpleNamespace(
                 context=SimpleNamespace(settings=SimpleNamespace(congress_api_key=None))
             ),
@@ -6790,14 +6938,16 @@ class TestHistoryDispatchCommands:
 
         with (
             patch(
-                f"{_MODULE}.build_runtime",
+                "src.runtime.commands.history.build_runtime",
                 return_value=SimpleNamespace(
                     context=SimpleNamespace(settings=SimpleNamespace(congress_api_key=None))
                 ),
             ),
-            patch(f"{_MODULE}.manifest_from_existing_archive", return_value=manifest),
             patch(
-                f"{_MODULE}.validate_congress_archive_manifest",
+                "src.runtime.commands.history.manifest_from_existing_archive", return_value=manifest
+            ),
+            patch(
+                "src.runtime.commands.history.validate_congress_archive_manifest",
                 return_value=SimpleNamespace(valid=True, missing=[]),
             ),
         ):
@@ -6876,24 +7026,33 @@ class TestHistoryDispatchCommands:
 
         with (
             patch(
-                f"{_MODULE}.build_runtime", return_value=SimpleNamespace(context=runtime_context)
+                "src.runtime.commands.history.build_runtime",
+                return_value=SimpleNamespace(context=runtime_context),
             ),
-            patch(f"{_MODULE}.manifest_from_existing_archive", return_value=manifest),
             patch(
-                f"{_MODULE}.validate_congress_archive_manifest",
+                "src.runtime.commands.history.manifest_from_existing_archive", return_value=manifest
+            ),
+            patch(
+                "src.runtime.commands.history.validate_congress_archive_manifest",
                 return_value=SimpleNamespace(valid=True, missing=[]),
             ),
-            patch(f"{_MODULE}.load_disclosures_bundle", return_value=bundle) as mock_load_bundle,
-            patch(f"{_MODULE}.validate_disclosures_bundle"),
-            patch(f"{_MODULE}.materialize_congress_archive") as mock_congress,
-            patch(f"{_MODULE}.materialize_disclosures_bundle") as mock_disclosures,
-            patch(f"{_MODULE}.check_history_backfill_inputs", return_value=readiness),
             patch(
-                f"{_MODULE}.run_history_backfill_local_command",
+                "src.runtime.commands.disclosures.load_disclosures_bundle", return_value=bundle
+            ) as mock_load_bundle,
+            patch("src.runtime.commands.disclosures.validate_disclosures_bundle"),
+            patch("src.runtime.commands.history.materialize_congress_archive") as mock_congress,
+            patch(
+                "src.runtime.commands.history.materialize_disclosures_bundle"
+            ) as mock_disclosures,
+            patch(
+                "src.runtime.commands.history.check_history_backfill_inputs", return_value=readiness
+            ),
+            patch(
+                "src.runtime.commands.history.run_history_backfill_local_command",
                 return_value=history_result,
             ) as mock_backfill,
             patch(
-                f"{_MODULE}.summarize_local_history_backfill_result",
+                "src.runtime.commands.history.summarize_local_history_backfill_result",
                 return_value=history_summary,
             ),
         ):
@@ -7004,24 +7163,33 @@ class TestHistoryDispatchCommands:
 
         with (
             patch(
-                f"{_MODULE}.build_runtime", return_value=SimpleNamespace(context=runtime_context)
+                "src.runtime.commands.history.build_runtime",
+                return_value=SimpleNamespace(context=runtime_context),
             ),
-            patch(f"{_MODULE}.manifest_from_existing_archive", return_value=manifest),
             patch(
-                f"{_MODULE}.validate_congress_archive_manifest",
+                "src.runtime.commands.history.manifest_from_existing_archive", return_value=manifest
+            ),
+            patch(
+                "src.runtime.commands.history.validate_congress_archive_manifest",
                 return_value=SimpleNamespace(valid=True, missing=[]),
             ),
-            patch(f"{_MODULE}.load_disclosures_bundle", return_value=bundle) as mock_load_bundle,
-            patch(f"{_MODULE}.validate_disclosures_bundle"),
-            patch(f"{_MODULE}.materialize_congress_archive") as mock_congress,
-            patch(f"{_MODULE}.materialize_disclosures_bundle") as mock_disclosures,
-            patch(f"{_MODULE}.check_history_backfill_inputs", return_value=readiness) as mock_check,
             patch(
-                f"{_MODULE}.run_history_backfill_local_command",
+                "src.runtime.commands.disclosures.load_disclosures_bundle", return_value=bundle
+            ) as mock_load_bundle,
+            patch("src.runtime.commands.disclosures.validate_disclosures_bundle"),
+            patch("src.runtime.commands.history.materialize_congress_archive") as mock_congress,
+            patch(
+                "src.runtime.commands.history.materialize_disclosures_bundle"
+            ) as mock_disclosures,
+            patch(
+                "src.runtime.commands.history.check_history_backfill_inputs", return_value=readiness
+            ) as mock_check,
+            patch(
+                "src.runtime.commands.history.run_history_backfill_local_command",
                 return_value=history_result,
             ) as mock_backfill,
             patch(
-                f"{_MODULE}.summarize_local_history_backfill_result",
+                "src.runtime.commands.history.summarize_local_history_backfill_result",
                 return_value=history_summary,
             ),
         ):
@@ -7100,18 +7268,20 @@ class TestHistoryDispatchCommands:
 
         with (
             patch(
-                f"{_MODULE}.build_runtime",
+                "src.runtime.commands.history.build_runtime",
                 return_value=SimpleNamespace(
                     context=SimpleNamespace(settings=SimpleNamespace(congress_api_key="env-key"))
                 ),
             ),
-            patch(f"{_MODULE}.manifest_from_existing_archive", return_value=manifest),
             patch(
-                f"{_MODULE}.validate_congress_archive_manifest",
+                "src.runtime.commands.history.manifest_from_existing_archive", return_value=manifest
+            ),
+            patch(
+                "src.runtime.commands.history.validate_congress_archive_manifest",
                 return_value=SimpleNamespace(valid=True, missing=[]),
             ),
-            patch(f"{_MODULE}.load_disclosures_bundle", return_value=bundle),
-            patch(f"{_MODULE}.validate_disclosures_bundle"),
+            patch("src.runtime.commands.disclosures.load_disclosures_bundle", return_value=bundle),
+            patch("src.runtime.commands.disclosures.validate_disclosures_bundle"),
         ):
             with pytest.raises(
                 ValueError,
@@ -7171,18 +7341,20 @@ class TestHistoryDispatchCommands:
 
         with (
             patch(
-                f"{_MODULE}.build_runtime",
+                "src.runtime.commands.history.build_runtime",
                 return_value=SimpleNamespace(
                     context=SimpleNamespace(settings=SimpleNamespace(congress_api_key="env-key"))
                 ),
             ),
-            patch(f"{_MODULE}.manifest_from_existing_archive", return_value=manifest),
             patch(
-                f"{_MODULE}.validate_congress_archive_manifest",
+                "src.runtime.commands.history.manifest_from_existing_archive", return_value=manifest
+            ),
+            patch(
+                "src.runtime.commands.history.validate_congress_archive_manifest",
                 return_value=SimpleNamespace(valid=True, missing=[]),
             ),
-            patch(f"{_MODULE}.load_disclosures_bundle", return_value=bundle),
-            patch(f"{_MODULE}.validate_disclosures_bundle"),
+            patch("src.runtime.commands.disclosures.load_disclosures_bundle", return_value=bundle),
+            patch("src.runtime.commands.disclosures.validate_disclosures_bundle"),
         ):
             with pytest.raises(
                 ValueError,
@@ -7235,7 +7407,9 @@ class TestHistoryDispatchCommands:
             return original_open(path, *args, **kwargs)
 
         monkeypatch.setattr(Path, "open", guarded_open)
-        with patch(f"{_MODULE}.run_local_history_backfill", return_value=base_result):
+        with patch(
+            "src.runtime.commands.history.run_local_history_backfill", return_value=base_result
+        ):
             result = run_history_backfill_local_command(
                 sentinel.ctx,
                 Path("/tmp/congress-119"),
@@ -7470,14 +7644,23 @@ class TestPredictionBacktestCommand:
         )
         summary_output = tmp_path / "bill-semantics-summary.json"
         with (
-            patch(f"{_MODULE}.build_runtime", return_value=SimpleNamespace(context=sentinel.ctx)),
-            patch(f"{_MODULE}.open_connection", return_value=sentinel.conn),
-            patch(f"{_MODULE}.fetch_bill_semantic_input_rows", return_value=[{"bill": 1}]) as rows,
+            patch(
+                "src.runtime.commands.bill_semantics.build_runtime",
+                return_value=SimpleNamespace(context=sentinel.ctx),
+            ),
+            patch(
+                "src.runtime.commands.bill_semantics.open_connection", return_value=sentinel.conn
+            ),
+            patch(
+                "src.runtime.commands.bill_semantics.fetch_bill_semantic_input_rows",
+                return_value=[{"bill": 1}],
+            ) as rows,
             patch(
                 f"{_MODULE}.OpenAIBillSemanticExtractor.from_env", return_value=sentinel.extractor
             ),
             patch(
-                f"{_MODULE}.materialize_bill_semantics", return_value=materialized
+                "src.runtime.commands.bill_semantics.materialize_bill_semantics",
+                return_value=materialized,
             ) as mock_materialize,
         ):
             result = dispatch_command(
@@ -7555,13 +7738,24 @@ class TestPredictionBacktestCommand:
         )
         summary_output = tmp_path / "bill-semantics-summary.json"
         with (
-            patch(f"{_MODULE}.build_runtime", return_value=SimpleNamespace(context=sentinel.ctx)),
-            patch(f"{_MODULE}.open_connection", return_value=sentinel.conn),
-            patch(f"{_MODULE}.fetch_bill_semantic_input_rows", return_value=[{"bill": 1}]),
+            patch(
+                "src.runtime.commands.bill_semantics.build_runtime",
+                return_value=SimpleNamespace(context=sentinel.ctx),
+            ),
+            patch(
+                "src.runtime.commands.bill_semantics.open_connection", return_value=sentinel.conn
+            ),
+            patch(
+                "src.runtime.commands.bill_semantics.fetch_bill_semantic_input_rows",
+                return_value=[{"bill": 1}],
+            ),
             patch(
                 f"{_MODULE}.OpenAIBillSemanticExtractor.from_env", return_value=sentinel.extractor
             ),
-            patch(f"{_MODULE}.materialize_bill_semantics", return_value=materialized),
+            patch(
+                "src.runtime.commands.bill_semantics.materialize_bill_semantics",
+                return_value=materialized,
+            ),
         ):
             dispatch_command(
                 SimpleNamespace(
@@ -7633,14 +7827,23 @@ class TestPredictionBacktestCommand:
             index_path=index_path,
         )
         with (
-            patch(f"{_MODULE}.build_runtime", return_value=SimpleNamespace(context=sentinel.ctx)),
-            patch(f"{_MODULE}.open_connection", return_value=sentinel.conn),
-            patch(f"{_MODULE}.fetch_bill_semantic_input_rows", return_value=rows),
+            patch(
+                "src.runtime.commands.bill_semantics.build_runtime",
+                return_value=SimpleNamespace(context=sentinel.ctx),
+            ),
+            patch(
+                "src.runtime.commands.bill_semantics.open_connection", return_value=sentinel.conn
+            ),
+            patch(
+                "src.runtime.commands.bill_semantics.fetch_bill_semantic_input_rows",
+                return_value=rows,
+            ),
             patch(
                 f"{_MODULE}.OpenAIBillSemanticExtractor.from_env", return_value=sentinel.extractor
             ),
             patch(
-                f"{_MODULE}.materialize_bill_semantics", return_value=materialized
+                "src.runtime.commands.bill_semantics.materialize_bill_semantics",
+                return_value=materialized,
             ) as mock_materialize,
         ):
             result = dispatch_command(
@@ -7700,14 +7903,23 @@ class TestPredictionBacktestCommand:
             index_path=index_path,
         )
         with (
-            patch(f"{_MODULE}.build_runtime", return_value=SimpleNamespace(context=sentinel.ctx)),
-            patch(f"{_MODULE}.open_connection", return_value=sentinel.conn),
-            patch(f"{_MODULE}.fetch_bill_semantic_input_rows", return_value=rows),
+            patch(
+                "src.runtime.commands.bill_semantics.build_runtime",
+                return_value=SimpleNamespace(context=sentinel.ctx),
+            ),
+            patch(
+                "src.runtime.commands.bill_semantics.open_connection", return_value=sentinel.conn
+            ),
+            patch(
+                "src.runtime.commands.bill_semantics.fetch_bill_semantic_input_rows",
+                return_value=rows,
+            ),
             patch(
                 f"{_MODULE}.OpenAIBillSemanticExtractor.from_env", return_value=sentinel.extractor
             ),
             patch(
-                f"{_MODULE}.materialize_bill_semantics", return_value=materialized
+                "src.runtime.commands.bill_semantics.materialize_bill_semantics",
+                return_value=materialized,
             ) as mock_materialize,
         ):
             result = dispatch_command(
@@ -7751,10 +7963,15 @@ class TestPredictionBacktestCommand:
             index_path=index_path,
         )
         with (
-            patch(f"{_MODULE}.build_runtime", return_value=SimpleNamespace(context=sentinel.ctx)),
-            patch(f"{_MODULE}.open_connection", return_value=sentinel.conn),
             patch(
-                f"{_MODULE}.fetch_bill_semantic_input_rows",
+                "src.runtime.commands.bill_semantics.build_runtime",
+                return_value=SimpleNamespace(context=sentinel.ctx),
+            ),
+            patch(
+                "src.runtime.commands.bill_semantics.open_connection", return_value=sentinel.conn
+            ),
+            patch(
+                "src.runtime.commands.bill_semantics.fetch_bill_semantic_input_rows",
                 return_value=[
                     {
                         "congress": 119,
@@ -7766,7 +7983,8 @@ class TestPredictionBacktestCommand:
             ),
             patch(f"{_MODULE}.OpenAIBillSemanticExtractor.from_env") as mock_extractor,
             patch(
-                f"{_MODULE}.materialize_bill_semantics", return_value=materialized
+                "src.runtime.commands.bill_semantics.materialize_bill_semantics",
+                return_value=materialized,
             ) as mock_materialize,
         ):
             result = dispatch_command(
@@ -7831,11 +8049,21 @@ class TestPredictionBacktestCommand:
         plan_output = tmp_path / "bill-semantics-plan.json"
         summary_output = tmp_path / "bill-semantics-summary.json"
         with (
-            patch(f"{_MODULE}.build_runtime", return_value=SimpleNamespace(context=sentinel.ctx)),
-            patch(f"{_MODULE}.open_connection", return_value=sentinel.conn),
-            patch(f"{_MODULE}.fetch_bill_semantic_input_rows", return_value=rows),
+            patch(
+                "src.runtime.commands.bill_semantics.build_runtime",
+                return_value=SimpleNamespace(context=sentinel.ctx),
+            ),
+            patch(
+                "src.runtime.commands.bill_semantics.open_connection", return_value=sentinel.conn
+            ),
+            patch(
+                "src.runtime.commands.bill_semantics.fetch_bill_semantic_input_rows",
+                return_value=rows,
+            ),
             patch(f"{_MODULE}.OpenAIBillSemanticExtractor.from_env") as mock_extractor,
-            patch(f"{_MODULE}.materialize_bill_semantics") as mock_materialize,
+            patch(
+                "src.runtime.commands.bill_semantics.materialize_bill_semantics"
+            ) as mock_materialize,
         ):
             result = dispatch_command(
                 SimpleNamespace(
@@ -7992,11 +8220,21 @@ class TestPredictionBacktestCommand:
         ]
         plan_output = tmp_path / "bill-semantics-plan.json"
         with (
-            patch(f"{_MODULE}.build_runtime", return_value=SimpleNamespace(context=sentinel.ctx)),
-            patch(f"{_MODULE}.open_connection", return_value=sentinel.conn),
-            patch(f"{_MODULE}.fetch_bill_semantic_input_rows", return_value=rows),
+            patch(
+                "src.runtime.commands.bill_semantics.build_runtime",
+                return_value=SimpleNamespace(context=sentinel.ctx),
+            ),
+            patch(
+                "src.runtime.commands.bill_semantics.open_connection", return_value=sentinel.conn
+            ),
+            patch(
+                "src.runtime.commands.bill_semantics.fetch_bill_semantic_input_rows",
+                return_value=rows,
+            ),
             patch(f"{_MODULE}.OpenAIBillSemanticExtractor.from_env") as mock_extractor,
-            patch(f"{_MODULE}.materialize_bill_semantics") as mock_materialize,
+            patch(
+                "src.runtime.commands.bill_semantics.materialize_bill_semantics"
+            ) as mock_materialize,
         ):
             result = dispatch_command(
                 SimpleNamespace(
@@ -8028,8 +8266,10 @@ class TestPredictionBacktestCommand:
         tmp_path: Path,
     ) -> None:
         with (
-            patch(f"{_MODULE}.build_runtime") as mock_runtime,
-            patch(f"{_MODULE}.materialize_bill_semantics") as mock_materialize,
+            patch("src.runtime.commands.bill_semantics.build_runtime") as mock_runtime,
+            patch(
+                "src.runtime.commands.bill_semantics.materialize_bill_semantics"
+            ) as mock_materialize,
         ):
             result = dispatch_command(
                 SimpleNamespace(
@@ -8059,10 +8299,15 @@ class TestPredictionBacktestCommand:
         tmp_path: Path,
     ) -> None:
         with (
-            patch(f"{_MODULE}.build_runtime", return_value=SimpleNamespace(context=sentinel.ctx)),
-            patch(f"{_MODULE}.open_connection", return_value=sentinel.conn),
             patch(
-                f"{_MODULE}.fetch_bill_semantic_input_rows",
+                "src.runtime.commands.bill_semantics.build_runtime",
+                return_value=SimpleNamespace(context=sentinel.ctx),
+            ),
+            patch(
+                "src.runtime.commands.bill_semantics.open_connection", return_value=sentinel.conn
+            ),
+            patch(
+                "src.runtime.commands.bill_semantics.fetch_bill_semantic_input_rows",
                 return_value=[
                     {
                         "congress": 119,
@@ -8073,7 +8318,9 @@ class TestPredictionBacktestCommand:
                 ],
             ),
             patch(f"{_MODULE}.OpenAIBillSemanticExtractor.from_env") as mock_extractor,
-            patch(f"{_MODULE}.materialize_bill_semantics") as mock_materialize,
+            patch(
+                "src.runtime.commands.bill_semantics.materialize_bill_semantics"
+            ) as mock_materialize,
         ):
             result = dispatch_command(
                 SimpleNamespace(
@@ -8115,10 +8362,15 @@ class TestPredictionBacktestCommand:
             encoding="utf-8",
         )
         with (
-            patch(f"{_MODULE}.build_runtime", return_value=SimpleNamespace(context=sentinel.ctx)),
-            patch(f"{_MODULE}.open_connection", return_value=sentinel.conn),
             patch(
-                f"{_MODULE}.fetch_bill_semantic_input_rows",
+                "src.runtime.commands.bill_semantics.build_runtime",
+                return_value=SimpleNamespace(context=sentinel.ctx),
+            ),
+            patch(
+                "src.runtime.commands.bill_semantics.open_connection", return_value=sentinel.conn
+            ),
+            patch(
+                "src.runtime.commands.bill_semantics.fetch_bill_semantic_input_rows",
                 return_value=[
                     {
                         "congress": 119,
@@ -8129,7 +8381,9 @@ class TestPredictionBacktestCommand:
                 ],
             ),
             patch(f"{_MODULE}.OpenAIBillSemanticExtractor.from_env") as mock_extractor,
-            patch(f"{_MODULE}.materialize_bill_semantics") as mock_materialize,
+            patch(
+                "src.runtime.commands.bill_semantics.materialize_bill_semantics"
+            ) as mock_materialize,
         ):
             result = dispatch_command(
                 SimpleNamespace(
@@ -10028,7 +10282,7 @@ class TestPredictionBacktestCommand:
         expected = {"ok": True, "command": "prediction-backtest"}
 
         with patch(
-            f"{_MODULE}.handle_prediction_backtest_command",
+            "src.runtime.commands.prediction_misc.handle_prediction_backtest_command",
             return_value=expected,
         ) as run:
             result = dispatch_command(args)
@@ -10183,7 +10437,7 @@ class TestPredictionBacktestCommand:
         expected = {"ok": True, "command": "verify-prediction-backtest"}
 
         with patch(
-            f"{_MODULE}.verify_prediction_backtest_command",
+            "src.runtime.commands.prediction_misc.verify_prediction_backtest_command",
             return_value=expected,
         ) as run:
             result = dispatch_command(args)
@@ -13661,7 +13915,7 @@ class TestVerifyPredictionBenchmarkCommand:
         paths = self._write_valid_benchmark_bundle(tmp_path)
 
         with patch(
-            f"{_MODULE}._handle_verify_prediction_input_inventory",
+            "src.runtime.commands.prediction_benchmark._handle_verify_prediction_input_inventory",
             return_value={
                 "ok": True,
                 "command": "verify-prediction-input-inventory",
@@ -13692,7 +13946,7 @@ class TestVerifyPredictionBenchmarkCommand:
         paths = self._write_valid_benchmark_bundle(tmp_path)
 
         with patch(
-            f"{_MODULE}._handle_verify_prediction_input_inventory",
+            "src.runtime.commands.prediction_benchmark._handle_verify_prediction_input_inventory",
             return_value={
                 "ok": True,
                 "command": "verify-prediction-input-inventory",
@@ -25383,7 +25637,7 @@ class TestVerifyPredictionBenchmarkCommand:
         )
 
         with patch(
-            "src.runtime.commands._handle_prediction_operator_packet_manifest",
+            "src.runtime.commands.operator_packet._handle_prediction_operator_packet_manifest",
             return_value={
                 "command": "prediction-operator-packet-manifest",
                 "ok": True,
@@ -25455,7 +25709,7 @@ class TestVerifyPredictionBenchmarkCommand:
         )
 
         with patch(
-            "src.runtime.commands._handle_prediction_operator_packet_manifest",
+            "src.runtime.commands.operator_packet._handle_prediction_operator_packet_manifest",
             return_value={
                 "command": "prediction-operator-packet-manifest",
                 "ok": False,
@@ -33428,26 +33682,30 @@ class TestPredictionEvalReportCommand:
         ]
 
         with (
-            patch(f"{_MODULE}.open_connection", return_value=sentinel.conn),
             patch(
-                f"{_MODULE}.fetch_vote_prediction_backtest_feature_rows",
+                "src.runtime.commands.prediction_eval.open_connection", return_value=sentinel.conn
+            ),
+            patch(
+                "src.runtime.commands.prediction_eval.fetch_vote_prediction_backtest_feature_rows",
                 side_effect=[feature_rows, feature_rows],
             ) as mock_features,
             patch(
-                f"{_MODULE}.fetch_vote_prediction_backtest_label_rows",
+                "src.runtime.commands.prediction_eval.fetch_vote_prediction_backtest_label_rows",
                 side_effect=[training_label_rows, evaluation_label_rows],
             ) as mock_labels,
-            patch(f"{_MODULE}.fetch_all_ontology_edge_rows", return_value=[]),
             patch(
-                f"{_MODULE}.fetch_vote_prediction_backtest_bill_signal_rows",
+                "src.runtime.commands.prediction_eval.fetch_all_ontology_edge_rows", return_value=[]
+            ),
+            patch(
+                "src.runtime.commands.prediction_eval.fetch_vote_prediction_backtest_bill_signal_rows",
                 return_value=[],
             ) as mock_bills,
             patch(
-                f"{_MODULE}.fetch_vote_prediction_contribution_signal_rows",
+                "src.runtime.commands.prediction_eval.fetch_vote_prediction_contribution_signal_rows",
                 return_value=[],
             ) as mock_contributions,
             patch(
-                f"{_MODULE}.fetch_vote_prediction_statement_signal_rows",
+                "src.runtime.commands.prediction_eval.fetch_vote_prediction_statement_signal_rows",
                 return_value=[],
             ) as mock_statements,
         ):
@@ -33494,24 +33752,40 @@ class TestPredictionEvalReportCommand:
         label_end = dt.date(2026, 12, 31)
 
         with (
-            patch(f"{_MODULE}.open_connection", return_value=sentinel.conn),
             patch(
-                f"{_MODULE}.fetch_vote_prediction_backtest_feature_rows",
+                "src.runtime.commands.prediction_eval.open_connection", return_value=sentinel.conn
+            ),
+            patch(
+                "src.runtime.commands.prediction_eval.fetch_vote_prediction_backtest_feature_rows",
                 side_effect=[[sentinel.training_feature], [sentinel.evaluation_feature]],
             ),
             patch(
-                f"{_MODULE}.fetch_vote_prediction_backtest_label_rows",
+                "src.runtime.commands.prediction_eval.fetch_vote_prediction_backtest_label_rows",
                 side_effect=[[sentinel.training_label], [sentinel.evaluation_label]],
             ),
-            patch(f"{_MODULE}.fetch_all_ontology_edge_rows", return_value=[]),
-            patch(f"{_MODULE}.fetch_vote_prediction_backtest_bill_signal_rows", return_value=[]),
-            patch(f"{_MODULE}.fetch_vote_prediction_contribution_signal_rows", return_value=[]),
-            patch(f"{_MODULE}.fetch_vote_prediction_statement_signal_rows", return_value=[]),
             patch(
-                f"{_MODULE}.load_bill_semantic_payloads",
+                "src.runtime.commands.prediction_eval.fetch_all_ontology_edge_rows", return_value=[]
+            ),
+            patch(
+                "src.runtime.commands.prediction_eval.fetch_vote_prediction_backtest_bill_signal_rows",
+                return_value=[],
+            ),
+            patch(
+                "src.runtime.commands.prediction_eval.fetch_vote_prediction_contribution_signal_rows",
+                return_value=[],
+            ),
+            patch(
+                "src.runtime.commands.prediction_eval.fetch_vote_prediction_statement_signal_rows",
+                return_value=[],
+            ),
+            patch(
+                "src.runtime.commands.prediction_eval.load_bill_semantic_payloads",
                 return_value=[sentinel.bill_semantic],
             ) as load_semantics,
-            patch(f"{_MODULE}.build_prediction_eval_report", return_value=sentinel.report) as build,
+            patch(
+                "src.runtime.commands.prediction_eval.build_prediction_eval_report",
+                return_value=sentinel.report,
+            ) as build,
         ):
             result = run_prediction_eval_report_command(
                 sentinel.ctx,
@@ -33573,8 +33847,14 @@ class TestPredictionEvalReportCommand:
         )
         bill_semantics_index_sha256 = hashlib.sha256(bill_semantics_index.read_bytes()).hexdigest()
         with (
-            patch(f"{_MODULE}.build_runtime", return_value=SimpleNamespace(context=sentinel.ctx)),
-            patch(f"{_MODULE}.run_prediction_eval_report_command", return_value=report),
+            patch(
+                "src.runtime.commands.prediction_eval.build_runtime",
+                return_value=SimpleNamespace(context=sentinel.ctx),
+            ),
+            patch(
+                "src.runtime.commands.prediction_eval.run_prediction_eval_report_command",
+                return_value=report,
+            ),
         ):
             result = dispatch_command(
                 SimpleNamespace(
@@ -34043,8 +34323,14 @@ class TestPredictionEvalReportCommand:
         )
         assert report.readiness.status == "partial"
         with (
-            patch(f"{_MODULE}.build_runtime", return_value=SimpleNamespace(context=sentinel.ctx)),
-            patch(f"{_MODULE}.run_prediction_eval_report_command", return_value=report),
+            patch(
+                "src.runtime.commands.prediction_eval.build_runtime",
+                return_value=SimpleNamespace(context=sentinel.ctx),
+            ),
+            patch(
+                "src.runtime.commands.prediction_eval.run_prediction_eval_report_command",
+                return_value=report,
+            ),
         ):
             result = dispatch_command(
                 SimpleNamespace(
@@ -34207,7 +34493,7 @@ class TestPredictionEvalReportCommand:
         expected = {"ok": True, "command": "prediction-source-url-audit"}
 
         with patch(
-            f"{_MODULE}.run_prediction_source_url_audit_command",
+            "src.runtime.commands.prediction_misc.run_prediction_source_url_audit_command",
             return_value=expected,
         ) as run:
             result = dispatch_command(args)
@@ -34284,7 +34570,7 @@ class TestPredictionEvalReportCommand:
         expected = {"ok": True, "command": "verify-prediction-source-url-audit"}
 
         with patch(
-            f"{_MODULE}.verify_prediction_source_url_audit_command",
+            "src.runtime.commands.prediction_misc.verify_prediction_source_url_audit_command",
             return_value=expected,
         ) as run:
             result = dispatch_command(args)
@@ -46914,8 +47200,14 @@ class TestPredictionEvalReportCommand:
             backfill_recommendations=[],
         )
         with (
-            patch(f"{_MODULE}.build_runtime", return_value=SimpleNamespace(context=sentinel.ctx)),
-            patch(f"{_MODULE}.run_prediction_eval_report_command", return_value=report),
+            patch(
+                "src.runtime.commands.prediction_eval.build_runtime",
+                return_value=SimpleNamespace(context=sentinel.ctx),
+            ),
+            patch(
+                "src.runtime.commands.prediction_eval.run_prediction_eval_report_command",
+                return_value=report,
+            ),
         ):
             result = dispatch_command(
                 SimpleNamespace(
@@ -47047,8 +47339,13 @@ def test_dispatch_prediction_eval_report_rejects_invalid_coverage_thresholds_bef
     run_report = MagicMock()
 
     with (
-        patch(f"{_MODULE}.build_runtime", return_value=SimpleNamespace(context=sentinel.ctx)),
-        patch(f"{_MODULE}.run_prediction_eval_report_command", run_report),
+        patch(
+            "src.runtime.commands.prediction_eval.build_runtime",
+            return_value=SimpleNamespace(context=sentinel.ctx),
+        ),
+        patch(
+            "src.runtime.commands.prediction_eval.run_prediction_eval_report_command", run_report
+        ),
     ):
         result = dispatch_command(
             SimpleNamespace(
@@ -47107,8 +47404,13 @@ def test_dispatch_prediction_eval_report_rejects_invalid_date_windows_before_wri
     run_report = MagicMock()
 
     with (
-        patch(f"{_MODULE}.build_runtime", return_value=SimpleNamespace(context=sentinel.ctx)),
-        patch(f"{_MODULE}.run_prediction_eval_report_command", run_report),
+        patch(
+            "src.runtime.commands.prediction_eval.build_runtime",
+            return_value=SimpleNamespace(context=sentinel.ctx),
+        ),
+        patch(
+            "src.runtime.commands.prediction_eval.run_prediction_eval_report_command", run_report
+        ),
     ):
         result = dispatch_command(
             SimpleNamespace(
@@ -47342,7 +47644,9 @@ def test_dispatch_prediction_eval_window_plan_rejects_invalid_year_inputs(
     tmp_path: Path,
 ) -> None:
     output = tmp_path / "prediction-eval-window-plan.json"
-    with patch(f"{_MODULE}.run_prediction_eval_window_plan_command") as mock_plan:
+    with patch(
+        "src.runtime.commands.prediction_eval_windows.run_prediction_eval_window_plan_command"
+    ) as mock_plan:
         result = dispatch_command(
             SimpleNamespace(
                 command="prediction-eval-window-plan",

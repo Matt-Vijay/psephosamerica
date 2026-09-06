@@ -8,18 +8,17 @@ from pathlib import Path
 import pytest
 
 from src.ingest.congress.archive import (
-    CongressArchiveManifest,
-    MembersSource,
-    CommitteesSource,
-    BillsSource,
-    CosponsorsSource,
-    MemberDetailSource,
     BillDetailSource,
+    BillsSource,
+    CommitteesSource,
+    CongressArchiveManifest,
+    CosponsorsSource,
     HouseVoteSource,
+    MemberDetailSource,
+    MembersSource,
     SenateVoteSource,
 )
 from src.ingest.congress.archive_manifest import load_manifest, write_manifest
-
 
 # ---------------------------------------------------------------------------
 # Helpers

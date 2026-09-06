@@ -18,14 +18,13 @@ from src.db.load_report import (
 )
 from src.pipeline.congress_load_run import CongressIngestInputs
 from src.runtime.congress import (
-    CongressLoadResult,
     _SOURCE_BASE_URL,
     _SOURCE_KIND,
     _SOURCE_NAME,
     _SOURCE_SLUG,
+    CongressLoadResult,
     run_congress_load_runtime,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers

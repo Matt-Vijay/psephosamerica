@@ -16,7 +16,6 @@ from src.parse.disclosures.holding_rows import (
 )
 from src.parse.disclosures.models import Holding, OwnerType
 
-
 # ---------------------------------------------------------------------------
 # Shared builder — thin default wrapper around holding_from_cells
 # ---------------------------------------------------------------------------

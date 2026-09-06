@@ -25,8 +25,8 @@ from src.runtime.bill_content_experiment import (
     load_bill_embedding_map,
     normalize_bill_key,
 )
-from src.runtime.crs_multitask_experiment import load_crs_policy_map
 from src.runtime.cross_pressured_experiment import load_rich_rollcalls
+from src.runtime.crs_multitask_experiment import load_crs_policy_map
 
 _MIN_POLICY_VOTES = 3
 

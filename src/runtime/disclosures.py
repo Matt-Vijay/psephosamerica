@@ -30,9 +30,7 @@ _SOURCE_NAME = DISCLOSURE_LOAD.name
 _SOURCE_KIND = DISCLOSURE_LOAD.source_kind
 _SOURCE_BASE_URL = DISCLOSURE_LOAD.base_url
 
-# ---------------------------------------------------------------------------
 # Result type
-# ---------------------------------------------------------------------------
 
 
 @dataclass(frozen=True)
@@ -43,9 +41,7 @@ class DisclosuresLoadRuntimeResult:
     sidecars: tuple[OutsidePositionSidecar, ...]
 
 
-# ---------------------------------------------------------------------------
 # Public entry point
-# ---------------------------------------------------------------------------
 
 
 def run_disclosures_load_runtime(

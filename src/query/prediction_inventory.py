@@ -5,7 +5,6 @@ from typing import Any
 from src.db.repositories import ConnectionLike, fetch_all
 from src.query.member_terms import member_active_on_sql
 
-
 _FEC_INVENTORY_SQL = f"""
         WITH attributed AS (
             SELECT COUNT(c.id) AS member_attributed_fec_contribution_count

@@ -38,10 +38,13 @@ from typing import Any
 from unittest.mock import MagicMock, patch
 
 from src.db.load_report import TableWriteResult, WarnErrorSummary, build_load_summary
-from src.runtime.disclosures_bundle import HouseBundledIndexRow
 from src.pipeline.recompute_run import RecomputeRunResult
 from src.runtime.congress import CongressLoadResult
-from src.runtime.disclosures_bundle import DisclosuresBundle, disclosures_bundle_from_dict
+from src.runtime.disclosures_bundle import (
+    DisclosuresBundle,
+    HouseBundledIndexRow,
+    disclosures_bundle_from_dict,
+)
 from src.runtime.oracle_contracts import (
     CongressOracleOptions,
     CongressStageSummary,
@@ -546,9 +549,9 @@ class TestCongressArchiveReadsRealFiles:
 
     def test_fetch_members_called_with_real_archive(self, tmp_path: Path) -> None:
         """CongressArchiveClient reads the real members.json we wrote."""
-        from src.ingest.congress.live_api import fetch_members
-        from src.ingest.congress.archive_client import CongressArchiveClient
         from src.ingest.congress.archive import CongressArchive
+        from src.ingest.congress.archive_client import CongressArchiveClient
+        from src.ingest.congress.live_api import fetch_members
 
         archive_path = _make_congress_archive(tmp_path)
         archive = CongressArchive(archive_path, _CONGRESS)

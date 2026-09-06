@@ -21,7 +21,7 @@ from src.regpatch.compiler import (
 )
 from src.regpatch.corpus import _classify_compiled_episode
 
-PILOT_SPEC = Path("src/regpatch/pilot/source_spec.json")
+PILOT_SPEC = Path(__file__).resolve().parents[1] / "src/regpatch/pilot/source_spec.json"
 TARGET_SHA256 = "778b6079ddea582cdcfe1fe5adba9badb47c60752ce6100c30ecd3c267263061"
 
 

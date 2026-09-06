@@ -12,13 +12,11 @@ Resolution is deterministic:
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Any, Literal, Optional, Sequence, Union
+from typing import Any, Literal
 
-
-# ---------------------------------------------------------------------------
 # Identity — parsed header fields from an index row
-# ---------------------------------------------------------------------------
 
 
 @dataclass(frozen=True)
@@ -34,12 +32,10 @@ class DisclosureHeaderIdentity:
     first_name: str
     chamber: str  # 'house' | 'senate'
     state: str  # 2-char abbreviation (e.g. 'CA')
-    district: Optional[int] = None  # House only; None for Senate
+    district: int | None = None  # House only; None for Senate
 
 
-# ---------------------------------------------------------------------------
 # Identity constructors from raw index fields
-# ---------------------------------------------------------------------------
 
 
 def house_identity(
@@ -97,9 +93,7 @@ def senate_identity(
     )
 
 
-# ---------------------------------------------------------------------------
 # Resolution outcomes
-# ---------------------------------------------------------------------------
 
 #: Exhaustive set of reasons a disclosure header identity could not be matched
 #: to a member row.  Kept as a Literal so callers can exhaustively branch.
@@ -126,12 +120,10 @@ class Ambiguous:
     candidates: tuple[str, ...]  # bioguide_ids of all matching members
 
 
-ResolutionResult = Union[Resolved, NoMatch, Ambiguous]
+ResolutionResult = Resolved | NoMatch | Ambiguous
 
 
-# ---------------------------------------------------------------------------
 # Internal normalization helpers
-# ---------------------------------------------------------------------------
 
 
 def _norm(name: str) -> str:
@@ -143,9 +135,7 @@ def _first_token(name: str) -> str:
     return tokens[0].upper() if tokens else ""
 
 
-# ---------------------------------------------------------------------------
 # Single-identity resolution
-# ---------------------------------------------------------------------------
 
 
 def resolve_disclosure_member(
@@ -203,9 +193,7 @@ def resolve_disclosure_member(
     )
 
 
-# ---------------------------------------------------------------------------
 # Batch resolution
-# ---------------------------------------------------------------------------
 
 
 def resolve_disclosure_members(

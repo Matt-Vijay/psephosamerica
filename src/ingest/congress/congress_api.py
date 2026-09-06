@@ -7,7 +7,8 @@ from __future__ import annotations
 
 import datetime
 import json
-from typing import Any, Iterator, Literal
+from collections.abc import Iterator
+from typing import Any, Literal
 from urllib.parse import urlencode, urljoin, urlparse
 
 import httpx

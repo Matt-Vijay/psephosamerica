@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Iterable
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from urllib.parse import urlencode
 
 from src.api.wsgi_app import PredictionWsgiApp
@@ -49,7 +49,7 @@ def _served(person: str, bill: str) -> ServedPrediction:
                 label="Prior vote",
                 source_url="https://clerk.house.gov/Votes/1",
                 content_sha256=_SHA,
-                retrieved_at=datetime(2025, 1, 1, tzinfo=timezone.utc),
+                retrieved_at=datetime(2025, 1, 1, tzinfo=UTC),
                 contribution=0.5,
             )
         ],
@@ -71,7 +71,7 @@ def _app(
 ) -> PredictionWsgiApp:
     snapshot = build_prediction_snapshot(
         [_served("person:a", "bill:1")],
-        generated_at=datetime(2025, 2, 2, tzinfo=timezone.utc),
+        generated_at=datetime(2025, 2, 2, tzinfo=UTC),
     )
     service = PredictionReadService(
         snapshot=snapshot,

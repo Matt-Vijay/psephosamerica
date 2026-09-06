@@ -13,8 +13,8 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
-from src.pipeline.publish_snapshot_run import ZipBundleInputs, publish_snapshot_run
 from src.pipeline.publish_pipeline import PublishResult
+from src.pipeline.publish_snapshot_run import ZipBundleInputs, publish_snapshot_run
 from src.provenance.store import (
     ensure_data_source,
     fail_ingestion_run,
@@ -28,9 +28,7 @@ _SOURCE_NAME = SNAPSHOT_PUBLISH.name
 _SOURCE_KIND = SNAPSHOT_PUBLISH.source_kind
 
 
-# ---------------------------------------------------------------------------
 # Result type
-# ---------------------------------------------------------------------------
 
 
 @dataclass(frozen=True)
@@ -41,9 +39,7 @@ class PublishRuntimeResult:
     publish_result: PublishResult
 
 
-# ---------------------------------------------------------------------------
 # Public helpers
-# ---------------------------------------------------------------------------
 
 
 def default_snapshot_id(snapshot_date: date) -> str:

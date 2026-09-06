@@ -23,11 +23,11 @@ class ConnectionKwargs(TypedDict):
 def build_connection_kwargs(settings: DBSettings) -> ConnectionKwargs:
     # getattr lets any duck-typed object work (Pydantic model, dataclass, SimpleNamespace)
     return {
-        "host": getattr(settings, "db_host"),
-        "port": int(getattr(settings, "db_port")),
-        "dbname": getattr(settings, "db_name"),
-        "user": getattr(settings, "db_user"),
-        "password": getattr(settings, "db_password"),
+        "host": settings.db_host,
+        "port": int(settings.db_port),
+        "dbname": settings.db_name,
+        "user": settings.db_user,
+        "password": settings.db_password,
     }
 
 

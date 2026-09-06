@@ -6,13 +6,11 @@ No DB, no network, no I/O.  Inject a ProvenanceEmitter for lifecycle hooks.
 from __future__ import annotations
 
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable, Optional, Protocol, runtime_checkable
+from typing import Any, Protocol, runtime_checkable
 
-
-# ---------------------------------------------------------------------------
 # Typed structures
-# ---------------------------------------------------------------------------
 
 
 @dataclass(frozen=True)
@@ -36,7 +34,7 @@ class StageResult:
     stage_name: str
     status: str  # "succeeded" | "failed" | "skipped"
     output: Any = None
-    error: Optional[BaseException] = None
+    error: BaseException | None = None
     logs: list[str] = field(default_factory=list)
     duration_ms: float = 0.0
 
@@ -96,9 +94,7 @@ class PipelineResult:
         return []
 
 
-# ---------------------------------------------------------------------------
 # Provenance emitter protocol
-# ---------------------------------------------------------------------------
 
 
 @runtime_checkable
@@ -117,15 +113,13 @@ class NullEmitter:
         pass
 
 
-# ---------------------------------------------------------------------------
 # Stage runner
-# ---------------------------------------------------------------------------
 
 
 def run_stage(
     stage: StageDefinition,
     context: dict[str, Any],
-    emitter: Optional[ProvenanceEmitter] = None,
+    emitter: ProvenanceEmitter | None = None,
 ) -> StageResult:
     """Run one stage.  Exceptions are captured in the result; nothing is re-raised."""
     _emitter: ProvenanceEmitter = emitter or NullEmitter()
@@ -134,7 +128,7 @@ def run_stage(
     logs: list[str] = []
     started = time.monotonic()
     output: Any = None
-    error: Optional[BaseException] = None
+    error: BaseException | None = None
     status = "failed"
 
     try:
@@ -158,15 +152,13 @@ def run_stage(
     return result
 
 
-# ---------------------------------------------------------------------------
 # Pipeline runner
-# ---------------------------------------------------------------------------
 
 
 def run_pipeline(
     stages: list[StageDefinition],
     context: dict[str, Any],
-    emitter: Optional[ProvenanceEmitter] = None,
+    emitter: ProvenanceEmitter | None = None,
     *,
     stop_on_failure: bool = True,
 ) -> PipelineResult:

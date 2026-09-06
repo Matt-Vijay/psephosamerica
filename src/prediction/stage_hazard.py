@@ -48,9 +48,7 @@ class HazardModel:
         raw = self.period_logits[None, :] + (features @ self.coefficients)[:, None]
         return _sigmoid(raw)
 
-    def predict_event_between(
-        self, features: Array, start_days: float, end_days: float
-    ) -> Array:
+    def predict_event_between(self, features: Array, start_days: float, end_days: float) -> Array:
         """P(event in (start, end] | no event by start) -- conditional survival.
 
         Prices a bill already ``start_days`` old: the periods it survived are

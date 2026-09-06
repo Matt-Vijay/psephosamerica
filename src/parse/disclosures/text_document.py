@@ -124,9 +124,7 @@ class DocumentProfile:
     ocr_candidate_count: int
 
 
-# ---------------------------------------------------------------------------
 # Core helpers (existing public surface)
-# ---------------------------------------------------------------------------
 
 
 def flatten_pages(pages: Sequence[PageText]) -> FlatText:
@@ -152,9 +150,7 @@ def document_metrics(pages: Sequence[PageText]) -> DocumentMetrics:
     )
 
 
-# ---------------------------------------------------------------------------
 # Page-level quality helpers
-# ---------------------------------------------------------------------------
 
 
 def classify_page_kind(page: PageText) -> PageKind:
@@ -281,9 +277,7 @@ def build_document_profile(
     )
 
 
-# ---------------------------------------------------------------------------
 # Internal helpers
-# ---------------------------------------------------------------------------
 
 
 def _is_noise_content(text: str) -> bool:

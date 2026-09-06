@@ -32,7 +32,6 @@ from src.rules.models import (
     Severity,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers / fixtures
 # ---------------------------------------------------------------------------
@@ -395,7 +394,7 @@ class TestRuleFireAttributes:
                 "evidence_card_id": card.evidence_card_id,
             }
 
-        freeze_now(dt.datetime(2026, 1, 15, tzinfo=dt.timezone.utc))
+        freeze_now(dt.datetime(2026, 1, 15, tzinfo=dt.UTC))
         first = recompute_conflicts(
             rows_by_family={"committee_sector_trade": [row]},
             members_by_bioguide={"A000001": _member()},
@@ -405,7 +404,7 @@ class TestRuleFireAttributes:
             id_generator=lambda _fire: "stable-card-id",
         )
 
-        freeze_now(dt.datetime(2031, 9, 10, tzinfo=dt.timezone.utc))
+        freeze_now(dt.datetime(2031, 9, 10, tzinfo=dt.UTC))
         second = recompute_conflicts(
             rows_by_family={"committee_sector_trade": [row]},
             members_by_bioguide={"A000001": _member()},
@@ -719,7 +718,7 @@ class TestGroupByMember:
             ],
             confidence=ConfidenceLabel.HIGH,
             snapshot_date=_SNAPSHOT_DATE,
-            created_at=dt.datetime(2024, 6, 1, tzinfo=dt.timezone.utc),
+            created_at=dt.datetime(2024, 6, 1, tzinfo=dt.UTC),
         )
 
     def test_empty_lists_return_empty_dict(self) -> None:

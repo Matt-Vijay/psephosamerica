@@ -11,7 +11,8 @@ Each plan dict has:
 
 from __future__ import annotations
 
-from typing import Any, Iterable
+from collections.abc import Iterable
+from typing import Any
 
 from src.ingest.fec.models import (
     CandidateCommitteeLinkage,

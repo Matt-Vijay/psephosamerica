@@ -6,12 +6,12 @@ import os
 from decimal import Decimal
 
 import pytest
+from psycopg.errors import CheckViolation
 
 from src.db.bootstrap import apply_sql, read_schema_sql
 from src.db.repositories import fetch_all
 from src.db.writer import write_table_batch, write_table_batches
 from tests.integration.conftest import _open_external_connection
-
 
 pytestmark = pytest.mark.skipif(
     not os.environ.get("PSEPHOS_TEST_POSTGRES_DSN"),
@@ -186,7 +186,7 @@ class TestWriteTableBatch:
             ],
         )
 
-        with pytest.raises(Exception):
+        with pytest.raises(CheckViolation):
             write_table_batch(
                 db,
                 table="member",
@@ -351,7 +351,7 @@ class TestWriteTableBatches:
 
     def test_constraint_violation_raises(self, db):
         """Inserting a member with an invalid chamber value should fail."""
-        with pytest.raises(Exception):
+        with pytest.raises(CheckViolation):
             write_table_batch(
                 db,
                 table="member",

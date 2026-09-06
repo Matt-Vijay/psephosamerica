@@ -13,7 +13,8 @@ are Resolved, NoMatch, or Ambiguous — never a silent guess.
 
 from __future__ import annotations
 
-from typing import Any, Sequence
+from collections.abc import Sequence
+from typing import Any
 
 from src.runtime.disclosures_member_resolution import (
     DisclosureHeaderIdentity,
@@ -28,9 +29,7 @@ from src.runtime.disclosures_member_resolution import (
 MemberLookup = dict[str, Sequence[dict[str, Any]]]
 
 
-# ---------------------------------------------------------------------------
 # Internal: identity construction from raw index row dict
-# ---------------------------------------------------------------------------
 
 
 def _identity_from_index(
@@ -61,9 +60,7 @@ def _identity_from_index(
     raise ValueError(f"chamber must be 'house' or 'senate', got {chamber!r}")
 
 
-# ---------------------------------------------------------------------------
 # Public API
-# ---------------------------------------------------------------------------
 
 
 def resolve_artifact_member(
@@ -107,5 +104,5 @@ def resolve_artifact_members(
         )
     return [
         resolve_artifact_member(art, idx, member_lookup)
-        for art, idx in zip(artifact_rows, index_rows)
+        for art, idx in zip(artifact_rows, index_rows, strict=False)
     ]

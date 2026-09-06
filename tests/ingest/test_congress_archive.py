@@ -24,7 +24,6 @@ from src.ingest.congress.archive import (
     parse_bill_stem,
 )
 
-
 # ---------------------------------------------------------------------------
 # Immutable source type construction
 # ---------------------------------------------------------------------------

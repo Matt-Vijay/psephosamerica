@@ -69,7 +69,7 @@ import json
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
-from typing import Any, Union
+from typing import Any
 from uuid import uuid4
 
 from src.core.path_safety import require_confined_relative_path
@@ -81,19 +81,15 @@ from src.parse.disclosures.source_urls import (
 )
 from src.runtime.sources import canonical_source_slug
 
-# ---------------------------------------------------------------------------
 # Index bundle types (used by disclosures_index_provider)
-# ---------------------------------------------------------------------------
 
-IndexRow = Union[HouseIndexRow, SenateIndexRow]
+IndexRow = HouseIndexRow | SenateIndexRow
 
 # (chamber, year) -> {doc_id: IndexRow}
 DisclosuresLookup = dict[tuple[str, int], dict[str, IndexRow]]
 
 
-# ---------------------------------------------------------------------------
 # Index bundle — row constructors and loaders
-# ---------------------------------------------------------------------------
 
 
 def _house_row_from_dict(raw: dict[str, Any]) -> HouseIndexRow:
@@ -183,9 +179,7 @@ def load_disclosures_index_bundle(path: Path) -> DisclosuresLookup:
     return disclosures_index_bundle_from_dict(data)
 
 
-# ---------------------------------------------------------------------------
 # Artifact bundle — index-row contracts (chamber-specific, explicit fields)
-# ---------------------------------------------------------------------------
 
 
 @dataclass(frozen=True)
@@ -222,12 +216,10 @@ class SenateBundledIndexRow:
     doc_id: str
 
 
-BundledIndexRow = Union[HouseBundledIndexRow, SenateBundledIndexRow]
+BundledIndexRow = HouseBundledIndexRow | SenateBundledIndexRow
 
 
-# ---------------------------------------------------------------------------
 # Artifact bundle — per-entry and container contracts
-# ---------------------------------------------------------------------------
 
 
 @dataclass(frozen=True)
@@ -259,9 +251,7 @@ class DisclosuresBundle:
     artifacts: tuple[DisclosureArtifactEntry, ...]
 
 
-# ---------------------------------------------------------------------------
 # Artifact bundle — public entry points
-# ---------------------------------------------------------------------------
 
 
 def load_disclosures_bundle(path: Path) -> DisclosuresBundle:
@@ -321,9 +311,7 @@ def _write_text_atomic(path: Path, text: str) -> None:
         temp_path.unlink(missing_ok=True)
 
 
-# ---------------------------------------------------------------------------
 # Artifact bundle — entry and index-row parsing
-# ---------------------------------------------------------------------------
 
 _VALID_CHAMBERS = {"house", "senate"}
 _VALID_ARTIFACT_KINDS = {"pdf", "xml", "csv", "json", "html", "txt", "other"}
@@ -454,9 +442,7 @@ def _index_row_to_dict(row: BundledIndexRow) -> dict[str, Any]:
     }
 
 
-# ---------------------------------------------------------------------------
 # Typed field extractors (internal)
-# ---------------------------------------------------------------------------
 
 
 def _str(raw: dict[str, Any], field: str, section: str, idx: int) -> str:

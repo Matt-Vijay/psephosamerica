@@ -6,12 +6,12 @@ import hashlib
 import json
 import math
 import sys
-
 from pathlib import Path
-from src.runtime.json_artifacts import write_json_artifact as _atomic_write_json_artifact
-from src.runtime.paths import local_artifact_root
 from typing import Any, TypeGuard, cast
 from uuid import uuid4
+
+from src.runtime.json_artifacts import write_json_artifact as _atomic_write_json_artifact
+from src.runtime.paths import local_artifact_root
 
 
 def _emit_verification_summary(command: str, publish_root: Path, result: Any) -> None:

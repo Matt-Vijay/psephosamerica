@@ -40,10 +40,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-
-# ---------------------------------------------------------------------------
 # Error type
-# ---------------------------------------------------------------------------
 
 
 class LookupBuildError(ValueError):
@@ -66,9 +63,7 @@ class LookupBuildError(ValueError):
         self.duplicates: list[tuple[Any, list[dict[str, Any]]]] = duplicates or []
 
 
-# ---------------------------------------------------------------------------
 # Result bundle
-# ---------------------------------------------------------------------------
 
 
 @dataclass
@@ -105,9 +100,7 @@ class LookupBundle:
         }
 
 
-# ---------------------------------------------------------------------------
 # Internal duplicate-detection helper
-# ---------------------------------------------------------------------------
 
 
 def _detect_duplicates(
@@ -161,9 +154,7 @@ def _coerce_key_int(value: Any, field_name: str, map_name: str) -> int:
         ) from exc
 
 
-# ---------------------------------------------------------------------------
 # Individual builders
-# ---------------------------------------------------------------------------
 
 
 def build_bioguide_map(
@@ -349,9 +340,7 @@ def build_disclosure_source_record_id_map(
     return result
 
 
-# ---------------------------------------------------------------------------
 # Bundle builder
-# ---------------------------------------------------------------------------
 
 
 def build_lookup_bundle(

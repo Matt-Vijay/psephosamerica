@@ -14,8 +14,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.support.network_guard import NetworkGuard, NetworkGuardError, _ORIGINAL_CONNECT
-
+from tests.support.network_guard import _ORIGINAL_CONNECT, NetworkGuard, NetworkGuardError
 
 # ---------------------------------------------------------------------------
 # Guard blocks connections

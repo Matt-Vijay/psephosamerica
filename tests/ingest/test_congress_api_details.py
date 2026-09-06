@@ -14,7 +14,6 @@ from src.ingest.congress.congress_api import (
 )
 from src.ingest.congress.models import BillRecord, MemberRecord
 
-
 # ---------------------------------------------------------------------------
 # URL builders
 # ---------------------------------------------------------------------------

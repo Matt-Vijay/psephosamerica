@@ -10,7 +10,6 @@ transformer trunk; it (and the per-head grads) are gradient-checked here.
 
 from __future__ import annotations
 
-
 import numpy as np
 import numpy.typing as npt
 

@@ -6,8 +6,8 @@ All result objects are constructed directly from their dataclasses.
 
 from __future__ import annotations
 
-import json
 import datetime as dt
+import json
 from pathlib import Path
 
 from src.db.load_report import (
@@ -26,10 +26,10 @@ from src.runtime.disclosures_load_from_parse import DisclosuresParseLoadResult
 from src.runtime.disclosures_parse import DisclosureParseRuntimeResult
 from src.runtime.history_backfill import (
     CongressDateWindow,
+    HistoricalSnapshotTarget,
     HistoryBackfillAttempt,
     HistoryBackfillExecutionResult,
     HistoryBackfillPlan,
-    HistoricalSnapshotTarget,
     LocalHistoryAggregateSummary,
     LocalHistoryBackfillResult,
 )
@@ -38,14 +38,19 @@ from src.runtime.history_backfill_types import (
     HistoryBackfillDisclosuresBundleInputsPayload,
     HistoryBackfillInputReadinessPayload,
 )
+from src.runtime.history_verify_types import (
+    HistoryVerifyIssue,
+    HistoryVerifyResult,
+    HistoryVerifyStageResult,
+)
 from src.runtime.oracle_contracts import CongressStageSummary, LocalOracleRunResult
 from src.runtime.output import (
     as_json,
     summarize_disclosure_artifact_ingest_result,
-    summarize_history_verify_result,
     summarize_disclosures_bundle_process_result,
-    summarize_local_history_backfill_result,
+    summarize_history_verify_result,
     summarize_load_result,
+    summarize_local_history_backfill_result,
     summarize_local_oracle_run_result,
     summarize_parse_disclosures_result,
     summarize_process_disclosures_result,
@@ -55,24 +60,18 @@ from src.runtime.output import (
     summarize_recompute_result,
     summarize_status,
 )
+from src.runtime.publish import PublishRuntimeResult
 from src.runtime.publish_roundtrip_types import (
     PublishRoundtripIssue,
     PublishRoundtripResult,
     PublishRoundtripStageResult,
-)
-from src.runtime.history_verify_types import (
-    HistoryVerifyIssue,
-    HistoryVerifyResult,
-    HistoryVerifyStageResult,
 )
 from src.runtime.publish_verify_types import (
     PublishVerifyIssue,
     PublishVerifyResult,
     PublishVerifyStageResult,
 )
-from src.runtime.publish import PublishRuntimeResult
 from src.runtime.recompute import RuntimeRecomputeResult
-
 
 # ---------------------------------------------------------------------------
 # Shared fixtures

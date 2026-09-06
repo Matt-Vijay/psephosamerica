@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from datetime import timezone
+from datetime import UTC
 
 from src.provenance.events import (
     export_event,
@@ -33,7 +33,7 @@ def test_fetch_event_records_success_with_source_url_metadata() -> None:
     assert event.notes == "ok"
     assert event.metadata == {"source_url": "https://clerk.house.gov/x"}
     # _utcnow() yields a tz-aware UTC timestamp.
-    assert event.occurred_at.tzinfo is timezone.utc
+    assert event.occurred_at.tzinfo is UTC
 
 
 def test_fetch_event_omits_source_url_when_absent() -> None:

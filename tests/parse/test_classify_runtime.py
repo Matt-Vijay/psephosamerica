@@ -24,7 +24,6 @@ from src.parse.disclosures.models import Chamber
 from src.parse.disclosures.text_document import PageText
 from src.parse.disclosures.text_extract import TextMetrics
 
-
 # ---------------------------------------------------------------------------
 # Inline multi-page text fixtures
 # ---------------------------------------------------------------------------

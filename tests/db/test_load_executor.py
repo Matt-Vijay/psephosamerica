@@ -13,7 +13,6 @@ import pytest
 from src.db.load_executor import Resolvers, execute_load_plan
 from src.db.load_report import LoadSummary, TableWriteResult, WarnErrorSummary
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -461,10 +460,10 @@ class TestWriterBoundary:
 
 
 class _FailingBatchCursor:
-    def __init__(self, conn: "_FailingBatchConnection") -> None:
+    def __init__(self, conn: _FailingBatchConnection) -> None:
         self._conn = conn
 
-    def __enter__(self) -> "_FailingBatchCursor":
+    def __enter__(self) -> _FailingBatchCursor:
         return self
 
     def __exit__(self, exc_type: object, exc: object, tb: object) -> bool:

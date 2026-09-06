@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-
 _MOD = "src.runtime.main"
 
 

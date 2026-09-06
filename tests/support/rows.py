@@ -21,9 +21,7 @@ from src.runtime.disclosures_load_from_parse import DisclosuresParseLoadResult
 from src.runtime.disclosures_parse import DisclosureParseRuntimeResult
 from src.runtime.publish import PublishRuntimeResult
 from src.runtime.recompute import RuntimeRecomputeResult
-
 from tests.support.load import load_summary
-
 
 # ---------------------------------------------------------------------------
 # Shared defaults

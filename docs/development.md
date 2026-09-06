@@ -21,17 +21,29 @@ to fit them. Corpus checks use the already-retained ignored evaluator store.
 
 ## Legacy backend CI
 
+The complete legacy command list comes from the parser, not a second hand-maintained
+inventory. These read-only examples do not require a database:
+
+```bash
+python3 -m src.runtime.main --help
+python3 -m src.runtime.main bootstrap-db --dry-run
+```
+
 ### Environment
 
 - Python 3.12.
 - Install with dev tooling: `pip install -e ".[dev]"`.
+- The pinned local semantic model is optional: `pip install -e ".[dev,enrichment]"`.
+  Only the full unit-test CI job installs it; lint, compilation, typing and
+  integration checks do not need Torch or Sentence Transformers. Tests of the
+  real library-loading boundary require this extra even though they mock model inference.
 - The package lives under `src/` and is importable as `src.*`
   (`pythonpath = ["src"]` in `pyproject.toml`).
 
 ### Quality gates
 
-Run all of these before pushing; CI runs the same set and blocks merge on any
-failure.
+CI runs these gates. Locally, run the affected suites and broaden the check only
+when the change crosses package boundaries.
 
 | Gate | Command | Notes |
 |---|---|---|
@@ -40,14 +52,14 @@ failure.
 | Security | `python -m bandit -q -c bandit.yml -r src/` | suppressions must be justified `# nosec <ID>` |
 | Compile | `python -m compileall -q src/ tests/` | |
 | Types | `python -m mypy --config-file pyproject.toml` | strict mode |
-| Unit tests + coverage | `python -m coverage run -m pytest tests/ -q --ignore=tests/integration && python -m coverage report --fail-under=89` | branch coverage; gate fails below the threshold |
+| Unit tests + coverage | `python -m coverage run -m pytest tests/ -q --ignore=tests/integration && python -m coverage report --fail-under=90` | full environment, including enrichment; branch coverage |
 | Integration tests | `python -m pytest tests/integration/ -q` | requires Postgres (see below) |
 
 ### Coverage
 
 Coverage is configured in `[tool.coverage.*]` (`pyproject.toml`): `source = src`,
 branch coverage on, `__main__` entry glue excluded. The unit-test CI job enforces
-`--fail-under=89`. When you raise overall coverage, ratchet the threshold up so it
+`--fail-under=90`. When you raise overall coverage, ratchet the threshold up so it
 keeps protecting the gain. To see what is missing locally:
 
 ```
@@ -66,6 +78,13 @@ python -m pytest tests/integration/ -q
 ```
 
 ## Conventions
+
+- **Small explicit surfaces.** Public runtime commands are ordinary re-exports;
+  tests patch collaborators in the command's owning module, never a forwarding facade.
+- **Stable tooling.** Ruff is pinned and its rule set is explicit: error/undefined-name
+  checks, import sorting, Python modernization, and Bugbear. Runtime enum and generic
+  type migrations are excluded because they can change APIs. Strict mypy checks our
+  code; only optional external imports and PyArrow's untyped Parquet calls are exempt.
 
 - **Tests before behavior changes.** Add a focused failing test, then make it pass.
 - **SQL.** Queries are parameterized (`%s`); shared SQL fragments come from helpers

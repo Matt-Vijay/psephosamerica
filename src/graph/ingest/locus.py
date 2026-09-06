@@ -166,7 +166,7 @@ def parse_locus_row(record: dict[str, Any]) -> LocusOrdinance | None:
 
 def ordinance_content_sha256(ordinance: LocusOrdinance) -> str:
     """The sha256 content-address of this ordinance's raw text + header."""
-    payload = f"{ordinance.header}\n{ordinance.content}".encode("utf-8")
+    payload = f"{ordinance.header}\n{ordinance.content}".encode()
     return hashlib.sha256(payload).hexdigest()
 
 
@@ -181,7 +181,7 @@ def ordinance_bill_ref(ordinance: LocusOrdinance) -> BillRef:
     """
     jurisdiction = ordinance.jurisdiction
     digest = hashlib.blake2b(
-        f"{jurisdiction.code}|{ordinance.header}|{ordinance.content}".encode("utf-8"),
+        f"{jurisdiction.code}|{ordinance.header}|{ordinance.content}".encode(),
         digest_size=10,
     ).hexdigest()
     return BillRef(

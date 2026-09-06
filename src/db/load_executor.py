@@ -32,9 +32,7 @@ from src.db.repositories import (
 )
 from src.db.writer import write_table_batch
 
-# ---------------------------------------------------------------------------
 # Public types
-# ---------------------------------------------------------------------------
 
 # A resolver entry pairs the target FK column name with a callable that
 # receives the *entire* raw row dict and returns the resolved integer id
@@ -53,9 +51,7 @@ ResolverFn = Callable[[dict[str, Any]], int | None]
 Resolvers = dict[str, tuple[str, ResolverFn]]
 
 
-# ---------------------------------------------------------------------------
 # Internal helpers
-# ---------------------------------------------------------------------------
 
 
 def _is_hint_table(table: str) -> bool:
@@ -107,9 +103,7 @@ def _prepare_rows(rows: list[dict[str, Any]], resolvers: Resolvers) -> list[dict
     return [_resolve_row(row, resolvers) for row in rows]
 
 
-# ---------------------------------------------------------------------------
 # Public API
-# ---------------------------------------------------------------------------
 
 
 def execute_load_plan(

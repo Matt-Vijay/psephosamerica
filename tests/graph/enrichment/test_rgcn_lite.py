@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import math
+from datetime import UTC, date, datetime
 
 import pytest
-from datetime import UTC, date, datetime
 
 from src.graph.contracts import (
     ContractSourceAnchor,

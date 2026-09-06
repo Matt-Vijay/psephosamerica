@@ -19,12 +19,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 from urllib.parse import urlparse
 
-from defusedxml.ElementTree import fromstring
 import httpx
-
+from defusedxml.ElementTree import fromstring
 
 _BASE = "https://disclosures.house.gov"
 _HOUSE_INDEX_HOST = "disclosures.house.gov"
@@ -111,7 +110,7 @@ def fetch_house_index(
     year: int,
     filing_kind: HouseFilingKind,
     *,
-    client: Optional[httpx.Client] = None,
+    client: httpx.Client | None = None,
 ) -> list[HouseIndexRow]:
     """Fetch and parse the House index for *year* and *filing_kind*.
 
@@ -125,9 +124,7 @@ def fetch_house_index(
     return parse_house_index(html, year=year, filing_kind=filing_kind)
 
 
-# ---------------------------------------------------------------------------
 # Internal helpers
-# ---------------------------------------------------------------------------
 
 
 def _required(entry: Any, tag: str) -> str:

@@ -4,7 +4,7 @@ from datetime import UTC, date, datetime
 
 import pytest
 
-from src.graph.ingest.disclosures import financial_interest_edge, disclosure_provenance
+from src.graph.ingest.disclosures import disclosure_provenance, financial_interest_edge
 
 _MEMBER = "ce-person1"
 _ISSUER = "ci-acme"

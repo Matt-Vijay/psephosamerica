@@ -25,7 +25,6 @@ from src.parse.disclosures.models import (
 )
 from src.parse.disclosures.parse_result import ParseResult
 
-
 # ---------------------------------------------------------------------------
 # Shared fixtures
 # ---------------------------------------------------------------------------

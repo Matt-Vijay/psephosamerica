@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import date
+
 from src.prediction.per_member_ensemble import (
     ensemble_uncertainty_report,
     predict_interval,
@@ -9,7 +11,6 @@ from src.prediction.per_member_ensemble import (
 )
 from src.prediction.per_member_model import MemberVoteExample
 from src.prediction.real_data_eval import VoteRow
-from datetime import date
 
 
 def _examples() -> list[MemberVoteExample]:

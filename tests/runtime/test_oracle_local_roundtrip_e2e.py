@@ -46,6 +46,7 @@ from typing import Any
 from unittest.mock import MagicMock, patch
 
 from src.db.load_report import TableWriteResult, WarnErrorSummary, build_load_summary
+from src.export.writer import serialize_payload
 from src.pipeline.recompute_run import RecomputeRunResult
 from src.runtime.congress import CongressLoadResult
 from src.runtime.disclosures_bundle import DisclosuresBundle, disclosures_bundle_from_dict
@@ -63,7 +64,6 @@ from src.runtime.publish_roundtrip_types import (
     PublishRoundtripStageResult,
 )
 from src.runtime.recompute import RuntimeRecomputeResult
-from src.export.writer import serialize_payload
 from tests.support.published_roundtrip_fixtures import (
     PublishedRoundtrip,
     assemble_from_homepage_feed_row_set,

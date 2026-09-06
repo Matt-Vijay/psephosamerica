@@ -14,10 +14,7 @@ import hashlib
 import re
 import unicodedata
 
-
-# ---------------------------------------------------------------------------
 # Normalization helpers
-# ---------------------------------------------------------------------------
 
 
 def normalize_bioguide_id(raw: str) -> str:
@@ -56,9 +53,7 @@ def normalize_zip(raw: str) -> str:
     return digits.zfill(5)
 
 
-# ---------------------------------------------------------------------------
 # Internal digest helper
-# ---------------------------------------------------------------------------
 
 
 _DIGEST_SIZE = 10  # 80 bits — ample for non-adversarial collision resistance
@@ -71,9 +66,7 @@ def _digest(parts: list[str], prefix: str) -> str:
     return f"{prefix}-{encoded}"
 
 
-# ---------------------------------------------------------------------------
 # Public ID builders
-# ---------------------------------------------------------------------------
 
 
 def build_evidence_card_id(

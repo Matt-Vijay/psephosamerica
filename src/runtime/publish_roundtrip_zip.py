@@ -55,9 +55,7 @@ _ZIP_ENTRY_PREFIX = "zip-entry/"
 _ZIP_ENTRY_SUFFIX = ".json"
 
 
-# ---------------------------------------------------------------------------
 # Path helpers
-# ---------------------------------------------------------------------------
 
 
 def _zip_code_from_path(path: str) -> str | None:
@@ -73,9 +71,7 @@ def _zip_entry_path(zip_code: str) -> str:
     return f"{_ZIP_ENTRY_PREFIX}{zip_code}{_ZIP_ENTRY_SUFFIX}"
 
 
-# ---------------------------------------------------------------------------
 # Bundle reconstruction from published payload
-# ---------------------------------------------------------------------------
 
 
 def _parse_district(congressional_district: str | None) -> tuple[str, int] | None:
@@ -135,9 +131,7 @@ def _bundle_from_payload(published: ZipFeedPayload) -> FederalBundle | None:
     )
 
 
-# ---------------------------------------------------------------------------
 # Payload comparison
-# ---------------------------------------------------------------------------
 
 
 def _compare_payloads(
@@ -381,9 +375,7 @@ def _member_identity(member: Any) -> tuple[str, str, str, str, str]:
     )
 
 
-# ---------------------------------------------------------------------------
 # Public entry point
-# ---------------------------------------------------------------------------
 
 
 def verify_published_zip_roundtrip(

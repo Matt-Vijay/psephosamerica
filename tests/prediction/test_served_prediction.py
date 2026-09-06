@@ -9,7 +9,7 @@ than the prediction's information cutoff (`known_at`).
 
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 
 import pytest
 from pydantic import ValidationError
@@ -35,7 +35,7 @@ def _anchor(
         label=label,
         source_url=url,
         content_sha256=_SHA,
-        retrieved_at=retrieved_at or datetime(2025, 1, 15, tzinfo=timezone.utc),
+        retrieved_at=retrieved_at or datetime(2025, 1, 15, tzinfo=UTC),
         contribution=contribution,
     )
 
@@ -99,7 +99,7 @@ def test_build_served_prediction_orders_and_caps_evidence_at_five() -> None:
 
 
 def test_served_prediction_rejects_evidence_after_known_at() -> None:
-    late = _anchor(retrieved_at=datetime(2025, 3, 1, tzinfo=timezone.utc))
+    late = _anchor(retrieved_at=datetime(2025, 3, 1, tzinfo=UTC))
     with pytest.raises(ValidationError, match="known_at"):
         _build(evidence_anchors=[late])
 
@@ -115,7 +115,7 @@ def test_served_prediction_requires_sha256_hex_anchor() -> None:
             label="bad",
             source_url="https://example.gov/x",
             content_sha256="not-a-hash",
-            retrieved_at=datetime(2025, 1, 1, tzinfo=timezone.utc),
+            retrieved_at=datetime(2025, 1, 1, tzinfo=UTC),
             contribution=0.1,
         )
 

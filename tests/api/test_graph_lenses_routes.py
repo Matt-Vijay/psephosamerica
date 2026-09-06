@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from src.api.graph_http import GraphService
 from src.api.wsgi_app import PredictionWsgiApp
@@ -51,7 +51,7 @@ def _store() -> GraphStore:
 
 
 def _app() -> PredictionWsgiApp:
-    snapshot = build_prediction_snapshot([], generated_at=datetime(2026, 1, 1, tzinfo=timezone.utc))
+    snapshot = build_prediction_snapshot([], generated_at=datetime(2026, 1, 1, tzinfo=UTC))
     service = PredictionReadService(
         snapshot=snapshot, rate_limiter=TokenBucketRateLimiter(capacity=100, refill_per_second=1.0)
     )

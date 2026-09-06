@@ -332,7 +332,7 @@ class TestFailureHandling:
             patch(_START, return_value=_RUN_ID),
             patch(_FINISH),
             patch(_FAIL) as mock_fail,
-            patch(_DISCOVER, side_effect=IOError("timeout")),
+            patch(_DISCOVER, side_effect=OSError("timeout")),
             patch(_DOWNLOAD, return_value=_PDF),
             patch(_STORE, return_value=_ARTIFACT_ROW),
             patch(_WRITE),

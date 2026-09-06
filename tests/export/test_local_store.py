@@ -5,6 +5,7 @@ from datetime import date, datetime
 from pathlib import Path
 
 import pytest
+from pydantic import ValidationError
 
 from src.api.contracts import (
     HistoryBootstrapPayload,
@@ -28,49 +29,46 @@ from src.export.contracts import (
     MemberHistoryPayload,
     MemberHistorySnapshot,
     MemberProfilePayload,
-    SnapshotComparePresetPayload,
-    SourceAnchor,
     MemberTrendSummaryPayload,
     MemberTrendWindowPayload,
+    SnapshotComparePresetPayload,
+    SourceAnchor,
     ZipFeedPayload,
 )
 from src.export.filesystem import write_planned_files
 from src.export.local_store import (
     HOMEPAGE_FEED_PATH,
     _safe_subpath,
+    latest_snapshot_id,
+    list_artifact_paths,
+    list_snapshot_ids,
     load_current_member_lookup,
+    load_evidence_card,
     load_history_bootstrap,
     load_history_preset_range,
     load_homepage_bootstrap,
-    load_member_page,
-    load_member_change_summary,
-    load_member_history_chart,
-    load_member_history_page,
-    load_member_preset_compare,
-    load_latest_snapshot_metadata,
-    load_member_history,
-    load_snapshot_preset_compare,
-    load_member_trend_summary,
-    load_movement_window,
-    latest_snapshot_id,
-    list_snapshot_ids,
-    list_artifact_paths,
-    manifest_published_at,
-    manifest_snapshot_date,
-    load_evidence_card,
     load_homepage_feed,
     load_latest_manifest,
+    load_latest_snapshot_metadata,
     load_manifest,
+    load_member_change_summary,
+    load_member_history,
+    load_member_history_chart,
+    load_member_history_page,
+    load_member_page,
+    load_member_preset_compare,
     load_member_profile,
+    load_member_trend_summary,
+    load_movement_window,
     load_ontology_agent_tools,
     load_ontology_edges,
     load_ontology_frontend_client,
     load_ontology_frontend_contract,
-    load_ontology_frontend_types,
     load_ontology_frontend_index,
+    load_ontology_frontend_types,
     load_ontology_index,
-    load_ontology_member_features,
     load_ontology_member_edges,
+    load_ontology_member_features,
     load_ontology_static_schema,
     load_prediction_bootstrap,
     load_prediction_committee_context,
@@ -85,12 +83,12 @@ from src.export.local_store import (
     load_prediction_source_index,
     load_prediction_topology,
     load_snapshot_index,
+    load_snapshot_preset_compare,
     load_zip_entry,
     load_zip_feed,
+    manifest_published_at,
+    manifest_snapshot_date,
 )
-from src.homepage.contracts import HomepageFeedPayload, MemberMovementSummary, RecentEventSummary
-from src.homepage.contracts import MovementWindowPayload, SnapshotComparePayload
-from src.identity.current_member_lookup import CurrentMemberLookupEntry, CurrentMemberLookupPayload
 from src.export.manifest import ManifestEntry, SnapshotManifest, manifest_root_sha256
 from src.export.writer import (
     PlannedFile,
@@ -103,26 +101,25 @@ from src.export.writer import (
     member_change_summary_path,
     member_history_chart_path,
     member_history_page_path,
-    member_preset_compare_path,
     member_history_path,
     member_page_payload_path,
     member_path,
+    member_preset_compare_path,
     member_trend_summary_path,
     movement_window_path,
     ontology_agent_tools_path,
     ontology_edges_path,
     ontology_frontend_client_path,
     ontology_frontend_contract_path,
-    ontology_frontend_types_path,
     ontology_frontend_index_path,
+    ontology_frontend_types_path,
     ontology_index_path,
-    ontology_member_features_path,
     ontology_member_edges_path,
+    ontology_member_features_path,
     ontology_schema_path,
+    prediction_bootstrap_path,
     prediction_committee_context_path,
     prediction_committee_readiness_path,
-    prediction_bootstrap_path,
-    prediction_topology_path,
     prediction_member_context_path,
     prediction_member_readiness_path,
     prediction_readiness_index_path,
@@ -131,12 +128,22 @@ from src.export.writer import (
     prediction_sector_readiness_path,
     prediction_source_context_path,
     prediction_source_index_path,
+    prediction_topology_path,
     serialize_payload,
-    snapshot_preset_compare_path,
     snapshot_index_path,
+    snapshot_preset_compare_path,
     zip_entry_path,
     zip_path,
 )
+from src.homepage.contracts import (
+    HomepageFeedPayload,
+    MemberMovementSummary,
+    MovementWindowPayload,
+    RecentEventSummary,
+    SnapshotComparePayload,
+)
+from src.identity.current_member_lookup import CurrentMemberLookupEntry, CurrentMemberLookupPayload
+from src.ontology.agent_tools import build_ontology_agent_tool_manifest
 from src.ontology.contracts import (
     OntologyEdgePayload,
     OntologyGraphPayload,
@@ -146,15 +153,14 @@ from src.ontology.contracts import (
     OntologyNodeRef,
     OntologySectorExposurePayload,
 )
+from src.ontology.frontend_contracts import (
+    build_ontology_frontend_contract,
+    build_ontology_typescript_client,
+)
 from src.ontology.static_schema import (
     OntologyFrontendIndexPayload,
     build_ontology_frontend_index,
     build_ontology_static_schema,
-)
-from src.ontology.agent_tools import build_ontology_agent_tool_manifest
-from src.ontology.frontend_contracts import (
-    build_ontology_frontend_contract,
-    build_ontology_typescript_client,
 )
 from src.prediction.contracts import (
     PredictionBootstrapPayload,
@@ -176,7 +182,6 @@ from src.prediction.contracts import (
     prediction_source_context_path as prediction_model_source_context_path,
     prediction_source_key,
 )
-
 
 # ── Fixture payloads ───────────────────────────────────────────────
 
@@ -469,6 +474,7 @@ def _write_json(root: Path, rel_path: str, data: object) -> None:
 def _serialise(model: object) -> bytes:
     """Serialise a Pydantic model to JSON bytes (mirrors writer.serialize_payload)."""
     import json as _json
+
     from pydantic import BaseModel as _BM
 
     assert isinstance(model, _BM)
@@ -534,7 +540,7 @@ def test_load_member_profile_invalid_json(tmp_path: Path) -> None:
 
 def test_load_member_profile_schema_mismatch(tmp_path: Path) -> None:
     _write_json(tmp_path, member_path("bad-schema"), {"completely": "wrong"})
-    with pytest.raises(Exception):
+    with pytest.raises(ValidationError):
         load_member_profile(tmp_path, "bad-schema")
 
 
@@ -1876,7 +1882,7 @@ def test_load_zip_feed_missing(tmp_path: Path) -> None:
 
 def test_load_zip_feed_schema_mismatch(tmp_path: Path) -> None:
     _write_json(tmp_path, zip_path("00000"), {"bad": "data"})
-    with pytest.raises(Exception):
+    with pytest.raises(ValidationError):
         load_zip_feed(tmp_path, "00000")
 
 
@@ -2083,7 +2089,7 @@ def test_load_homepage_feed_invalid_json(tmp_path: Path) -> None:
 
 def test_load_homepage_feed_schema_mismatch(tmp_path: Path) -> None:
     _write_json(tmp_path, HOMEPAGE_FEED_PATH, {"wrong": "fields"})
-    with pytest.raises(Exception):
+    with pytest.raises(ValidationError):
         load_homepage_feed(tmp_path)
 
 
@@ -2124,7 +2130,7 @@ def test_load_current_member_lookup_missing(tmp_path: Path) -> None:
 
 def test_load_current_member_lookup_schema_mismatch(tmp_path: Path) -> None:
     _write_json(tmp_path, current_member_lookup_path(), {"bad": "data"})
-    with pytest.raises(Exception):
+    with pytest.raises(ValidationError):
         load_current_member_lookup(tmp_path)
 
 

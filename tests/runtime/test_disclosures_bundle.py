@@ -6,6 +6,7 @@ No network calls.  No DB.  All I/O is local tmp_path JSON writes.
 from __future__ import annotations
 
 import json
+from dataclasses import FrozenInstanceError
 from pathlib import Path
 from uuid import UUID
 
@@ -568,23 +569,23 @@ class TestSenateIndexRowValidation:
 class TestFrozenContracts:
     def test_bundle_is_frozen(self) -> None:
         bundle = disclosures_bundle_from_dict(_valid_dict())
-        with pytest.raises(Exception):
+        with pytest.raises(FrozenInstanceError):
             bundle.artifacts = ()  # type: ignore[misc]
 
     def test_entry_is_frozen(self) -> None:
         bundle = disclosures_bundle_from_dict(_valid_dict())
         entry = bundle.artifacts[0]
-        with pytest.raises(Exception):
+        with pytest.raises(FrozenInstanceError):
             entry.chamber = "senate"  # type: ignore[misc]
 
     def test_house_index_row_is_frozen(self) -> None:
         bundle = disclosures_bundle_from_dict(_valid_dict([_house_entry_dict()]))
         row = bundle.artifacts[0].index_row
-        with pytest.raises(Exception):
+        with pytest.raises(FrozenInstanceError):
             row.last_name = "changed"  # type: ignore[misc]
 
     def test_senate_index_row_is_frozen(self) -> None:
         bundle = disclosures_bundle_from_dict(_valid_dict([_senate_entry_dict()]))
         row = bundle.artifacts[0].index_row
-        with pytest.raises(Exception):
+        with pytest.raises(FrozenInstanceError):
             row.office = "changed"  # type: ignore[misc]

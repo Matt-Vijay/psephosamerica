@@ -10,8 +10,8 @@ import pytest
 from src.runtime.disclosures_member_resolution import (
     Ambiguous,
     NoMatch,
-    Resolved,
     ResolutionResult,
+    Resolved,
     house_identity,
     resolve_disclosure_member,
     resolve_disclosure_members,

@@ -16,8 +16,9 @@ the rows; the write layer resolves them via underscore-prefixed hint keys
 from __future__ import annotations
 
 import datetime
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Any, Iterable
+from typing import Any
 
 from src.ingest.congress.models import (
     BillRecord,

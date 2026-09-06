@@ -6,13 +6,15 @@ from pathlib import Path
 
 import src.api as api
 from src.api.contracts import NotFoundBody
-from src.api.read_service import get_member_history_chart
-from src.api.read_service import get_member_history_page
-from src.api.read_service import get_member_timeline_dimension
-from src.api.read_service import get_member_timeline_page
-from src.api.read_service import get_member_timeline_year
-from src.export.writer import member_history_chart_path, member_history_page_path
+from src.api.read_service import (
+    get_member_history_chart,
+    get_member_history_page,
+    get_member_timeline_dimension,
+    get_member_timeline_page,
+    get_member_timeline_year,
+)
 from src.export.contracts import MemberHistoryPayload
+from src.export.writer import member_history_chart_path, member_history_page_path
 from src.pipeline.history_aggregate_run import write_history_aggregate
 from tests.support.published_snapshot_fixtures import (
     make_evidence_card,

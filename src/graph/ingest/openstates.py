@@ -172,7 +172,7 @@ class StateBill:
     chamber: str | None  # 'lower' / 'upper' from from_organization
     action_date: date  # latest action / first action — the bill's known-at floor
     source_url: str
-    rollcalls: tuple["StateRollCall", ...]
+    rollcalls: tuple[StateRollCall, ...]
 
 
 @dataclass(frozen=True)

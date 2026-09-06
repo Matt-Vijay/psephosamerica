@@ -18,7 +18,6 @@ from __future__ import annotations
 import hashlib
 import json
 import re
-import time
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
@@ -27,8 +26,6 @@ import httpx
 
 from src.graph.ingest.congressional_record import (
     bill_mentions as _normalized_bill_mentions,
-)
-from src.graph.ingest.congressional_record import (
     crec_package_url,
     floor_speech_edge,
     floor_speech_provenance,
@@ -37,7 +34,7 @@ from src.graph.ingest.congressional_record import (
 )
 from src.graph.ingest.prediction_markets import congress_for_date
 from src.runtime.bill_edges_export import build_bioguide_resolver
-from src.runtime.http_client import client_or_default
+from src.runtime.http_client import client_or_default, get_with_backoff as _get_with_backoff
 
 _BILL_MENTION_RE = re.compile(r"\b(?:H\.?\s?R\.?|S\.?|H\.?J\.?Res\.?|S\.?J\.?Res\.?)\s?(\d{1,5})\b")
 
@@ -53,36 +50,6 @@ def date_range(start: date, end: date) -> list[date]:
 # with exponential backoff so a momentary throttle never drops a session day. A
 # 200/404 returns on the first try, so injected MockTransport clients (which only
 # answer 200/404) see no behaviour change.
-_RETRYABLE_STATUS = frozenset({429, 500, 502, 503, 504})
-
-
-def _get_with_backoff(
-    http: httpx.Client,
-    url: str,
-    *,
-    max_attempts: int = 6,
-    base_delay: float = 1.0,
-    sleep: object = time.sleep,
-) -> httpx.Response | None:
-    """GET ``url`` retrying rate-limit/transient failures; ``None`` if exhausted."""
-    delay = base_delay
-    for attempt in range(1, max_attempts + 1):
-        try:
-            resp = http.get(url, follow_redirects=True)
-        except httpx.TransportError:
-            if attempt == max_attempts:
-                return None
-            sleep(delay)  # type: ignore[operator]
-            delay *= 2
-            continue
-        if resp.status_code in _RETRYABLE_STATUS and attempt < max_attempts:
-            retry_after = resp.headers.get("retry-after")
-            wait = float(retry_after) if retry_after and retry_after.isdigit() else delay
-            sleep(wait)  # type: ignore[operator]
-            delay *= 2
-            continue
-        return resp
-    return None
 
 
 def bill_mentions(mods_xml: str, *, limit: int = 40) -> list[str]:
