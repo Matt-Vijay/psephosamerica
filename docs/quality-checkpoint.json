@@ -1,5 +1,5 @@
 {
-  "verified_at": "2026-09-06T16:54:14Z",
+  "verified_at": "2026-09-06T17:00:03Z",
   "scope": "Repository cleanup since 1812afb; retained interfaces and research paths, no new product features",
   "production_physical_loc_net": -2175,
   "loc_receipt": "git diff --numstat 1812afb <checkpoint-commit> -- src",
@@ -15,8 +15,9 @@
     "unit_result": {"passed": 11160, "skipped": 1, "deselected": 2, "seconds": 279.25},
     "coverage_percent": 90.03,
     "coverage_gate": 90,
-    "coverage_basis": "Whole unit run plus affected rechecks; changed command and prior-module line data discarded before recollection; private database checks excluded",
+    "coverage_basis": "Whole unit run plus affected rechecks; changed-module line data discarded before recollection; archive-builder data recollected using public records only; private database parity checks excluded",
     "cross_platform_regression": {"passed": 16, "seconds": 0.33, "command": "python -m pytest tests/prediction/test_thin_record_prior.py tests/prediction/nn/test_structural_embeddings.py -q", "fix": "Numerically tied network neighbors rank by identity; the distinct-neighbor fixture now has genuinely different structural roles"},
+    "private_archive_independence": {"passed": 6, "deselected": 1, "seconds": 5.51, "command": "python -m pytest tests/incident_lab/test_nm_reassociation_fixture.py tests/architecture/test_imports.py -q -k 'not test_builder_reproduces_committed_bytes_from_pinned_parents'", "fixture": "Public records repacked into explicitly synthetic parent containers; not an official-source acquisition claim"},
     "postgresql_tests": {"passed": 37, "seconds": 1.73},
     "optional_ml_boundary_tests": {"passed": 7},
     "ruff_lint_and_format": "PASS",

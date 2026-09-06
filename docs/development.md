@@ -84,6 +84,8 @@ Architecture checks import every library module and exercise declared CLI help
 from an empty directory with network access blocked. Whole-workflow tests cover
 local builds/resume, cutoff queries, source receipt failures, portable scoring,
 and the retained research paths using small fixtures—not new benchmark results.
+The historical archive builder is tested with public records repacked into synthetic
+parent containers; its separate pinned-original-archive parity check is optional.
 
 ### Integration tests and Postgres
 
