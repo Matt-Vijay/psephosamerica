@@ -214,11 +214,6 @@ def _build_zip_feeds(
     return feeds
 
 
-def _build_homepage_file(conn: Any, snapshot_date: date) -> PlannedFile:
-    payload = _build_homepage_payload(conn, snapshot_date)
-    return _build_homepage_file_from_payload(payload)
-
-
 def _build_homepage_payload(conn: Any, snapshot_date: date) -> HomepageFeedPayload:
     feed_rows = fetch_homepage_feed_rows(conn, limit=_HOMEPAGE_FEED_LIMIT)
     return assemble_homepage_payload(feed_rows, snapshot_date=snapshot_date)
@@ -233,14 +228,6 @@ def _build_current_member_lookup_payload(
     snapshot_date: date,
 ) -> CurrentMemberLookupPayload:
     return build_current_member_lookup(member_profiles, snapshot_date=snapshot_date)
-
-
-def _build_current_member_lookup_file(
-    member_profiles: list[MemberProfilePayload],
-    snapshot_date: date,
-) -> PlannedFile:
-    payload = _build_current_member_lookup_payload(member_profiles, snapshot_date=snapshot_date)
-    return PlannedFile.from_bytes(current_member_lookup_path(), serialize_payload(payload))
 
 
 def _build_homepage_bootstrap_file(

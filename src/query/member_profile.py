@@ -19,7 +19,7 @@ from src.export.builders import build_member_profile
 from src.export.contracts import MemberProfilePayload
 
 
-def _normalize_member(row: dict[str, Any]) -> dict[str, Any]:
+def normalize_member_row(row: dict[str, Any]) -> dict[str, Any]:
     # Maps DB column names to the shape build_member_profile expects.
     return {
         "bioguide_id": row["bioguide_id"],
@@ -148,7 +148,7 @@ def assemble_member_profile(
     committee_rows: list[dict[str, Any]],
 ) -> MemberProfilePayload:
     return build_member_profile(
-        member=_normalize_member(member_row),
+        member=normalize_member_row(member_row),
         score_rows=_extract_score_summaries(score_snapshot_rows, rule_fire_rows),
         recent_fires=_normalize_recent_fires(rule_fire_rows),
         top_evidence_card_ids=_top_evidence_card_ids(rule_fire_rows),

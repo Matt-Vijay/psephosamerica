@@ -37,3 +37,16 @@ def test_parity_with_contract_embedder() -> None:
     mine = QueryEmbedder()
     for text in ["Affordable Housing Act", "donor influence on appropriations", "AB1566"]:
         assert mine.embed(text) == contract(text)
+
+    # Pinned from the pre-consolidation implementation, not from the shared
+    # class: protects stored-vector compatibility even when both names alias it.
+    assert QueryEmbedder(dim=8).embed("Tax reform—energy & HEALTH 2024.") == [
+        0.0,
+        -0.4082482904638631,
+        -0.20412414523193154,
+        0.20412414523193154,
+        0.20412414523193154,
+        -0.20412414523193154,
+        0.0,
+        -0.8164965809277261,
+    ]

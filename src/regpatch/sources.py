@@ -210,8 +210,6 @@ def acquire_official_source(
 
             object_root = root / "sha256"
             object_root.mkdir(parents=True, exist_ok=True)
-            descriptor, temporary_name = tempfile.mkstemp(prefix=".download.", dir=object_root)
-            temporary_path = Path(temporary_name)
             hasher = hashlib.sha256()
             byte_count = 0
             network_byte_count = 0
@@ -228,6 +226,8 @@ def acquire_official_source(
                     f"unsupported HTTP Content-Encoding: {content_encoding}",
                 )
             predecoded = response.is_stream_consumed
+            descriptor, temporary_name = tempfile.mkstemp(prefix=".download.", dir=object_root)
+            temporary_path = Path(temporary_name)
             with os.fdopen(descriptor, "wb") as handle:
                 try:
                     chunks = (response.content,) if predecoded else response.iter_raw()
@@ -264,6 +264,11 @@ def acquire_official_source(
                         hasher.update(chunk)
                         handle.write(chunk)
                     final_chunk = decoder.flush() if decoder else b""
+                    if decoder is not None and (not decoder.eof or decoder.unused_data):
+                        raise CompileError(
+                            "ACQUISITION_ENCODING_INVALID",
+                            "compressed response is incomplete or contains trailing data",
+                        )
                 except zlib.error as exc:
                     raise CompileError(
                         "ACQUISITION_ENCODING_INVALID",

@@ -5,6 +5,9 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
+from src.runtime import bill_content_experiment, corpus_watch
 from src.runtime.corpus_watch import (
     LinkageStatus,
     count_linked_bills,
@@ -62,3 +65,51 @@ def test_manifest_sha_reads_and_tolerates_missing(tmp_path: Path) -> None:
 
 def test_empty_records_is_zero(tmp_path: Path) -> None:
     assert count_linked_bills(tmp_path / "absent.jsonl") == LinkageStatus(0, 0, 0, 0)
+
+
+def test_watcher_requires_settled_new_export_before_triggering(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    records, manifest, output = (
+        tmp_path / name for name in ("records.jsonl", "manifest.json", "out.json")
+    )
+    _write_records(
+        records,
+        [
+            {
+                "entity_type": "bill",
+                "canonical_id": "us_congress:118:h-r-1",
+                "dossier_embedding": [1.0],
+            }
+        ],
+    )
+    manifest.write_text('{"content_sha256": "changed"}')
+    (tmp_path / "empty.jsonl").write_text("")
+    calls = []
+
+    def evaluate(*args, **kwargs):
+        calls.append(kwargs)
+        return {"best_auc": 0.5, "base_auc": 0.5, "delta_vs_base": 0.0, "beats_pin": False}
+
+    monkeypatch.setattr(bill_content_experiment, "run_bill_content_experiment", evaluate)
+    args = [
+        "--records",
+        str(records),
+        "--manifest",
+        str(manifest),
+        "--corpus",
+        str(tmp_path / "empty.jsonl"),
+        "--out",
+        str(output),
+        "--threshold",
+        "1",
+        "--poll-seconds",
+        "0",
+    ]
+    assert corpus_watch.main([*args, "--max-polls", "1"]) == 2
+    assert not calls and not output.exists()
+    assert corpus_watch.main([*args, "--max-polls", "2", "--seen-sha", "changed"]) == 2
+    assert not calls and not output.exists()
+    assert corpus_watch.main([*args, "--max-polls", "2"]) == 0
+    assert len(calls) == 1
+    assert json.loads(output.read_text())["linkage"]["vote_linkable"] == 1

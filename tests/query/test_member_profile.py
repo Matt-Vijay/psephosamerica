@@ -16,10 +16,10 @@ from src.query.member_profile import (
     _extract_score_summaries,
     _latest_snapshot_date,
     _normalize_committees,
-    _normalize_member,
     _normalize_recent_fires,
     _top_evidence_card_ids,
     assemble_member_profile,
+    normalize_member_row as _normalize_member,
 )
 
 # ---------------------------------------------------------------------------

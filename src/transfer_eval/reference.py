@@ -67,44 +67,43 @@ def validate_oracle(case_dir: Path, oracle_root: Path) -> dict[str, Any]:
     connection = duckdb.connect(str(oracle_root / "time_machine.duckdb"), read_only=True)
     try:
         connection.execute("SET TimeZone='UTC'")
-        placeholders = ",".join("?" for _ in source_ids)
-        parameters = [reference.cutoff, *source_ids]
+        parameters = [reference.cutoff, source_ids]
         bills = connection.execute(
-            f"""
+            """
             SELECT source_artifact_id, source_bill_id, identifier, title,
                    classification, subjects, jurisdiction_id, source_url
             FROM tm.bills_as_of(CAST(? AS TIMESTAMPTZ))
-            WHERE source_artifact_id IN ({placeholders})
+            WHERE source_artifact_id IN (SELECT unnest(?))
             """,
             parameters,
         ).fetchall()
         actions = connection.execute(
-            f"""
+            """
             SELECT a.source_artifact_id, b.source_bill_id,
                    replace(a.action_id, 'action:openstates:', ''), a.organization_id,
                    a.description, a.classification, CAST(a.action_date AS VARCHAR), a.source_url
             FROM tm.actions_as_of(CAST(? AS TIMESTAMPTZ)) a
             JOIN tm.bills b USING (bill_id)
-            WHERE a.source_artifact_id IN ({placeholders})
+            WHERE a.source_artifact_id IN (SELECT unnest(?))
             """,
             parameters,
         ).fetchall()
         rolls = connection.execute(
-            f"""
+            """
             SELECT source_artifact_id, source_roll_call_id, source_bill_id,
                    jurisdiction_id, session_id, chamber, identifier, motion, result,
                    CAST(roll_call_date AS VARCHAR), source_url, roll_call_id
             FROM tm.roll_calls_as_of(CAST(? AS TIMESTAMPTZ))
-            WHERE source_artifact_id IN ({placeholders})
+            WHERE source_artifact_id IN (SELECT unnest(?))
             """,
             parameters,
         ).fetchall()
         votes = connection.execute(
-            f"""
+            """
             SELECT source_artifact_id, roll_call_id, member_vote_id, source_person_id,
                    member_name, choice, source_url
             FROM tm.member_votes_as_of(CAST(? AS TIMESTAMPTZ))
-            WHERE source_artifact_id IN ({placeholders})
+            WHERE source_artifact_id IN (SELECT unnest(?))
             """,
             parameters,
         ).fetchall()

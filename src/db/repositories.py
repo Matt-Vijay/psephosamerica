@@ -143,3 +143,14 @@ def insert_returning_id(
     if commit:
         conn.commit()
     return row_id
+
+
+def relation_exists(conn: ConnectionLike, relation_name: str) -> bool:
+    rows = fetch_all(
+        conn,
+        "SELECT to_regclass(%s) IS NOT NULL AS exists",
+        (relation_name,),
+    )
+    if not rows:
+        return False
+    return bool(rows[0].get("exists"))

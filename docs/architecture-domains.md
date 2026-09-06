@@ -56,14 +56,20 @@ explicitly; production has no special behavior for monkeypatching.
 - `core/files.py`: streaming file hashes and atomic byte/text replacement. Callers
   own serialization and directory creation; fsync-backed source stores retain
   their separate durability policies.
+- `core/text_hash.py`: one feature-hashing space for indexed documents and queries;
+  the old embedder import names remain aliases for compatibility.
 - `ingest/congress/archive_manifest.py`: Congress manifest serialization and
   exact-file receipt validation.
 - `db/repositories.py`: SQL execution and transaction boundaries, including
-  checked `INSERT … RETURNING id` handling.
+  checked `INSERT … RETURNING id` handling and relation-existence queries.
+- `graph/provenance.py`: shared public-statement provenance construction.
+- `query/member_profile.py`: member-row normalization shared by history queries.
 - `db/load_report.py`: load-summary aggregation for FEC, recomputation and runners.
 - `runtime/http_client.py`: injectable clients and bounded transient retry policy.
 - `runtime/json_artifacts.py`: atomic JSON writes and optional output receipts.
 - `prediction/dataset.py`: shared training/evaluation window validation.
+- `runtime/flat_corpus.py`: one `(bill, date)` grouping for both linked and unlinked
+  roll-call views.
 
 Prefer a direct import over another forwarding function. Consolidate only when
 semantics agree: clock meanings, identity namespaces, transaction ownership and

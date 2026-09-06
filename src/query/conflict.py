@@ -33,23 +33,6 @@ class ConflictBundle:
     superseded_filing_id: str | None
 
 
-def _source_anchor_if_present(
-    *,
-    source_type: str,
-    source_id: Any,
-    label: str,
-    url: str | None = None,
-) -> SourceAnchor | None:
-    if source_id is None:
-        return None
-    return build_source_anchor(
-        source_type=source_type,
-        source_id=str(source_id),
-        url=url,
-        label=label,
-    )
-
-
 def _source_url(row: dict[str, Any]) -> str | None:
     value = row.get("source_url") or row.get("financial_disclosure_source_url")
     return value if isinstance(value, str) and value else None

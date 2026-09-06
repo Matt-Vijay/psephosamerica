@@ -8,21 +8,24 @@ from src.query.prediction_inventory import fetch_prediction_fec_inventory
 
 def test_fetch_prediction_fec_inventory_joins_fec_linkage_to_members() -> None:
     conn = MagicMock()
-    with patch(
-        "src.query.prediction_inventory.fetch_all",
-        side_effect=[
-            [{"exists": True}],
-            [
-                {
-                    "fec_contribution_count": 10,
-                    "member_attributed_fec_contribution_count": 5,
-                    "members_with_fec_candidate_id_count": 2,
-                    "public_statement_signal_count": 4,
-                    "members_with_public_statement_signal_count": 3,
-                }
+    with (
+        patch(
+            "src.query.prediction_inventory.fetch_all",
+            side_effect=[
+                [{"exists": True}],
+                [
+                    {
+                        "fec_contribution_count": 10,
+                        "member_attributed_fec_contribution_count": 5,
+                        "members_with_fec_candidate_id_count": 2,
+                        "public_statement_signal_count": 4,
+                        "members_with_public_statement_signal_count": 3,
+                    }
+                ],
             ],
-        ],
-    ) as fetch:
+        ) as fetch,
+        patch("src.db.repositories.fetch_all", fetch),
+    ):
         result = fetch_prediction_fec_inventory(conn, feature_cutoff=dt.date(2024, 12, 31))
 
     _, sql, params = fetch.call_args_list[1].args
@@ -49,21 +52,24 @@ def test_fetch_prediction_fec_inventory_joins_fec_linkage_to_members() -> None:
 
 def test_fetch_prediction_fec_inventory_counts_only_term_active_attributed_contributions() -> None:
     conn = MagicMock()
-    with patch(
-        "src.query.prediction_inventory.fetch_all",
-        side_effect=[
-            [{"exists": True}],
-            [
-                {
-                    "fec_contribution_count": 10,
-                    "member_attributed_fec_contribution_count": 5,
-                    "members_with_fec_candidate_id_count": 2,
-                    "public_statement_signal_count": 4,
-                    "members_with_public_statement_signal_count": 3,
-                }
+    with (
+        patch(
+            "src.query.prediction_inventory.fetch_all",
+            side_effect=[
+                [{"exists": True}],
+                [
+                    {
+                        "fec_contribution_count": 10,
+                        "member_attributed_fec_contribution_count": 5,
+                        "members_with_fec_candidate_id_count": 2,
+                        "public_statement_signal_count": 4,
+                        "members_with_public_statement_signal_count": 3,
+                    }
+                ],
             ],
-        ],
-    ) as fetch:
+        ) as fetch,
+        patch("src.db.repositories.fetch_all", fetch),
+    ):
         fetch_prediction_fec_inventory(conn, feature_cutoff=dt.date(2024, 12, 31))
 
     _, sql, _ = fetch.call_args_list[1].args
@@ -87,21 +93,24 @@ def test_fetch_prediction_fec_inventory_counts_only_term_active_attributed_contr
 
 def test_fetch_prediction_fec_inventory_counts_only_term_active_public_statement_edges() -> None:
     conn = MagicMock()
-    with patch(
-        "src.query.prediction_inventory.fetch_all",
-        side_effect=[
-            [{"exists": True}],
-            [
-                {
-                    "fec_contribution_count": 10,
-                    "member_attributed_fec_contribution_count": 5,
-                    "members_with_fec_candidate_id_count": 2,
-                    "public_statement_signal_count": 4,
-                    "members_with_public_statement_signal_count": 3,
-                }
+    with (
+        patch(
+            "src.query.prediction_inventory.fetch_all",
+            side_effect=[
+                [{"exists": True}],
+                [
+                    {
+                        "fec_contribution_count": 10,
+                        "member_attributed_fec_contribution_count": 5,
+                        "members_with_fec_candidate_id_count": 2,
+                        "public_statement_signal_count": 4,
+                        "members_with_public_statement_signal_count": 3,
+                    }
+                ],
             ],
-        ],
-    ) as fetch:
+        ) as fetch,
+        patch("src.db.repositories.fetch_all", fetch),
+    ):
         fetch_prediction_fec_inventory(conn, feature_cutoff=dt.date(2024, 12, 31))
 
     _, sql, _ = fetch.call_args_list[1].args
@@ -127,21 +136,24 @@ def test_fetch_prediction_fec_inventory_counts_only_term_active_public_statement
 
 def test_fetch_prediction_fec_inventory_survives_missing_fec_linkage_table() -> None:
     conn = MagicMock()
-    with patch(
-        "src.query.prediction_inventory.fetch_all",
-        side_effect=[
-            [{"exists": False}],
-            [
-                {
-                    "fec_contribution_count": 10,
-                    "member_attributed_fec_contribution_count": 0,
-                    "members_with_fec_candidate_id_count": 2,
-                    "public_statement_signal_count": 4,
-                    "members_with_public_statement_signal_count": 3,
-                }
+    with (
+        patch(
+            "src.query.prediction_inventory.fetch_all",
+            side_effect=[
+                [{"exists": False}],
+                [
+                    {
+                        "fec_contribution_count": 10,
+                        "member_attributed_fec_contribution_count": 0,
+                        "members_with_fec_candidate_id_count": 2,
+                        "public_statement_signal_count": 4,
+                        "members_with_public_statement_signal_count": 3,
+                    }
+                ],
             ],
-        ],
-    ) as fetch:
+        ) as fetch,
+        patch("src.db.repositories.fetch_all", fetch),
+    ):
         result = fetch_prediction_fec_inventory(conn, feature_cutoff=dt.date(2024, 12, 31))
 
     _, sql, params = fetch.call_args_list[1].args
@@ -162,21 +174,24 @@ def test_fetch_prediction_fec_inventory_without_linkage_counts_only_term_active_
     None
 ):
     conn = MagicMock()
-    with patch(
-        "src.query.prediction_inventory.fetch_all",
-        side_effect=[
-            [{"exists": False}],
-            [
-                {
-                    "fec_contribution_count": 10,
-                    "member_attributed_fec_contribution_count": 0,
-                    "members_with_fec_candidate_id_count": 2,
-                    "public_statement_signal_count": 4,
-                    "members_with_public_statement_signal_count": 3,
-                }
+    with (
+        patch(
+            "src.query.prediction_inventory.fetch_all",
+            side_effect=[
+                [{"exists": False}],
+                [
+                    {
+                        "fec_contribution_count": 10,
+                        "member_attributed_fec_contribution_count": 0,
+                        "members_with_fec_candidate_id_count": 2,
+                        "public_statement_signal_count": 4,
+                        "members_with_public_statement_signal_count": 3,
+                    }
+                ],
             ],
-        ],
-    ) as fetch:
+        ) as fetch,
+        patch("src.db.repositories.fetch_all", fetch),
+    ):
         fetch_prediction_fec_inventory(conn, feature_cutoff=dt.date(2024, 12, 31))
 
     _, sql, _ = fetch.call_args_list[1].args
@@ -224,11 +239,11 @@ def test_statement_signal_inventory_query_picks_sql_and_params_by_linkage_and_cu
 
 
 def test_relation_exists_handles_empty_rows_and_flag() -> None:
-    from src.query.prediction_inventory import _relation_exists
+    from src.db.repositories import relation_exists
 
-    with patch("src.query.prediction_inventory.fetch_all", return_value=[]):
-        assert _relation_exists(MagicMock(), "missing") is False
-    with patch("src.query.prediction_inventory.fetch_all", return_value=[{"exists": True}]):
-        assert _relation_exists(MagicMock(), "present") is True
-    with patch("src.query.prediction_inventory.fetch_all", return_value=[{"exists": False}]):
-        assert _relation_exists(MagicMock(), "present") is False
+    with patch("src.db.repositories.fetch_all", return_value=[]):
+        assert relation_exists(MagicMock(), "missing") is False
+    with patch("src.db.repositories.fetch_all", return_value=[{"exists": True}]):
+        assert relation_exists(MagicMock(), "present") is True
+    with patch("src.db.repositories.fetch_all", return_value=[{"exists": False}]):
+        assert relation_exists(MagicMock(), "present") is False

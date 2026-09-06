@@ -27,6 +27,7 @@ from src.export.contracts import (  # noqa: E402
 )
 from src.export.manifest import SnapshotManifest
 from src.export.writer import (
+    PlannedFile,
     ontology_agent_tools_path,
     ontology_frontend_client_path,
     ontology_frontend_contract_path,
@@ -47,17 +48,18 @@ from src.export.writer import (
     prediction_source_context_path,
     prediction_source_index_path,
     prediction_topology_path,
+    serialize_payload,
     zip_entry_path,
 )
 from src.homepage.contracts import HomepageFeedPayload, MemberMovementSummary, RecentEventSummary
 from src.ontology.contracts import OntologyEdgePayload, OntologyNodeRef
 from src.pipeline.publish_snapshot_run import (  # noqa: E402
     ZipBundleInputs,
-    _build_current_member_lookup_file,
     _build_current_member_lookup_payload,
     _build_evidence_cards,
     _build_homepage_bootstrap_file,
-    _build_homepage_file,
+    _build_homepage_file_from_payload,
+    _build_homepage_payload,
     _build_member_histories,
     _build_member_profiles,
     _build_ontology_edges,
@@ -509,17 +511,8 @@ class TestBuildHomepageFile:
                 "src.pipeline.publish_snapshot_run.assemble_homepage_payload", return_value=payload
             ),
         ):
-            pf = _build_homepage_file(conn, _SNAP_DATE)
+            pf = _build_homepage_file_from_payload(_build_homepage_payload(conn, _SNAP_DATE))
         assert pf.path == "homepage/feed.json"
-        assert len(pf.content) > 0
-        assert pf.sha256 and len(pf.sha256) == 64
-
-
-class TestBuildCurrentMemberLookupFile:
-    def test_produces_planned_file_at_correct_path(self) -> None:
-        pf = _build_current_member_lookup_file([_member_profile()], _SNAP_DATE)
-
-        assert pf.path == "identity/current-member-lookup.json"
         assert len(pf.content) > 0
         assert pf.sha256 and len(pf.sha256) == 64
 
@@ -596,7 +589,10 @@ class TestMakePlanner:
         profile = _member_profile()
         card = _evidence_card()
         feed = _zip_feed()
-        lookup = _build_current_member_lookup_file([profile], _SNAP_DATE)
+        lookup = PlannedFile.from_bytes(
+            "identity/current-member-lookup.json",
+            serialize_payload(_build_current_member_lookup_payload([profile], _SNAP_DATE)),
+        )
         homepage_payload = _fake_homepage_payload()
         homepage = mock.MagicMock()
         homepage.path = "homepage/feed.json"

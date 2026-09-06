@@ -55,7 +55,6 @@ from src.runtime.commands.core import (
     _missing_required_source_family_ids,
     _normalized_source_family_ids,
     _object_list,
-    _required_model_names,
     _run_metadata_source_state,
     _source_family_id_list,
     _strict_int_count_dict,
@@ -95,6 +94,7 @@ from src.runtime.commands.prediction_misc import (
     _prediction_input_inventory_refresh_commands,
 )
 from src.runtime.congress_options import current_congress_for_date
+from src.runtime.prediction_backtest import _required_model_names
 
 
 def _handle_verify_prediction_benchmark(args: Any) -> dict[str, Any]:

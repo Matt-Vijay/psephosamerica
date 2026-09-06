@@ -530,32 +530,6 @@ _PREDICTION_EVAL_RATE_THRESHOLD_ARGS = (
 )
 
 
-def _required_model_names(
-    value: Any,
-    *,
-    issues: list[str] | None,
-    label: str,
-) -> list[str]:
-    if value is None:
-        return []
-    values = value if isinstance(value, list) else [value]
-    valid: list[str] = []
-    malformed = False
-    for item in values:
-        if not isinstance(item, str):
-            malformed = True
-            continue
-        if not item or item != item.strip():
-            malformed = True
-            continue
-        valid.append(item)
-    if len(set(valid)) != len(valid):
-        malformed = True
-    if malformed and issues is not None:
-        issues.append(f"{label} must contain unique trimmed non-empty strings")
-    return sorted(set(valid))
-
-
 def _required_source_family_ids(value: Any, *, issues: list[str] | None) -> list[str]:
     source_family_ids = sorted(set(_required_string_list(value)))
     malformed = [

@@ -63,7 +63,7 @@ def _table_measure(connection: Any, table: str) -> dict[str, Any]:
                 "count(*) FILTER (WHERE valid_from IS NOT NULL AND valid_to IS NOT NULL AND valid_to <= valid_from) AS invalid_validity",
             ]
         )
-    cursor = connection.execute(f"SELECT {', '.join(selections)} FROM tm.{table}")
+    cursor = connection.execute(f"SELECT {', '.join(selections)} FROM tm.{table}")  # nosec B608 - identifiers and expressions come from fixed TABLE_SCHEMAS
     names = [column[0] for column in cursor.description]
     values = cursor.fetchone()
     result = dict(zip(names, values, strict=True))
@@ -140,7 +140,7 @@ def generate_integrity_report(
                 SELECT count(*) FROM tm.{table} f
                 LEFT JOIN tm.source_artifacts a USING (source_artifact_id)
                 WHERE f.source_artifact_id IS NULL OR a.source_artifact_id IS NULL
-                """,
+                """,  # nosec B608 - identifiers and expressions come from fixed TABLE_SCHEMAS
             )
             artifact_hash_mismatches[table] = _scalar(
                 connection,
@@ -148,7 +148,7 @@ def generate_integrity_report(
                 SELECT count(*) FROM tm.{table} f
                 JOIN tm.source_artifacts a USING (source_artifact_id)
                 WHERE f.content_sha256 IS DISTINCT FROM a.content_sha256
-                """,
+                """,  # nosec B608 - identifiers and expressions come from fixed TABLE_SCHEMAS
             )
         broken_relations = {
             "terms_person": _scalar(

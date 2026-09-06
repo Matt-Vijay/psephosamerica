@@ -20,7 +20,7 @@ MAX_INPUT_BYTES = 2 * 1024 * 1024
 MAX_OUTPUT_BYTES = 8 * 1024 * 1024
 WALL_SECONDS = 12
 CPU_SECONDS = 8
-_TEMP_ROOT = Path("/private/tmp") if Path("/private/tmp").is_dir() else Path("/tmp")
+_TEMP_ROOT = Path("/private/tmp") if Path("/private/tmp").is_dir() else Path("/tmp")  # nosec B108 - root only; TemporaryDirectory creates a private randomized child
 
 
 @dataclass(frozen=True)
@@ -125,7 +125,7 @@ class DenoRunner:
         }
         timed_out = False
         with stdout_path.open("wb") as stdout, stderr_path.open("wb") as stderr:
-            process = subprocess.Popen(
+            process = subprocess.Popen(  # nosec B603 - fixed trusted Deno, argv without shell, explicit sandbox permissions
                 command,
                 cwd=cwd,
                 env=environment,
@@ -159,7 +159,7 @@ class DenoRunner:
     def _check_version(self) -> str:
         if not self.deno.is_file() or not os.access(self.deno, os.X_OK):
             raise RuntimeError(f"Deno executable unavailable: {self.deno}")
-        result = subprocess.run(
+        result = subprocess.run(  # nosec B603 - fixed trusted Deno, argv without shell, explicit sandbox permissions
             [str(self.deno), "--version"],
             check=False,
             capture_output=True,
@@ -221,7 +221,7 @@ console.log(JSON.stringify(denied));
                 str(entry),
                 str(canary),
             ]
-            result = subprocess.run(
+            result = subprocess.run(  # nosec B603 - fixed trusted Deno, argv without shell, explicit sandbox permissions
                 command,
                 cwd=allowed,
                 env={"PATH": str(self.deno.parent), "DENO_NO_UPDATE_CHECK": "1"},

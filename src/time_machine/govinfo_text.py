@@ -18,7 +18,9 @@ from datetime import UTC, date, datetime
 from pathlib import Path, PurePosixPath
 from typing import Any
 from urllib.parse import urlsplit
-from xml.etree.ElementTree import Element
+from xml.etree.ElementTree import (
+    Element,  # nosec B405 - Element type only; XML is parsed by defusedxml
+)
 
 import httpx
 from defusedxml import ElementTree as SafeElementTree

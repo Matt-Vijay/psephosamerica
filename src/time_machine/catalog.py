@@ -31,7 +31,7 @@ def create_catalog(output_root: Path) -> Path:
             parquet = output_root / PARQUET_DIRNAME / f"{table}.parquet"
             connection.execute(
                 f"CREATE OR REPLACE VIEW tm.{table} AS "
-                f"SELECT * FROM read_parquet('{_sql_path(parquet)}')"
+                f"SELECT * FROM read_parquet('{_sql_path(parquet)}')"  # nosec B608 - fixed schema identifiers; path literals escaped by _sql_path
             )
         for table in _FACT_TABLES:
             condition = """
@@ -43,11 +43,11 @@ def create_catalog(output_root: Path) -> Path:
             """
             connection.execute(
                 f"CREATE OR REPLACE MACRO tm.{table}_as_of(cutoff) AS TABLE "
-                f"SELECT * FROM tm.{table} WHERE {condition}"
+                f"SELECT * FROM tm.{table} WHERE {condition}"  # nosec B608 - fixed schema identifiers; path literals escaped by _sql_path
             )
             connection.execute(
                 f"CREATE OR REPLACE MACRO tm.{table}_as_observed(cutoff) AS TABLE "
-                f"SELECT * FROM tm.{table} WHERE {condition} AND observed_at <= cutoff"
+                f"SELECT * FROM tm.{table} WHERE {condition} AND observed_at <= cutoff"  # nosec B608 - fixed schema identifiers; path literals escaped by _sql_path
             )
 
         union_parts: list[str] = []
@@ -57,7 +57,7 @@ def create_catalog(output_root: Path) -> Path:
                 "SELECT "
                 f"'{table}' AS table_name, CAST({key} AS VARCHAR) AS record_id, "
                 "event_at, available_at, availability_basis, observed_at, valid_from, valid_to, "
-                f"source_artifact_id FROM tm.{table}"
+                f"source_artifact_id FROM tm.{table}"  # nosec B608 - fixed schema identifiers; path literals escaped by _sql_path
             )
         connection.execute(
             "CREATE OR REPLACE VIEW tm.fact_index AS " + " UNION ALL ".join(union_parts)
@@ -152,7 +152,7 @@ def status(output_root: Path) -> dict[str, Any]:
         connection = connect(output_root)
         try:
             for table in TABLE_SCHEMAS:
-                row = connection.execute(f"SELECT count(*) FROM tm.{table}").fetchone()
+                row = connection.execute(f"SELECT count(*) FROM tm.{table}").fetchone()  # nosec B608 - fixed schema identifiers; path literals escaped by _sql_path
                 if row is None:
                     raise RuntimeError(f"count query returned no row for tm.{table}")
                 result["tables"][table] = row[0]

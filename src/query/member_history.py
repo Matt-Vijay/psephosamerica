@@ -14,18 +14,7 @@ from src.export.contracts import (
     MemberHistoryPayload,
     MemberHistorySnapshot,
 )
-
-
-def _normalize_member(row: dict[str, Any]) -> dict[str, Any]:
-    return {
-        "bioguide_id": row["bioguide_id"],
-        "name": row["full_name"],
-        "slug": row["slug"],
-        "state": row["state"],
-        "district": str(row["district"]) if row.get("district") is not None else None,
-        "chamber": row["chamber"],
-        "party": row["party"],
-    }
+from src.query.member_profile import normalize_member_row
 
 
 def _normalize_snapshots(snapshot_rows: list[dict[str, Any]]) -> list[MemberHistorySnapshot]:
@@ -120,7 +109,7 @@ def assemble_member_history(
     rule_fire_rows: list[dict[str, Any]],
     committee_rows: list[dict[str, Any]],
 ) -> MemberHistoryPayload:
-    member = _normalize_member(member_row)
+    member = normalize_member_row(member_row)
     return MemberHistoryPayload(
         bioguide_id=member["bioguide_id"],
         name=member["name"],

@@ -4,6 +4,8 @@ import json
 from datetime import UTC, datetime
 from pathlib import Path
 
+import pytest
+
 from src.graph.export import (
     DELTAS_FILENAME,
     MANIFEST_FILENAME,
@@ -53,22 +55,36 @@ def test_build_ordinance_corpus_dedupes_and_counts() -> None:
     assert set(jurisdictions) == {"us-ca-city-oakland", "us-ny-city-buffalo"}
 
 
-def test_export_locus_writes_corpus_cdc_sidecar(tmp_path: Path) -> None:
-    # Drive the export through its private building blocks with an in-memory stream
-    # (no network): replicate what export_locus does, then assert the artifacts.
-    from src.graph.cdc import diff_outputs
-    from src.graph.export import write_contract_corpus, write_delta_feed
-    from src.graph.ingest.locus_export import _sidecar_record
+def test_export_locus_writes_corpus_cdc_sidecar(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import huggingface_hub
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+
+    from src.graph.ingest.locus_export import LOCUS_REVISION, export_locus
 
     records = [_row(), _row(content="Noise after 10pm prohibited.", function="Enforcement")]
-    rows, jurisdictions, _scanned, _skipped = build_ordinance_corpus(iter(records), known_at=_KNOWN)
-    write_contract_corpus(rows, directory=tmp_path, as_of=_KNOWN)
-    deltas = diff_outputs({}, {r.canonical_id: r for r in rows})
-    write_delta_feed(deltas, path=tmp_path / DELTAS_FILENAME, append=False)
+    shard = tmp_path / "shard.parquet"
+    pq.write_table(pa.Table.from_pylist(records), shard)
+    calls = []
+
+    def download(*args, **kwargs):
+        calls.append((args, kwargs))
+        return str(shard)
+
+    monkeypatch.setattr(huggingface_hub, "hf_hub_download", download)
+    report = export_locus(out_directory=tmp_path, max_shards=1, max_rows=2, as_of=_KNOWN)
+    assert report.dataset_revision == LOCUS_REVISION
+    assert report.ordinances == report.deltas_written == 2
+    assert report.is_full_corpus is False
+    assert calls == [
+        (
+            ("LocalLaws/LOCUS-v1", "data/train-00000-of-00008.parquet"),
+            {"repo_type": "dataset", "revision": LOCUS_REVISION, "cache_dir": None},
+        )
+    ]
     sidecar = tmp_path / CONTENT_SIDECAR_FILENAME
-    with sidecar.open("w", encoding="utf-8") as handle:
-        for row in sorted(rows, key=lambda r: r.canonical_id):
-            handle.write(json.dumps(_sidecar_record(row), sort_keys=True) + "\n")
 
     assert (tmp_path / RECORDS_FILENAME).exists()
     assert (tmp_path / MANIFEST_FILENAME).exists()

@@ -12,7 +12,7 @@ import hashlib
 import json
 import math
 import re
-import xml.etree.ElementTree as ET
+import xml.etree.ElementTree as ET  # nosec B405 - types and ParseError only; XML is parsed by defusedxml
 from collections import Counter, defaultdict
 from collections.abc import Hashable, Mapping
 from dataclasses import dataclass

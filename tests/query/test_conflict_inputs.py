@@ -313,10 +313,13 @@ class TestFetchContributionRows:
                 "donor_name": "SOLAR BUILDERS PAC",
             }
         ]
-        with patch(
-            "src.query.conflict_inputs.fetch_all",
-            side_effect=[[{"exists": True}], fake],
-        ) as mock_fa:
+        with (
+            patch(
+                "src.query.conflict_inputs.fetch_all",
+                side_effect=[[{"exists": True}], fake],
+            ) as mock_fa,
+            patch("src.db.repositories.fetch_all", mock_fa),
+        ):
             result = fetch_contribution_rows(
                 conn,
                 bioguide_ids=[BIOGUIDE_A],
@@ -328,10 +331,13 @@ class TestFetchContributionRows:
     def test_passes_bioguide_ids_and_as_of_date(self):
         conn = MagicMock()
         cutoff = dt.date(2024, 12, 31)
-        with patch(
-            "src.query.conflict_inputs.fetch_all",
-            side_effect=[[{"exists": True}], []],
-        ) as mock_fa:
+        with (
+            patch(
+                "src.query.conflict_inputs.fetch_all",
+                side_effect=[[{"exists": True}], []],
+            ) as mock_fa,
+            patch("src.db.repositories.fetch_all", mock_fa),
+        ):
             fetch_contribution_rows(conn, bioguide_ids=[BIOGUIDE_A, BIOGUIDE_B], as_of_date=cutoff)
         _, _, params = mock_fa.call_args[0]
         assert params["bioguide_ids"] == [BIOGUIDE_A, BIOGUIDE_B]
@@ -339,10 +345,13 @@ class TestFetchContributionRows:
 
     def test_sql_joins_fec_linkage_to_members_and_source_artifacts(self):
         conn = MagicMock()
-        with patch(
-            "src.query.conflict_inputs.fetch_all",
-            side_effect=[[{"exists": True}], []],
-        ) as mock_fa:
+        with (
+            patch(
+                "src.query.conflict_inputs.fetch_all",
+                side_effect=[[{"exists": True}], []],
+            ) as mock_fa,
+            patch("src.db.repositories.fetch_all", mock_fa),
+        ):
             fetch_contribution_rows(
                 conn,
                 bioguide_ids=[BIOGUIDE_A],
@@ -363,10 +372,13 @@ class TestFetchContributionRows:
 
     def test_returns_empty_when_fec_linkage_table_is_absent(self):
         conn = MagicMock()
-        with patch(
-            "src.query.conflict_inputs.fetch_all",
-            return_value=[{"exists": False}],
-        ) as mock_fa:
+        with (
+            patch(
+                "src.query.conflict_inputs.fetch_all",
+                return_value=[{"exists": False}],
+            ) as mock_fa,
+            patch("src.db.repositories.fetch_all", mock_fa),
+        ):
             result = fetch_contribution_rows(
                 conn,
                 bioguide_ids=[BIOGUIDE_A],

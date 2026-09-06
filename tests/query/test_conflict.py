@@ -507,26 +507,3 @@ class TestSectorHoldingsOverlap:
         }
         bundle = assemble_sector_holdings_overlap_bundle(row)
         assert bundle.context["overlap_days"] == 179
-
-
-def test_source_anchor_if_present_returns_none_for_missing_source_id() -> None:
-    from src.query.conflict import _source_anchor_if_present
-
-    assert (
-        _source_anchor_if_present(source_type="financial_disclosure", source_id=None, label="x")
-        is None
-    )
-
-
-def test_source_anchor_if_present_builds_anchor_when_id_present() -> None:
-    from src.query.conflict import _source_anchor_if_present
-
-    anchor = _source_anchor_if_present(
-        source_type="financial_disclosure",
-        source_id=42,
-        label="FD 42",
-        url="https://efdsearch.senate.gov/search/view/paper/42/",
-    )
-    assert anchor is not None
-    assert anchor.source_id == "42"  # coerced to str
-    assert anchor.label == "FD 42"

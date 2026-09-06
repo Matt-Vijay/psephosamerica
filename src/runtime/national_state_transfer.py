@@ -39,6 +39,7 @@ HONEST NOTES baked into the report:
 from __future__ import annotations
 
 import json
+import pickle  # nosec B403 - legacy primitive-only cache; class resolution is forbidden
 from collections import defaultdict
 from collections.abc import Iterator
 from pathlib import Path
@@ -62,6 +63,13 @@ DEFAULT_CANONICAL = (
     Path("data/exports/openstates/bulk_records.jsonl"),
 )
 DEFAULT_FEDERAL = Path("data/real/house_118_rich.jsonl")
+
+
+class _RollcallCacheReader(pickle.Unpickler):
+    """Read existing list/dict/scalar caches without importing or calling globals."""
+
+    def find_class(self, module: str, name: str) -> Any:
+        raise pickle.UnpicklingError("roll-call cache must contain primitive data only")
 
 
 def build_person_index(
@@ -308,8 +316,6 @@ def run(
     ``cache_path`` (optional) caches the streamed per-jurisdiction roll-calls + stats
     so a re-run skips the multi-minute 22GB parse: built on first run, reused after.
     """
-    import pickle
-
     person_index = build_person_index(people_path, canonical_paths)
     source_records = build_vote_records(load_rich_rollcalls(federal_corpus))[-max_source:]
     # Train the federal source head ONCE and reuse it for every jurisdiction (the
@@ -321,7 +327,7 @@ def run(
         print(f"source head trained on {len(source_records):,} federal pairs", flush=True)
     if cache_path is not None and cache_path.exists():
         with cache_path.open("rb") as fh:
-            rollcalls_by_state, stats = pickle.load(fh)
+            rollcalls_by_state, stats = _RollcallCacheReader(fh).load()
         if verbose:
             print(f"loaded streamed roll-calls from cache {cache_path}", flush=True)
     else:

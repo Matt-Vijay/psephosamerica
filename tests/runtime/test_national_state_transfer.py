@@ -9,17 +9,34 @@ labels join through ``ce-`` ids, and unlabeled voters are dropped (never invente
 from __future__ import annotations
 
 import json
+import pickle
+from io import BytesIO
 from pathlib import Path
 from typing import Any
+
+import pytest
 
 from src.prediction.defection import build_party_profiles
 from src.prediction.defection_head import train_defection_head
 from src.runtime.national_state_transfer import (
+    _RollcallCacheReader,
     build_person_index,
     evaluate_jurisdiction,
     run,
     stream_state_rollcalls,
 )
+
+
+def test_legacy_rollcall_cache_reads_data_but_never_resolves_globals() -> None:
+    data = (
+        {"CA": [{"date": "2020-01-01", "sectors": [], "votes": [["A", "D", "CA", "yea"]]}]},
+        {"__global__": {"total_edges": 1, "labeled_edges": 1}},
+    )
+    for protocol in range(pickle.HIGHEST_PROTOCOL + 1):
+        assert _RollcallCacheReader(BytesIO(pickle.dumps(data, protocol=protocol))).load() == data
+    # Even a harmless global expression must be rejected, not evaluated.
+    with pytest.raises(pickle.UnpicklingError, match="primitive data only"):
+        _RollcallCacheReader(BytesIO(b"cbuiltins\neval\n(V40 + 2\ntR.")).load()
 
 
 def _write(path: Path, rows: list[dict[str, Any]]) -> None:

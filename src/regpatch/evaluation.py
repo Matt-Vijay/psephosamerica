@@ -32,7 +32,7 @@ PILOT_SPEC = PILOT_ROOT / "source_spec.json"
 
 TASK_CARD = PILOT_ROOT / "TASK.md"
 
-_TEMP_ROOT = Path("/private/tmp") if Path("/private/tmp").is_dir() else Path("/tmp")
+_TEMP_ROOT = Path("/private/tmp") if Path("/private/tmp").is_dir() else Path("/tmp")  # nosec B108 - root only; TemporaryDirectory creates a private randomized child
 
 
 def bundle_episode(

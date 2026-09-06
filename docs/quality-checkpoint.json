@@ -1,0 +1,40 @@
+{
+  "verified_at": "2026-09-06T03:45:00Z",
+  "scope": "Repository cleanup since 1812afb; retained interfaces and research paths, no new product features",
+  "production_physical_loc_net": -2177,
+  "loc_receipt": "git diff --numstat 1812afb <checkpoint-commit> -- src",
+  "runtime": {
+    "python": "3.12.13",
+    "deno": "2.8.3",
+    "postgresql": "15.14",
+    "ruff": "0.16.5",
+    "coverage": "7.16.0"
+  },
+  "verification": {
+    "unit_command": "python -m coverage run -m pytest tests/ -q --ignore=tests/integration -k 'not private_oracle_matches_supplied_fixture'",
+    "unit_result": {"passed": 11160, "skipped": 1, "deselected": 2, "seconds": 279.25},
+    "coverage_percent": 90.03,
+    "coverage_gate": 90,
+    "coverage_basis": "Whole unit run plus affected rechecks; changed command-module line data discarded before recollection; private database checks excluded",
+    "postgresql_tests": {"passed": 37, "seconds": 1.73},
+    "optional_ml_boundary_tests": {"passed": 7},
+    "ruff_lint_and_format": "PASS",
+    "strict_mypy": "PASS",
+    "bandit_findings": 0,
+    "compileall_and_pip_check": "PASS",
+    "existing_benchmark_regression_gates": 3,
+    "private_transfer_oracle_receipt": "PASS",
+    "fresh_core_only_wheel_install": "PASS"
+  },
+  "public_demo": {
+    "trusted_oracle": 100.0,
+    "copy_before": 69.9615,
+    "bundle_sha256": "d93ea689f7f3d047098da19d91711d10423725470edc39622f07199c65b493f5",
+    "submission_sha256": "be464827498d25c0add41174fbe55201c419ff2bfb7fb10ad23ad15d78c2fd81"
+  },
+  "distribution": {
+    "wheel_sha256": "d45eff61996a49d5a9cb0072435923f85eb7c66af0a6dddc51ca60c1a07975ce",
+    "private_evaluator_paths_in_wheel": 0,
+    "raw_data_or_model_baselines_changed": false
+  }
+}

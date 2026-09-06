@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from src.db.repositories import ConnectionLike, fetch_all
+from src.db.repositories import ConnectionLike, fetch_all, relation_exists
 from src.query.member_terms import member_active_on_sql
 
 _FEC_INVENTORY_SQL = f"""
@@ -184,7 +184,7 @@ def fetch_prediction_fec_inventory(
     *,
     feature_cutoff: Any | None = None,
 ) -> dict[str, Any]:
-    if not _relation_exists(conn, "fec_candidate_committee_linkage"):
+    if not relation_exists(conn, "fec_candidate_committee_linkage"):
         return _fetch_prediction_fec_inventory_without_fec_linkage(
             conn,
             feature_cutoff=feature_cutoff,
@@ -199,17 +199,6 @@ def fetch_prediction_fec_inventory(
         statement_params,
     )
     return rows[0] if rows else {}
-
-
-def _relation_exists(conn: ConnectionLike, relation_name: str) -> bool:
-    rows = fetch_all(
-        conn,
-        "SELECT to_regclass(%s) IS NOT NULL AS exists",
-        (relation_name,),
-    )
-    if not rows:
-        return False
-    return bool(rows[0].get("exists"))
 
 
 def _fetch_prediction_fec_inventory_without_fec_linkage(

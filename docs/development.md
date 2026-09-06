@@ -2,12 +2,14 @@
 
 Use checks proportionate to the area changed. The large historical backend CI
 is documented separately below; it is not the local loop for RegPatch work.
+The [cleanup verification receipt](quality-checkpoint.json) records the measured
+cross-repository checkpoint; it is not a claim of complete branch coverage.
 
 ## RegPatch verification
 
 ```bash
 .venv/bin/pip install -e . pytest ruff mypy types-defusedxml
-.venv/bin/pytest -q tests/test_regpatch_compiler.py tests/test_regpatch_grader.py tests/test_regpatch_runner.py tests/test_regpatch_cli.py
+.venv/bin/pytest -q tests/test_regpatch_*.py
 .venv/bin/ruff check src/regpatch tests/test_regpatch_*.py
 .venv/bin/ruff format --check src/regpatch tests/test_regpatch_*.py
 .venv/bin/mypy --strict src/regpatch
@@ -17,7 +19,9 @@ The runner tests require the trusted Deno path described in the
 [operator guide](../src/regpatch/README.md). Run `psephos-regpatch demo` in a
 fresh temporary directory to check public end-to-end behavior. Changes to
 projection or scoring require remeasuring affected scores, not changing tests
-to fit them. Corpus checks use the already-retained ignored evaluator store.
+to fit them. The corpus adapter test uses only copies of public bytes and asserts
+that duplication cannot pass the scale gate. Real hidden-corpus checks use the
+already-retained ignored evaluator store.
 
 ## Legacy backend CI
 
@@ -32,11 +36,14 @@ python3 -m src.runtime.main bootstrap-db --dry-run
 ### Environment
 
 - Python 3.12.
+- Deno 2.8.3 at `/opt/homebrew/bin/deno` or `/usr/local/bin/deno` for executable
+  evaluation tests. CI installs it at the latter trusted path.
 - Install with dev tooling: `pip install -e ".[dev]"`.
 - The pinned local semantic model is optional: `pip install -e ".[dev,enrichment]"`.
   Only the full unit-test CI job installs it; lint, compilation, typing and
   integration checks do not need Torch or Sentence Transformers. Tests of the
   real library-loading boundary require this extra even though they mock model inference.
+  Linux CI installs the pinned CPU-only Torch wheel first to avoid CUDA downloads.
 - The package lives under `src/` and is importable as `src.*`
   (`pythonpath = ["src"]` in `pyproject.toml`).
 
@@ -66,6 +73,17 @@ keeps protecting the gain. To see what is missing locally:
 python -m coverage run -m pytest tests/ -q --ignore=tests/integration
 python -m coverage report --sort=cover --skip-covered
 ```
+
+The executable public/hidden transfer fixtures run without the private database.
+Only the two explicit `test_private_oracle_matches_supplied_fixture` parity checks
+skip when `data/time_machine/time_machine.duckdb` is absent. Validate all retained
+private-oracle receipts separately with `python -m src.transfer_eval validate`;
+use `validate --without-oracle` for the self-contained fixture check.
+
+Architecture checks import every library module and exercise declared CLI help
+from an empty directory with network access blocked. Whole-workflow tests cover
+local builds/resume, cutoff queries, source receipt failures, portable scoring,
+and the retained research paths using small fixtures—not new benchmark results.
 
 ### Integration tests and Postgres
 

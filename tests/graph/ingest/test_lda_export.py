@@ -4,6 +4,8 @@ import json
 from datetime import UTC, datetime
 from pathlib import Path
 
+import httpx
+
 from src.graph.bills import BillRef
 from src.graph.cdc import diff_outputs
 from src.graph.export import (
@@ -18,6 +20,7 @@ from src.graph.ingest.lda_export import (
     INGEST_META_FILENAME,
     LOBBYING_EDGES_FILENAME,
     YearStats,
+    backfill_lda_years,
     build_lobbying_graph,
     year_coverage_stats,
 )
@@ -68,6 +71,48 @@ def test_build_lobbying_graph_resolves_and_links_bills() -> None:
     bill_targets = {e.dst_id for e in contacts}
     assert BillRef.for_congress(118, "H.R. 2471").canonical_id in bill_targets
     assert BillRef.for_congress(118, "S. 4321").canonical_id in bill_targets
+
+
+def test_backfill_receipts_resume_without_duplicate_or_partial_rows(tmp_path: Path) -> None:
+    calls = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        year = int(request.url.params["filing_year"])
+        calls.append(year)
+        return httpx.Response(
+            200,
+            json={
+                "next": None,
+                "results": [
+                    _filing(filing_year=year, filing_uuid=f"{year:08d}-1111-1111-1111-111111111111")
+                ],
+            },
+        )
+
+    with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+        first = backfill_lda_years(
+            [2023, 2024], out_directory=tmp_path, as_of=_OBSERVED, client=client
+        )
+        assert first.filings == 2 and first.registrants == first.clients == 1
+        meta = json.loads((tmp_path / INGEST_META_FILENAME).read_text())
+        assert [row["retention_edges"] for row in meta["per_year"]] == [1, 1]
+        assert (
+            backfill_lda_years([2023, 2024], out_directory=tmp_path, as_of=_OBSERVED, client=client)
+            == first
+        )
+        assert calls == [2023, 2024]
+        # Simulate interruption after a page was written but before its receipt.
+        shard = tmp_path / "years/2024.jsonl"
+        shard.write_text(shard.read_text() + '{"partial":')
+        state_path = tmp_path / "backfill_state.json"
+        state = json.loads(state_path.read_text())
+        state["years"]["2024"].update(done=False, rows=0, next_page=2)
+        state_path.write_text(json.dumps(state))
+        recovered = backfill_lda_years(
+            [2023, 2024], out_directory=tmp_path, as_of=_OBSERVED, client=client
+        )
+        assert recovered == first and calls == [2023, 2024, 2024]
+        assert len(shard.read_text().splitlines()) == 1
 
 
 def test_build_lobbying_graph_skips_malformed() -> None:

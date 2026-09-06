@@ -124,6 +124,17 @@ def test_iter_bulk_records_streams_utf16_zip(tmp_path: Path) -> None:
     }
 
 
+def test_bulk_rejects_entity_expansion_and_continues_archive(tmp_path: Path) -> None:
+    archive = tmp_path / "hostile.zip"
+    hostile = '<!DOCTYPE PublicFilings [<!ENTITY name "Expanded Name">]>' + _public_filings(
+        _filing_xml(client_name="&name;")
+    )
+    _write_zip(archive, ("hostile.xml", hostile), ("valid.xml", _public_filings(_filing_xml())))
+    records = list(iter_bulk_records(archive))
+    assert len(records) == 1
+    assert records[0]["client"]["name"] == "Acme Corp"
+
+
 def _existing_export(tmp_path: Path) -> Path:
     """Seed an existing LDA export (corpus + one retention edge) to merge into."""
     from src.graph.export import write_contract_corpus

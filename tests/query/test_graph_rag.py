@@ -81,6 +81,42 @@ def test_retrieval_ranks_relevant_entity_first() -> None:
     assert retrieved[0].score > 0
 
 
+def test_unembedded_money_and_speech_paths_keep_edge_provenance() -> None:
+    from src.query.graph_rag import _expand_facts
+
+    store = _store()
+    for identity, name in (
+        ("org-acme", "Acme"),
+        ("org-big", "Large Recipient"),
+        ("org-empty", "No Evidence"),
+    ):
+        store.add_node(Node(identity, "org", name, (), "2026-06-01", ()))
+    edges = [
+        Edge("federal_award", "org-acme", "agency", {"amount": "42"}, _prov("https://x/award")),
+        Edge("federal_award", "org-big", "agency", {"amount": "900"}, _prov("https://x/large")),
+        Edge("lobbying_retention", "org-acme", "firm", {}, _prov("https://x/retention")),
+        Edge("lobbying_contact", "org-acme", "cb-rent", {}, _prov("https://x/contact")),
+        Edge("floor_speech", "ce-housing", "cb-rent", {}, _prov("https://x/speech")),
+    ]
+    for edge in edges:
+        store.add_edge(edge)
+    results = retrieve_subgraph(store, "Acme lobbying federal awards", top_k=2)
+    assert [row.node.canonical_id for row in results[:2]] == ["org-acme", "org-big"]
+    assert all(row.node.canonical_id != "org-empty" for row in results)
+    assert len(results[0].facts) == len(results[0].fact_citations) == 3
+    for identity in ("ce-housing", "cb-rent"):
+        facts, citations = _expand_facts(store, store.nodes[identity])
+        assert any("spoke on the floor" in fact for fact in facts)
+        assert any(citation["source_url"] == "https://x/speech" for citation in citations)
+        assert len(facts) == len(citations)
+    answer = GraphRagAnswerer(store).answer("Acme lobbying federal awards")
+    assert answer.used_llm is False
+    assert {citation["source_url"] for citation in answer.citations()} >= {
+        "https://x/award",
+        "https://x/contact",
+    }
+
+
 def test_retrieval_expands_cited_facts() -> None:
     store = _store()
     retrieved = retrieve_subgraph(store, "rent control", top_k=3)

@@ -20,9 +20,8 @@ set drops in by removing the caps. The sample size actually ingested is recorded
 in the manifest sidecar (``ingest_meta.json``) so the cap is documented, never
 hidden.
 
-This module isolates all network + parquet I/O (huggingface_hub + pyarrow, which
-are build-time tools, not core library deps) from the pure adapter, keeping the
-core graph library importable without them.
+This module isolates download and Parquet I/O from the pure adapter. PyArrow is
+a core Time Machine dependency; huggingface_hub is loaded only for downloads.
 """
 
 from __future__ import annotations
@@ -46,12 +45,14 @@ from src.graph.ingest.locus import (
     LOCUS_DATASET_URL,
     LOCUS_LICENSE,
     now_utc,
-    ordinance_content_sha256,
     parse_locus_row,
 )
 from src.graph.jurisdictions import Jurisdiction
 
 LOCUS_REPO = "LocalLaws/LOCUS-v1"
+# Revision retained by the existing local acquisition cache; never mix moving
+# branch snapshots across the independently downloaded Parquet shards.
+LOCUS_REVISION = "4cee954ca8ad8e31cb0502dff6682c87b74b4302"
 SHARD_TEMPLATE = "data/train-{index:05d}-of-00008.parquet"
 SHARD_COUNT = 8
 CONTENT_SIDECAR_FILENAME = "ordinance_content.jsonl"
@@ -91,6 +92,7 @@ class LocusIngestReport:
     jurisdictions: int
     deltas_written: int
     is_full_corpus: bool
+    dataset_revision: str = LOCUS_REVISION
 
 
 def iter_shard_rows(
@@ -110,6 +112,7 @@ def iter_shard_rows(
             LOCUS_REPO,
             SHARD_TEMPLATE.format(index=index),
             repo_type="dataset",
+            revision=LOCUS_REVISION,
             cache_dir=cache_dir,
         )
         parquet = pq.ParquetFile(path)
@@ -206,8 +209,6 @@ def export_locus(
     (out_dir / INGEST_META_FILENAME).write_text(
         json.dumps(asdict(report), indent=2, sort_keys=True) + "\n", encoding="utf-8"
     )
-    # Touch the content-hash helper so it stays referenced for the sidecar tooling.
-    assert ordinance_content_sha256 is not None
     return report
 
 

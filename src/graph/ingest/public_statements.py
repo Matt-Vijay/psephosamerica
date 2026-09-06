@@ -10,31 +10,8 @@ published).
 
 from __future__ import annotations
 
-from datetime import UTC, date, datetime
-
 from src.graph.edges import GraphEdge
-from src.graph.provenance import ProvenanceEnvelope
-
-
-def statement_provenance(
-    *,
-    source_url: str,
-    content_sha256: str,
-    statement_date: date,
-    first_observed_at: datetime,
-    known_at: datetime | None = None,
-) -> ProvenanceEnvelope:
-    """Provenance for a public statement; ``known_at`` defaults to the statement day."""
-    default_known = datetime(
-        statement_date.year, statement_date.month, statement_date.day, tzinfo=UTC
-    )
-    return ProvenanceEnvelope(
-        source_url=source_url,
-        content_sha256=content_sha256,
-        first_observed_at=first_observed_at,
-        valid_from=statement_date,
-        known_at=known_at if known_at is not None else default_known,
-    )
+from src.graph.provenance import ProvenanceEnvelope, statement_provenance as statement_provenance
 
 
 def statement_alignment_edge(

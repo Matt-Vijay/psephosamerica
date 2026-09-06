@@ -15,7 +15,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 
-from src.db.repositories import ConnectionLike, fetch_all
+from src.db.repositories import ConnectionLike, fetch_all, relation_exists
 from src.normalize.taxonomy_runtime import CommitteeMapping
 
 # late_or_amended_disclosure — fully DB-backed
@@ -233,24 +233,13 @@ def fetch_contribution_rows(
     Sector enrichment is deliberately not done here; callers must resolve a
     row to an industry/sector before turning it into an ontology edge.
     """
-    if not _relation_exists(conn, "fec_candidate_committee_linkage"):
+    if not relation_exists(conn, "fec_candidate_committee_linkage"):
         return []
     return fetch_all(
         conn,
         _CONTRIBUTIONS_SQL,
         {"bioguide_ids": bioguide_ids, "as_of_date": as_of_date},
     )
-
-
-def _relation_exists(conn: ConnectionLike, relation_name: str) -> bool:
-    rows = fetch_all(
-        conn,
-        "SELECT to_regclass(%s) IS NOT NULL AS exists",
-        (relation_name,),
-    )
-    if not rows:
-        return False
-    return bool(rows[0].get("exists"))
 
 
 # assemble_* helpers — sector-dependent families

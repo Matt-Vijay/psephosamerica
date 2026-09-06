@@ -158,13 +158,13 @@ def run(
     }
     results: dict[str, Any] = {}
     base_auc = 0.0
-    for name, (names, extra) in arms.items():
+    for name, (names, auxiliary_features) in arms.items():
         tr = [
-            ({**defection_features(r, profiles), **extra(r, pa, subs)}, defected(r))
+            ({**defection_features(r, profiles), **auxiliary_features(r, pa, subs)}, defected(r))
             for r, pa, subs in train
         ]
         ev = [
-            ({**defection_features(r, profiles), **extra(r, pa, subs)}, defected(r))
+            ({**defection_features(r, profiles), **auxiliary_features(r, pa, subs)}, defected(r))
             for r, pa, subs in eval_records
         ]
         i, c = train_logistic_rows(tr, names)

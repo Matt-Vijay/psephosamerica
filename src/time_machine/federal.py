@@ -50,15 +50,6 @@ def _entry(entries: Mapping[Path, InventoryEntry], path: Path) -> InventoryEntry
         raise KeyError(f"required federal input was not inventoried: {path}") from exc
 
 
-def _source(entry: InventoryEntry, *, family: str | None = None) -> dict[str, Any]:
-    return {
-        "source_artifact_id": entry.source_artifact_id,
-        "source_family": family or entry.source_family,
-        "source_url": entry.source_url,
-        "content_sha256": entry.content_sha256,
-    }
-
-
 def _fact_provenance(
     entry: InventoryEntry,
     *,

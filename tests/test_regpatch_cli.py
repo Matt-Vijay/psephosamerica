@@ -183,3 +183,24 @@ def test_split_scores_are_weighted_without_a_third_suite_execution() -> None:
         "overall": 68.0,
         "components": {"changed_regions": 0.6},
     }
+
+
+def test_public_demo_receipt_is_portable_and_baselines_stay_separated(tmp_path: Path) -> None:
+    first = evaluation.run_demo(tmp_path / "first")
+    second = evaluation.run_demo(tmp_path / "another directory")
+    assert first["demo_sha256"] == second["demo_sha256"]
+    assert first["evaluation"] == second["evaluation"]
+    measured = first["evaluation"]
+    assert measured["trusted_oracle_score"] == 100
+    scores = {row["baseline"]: row["overall"] for row in measured["baselines"]}
+    assert scores == {
+        "copy-before": 69.9615,
+        "copy-rule-replacement": 0.0,
+        "naive-regex": 24.99,
+        "public-hardcode": 100.0,
+        "damaging-partial": 1.8907,
+    }
+    report = (tmp_path / "first/demo-report.json").read_bytes()
+    assert str(tmp_path).encode() not in report
+    with pytest.raises(FileExistsError):
+        evaluation.run_demo(tmp_path / "first")

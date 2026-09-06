@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 import src.api as api
+import src.api.read_service as read_service
 from src.api.contracts import NotFoundBody
 from src.api.read_service import (
     get_current_member_lookup,
@@ -307,6 +308,50 @@ def test_get_homepage_returns_wrapped_payload_with_batch_meta(tmp_path: Path) ->
     assert result.data.recent_evidence_card_ids == ["ec-0001"]
     assert result.meta.snapshot_date == snapshot_date
     assert result.meta.published_at == published_at
+
+
+def test_valid_artifacts_are_not_served_without_snapshot_metadata(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    make_snapshot(
+        tmp_path,
+        ontology_edges=[_ontology_edge(), _committee_sector_edge()],
+        prediction_readiness=_prediction_readiness_with_member(),
+    )
+    _write_homepage_feed(tmp_path)
+    source_key = get_prediction_source_index(snapshot_root=tmp_path).data.sources[0].source_key
+    endpoints = [
+        (get_homepage, ()),
+        (get_member, ("nancy-pelosi",)),
+        (get_evidence, ("ec-0001",)),
+        (get_current_member_lookup, ()),
+        (get_ontology_graph, ()),
+        (get_ontology_index, ()),
+        (get_ontology_member_graph, ("P000197",)),
+        (get_ontology_member_features, ("P000197",)),
+        (get_prediction_readiness, ()),
+        (get_prediction_bootstrap, ()),
+        (get_prediction_topology, ()),
+        (get_prediction_readiness_index, ()),
+        (get_prediction_sector_readiness, ()),
+        (get_prediction_sector_context, ("energy",)),
+        (get_prediction_source_index, ()),
+        (get_prediction_source_context, (source_key,)),
+        (get_prediction_committee_readiness, ()),
+        (get_prediction_committee_context, ("HSEC",)),
+        (get_prediction_member_readiness, ("P000197",)),
+        (get_prediction_member_context, ("P000197",)),
+    ]
+    assert all(endpoint(*args, snapshot_root=tmp_path).ok for endpoint, args in endpoints)
+
+    def missing_metadata(**kwargs):
+        raise FileNotFoundError("snapshot receipt unavailable")
+
+    monkeypatch.setattr(read_service, "load_latest_local_snapshot_metadata", missing_metadata)
+    for endpoint, args in endpoints:
+        result = endpoint(*args, snapshot_root=tmp_path)
+        assert isinstance(result, NotFoundBody), endpoint.__name__
+        assert result.resource_type == "snapshot"
 
 
 def test_get_homepage_returns_not_found_when_artifact_missing(tmp_path: Path) -> None:

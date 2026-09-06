@@ -20,9 +20,190 @@ from src.regpatch.compiler import (
     probe_federal_register,
 )
 from src.regpatch.corpus import _classify_compiled_episode
+from src.regpatch.sources import acquire_candidate_sources, probe_ecfr_versions
 
 PILOT_SPEC = Path(__file__).resolve().parents[1] / "src/regpatch/pilot/source_spec.json"
 TARGET_SHA256 = "778b6079ddea582cdcfe1fe5adba9badb47c60752ce6100c30ecd3c267263061"
+
+
+def test_official_acquisition_lifecycle_resumes_and_receipts_bad_version_rows(
+    tmp_path: Path,
+) -> None:
+    """Replay the public source quartet through HTTP, not a mocked compiler."""
+    spec = json.loads(PILOT_SPEC.read_text())
+    sources = spec["sources"]
+    rule = sources["rules"][0]
+    objects = {
+        row["source_url"]: (PILOT_SPEC.parent / row["path"]).read_bytes()
+        for row in (sources["base"], sources["target"], rule["xml"], rule["metadata"])
+    }
+    metadata = json.loads(objects[rule["metadata"]["source_url"]])
+    version = {
+        "title": 47,
+        "part": "73",
+        "identifier": "73.622",
+        "type": "section",
+        "amendment_date": "2024-01-31",
+        "issue_date": "2024-01-31",
+        "substantive": True,
+    }
+    # Malformed/scope/clock rows must be reported, never silently made into tasks.
+    version_rows = [
+        None,
+        {},
+        {**version, "title": 5},
+        {**version, "type": "unknown"},
+        {**version, "issue_date": "2024-01-30"},
+        {**version, "substantive": False},
+        version,
+    ]
+    calls: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(str(request.url))
+        assert request.headers["accept-encoding"] == "identity"
+        if request.url.path == "/api/v1/documents.json":
+            return httpx.Response(200, json={"results": [metadata], "count": 1})
+        if request.url.path == "/api/versioner/v1/versions/title-47.json":
+            return httpx.Response(200, json={"content_versions": version_rows})
+        return httpx.Response(200, content=objects[str(request.url)])
+
+    with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+        report = probe_federal_register(
+            tmp_path,
+            start_date=date(2024, 1, 31),
+            end_date=date(2024, 1, 31),
+            client=client,
+        )
+        versions = probe_ecfr_versions(
+            tmp_path,
+            title=47,
+            part="73",
+            issue_date_start=date(2024, 1, 31),
+            issue_date_end=date(2024, 1, 31),
+            client=client,
+        )
+        assert versions["totals"] == {
+            "content_versions": 2,
+            "substantive_versions": 1,
+            "candidate_windows": 1,
+            "rejected_rows": 5,
+        }
+        windows = expand_candidate_windows(report["candidates"][0], versions)
+        assert len(windows) == 1
+        acquired = acquire_candidate_sources(tmp_path, windows[0], client=client)
+        assert len(calls) == 6
+        assert acquire_candidate_sources(tmp_path, windows[0], client=client) == acquired
+        assert len(calls) == 6
+    result = compile_episode(acquired, tmp_path / "compiled")
+    assert result["target_sha256"] == TARGET_SHA256
+    assert result["changed_sections"] == ["73.622"]
+    assert (
+        json.loads((acquired.parent / "acquisition-request.json").read_text())["status"]
+        == "COMPLETE"
+    )
+
+    # A changed window must not reuse an URL for a different date.
+    with pytest.raises(CompileError, match="CANDIDATE_SOURCE_URL_MISMATCH"):
+        acquire_candidate_sources(tmp_path, {**windows[0], "base_date": "2024-01-29"})
+    with pytest.raises(CompileError, match="CANDIDATE_INVALID"):
+        acquire_candidate_sources(tmp_path, report["candidates"][0])
+    with pytest.raises(CompileError, match="VERSION_JOIN_SCOPE_MISMATCH"):
+        expand_candidate_windows(
+            report["candidates"][0], {**versions, "scope": {"title": 5, "part": "73"}}
+        )
+
+
+def test_acquisition_compression_caps_and_failure_receipts(tmp_path: Path) -> None:
+    import gzip
+
+    body = b"<root>" + b"x" * 4096 + b"</root>"
+    compressed = gzip.compress(body, mtime=0)
+    url = "https://www.ecfr.gov/api/versioner/v1/full/2024-01-31/title-47.xml?part=73"
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            stream=httpx.ByteStream(compressed),
+            headers={"Content-Encoding": "gzip", "Content-Length": str(len(compressed))},
+        )
+
+    with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+        row = acquire_official_source(
+            tmp_path / "valid",
+            url=url,
+            identifier="snapshot",
+            role="base_ecfr",
+            cap_bytes=8192,
+            client=client,
+        )
+        assert row["network_byte_count"] == len(compressed)
+        assert row["byte_count"] == len(body)
+        assert (tmp_path / "valid" / row["content_path"]).read_bytes() == body
+        assert row["content_decoded_for_storage"] is True
+        assert row["response_headers"]["content-encoding"] == "gzip"
+        with pytest.raises(CompileError, match="ACQUISITION_DECODED_CAP_EXCEEDED"):
+            acquire_official_source(
+                tmp_path / "limited",
+                url=url,
+                identifier="snapshot",
+                role="base_ecfr",
+                cap_bytes=1024,
+                client=client,
+            )
+        assert list((tmp_path / "limited/sha256").iterdir()) == []
+
+    with httpx.Client(transport=httpx.MockTransport(lambda request: httpx.Response(503))) as client:
+        with pytest.raises(CompileError, match="ACQUISITION_HTTP_ERROR"):
+            probe_ecfr_versions(
+                tmp_path / "failed",
+                title=47,
+                part="73",
+                issue_date_start=date(2024, 1, 31),
+                issue_date_end=date(2024, 1, 31),
+                client=client,
+            )
+    receipt = json.loads(
+        (tmp_path / "failed/versions-title-47-part-73-page-1-request.json").read_text()
+    )
+    assert receipt["status"] == "FAILED"
+    assert receipt["failure"]["code"] == "ACQUISITION_HTTP_ERROR"
+
+
+@pytest.mark.parametrize(
+    "headers,body,cap,code",
+    [
+        ({"Content-Length": "no"}, b"abc", 1024, "ACQUISITION_HEADER_INVALID"),
+        ({"Content-Length": "-1"}, b"abc", 1024, "ACQUISITION_HEADER_INVALID"),
+        ({"Content-Length": "4"}, b"abc", 1024, "ACQUISITION_LENGTH_MISMATCH"),
+        ({"Content-Length": "100"}, b"abc", 16, "ACQUISITION_CAP_EXCEEDED"),
+        ({}, b"x" * 32, 16, "ACQUISITION_CAP_EXCEEDED"),
+        ({"Content-Encoding": "br"}, b"abc", 1024, "ACQUISITION_ENCODING_UNSUPPORTED"),
+        ({"Content-Encoding": "gzip"}, b"bad-gzip", 1024, "ACQUISITION_ENCODING_INVALID"),
+        ({"Content-Encoding": "gzip"}, b"\x1f\x8b\x08\x00", 1024, "ACQUISITION_ENCODING_INVALID"),
+    ],
+)
+def test_invalid_http_representations_never_become_receipted_sources(
+    tmp_path: Path, headers: dict[str, str], body: bytes, cap: int, code: str
+) -> None:
+    with (
+        httpx.Client(
+            transport=httpx.MockTransport(
+                lambda request: httpx.Response(200, stream=httpx.ByteStream(body), headers=headers)
+            )
+        ) as client,
+        pytest.raises(CompileError, match=code),
+    ):
+        acquire_official_source(
+            tmp_path,
+            url="https://www.ecfr.gov/api/versioner/v1/full/2024-01-31/title-47.xml?part=73",
+            identifier="source",
+            role="base_ecfr",
+            cap_bytes=cap,
+            client=client,
+        )
+    assert not (tmp_path / "acquisition.json").exists()
+    assert not list(tmp_path.rglob(".download.*"))
 
 
 def test_changed_region_receipts_have_stable_natural_order() -> None:

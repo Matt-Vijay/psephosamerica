@@ -1,11 +1,15 @@
 from __future__ import annotations
 
+import csv
+import hashlib
 import json
 import shutil
+import zipfile
 from pathlib import Path
 
 import pytest
 
+import src.transfer_eval.cases as cases_module
 import src.transfer_eval.cli as cli_module
 import src.transfer_eval.runner as runner_module
 from src.transfer_eval.cases import PILOT_CASES, PilotCase, audit_case, case_path
@@ -17,6 +21,73 @@ from src.transfer_eval.score import score_case
 ROOT = Path(__file__).parents[1]
 GOLD = ROOT / "tests/fixtures/transfer_eval_solution.ts"
 ORACLE = ROOT / "data/time_machine"
+
+
+def test_case_builder_filters_public_rows_and_rechecks_parent_bytes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Repackage already-public rows to test extraction, without private raw ZIPs."""
+    original = case_path(PILOT_CASES[0])
+    request = json.loads((original / "request.json").read_text())
+    public_input = original / request["artifacts"][0]["path"]
+    parent = tmp_path / "public-fixture.zip"
+    with zipfile.ZipFile(parent, "w") as archive:
+        archive.write(public_input / "README", "session/README")
+        for key, suffix in cases_module._MEMBERS.items():
+            archive.write(public_input / f"{key}.csv", f"session/example{suffix}")
+    entry = {
+        "absolute_path": str(parent),
+        "content_sha256": hashlib.sha256(parent.read_bytes()).hexdigest(),
+        "source_artifact_id": "public-fixture",
+        "source_url": request["artifacts"][0]["source_url"],
+        "byte_count": parent.stat().st_size,
+        "observed_at": "2026-06-30T00:00:00Z",
+        "relative_path": parent.name,
+    }
+    with (public_input / "bills.csv").open() as handle:
+        bill_id = next(csv.DictReader(handle))["id"]
+    with (public_input / "votes.csv").open() as handle:
+        vote_id = next(csv.DictReader(handle))["id"]
+    cases = (
+        PilotCase(
+            "all-public-rows",
+            PILOT_CASES[0].cutoff,
+            "public",
+            (cases_module.ArtifactSelection(parent.name, "all"),),
+        ),
+        PilotCase(
+            "filtered-public-rows",
+            PILOT_CASES[0].cutoff,
+            "hidden",
+            (cases_module.ArtifactSelection(parent.name, "selected", (bill_id,), (vote_id,)),),
+        ),
+    )
+    monkeypatch.setattr(cases_module, "PILOT_CASES", cases)
+    inventory = tmp_path / "inventory.json"
+    inventory.write_text(json.dumps({"artifacts": [entry]}))
+    built = cases_module.build_cases(inventory, tmp_path / "cases")
+    assert len(built) == 2
+    assert all(audit_case(directory)["status"] == "PASS" for directory in built)
+    with (built[1] / "input/selected/votes.csv").open() as handle:
+        assert [row["id"] for row in csv.DictReader(handle)] == [vote_id]
+    assert json.loads((built[1] / "request.json").read_text())["case_id"].startswith("case-")
+    with pytest.raises(FileExistsError):
+        cases_module.build_cases(inventory, tmp_path / "cases")
+    parent.write_bytes(b"tampered")
+    with pytest.raises(ValueError, match="parent hash differs"):
+        cases_module.build_cases(inventory, tmp_path / "invalid")
+    inventory.write_text('{"artifacts": []}')
+    with pytest.raises(FileNotFoundError, match="inventory lacks"):
+        cases_module.build_cases(inventory, tmp_path / "missing")
+
+
+@pytest.mark.skipif(
+    not (ORACLE / "time_machine.duckdb").is_file(),
+    reason="private evaluator store is not installed",
+)
+@pytest.mark.parametrize("case", (PILOT_CASES[0], PILOT_CASES[2]))
+def test_private_oracle_matches_supplied_fixture(case: PilotCase) -> None:
+    assert validate_oracle(case_path(case), ORACLE)["status"] == "PASS"
 
 
 def test_score_truth_and_future_false_record_penalty() -> None:
@@ -206,10 +277,8 @@ def test_public_answer_hardcoding_scores_zero_on_hidden(tmp_path: Path) -> None:
 
 
 @pytest.mark.parametrize("case", (PILOT_CASES[0], PILOT_CASES[2]))
-def test_gold_program_matches_real_public_and_hidden_oracle(case: PilotCase) -> None:
+def test_gold_program_matches_real_public_and_hidden_reference(case: PilotCase) -> None:
     case_dir = case_path(case)
-    oracle = validate_oracle(case_dir, ORACLE)
-    assert oracle["status"] == "PASS"
     reference = derive_reference(case_dir)
     runs = DenoRunner().run_twice(GOLD, case_dir)
     score = score_case(

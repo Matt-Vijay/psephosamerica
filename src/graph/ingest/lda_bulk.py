@@ -48,13 +48,16 @@ field is fabricated.
 from __future__ import annotations
 
 import json
-import xml.etree.ElementTree as ET
 import zipfile
 from collections.abc import Iterable, Iterator
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+from xml.etree import ElementTree as ET  # nosec B405 - element types; parsing is defused below
+
+from defusedxml.common import DefusedXmlException
+from defusedxml.ElementTree import iterparse
 
 # The legacy SOPR bulk host the Wayback Machine captured. We fetch the *original*
 # archived bytes via the ``id_`` (identity) Wayback modifier so the ZIP is the
@@ -184,14 +187,16 @@ def iter_bulk_records(zip_path: Path | str) -> Iterator[dict[str, Any]]:
                 continue
             try:
                 with archive.open(name) as member:
-                    for _event, elem in ET.iterparse(member):
+                    for _event, elem in iterparse(
+                        member, forbid_dtd=True, forbid_entities=True, forbid_external=True
+                    ):
                         if elem.tag != "Filing":
                             continue
                         record = bulk_filing_to_record(elem)
                         elem.clear()
                         if record is not None:
                             yield record
-            except (ET.ParseError, zipfile.BadZipFile):
+            except (ET.ParseError, DefusedXmlException, zipfile.BadZipFile):
                 continue
 
 

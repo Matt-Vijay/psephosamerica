@@ -28,7 +28,7 @@ MAX_PROVENANCE_BYTES = 64 * 1024
 MAX_CAPTURE_BYTES = 256 * 1024
 WALL_SECONDS = 20
 CPU_SECONDS = 12
-_TEMP_ROOT = Path("/private/tmp") if Path("/private/tmp").is_dir() else Path("/tmp")
+_TEMP_ROOT = Path("/private/tmp") if Path("/private/tmp").is_dir() else Path("/tmp")  # nosec B108 - root only; TemporaryDirectory creates a private randomized child
 _PRIVATE_MANIFEST_KEYS = {
     "answer",
     "changed_regions",
@@ -364,7 +364,7 @@ class RegPatchRunner:
         }
         timed_out = False
         with stdout_path.open("wb") as stdout, stderr_path.open("wb") as stderr:
-            process = subprocess.Popen(
+            process = subprocess.Popen(  # nosec B603 - fixed trusted Deno, argv without shell, explicit sandbox permissions
                 command,
                 cwd=cwd,
                 env=environment,
@@ -422,7 +422,7 @@ class RegPatchRunner:
     def _check_version(self) -> str:
         if not self.deno.is_file() or not os.access(self.deno, os.X_OK):
             raise RuntimeError(f"Deno executable unavailable: {self.deno}")
-        result = subprocess.run(
+        result = subprocess.run(  # nosec B603 - fixed trusted Deno, argv without shell, explicit sandbox permissions
             [str(self.deno), "--version"],
             check=False,
             capture_output=True,
@@ -467,7 +467,7 @@ console.log(JSON.stringify(checks));
             canary = root / "denied-canary"
             canary.write_text("secret", encoding="utf-8")
             command = [*self._sandbox_command(entrypoint, [entrypoint], output), str(canary)]
-            result = subprocess.run(
+            result = subprocess.run(  # nosec B603 - fixed trusted Deno, argv without shell, explicit sandbox permissions
                 command,
                 cwd=allowed,
                 env={"PATH": str(self.deno.parent), "DENO_NO_UPDATE_CHECK": "1"},
