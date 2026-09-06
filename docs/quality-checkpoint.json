@@ -1,7 +1,7 @@
 {
-  "verified_at": "2026-09-06T03:45:00Z",
+  "verified_at": "2026-09-06T16:54:14Z",
   "scope": "Repository cleanup since 1812afb; retained interfaces and research paths, no new product features",
-  "production_physical_loc_net": -2177,
+  "production_physical_loc_net": -2175,
   "loc_receipt": "git diff --numstat 1812afb <checkpoint-commit> -- src",
   "runtime": {
     "python": "3.12.13",
@@ -15,7 +15,8 @@
     "unit_result": {"passed": 11160, "skipped": 1, "deselected": 2, "seconds": 279.25},
     "coverage_percent": 90.03,
     "coverage_gate": 90,
-    "coverage_basis": "Whole unit run plus affected rechecks; changed command-module line data discarded before recollection; private database checks excluded",
+    "coverage_basis": "Whole unit run plus affected rechecks; changed command and prior-module line data discarded before recollection; private database checks excluded",
+    "cross_platform_regression": {"passed": 16, "seconds": 0.33, "command": "python -m pytest tests/prediction/test_thin_record_prior.py tests/prediction/nn/test_structural_embeddings.py -q", "fix": "Numerically tied network neighbors rank by identity; the distinct-neighbor fixture now has genuinely different structural roles"},
     "postgresql_tests": {"passed": 37, "seconds": 1.73},
     "optional_ml_boundary_tests": {"passed": 7},
     "ruff_lint_and_format": "PASS",
@@ -33,7 +34,7 @@
     "submission_sha256": "be464827498d25c0add41174fbe55201c419ff2bfb7fb10ad23ad15d78c2fd81"
   },
   "distribution": {
-    "wheel_sha256": "d45eff61996a49d5a9cb0072435923f85eb7c66af0a6dddc51ca60c1a07975ce",
+    "wheel_sha256": "ddaf481a67ac08f13bc4bd8876a09fbeaee12d745bdf3d416adc0d5680dfc602",
     "private_evaluator_paths_in_wheel": 0,
     "raw_data_or_model_baselines_changed": false
   }

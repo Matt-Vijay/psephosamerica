@@ -82,19 +82,21 @@ def _network_logit(
         return None
     if embeddings.get(target.structural_key) is None:
         return None
-    scored: list[tuple[float, float]] = []
+    scored: list[tuple[float, str, float]] = []
     for ref in references:
         if ref.structural_key is None or embeddings.get(ref.structural_key) is None:
             continue
         similarity = embeddings.similarity(target.structural_key, ref.structural_key)
         if similarity > 0.0:
-            scored.append((similarity, ref.stance_logit))
+            scored.append((similarity, ref.official_id, ref.stance_logit))
     if not scored:
         return None
-    scored.sort(key=lambda item: item[0], reverse=True)
+    # BLAS implementations can differ in the last few bits. Rank numerical ties
+    # by identity, not input order or rounding noise; retain full-precision weights.
+    scored.sort(key=lambda item: (-round(item[0], 12), item[1]))
     top = scored[:network_top_k]
-    weight_total = sum(similarity for similarity, _ in top)
-    return sum(similarity * logit for similarity, logit in top) / weight_total
+    weight_total = sum(similarity for similarity, _, _ in top)
+    return sum(similarity * logit for similarity, _, logit in top) / weight_total
 
 
 def thin_record_prior(

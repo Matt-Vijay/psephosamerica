@@ -10,9 +10,14 @@ from __future__ import annotations
 
 import math
 
+import numpy as np
 import pytest
 
-from src.prediction.nn.structural_embeddings import StructuralEdge, compute_structural_embeddings
+from src.prediction.nn.structural_embeddings import (
+    StructuralEdge,
+    StructuralEmbeddings,
+    compute_structural_embeddings,
+)
 from src.prediction.thin_record_prior import (
     StanceReference,
     ThinRecordTarget,
@@ -84,8 +89,13 @@ def test_prior_uses_network_similarity() -> None:
         StructuralEdge(relation="endorses", source="org:a", target="person:1"),
         StructuralEdge(relation="endorses", source="org:a", target="person:2"),
         StructuralEdge(relation="endorses", source="org:b", target="person:3"),
+        # Degree-normalized messages alone cannot distinguish the three leaves.
+        # This different relation gives person:3 a genuinely different role.
+        StructuralEdge(relation="works_for", source="person:3", target="org:b"),
     ]
     embeddings = compute_structural_embeddings(edges, dim=16, num_layers=2, seed=0)
+    assert embeddings.similarity("person:1", "person:2") == pytest.approx(1.0)
+    assert embeddings.similarity("person:1", "person:3") < 0.9
     references = [
         StanceReference(
             official_id="person:2",
@@ -118,6 +128,33 @@ def test_prior_uses_network_similarity() -> None:
     )
     # person:1's network twin is person:2 (yea-leaning), not person:3.
     assert prior > 0.6
+
+
+@pytest.mark.parametrize("rounding_noise", [-1e-15, 0.0, 1e-15])
+def test_network_top_k_breaks_numerical_ties_by_identity(rounding_noise: float) -> None:
+    # Simulate the last-bit variation from different BLAS implementations.
+    embeddings = StructuralEmbeddings(
+        embeddings={
+            "target": np.array([1.0, 0.0]),
+            "a": np.array([1.0, 0.0]),
+            "b": np.array([1.0 + rounding_noise, 0.0]),
+        },
+        dim=2,
+    )
+    references = [
+        StanceReference("a", _logit(0.85), "D", "WA", frozenset(), "a"),
+        StanceReference("b", _logit(0.15), "R", "ID", frozenset(), "b"),
+    ]
+    target = ThinRecordTarget("I", "VT", frozenset(), "target")
+    for ordered in (references, references[::-1]):
+        assert thin_record_prior(
+            target,
+            ordered,
+            embeddings=embeddings,
+            party_state_weight=0.0,
+            endorser_weight=0.0,
+            network_top_k=1,
+        ) == pytest.approx(0.85)
 
 
 def test_prior_is_neutral_without_references() -> None:
