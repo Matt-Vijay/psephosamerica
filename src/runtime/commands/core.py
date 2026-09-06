@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import datetime as dt
-import hashlib
 import json
 import re
 import shlex
@@ -490,10 +489,6 @@ def _numeric_or_none_matches(actual: Any, expected: float | None) -> bool:
         and not isinstance(actual, bool)
         and abs(actual - expected) <= 1e-9
     )
-
-
-def _file_sha256(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def _write_text_artifact(path: Path, text: str) -> str:

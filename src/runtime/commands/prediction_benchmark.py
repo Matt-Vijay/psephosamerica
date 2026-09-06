@@ -10,6 +10,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, TypeGuard
 
+from src.core.files import sha256_file
 from src.runtime.commands._shared import (
     _BENCHMARK_INVENTORY_FEATURE_SOURCE_COVERAGE_COUNT_KEYS,
     _BENCHMARK_INVENTORY_FEATURE_SOURCE_COVERAGE_RATE_KEYS,
@@ -2995,7 +2996,7 @@ def _validate_prediction_benchmark_run_metadata_artifact_sha256(
         if not path.is_file():
             issues.append(f"artifact file not found: {name}")
             continue
-        actual_sha = hashlib.sha256(path.read_bytes()).hexdigest()
+        actual_sha = sha256_file(path)
         if actual_sha != recorded_sha:
             issues.append(f"run_metadata artifact_sha256 stale: {name}")
 
@@ -3345,7 +3346,7 @@ def _validate_prediction_backfill_source_eval_report(
     if not source_eval_report_path.is_file():
         issues.append("source_eval_report file not found")
         return
-    actual_sha256 = hashlib.sha256(source_eval_report_path.read_bytes()).hexdigest()
+    actual_sha256 = sha256_file(source_eval_report_path)
     if actual_sha256 != expected_sha256:
         issues.append("source_eval_report sha256 mismatch")
 
@@ -3493,9 +3494,7 @@ def _prediction_backfill_plan_verify_run_metadata(
             "require_blocker_links": bool(getattr(args, "require_blocker_links", False)),
             "require_run_metadata": bool(getattr(args, "require_run_metadata", False)),
         },
-        "artifact_sha256": hashlib.sha256(artifact_path.read_bytes()).hexdigest()
-        if artifact_path.is_file()
-        else None,
+        "artifact_sha256": sha256_file(artifact_path) if artifact_path.is_file() else None,
     }
     if source_state is not None:
         run_metadata["source_state"] = source_state

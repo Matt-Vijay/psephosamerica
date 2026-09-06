@@ -7,6 +7,10 @@ import json
 from pathlib import Path
 from typing import Any, cast
 
+from src.core.files import sha256_file as _file_sha256
+from src.ingest.congress.archive_manifest import (
+    manifest_file_metadata as _congress_archive_manifest_metadata,
+)
 from src.prediction.eval_report import PredictionEvalReportPayload
 from src.prediction.window_plan import (
     PredictionEvalWindowPlanPayload,
@@ -15,7 +19,6 @@ from src.prediction.window_plan import (
 from src.runtime.commands._shared import (
     _attach_optional_verification_output,
     _command_issue_result,
-    _congress_archive_manifest_metadata,
     _is_non_negative_plain_int,
     _is_plain_int,
     _is_sha256_hex,
@@ -24,7 +27,6 @@ from src.runtime.commands._shared import (
     _write_json_artifact,
 )
 from src.runtime.commands.core import (
-    _file_sha256,
     _float_option_value_from_command,
     _int_option_value_from_command,
     _numeric_or_none_matches,

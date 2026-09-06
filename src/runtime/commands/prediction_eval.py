@@ -3,14 +3,17 @@
 from __future__ import annotations
 
 import datetime as dt
-import hashlib
 import json
 from collections.abc import Collection
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, cast
 
+from src.core.files import sha256_file
 from src.evidence.source_anchor_policy import has_official_claim_source_anchor
+from src.ingest.congress.archive_manifest import (
+    manifest_file_metadata as _congress_archive_manifest_metadata,
+)
 from src.pipeline.publish_snapshot_run import _ontology_edge_from_row
 from src.prediction.backtest import REQUIRED_ONTOLOGY_FEATURE_SIGNAL_NAMES
 from src.prediction.dataset import PredictionEvalDatasetPayload
@@ -32,7 +35,6 @@ from src.runtime.bill_semantics_cache import (
 )
 from src.runtime.commands._shared import (
     _attach_optional_verification_output,
-    _congress_archive_manifest_metadata,
     _is_non_negative_plain_int,
     _is_plain_int,
     _is_sha256_hex,
@@ -990,7 +992,7 @@ def _handle_verify_prediction_eval_manifest(args: Any) -> dict[str, Any]:
         if not artifact_path.is_file():
             issues.append(f"{name}: file not found: {artifact_path}")
             continue
-        actual_sha = hashlib.sha256(artifact_path.read_bytes()).hexdigest()
+        actual_sha = sha256_file(artifact_path)
         if actual_sha != expected_sha:
             issues.append(f"{name}: sha256 mismatch: expected {expected_sha}, got {actual_sha}")
         _validate_prediction_eval_artifact_schema(
@@ -1139,9 +1141,7 @@ def _handle_verify_prediction_eval_manifest(args: Any) -> dict[str, Any]:
             elif not bill_semantics_index.is_file():
                 issues.append(f"bill-semantics index: file not found: {bill_semantics_index}")
             else:
-                actual_bill_semantics_index_sha = hashlib.sha256(
-                    bill_semantics_index.read_bytes()
-                ).hexdigest()
+                actual_bill_semantics_index_sha = sha256_file(bill_semantics_index)
                 if actual_bill_semantics_index_sha != expected_bill_semantics_index_sha:
                     issues.append(
                         "bill-semantics index: sha256 mismatch: "
@@ -2698,9 +2698,7 @@ def _prediction_eval_manifest_verify_run_metadata(
     run_metadata: dict[str, Any] = {
         "command": "verify-prediction-eval-manifest",
         "verification_flags": verification_flags,
-        "artifact_sha256": hashlib.sha256(manifest_path.read_bytes()).hexdigest()
-        if manifest_path.is_file()
-        else None,
+        "artifact_sha256": sha256_file(manifest_path) if manifest_path.is_file() else None,
     }
     if artifacts is not None:
         run_metadata["source_artifact_sha256"] = _prediction_eval_manifest_source_artifact_sha256(

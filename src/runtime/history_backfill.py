@@ -3,15 +3,14 @@
 from __future__ import annotations
 
 import datetime as dt
-import hashlib
 import json
 import shutil
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal
-from uuid import uuid4
 
+from src.core.files import sha256_file, write_text_atomic as _write_text_atomic
 from src.export.contracts import HistoryCoveragePayload
 from src.export.local_store import load_history_coverage
 from src.export.writer import history_coverage_path, manifest_path
@@ -311,7 +310,7 @@ def _verify_absolute_entry(
 ) -> None:
     if not entry_path.exists():
         raise FileNotFoundError(storage_uri)
-    actual_sha256 = hashlib.sha256(entry_path.read_bytes()).hexdigest()
+    actual_sha256 = sha256_file(entry_path)
     if actual_sha256 != expected_sha256:
         raise Sha256Mismatch(
             f"SHA-256 mismatch for {storage_uri!r}: expected {expected_sha256!r}, got {actual_sha256!r}"
@@ -941,12 +940,3 @@ def run_local_history_backfill(
         ),
     )
     return result
-
-
-def _write_text_atomic(path: Path, text: str) -> None:
-    temp_path = path.with_name(f".{path.name}.{uuid4().hex}.tmp")
-    try:
-        temp_path.write_text(text, encoding="utf-8")
-        temp_path.replace(path)
-    finally:
-        temp_path.unlink(missing_ok=True)

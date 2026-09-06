@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-import hashlib
 from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, TypeVar
 
+from src.core.files import sha256_file as _sha256_file
 from src.db.load_report import (
     LoadSummary,
     merge_load_summaries as _merge_load_summaries,
@@ -191,14 +191,6 @@ def _create_text_artifact(
         source_record_id=source_record_id,
         commit=False,
     )
-
-
-def _sha256_file(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as fh:
-        for chunk in iter(lambda: fh.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
 
 
 def _row_id(row: dict[str, Any]) -> int:

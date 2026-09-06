@@ -8,6 +8,7 @@ import re
 from pathlib import Path
 from typing import Any, cast
 
+from src.core.files import sha256_file
 from src.runtime.commands._shared import (
     _BENCHMARK_INVENTORY_FEATURE_SOURCE_COVERAGE_COUNT_KEYS,
     _BENCHMARK_INVENTORY_FEATURE_SOURCE_COVERAGE_RATE_KEYS,
@@ -344,7 +345,7 @@ def _handle_verify_prediction_offline_readiness_summary(args: Any) -> dict[str, 
         "ok": not issues and not quality_gate_failures,
         "command": "verify-prediction-offline-readiness-summary",
         "artifact": str(artifact_path),
-        "artifact_sha256": hashlib.sha256(artifact_path.read_bytes()).hexdigest(),
+        "artifact_sha256": sha256_file(artifact_path),
         "blocker_count": blocker_count,
         "issue_count": len(issues),
         "issues": issues,
@@ -476,7 +477,7 @@ def _prediction_offline_readiness_source_artifact_state(
             issues.append(f"source_artifact_sha256_invalid:{label}")
             invalid_count += 1
             continue
-        actual_sha256 = hashlib.sha256(path.read_bytes()).hexdigest()
+        actual_sha256 = sha256_file(path)
         if expected_sha256 != actual_sha256:
             issues.append(f"source_artifact_sha256_mismatch:{label}")
             mismatch_count += 1
@@ -1155,9 +1156,7 @@ def _prediction_offline_readiness_verify_run_metadata(
             ),
             "require_no_secret_literals": bool(getattr(args, "require_no_secret_literals", False)),
         },
-        "artifact_sha256": hashlib.sha256(artifact_path.read_bytes()).hexdigest()
-        if artifact_path.is_file()
-        else None,
+        "artifact_sha256": sha256_file(artifact_path) if artifact_path.is_file() else None,
     }
     if source_state is not None:
         run_metadata["source_state"] = source_state
@@ -1450,7 +1449,7 @@ def _prediction_resume_script_readiness_verify_state(
     recorded_artifact = payload.get("artifact")
     if isinstance(recorded_artifact, str) and Path(recorded_artifact) != readiness_path:
         issues.append("readiness_summary_verify_artifact_path_mismatch")
-    actual_readiness_sha256 = hashlib.sha256(readiness_path.read_bytes()).hexdigest()
+    actual_readiness_sha256 = sha256_file(readiness_path)
     recorded_sha256 = payload.get("artifact_sha256")
     if not isinstance(recorded_sha256, str) or not _is_sha256_hex(recorded_sha256):
         issues.append("readiness_summary_verify_artifact_sha256_invalid")
@@ -1560,12 +1559,8 @@ def _prediction_resume_script_verify_run_metadata(
             "require_safe_commands": bool(getattr(args, "require_safe_commands", False)),
         },
         "artifact_sha256": {
-            "readiness_summary": hashlib.sha256(readiness_path.read_bytes()).hexdigest()
-            if readiness_path.is_file()
-            else None,
-            "script": hashlib.sha256(script_path.read_bytes()).hexdigest()
-            if script_path.is_file()
-            else None,
+            "readiness_summary": sha256_file(readiness_path) if readiness_path.is_file() else None,
+            "script": sha256_file(script_path) if script_path.is_file() else None,
         },
     }
     if source_state is not None:

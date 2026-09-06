@@ -7,11 +7,11 @@ from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 from typing import Any, Literal, Self
-from uuid import uuid4
 
 import httpx
 from pydantic import Field, field_validator, model_validator
 
+from src.core.files import sha256_file, write_text_atomic
 from src.core.path_safety import safe_join_confined
 from src.evidence.source_anchor_policy import is_official_source_url
 from src.export.contracts import ExportContractModel, SourceAnchor
@@ -490,7 +490,7 @@ def materialize_bill_semantics(
             BillSemanticIndexRowPayload(
                 bill_key=payload.bill_key,
                 path=relative_path,
-                sha256=hashlib.sha256(target.read_bytes()).hexdigest(),
+                sha256=sha256_file(target),
                 model_name=payload.model_name,
                 available_at=payload.available_at,
                 sector_ids=[sector.sector_id for sector in payload.sectors],
@@ -660,12 +660,7 @@ def _read_json(path: Path) -> object:
 
 def _write_text_atomic(path: Path, text: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    temp_path = path.with_name(f".{path.name}.{uuid4().hex}.tmp")
-    try:
-        temp_path.write_text(text, encoding="utf-8")
-        temp_path.replace(path)
-    finally:
-        temp_path.unlink(missing_ok=True)
+    write_text_atomic(path, text)
 
 
 def _bill_key(row: dict[str, Any]) -> str:

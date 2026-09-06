@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
 import re
 from pathlib import Path
 from typing import Any
 
+from src.core.files import sha256_file
 from src.runtime.commands._shared import (
     _OPERATOR_EVAL_WINDOW_RUN_GATE_SOURCE_KEYS,
     _OPERATOR_EVAL_WINDOW_RUN_GATE_SOURCE_STATE_KEYS,
@@ -68,7 +68,7 @@ def _operator_handoff_load_readiness_summary(
     if not isinstance(payload, dict):
         issues.append("readiness_summary_must_be_object")
         return {}
-    actual_sha256 = hashlib.sha256(path.read_bytes()).hexdigest()
+    actual_sha256 = sha256_file(path)
     recorded_sha256 = readiness_verify.get("artifact_sha256")
     if not isinstance(recorded_sha256, str) or not _is_sha256_hex(recorded_sha256):
         issues.append("readiness_summary_verify_artifact_sha256_invalid")

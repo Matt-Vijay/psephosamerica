@@ -70,8 +70,8 @@ from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 from typing import Any
-from uuid import uuid4
 
+from src.core.files import write_text_atomic as _write_text_atomic
 from src.core.path_safety import require_confined_relative_path
 from src.parse.disclosures.house_index import HouseFilingKind, HouseIndexRow
 from src.parse.disclosures.senate_index import SenateIndexRow
@@ -300,15 +300,6 @@ def write_disclosures_bundle(path: Path, bundle: DisclosuresBundle) -> Path:
         json.dumps(disclosures_bundle_to_dict(bundle), indent=2, sort_keys=True),
     )
     return path
-
-
-def _write_text_atomic(path: Path, text: str) -> None:
-    temp_path = path.with_name(f".{path.name}.{uuid4().hex}.tmp")
-    try:
-        temp_path.write_text(text, encoding="utf-8")
-        temp_path.replace(path)
-    finally:
-        temp_path.unlink(missing_ok=True)
 
 
 # Artifact bundle — entry and index-row parsing

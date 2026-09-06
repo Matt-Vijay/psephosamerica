@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import csv
 import datetime as dt
-import hashlib
 import json
 from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
+from src.core.files import sha256_file
 from src.evidence.source_anchor_policy import is_official_source_url
 from src.runtime.commands._shared import (
     _command_issue_result,
@@ -122,7 +122,7 @@ def _load_statement_rows(path: Path) -> list[dict[str, Any]]:
 def _statement_rows_source_metadata(path: Path, row_count: int) -> dict[str, Any]:
     return {
         "path": str(path),
-        "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+        "sha256": sha256_file(path),
         "row_count": row_count,
     }
 
@@ -155,9 +155,7 @@ def _handle_verify_public_statement_rows(args: Any) -> dict[str, Any]:
         "ok": not issues and not quality_gate_failures,
         "command": "verify-public-statement-rows",
         "artifact": str(path),
-        "artifact_sha256": hashlib.sha256(path.read_bytes()).hexdigest()
-        if path.is_file()
-        else None,
+        "artifact_sha256": sha256_file(path) if path.is_file() else None,
         "checked": 1 if path.is_file() else 0,
         "issues": issues,
         "issue_count": len(issues),

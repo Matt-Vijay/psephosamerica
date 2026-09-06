@@ -8,8 +8,8 @@ import math
 import sys
 from pathlib import Path
 from typing import Any, TypeGuard, cast
-from uuid import uuid4
 
+from src.core.files import sha256_file, write_bytes_atomic
 from src.runtime.json_artifacts import write_json_artifact as _atomic_write_json_artifact
 from src.runtime.paths import local_artifact_root
 
@@ -126,14 +126,6 @@ def _materialize_summary_file_hashes(payload: dict[str, Any]) -> list[dict[str, 
     return file_hashes
 
 
-def _sha256_file_path(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as fh:
-        for chunk in iter(lambda: fh.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
-
-
 def _non_empty_line_count(path: Path) -> int:
     count = 0
     with path.open("r", encoding="latin-1", errors="ignore", newline="") as fh:
@@ -149,23 +141,8 @@ def _write_json_artifact(path: Path, payload: Any) -> str:
 
 def _write_bytes_artifact(path: Path, encoded: bytes) -> str:
     path.parent.mkdir(parents=True, exist_ok=True)
-    temp_path = path.with_name(f".{path.name}.{uuid4().hex}.tmp")
-    try:
-        temp_path.write_bytes(encoded)
-        temp_path.replace(path)
-    finally:
-        temp_path.unlink(missing_ok=True)
+    write_bytes_atomic(path, encoded)
     return hashlib.sha256(encoded).hexdigest()
-
-
-def _congress_archive_manifest_metadata(value: Any) -> dict[str, Any] | None:
-    if value is None:
-        return None
-    manifest_path = Path(str(value))
-    return {
-        "path": str(manifest_path),
-        "sha256": hashlib.sha256(manifest_path.read_bytes()).hexdigest(),
-    }
 
 
 def _required_string_list(value: Any) -> list[str]:
@@ -309,7 +286,7 @@ _OPERATOR_EVAL_WINDOW_RUN_GATE_SOURCE_STATE_KEYS = tuple(
 
 
 def _optional_file_sha256(path: Path) -> str | None:
-    return hashlib.sha256(path.read_bytes()).hexdigest() if path.is_file() else None
+    return sha256_file(path) if path.is_file() else None
 
 
 _BENCHMARK_INVENTORY_FEATURE_SOURCE_COVERAGE_COUNT_KEYS = (
@@ -415,7 +392,7 @@ def _is_sha256_hex(value: str) -> bool:
 def _artifact_reference(path: Path) -> dict[str, str | None]:
     return {
         "path": str(path),
-        "sha256": hashlib.sha256(path.read_bytes()).hexdigest() if path.is_file() else None,
+        "sha256": sha256_file(path) if path.is_file() else None,
     }
 
 

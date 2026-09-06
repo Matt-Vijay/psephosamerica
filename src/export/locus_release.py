@@ -42,13 +42,13 @@ library stays importable without it.
 
 from __future__ import annotations
 
-import hashlib
 import json
 from collections.abc import Iterable
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
+from src.core.files import sha256_file
 from src.graph.contracts import EntityResolutionOutput
 from src.graph.ingest.locus import LOCUS_ATTRIBUTION, LOCUS_DATASET_URL, LOCUS_LICENSE
 
@@ -183,7 +183,7 @@ def write_release(
     parquet_path = out_dir / PARQUET_FILENAME
     pq.write_table(table, parquet_path)
 
-    content_sha = hashlib.sha256(parquet_path.read_bytes()).hexdigest()
+    content_sha = sha256_file(parquet_path)
     manifest = ReleaseManifest(
         version=version,
         parquet_filename=PARQUET_FILENAME,

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import ssl
 import tempfile
 import urllib.request
@@ -12,6 +11,8 @@ from pathlib import Path, PurePosixPath
 from typing import IO
 from urllib.parse import urlparse
 from uuid import uuid4
+
+from src.core.files import sha256_file as _sha256_file
 
 _FEC_BULK_URL_PREFIX = "https://www.fec.gov/files/bulk-downloads"
 _CHUNK_SIZE = 1024 * 1024
@@ -394,14 +395,6 @@ def _member_fec_candidate_ids(path: Path | None) -> set[str] | None:
             if len(columns) > idx and columns[idx].strip():
                 candidate_ids.add(columns[idx].strip().upper())
     return candidate_ids
-
-
-def _sha256_file(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as fh:
-        for chunk in iter(lambda: fh.read(_CHUNK_SIZE), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
 
 
 def _validate_https_url(url: str) -> None:

@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
 from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from src.core.files import sha256_file
 from src.evidence.source_anchor_policy import (
     SOURCE_TYPES_REQUIRING_URL,
     is_official_source_url,
@@ -90,7 +90,7 @@ def build_prediction_source_url_audit(
     context = _merge_contexts(_sample_context(_audited_sample_records(raw)), _gap_context(gaps))
     return PredictionSourceUrlAuditResult(
         eval_report_path=str(eval_report_path),
-        eval_report_sha256=hashlib.sha256(eval_report_path.read_bytes()).hexdigest(),
+        eval_report_sha256=sha256_file(eval_report_path),
         checked=1,
         gap_count=len(gaps),
         jurisdiction_count=len(context["jurisdiction_ids"]),

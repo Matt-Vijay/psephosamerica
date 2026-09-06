@@ -1,17 +1,21 @@
 from __future__ import annotations
 
 import datetime as dt
-import hashlib
 import json
 import re
 from pathlib import Path
 from typing import Any, TypeGuard
 
+from src.core.files import sha256_file
 from src.evidence.source_anchor_policy import (
     SOURCE_TYPES_REQUIRING_URL,
     anchor_source_type,
     anchor_url,
     is_official_source_url,
+)
+from src.ingest.congress.archive_manifest import (
+    manifest_file_metadata as _congress_archive_manifest_metadata,
+    validate_manifest_file_metadata as _validate_prediction_backtest_congress_archive_manifest_metadata,
 )
 from src.pipeline.publish_snapshot_run import _ontology_edge_from_row
 from src.prediction.backtest import (
@@ -747,16 +751,6 @@ def _prediction_backtest_run_metadata(args: Any) -> dict[str, str]:
     }
 
 
-def _congress_archive_manifest_metadata(value: Any) -> dict[str, Any] | None:
-    if value is None:
-        return None
-    manifest_path = Path(str(value))
-    return {
-        "path": str(manifest_path),
-        "sha256": hashlib.sha256(manifest_path.read_bytes()).hexdigest(),
-    }
-
-
 def _prediction_backtest_verify_run_metadata(
     args: Any,
     artifact_path: Path,
@@ -817,47 +811,11 @@ def _prediction_backtest_verify_run_metadata(
                 )
             ),
         },
-        "artifact_sha256": hashlib.sha256(artifact_path.read_bytes()).hexdigest()
-        if artifact_path.is_file()
-        else None,
+        "artifact_sha256": sha256_file(artifact_path) if artifact_path.is_file() else None,
     }
     if source_state is not None:
         run_metadata["source_state"] = source_state
     return run_metadata
-
-
-def _validate_prediction_backtest_congress_archive_manifest_metadata(
-    *,
-    run_metadata: dict[Any, Any],
-    issues: list[str],
-    require_manifest: bool,
-) -> None:
-    manifest = run_metadata.get("congress_archive_manifest")
-    if manifest is None:
-        if require_manifest:
-            issues.append("run_metadata congress_archive_manifest missing")
-        return
-    if not isinstance(manifest, dict):
-        issues.append("run_metadata congress_archive_manifest must be an object")
-        return
-    manifest_path_raw = manifest.get("path")
-    expected_sha = manifest.get("sha256")
-    if not isinstance(manifest_path_raw, str) or not manifest_path_raw:
-        issues.append("run_metadata congress_archive_manifest path missing")
-        return
-    if not isinstance(expected_sha, str) or not _is_sha256_hex(expected_sha):
-        issues.append("run_metadata congress_archive_manifest sha256 invalid")
-        return
-    manifest_path = Path(manifest_path_raw)
-    if not manifest_path.is_file():
-        issues.append(f"run_metadata congress_archive_manifest file not found: {manifest_path}")
-        return
-    actual_sha = hashlib.sha256(manifest_path.read_bytes()).hexdigest()
-    if actual_sha != expected_sha:
-        issues.append(
-            "run_metadata congress_archive_manifest sha256 mismatch: "
-            f"expected {expected_sha}, got {actual_sha}"
-        )
 
 
 def _validate_prediction_backtest_run_metadata(

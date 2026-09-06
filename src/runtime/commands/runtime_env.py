@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
 import os
 import re
 from pathlib import Path
 from typing import Any
 
+from src.core.files import sha256_file
 from src.runtime.commands._shared import (
     _DEFAULT_RUNTIME_ENV_REQUIREMENTS,
     _attach_optional_verification_output,
@@ -251,7 +251,7 @@ def _handle_verify_runtime_env_preflight(args: Any) -> dict[str, Any]:
         elif not Path(template_output).is_file():
             quality_gate_failures.append("template_output_file_missing")
         else:
-            template_sha256 = hashlib.sha256(Path(template_output).read_bytes()).hexdigest()
+            template_sha256 = sha256_file(Path(template_output))
             if not isinstance(template_output_sha256, str) or not _is_sha256_hex(
                 template_output_sha256
             ):
@@ -277,7 +277,7 @@ def _handle_verify_runtime_env_preflight(args: Any) -> dict[str, Any]:
         "ok": not issues and not quality_gate_failures,
         "command": "verify-runtime-env-preflight",
         "artifact": str(artifact_path),
-        "artifact_sha256": hashlib.sha256(artifact_path.read_bytes()).hexdigest(),
+        "artifact_sha256": sha256_file(artifact_path),
         "checked": 1,
         "missing_env": missing_env,
         "missing_env_count": len(missing_env),
@@ -339,9 +339,7 @@ def _runtime_env_preflight_verify_run_metadata(
             "require_template_output": bool(getattr(args, "require_template_output", False)),
             "require_no_secret_literals": bool(getattr(args, "require_no_secret_literals", False)),
         },
-        "artifact_sha256": hashlib.sha256(artifact_path.read_bytes()).hexdigest()
-        if artifact_path.is_file()
-        else None,
+        "artifact_sha256": sha256_file(artifact_path) if artifact_path.is_file() else None,
     }
     if source_state is not None:
         run_metadata["source_state"] = source_state

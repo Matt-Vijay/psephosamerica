@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import csv
-import hashlib
 import ssl
 import tempfile
 import urllib.request
@@ -14,6 +13,8 @@ from urllib.parse import urlparse
 from uuid import uuid4
 
 import yaml  # type: ignore[import-untyped]
+
+from src.core.files import sha256_file as _sha256_file
 
 _DEFAULT_LEGISLATORS_URL = (
     "https://raw.githubusercontent.com/unitedstates/congress-legislators/"
@@ -337,14 +338,6 @@ def _download_to_temp_file(
         _unlink_if_exists(path)
         raise
     return path
-
-
-def _sha256_file(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as fh:
-        for chunk in iter(lambda: fh.read(_CHUNK_SIZE), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
 
 
 def _validate_https_url(url: str) -> None:

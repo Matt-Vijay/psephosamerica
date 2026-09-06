@@ -15,6 +15,7 @@ from uuid import uuid4
 
 import yaml  # type: ignore[import-untyped]
 
+from src.core.files import sha256_file as _sha256_file
 from src.evidence.source_anchor_policy import is_official_source_url
 
 
@@ -283,10 +284,6 @@ def _write_jsonl(path: Path, rows: list[dict[str, Any]]) -> None:
         for row in rows:
             fh.write(json.dumps(row, sort_keys=True))
             fh.write("\n")
-
-
-def _sha256_file(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def _unlink_if_exists(path: Path) -> None:

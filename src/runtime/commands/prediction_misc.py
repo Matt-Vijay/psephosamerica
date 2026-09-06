@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-import hashlib
 from pathlib import Path
 from typing import Any
 
+from src.core.files import sha256_file
 from src.runtime.commands._shared import _load_json_object_or_none, _required_string_list
 from src.runtime.prediction_backtest import (
     handle_prediction_backtest_command,
@@ -140,9 +140,7 @@ def _prediction_backtest_verify_run_metadata(
                 )
             ),
         },
-        "artifact_sha256": hashlib.sha256(artifact_path.read_bytes()).hexdigest()
-        if artifact_path.is_file()
-        else None,
+        "artifact_sha256": sha256_file(artifact_path) if artifact_path.is_file() else None,
     }
     if source_state is not None:
         run_metadata["source_state"] = source_state

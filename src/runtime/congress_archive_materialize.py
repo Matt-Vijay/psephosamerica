@@ -8,10 +8,10 @@ import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
-from uuid import uuid4
 
 import httpx
 
+from src.core.files import write_text_atomic
 from src.ingest.congress.archive import CongressArchive, manifest_from_existing_archive
 from src.ingest.congress.archive_manifest import write_manifest
 from src.ingest.congress.archive_validate import validate_congress_archive_manifest
@@ -313,12 +313,7 @@ def _write_text(path: Path, text: str) -> None:
 
 def _write_text_atomic(path: Path, text: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    temp_path = path.with_name(f".{path.name}.{uuid4().hex}.tmp")
-    try:
-        temp_path.write_text(text, encoding="utf-8")
-        temp_path.replace(path)
-    finally:
-        temp_path.unlink(missing_ok=True)
+    write_text_atomic(path, text)
 
 
 def _json_object(value: object, *, context: str) -> dict[str, Any]:

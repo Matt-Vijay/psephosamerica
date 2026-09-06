@@ -10,56 +10,7 @@ from pydantic import BaseModel
 
 from src.api.contracts import (
     ApiEnvelope,
-    CurrentMemberLookupResponse,
-    EvidenceResponse,
-    HistoryBackfillBootstrapResponse,
-    HistoryBootstrapResponse,
-    HistoryEventPageResponse,
-    HistoryEventResponse,
-    HistoryPresetRangeResponse,
-    HomepageBootstrapResponse,
-    HomepageResponse,
-    LastUpdatedResponse,
-    MemberChangeSummaryResponse,
-    MemberCompareResponse,
-    MemberHistoryChartResponse,
-    MemberHistoryCoverageIndexResponse,
-    MemberHistoryCoverageResponse,
-    MemberHistoryPageResponse,
-    MemberHistoryResponse,
-    MemberPageResponse,
-    MemberResponse,
-    MemberTimelineDimensionResponse,
-    MemberTimelineIndexResponse,
-    MemberTimelinePageResponse,
-    MemberTimelineYearResponse,
-    MemberTrendSummaryResponse,
-    MemberWindowCompareResponse,
-    MovementFeedResponse,
-    MovementWindowResponse,
     NotFoundBody,
-    OntologyGraphResponse,
-    OntologyIndexResponse,
-    OntologyMemberFeaturesResponse,
-    OntologyMemberGraphResponse,
-    PredictionBootstrapResponse,
-    PredictionCommitteeContextResponse,
-    PredictionCommitteeReadinessResponse,
-    PredictionMemberContextResponse,
-    PredictionMemberReadinessResponse,
-    PredictionReadinessIndexResponse,
-    PredictionReadinessResponse,
-    PredictionSectorContextResponse,
-    PredictionSectorReadinessResponse,
-    PredictionSourceContextResponse,
-    PredictionSourceIndexResponse,
-    PredictionTopologyResponse,
-    SearchSessionResponse,
-    SnapshotCompareResponse,
-    SnapshotIndexResponse,
-    SnapshotSummaryResponse,
-    ZipEntryResponse,
-    ZipResponse,
 )
 from src.api.read_api import make_headers
 from src.api.read_service import (
@@ -157,7 +108,6 @@ from src.export.writer import (
     snapshot_preset_compare_path,
     zip_path,
 )
-from src.runtime.history_backfill_types import HistoryBackfillReportPayload
 from src.runtime.inspect import load_latest_local_manifest
 
 _JSON_CT = "application/json; charset=utf-8"
@@ -233,57 +183,8 @@ def _manifest_root_etag(
     return manifest.root_sha256
 
 
-def _response_from_success(
-    payload: HomepageResponse
-    | ZipResponse
-    | MemberResponse
-    | MemberCompareResponse
-    | EvidenceResponse
-    | OntologyGraphResponse
-    | OntologyIndexResponse
-    | OntologyMemberFeaturesResponse
-    | OntologyMemberGraphResponse
-    | PredictionBootstrapResponse
-    | PredictionTopologyResponse
-    | PredictionMemberContextResponse
-    | PredictionMemberReadinessResponse
-    | PredictionCommitteeContextResponse
-    | PredictionCommitteeReadinessResponse
-    | PredictionReadinessIndexResponse
-    | PredictionReadinessResponse
-    | PredictionSectorContextResponse
-    | PredictionSectorReadinessResponse
-    | PredictionSourceContextResponse
-    | PredictionSourceIndexResponse
-    | HomepageBootstrapResponse
-    | CurrentMemberLookupResponse
-    | LastUpdatedResponse
-    | HistoryBackfillBootstrapResponse
-    | ApiEnvelope[HistoryBackfillReportPayload]
-    | MemberChangeSummaryResponse
-    | MemberHistoryCoverageResponse
-    | MemberHistoryCoverageIndexResponse
-    | MemberHistoryChartResponse
-    | MemberTrendSummaryResponse
-    | HistoryBootstrapResponse
-    | HistoryEventPageResponse
-    | HistoryEventResponse
-    | HistoryPresetRangeResponse
-    | MemberHistoryResponse
-    | MemberPageResponse
-    | MemberHistoryPageResponse
-    | MemberTimelineDimensionResponse
-    | MemberTimelineIndexResponse
-    | MemberTimelinePageResponse
-    | MemberTimelineYearResponse
-    | MemberWindowCompareResponse
-    | MovementFeedResponse
-    | MovementWindowResponse
-    | SnapshotSummaryResponse
-    | SnapshotIndexResponse
-    | SearchSessionResponse
-    | SnapshotCompareResponse
-    | ZipEntryResponse,
+def _response_from_success[T: BaseModel](
+    payload: ApiEnvelope[T],
     *,
     etag: str | None,
     if_none_match: str | None,

@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from src.core.files import sha256_file as _sha256_file
 from src.transfer_eval.contract import CONTRACT_VERSION
 
 PILOT_ROOT = Path(__file__).with_name("pilot")
@@ -424,14 +425,6 @@ def _fixture_digest(directory: Path) -> str:
         digest.update(b"\0")
         digest.update(path.read_bytes())
         digest.update(b"\0")
-    return digest.hexdigest()
-
-
-def _sha256_file(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
-            digest.update(chunk)
     return digest.hexdigest()
 
 

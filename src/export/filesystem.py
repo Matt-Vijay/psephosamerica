@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from uuid import uuid4
 
+from src.core.files import write_bytes_atomic as _write_bytes_atomic
 from src.core.path_safety import is_confined_relative_path, safe_join_confined
 
 from .builders import sha256_hex
@@ -40,15 +40,6 @@ def write_planned_files(files: list[PlannedFile], target_dir: Path) -> None:
         dest = safe_join_confined(target_dir, planned.path, label="planned file path")
         _ensure_parents(dest)
         _write_bytes_atomic(dest, planned.content)
-
-
-def _write_bytes_atomic(path: Path, content: bytes) -> None:
-    temp_path = path.with_name(f".{path.name}.{uuid4().hex}.tmp")
-    try:
-        temp_path.write_bytes(content)
-        temp_path.replace(path)
-    finally:
-        temp_path.unlink(missing_ok=True)
 
 
 def read_manifest(manifest_file: Path) -> SnapshotManifest:

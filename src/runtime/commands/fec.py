@@ -7,6 +7,7 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
+from src.core.files import sha256_file as _sha256_file_path
 from src.runtime.app import build_runtime
 from src.runtime.commands._shared import (
     _attach_optional_verification_output,
@@ -15,7 +16,6 @@ from src.runtime.commands._shared import (
     _materialize_summary_run_metadata,
     _non_empty_line_count,
     _positive_finite_timeout,
-    _sha256_file_path,
     _write_json_artifact,
 )
 from src.runtime.context import RuntimeContext, open_connection

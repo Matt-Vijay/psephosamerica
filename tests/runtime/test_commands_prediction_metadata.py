@@ -7,7 +7,9 @@ import hashlib
 from pathlib import Path
 from types import SimpleNamespace
 
-from src.runtime.commands._shared import _congress_archive_manifest_metadata
+from src.ingest.congress.archive_manifest import (
+    manifest_file_metadata as _congress_archive_manifest_metadata,
+)
 from src.runtime.commands.history import _validate_congress_archive_manifest_metadata
 from src.runtime.commands.prediction_eval import _prediction_window_run_metadata
 from src.runtime.commands.prediction_misc import _prediction_backtest_run_metadata

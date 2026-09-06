@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
 import re
 from pathlib import Path
 from typing import Any, TypeGuard
 
+from src.core.files import sha256_file
 from src.runtime.json_artifacts import (
     attach_optional_verification_output as _attach_optional_output,
 )
@@ -1006,7 +1006,7 @@ def _secret_literal_failures(payload: dict[str, Any]) -> list[str]:
 
 
 def _optional_file_sha256(path: Path) -> str | None:
-    return hashlib.sha256(path.read_bytes()).hexdigest() if path.is_file() else None
+    return sha256_file(path) if path.is_file() else None
 
 
 def _is_sha256_hex(value: str) -> bool:

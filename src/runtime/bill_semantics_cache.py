@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-import hashlib
 import json
 from pathlib import Path
 from typing import Any
 
+from src.core.files import sha256_file
 from src.prediction.llm_semantics import BillSemanticIndexPayload
 
 
@@ -14,7 +14,7 @@ def bill_semantics_index_sha256(root: Path | None) -> str | None:
     index_path = root / "index.json"
     if not index_path.is_file():
         raise ValueError(f"bill-semantics index not found: {index_path}")
-    return hashlib.sha256(index_path.read_bytes()).hexdigest()
+    return sha256_file(index_path)
 
 
 def bill_semantics_index_model_names(root: Path | None) -> list[str]:
@@ -139,9 +139,7 @@ def validate_bill_semantics_run_metadata(
             issues.append(f"bill-semantics index: file not found: {bill_semantics_index}")
         else:
             if is_sha256_hex(expected_bill_semantics_index_sha):
-                actual_bill_semantics_index_sha = hashlib.sha256(
-                    bill_semantics_index.read_bytes()
-                ).hexdigest()
+                actual_bill_semantics_index_sha = sha256_file(bill_semantics_index)
                 if actual_bill_semantics_index_sha != expected_bill_semantics_index_sha:
                     issues.append(
                         "bill-semantics index: sha256 mismatch: "

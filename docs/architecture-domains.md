@@ -53,6 +53,11 @@ explicitly; production has no special behavior for monkeypatching.
 
 ## Reuse behavior at its existing owner
 
+- `core/files.py`: streaming file hashes and atomic byte/text replacement. Callers
+  own serialization and directory creation; fsync-backed source stores retain
+  their separate durability policies.
+- `ingest/congress/archive_manifest.py`: Congress manifest serialization and
+  exact-file receipt validation.
 - `db/repositories.py`: SQL execution and transaction boundaries, including
   checked `INSERT … RETURNING id` handling.
 - `db/load_report.py`: load-summary aggregation for FEC, recomputation and runners.

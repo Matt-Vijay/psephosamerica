@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-import hashlib
 import json
 import re
 from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
+from src.core.files import sha256_file
 from src.prediction.source_url_audit import build_prediction_source_url_audit
 from src.runtime.json_artifacts import (
     attach_optional_verification_output as _attach_optional_verification_output,
@@ -119,7 +119,7 @@ def verify_prediction_source_url_audit_command(args: Any) -> dict[str, Any]:
             issues.append(f"eval_report not found: {eval_report_path}")
         else:
             checked += 1
-            actual_eval_report_sha = hashlib.sha256(eval_report_path.read_bytes()).hexdigest()
+            actual_eval_report_sha = sha256_file(eval_report_path)
             if (
                 expected_eval_report_sha_is_valid
                 and expected_eval_report_sha != actual_eval_report_sha
@@ -198,7 +198,7 @@ def verify_prediction_source_url_audit_command(args: Any) -> dict[str, Any]:
                 artifact_path,
                 source_state={
                     "artifact": str(artifact_path),
-                    "artifact_sha256": hashlib.sha256(artifact_path.read_bytes()).hexdigest(),
+                    "artifact_sha256": sha256_file(artifact_path),
                     **source_state,
                 },
             ),
@@ -1345,9 +1345,7 @@ def _prediction_source_url_audit_verify_run_metadata(
                 getattr(args, "require_no_portable_context_gaps", False)
             ),
         },
-        "artifact_sha256": hashlib.sha256(artifact_path.read_bytes()).hexdigest()
-        if artifact_path.is_file()
-        else None,
+        "artifact_sha256": sha256_file(artifact_path) if artifact_path.is_file() else None,
     }
     if source_state is not None:
         run_metadata["source_state"] = source_state

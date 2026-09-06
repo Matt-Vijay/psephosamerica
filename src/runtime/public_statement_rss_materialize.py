@@ -21,6 +21,7 @@ import certifi
 import yaml  # type: ignore[import-untyped]
 from defusedxml.ElementTree import ParseError, fromstring
 
+from src.core.files import sha256_file as _sha256_file
 from src.evidence.source_anchor_policy import is_official_source_url
 
 _DEFAULT_LEGISLATORS_URL = (
@@ -402,10 +403,6 @@ def _write_jsonl(path: Path, rows: list[dict[str, Any]]) -> None:
         for row in rows:
             fh.write(json.dumps(row, sort_keys=True))
             fh.write("\n")
-
-
-def _sha256_file(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def _increment(counter: dict[str, int], key: str) -> None:

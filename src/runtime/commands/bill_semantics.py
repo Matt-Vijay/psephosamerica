@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 import datetime as dt
-import hashlib
 import json
 import re
 from pathlib import Path
 from typing import Any, cast
 
+from src.core.files import sha256_file
 from src.evidence.source_anchor_policy import is_official_source_url
 from src.prediction.llm_semantics import (
     BillSemanticIndexPayload,
@@ -143,7 +143,7 @@ def _handle_materialize_bill_semantics(args: Any) -> dict[str, Any]:
         limit=args.limit,
         overwrite=args.overwrite,
     )
-    index_sha256 = hashlib.sha256(result.index_path.read_bytes()).hexdigest()
+    index_sha256 = sha256_file(result.index_path)
     return _attach_materialize_bill_semantics_summary_output(
         args,
         {
@@ -257,7 +257,7 @@ def _materialize_bill_semantics_source_report_metadata(args: Any) -> dict[str, A
     report_path = Path(str(missing_from_report))
     metadata: dict[str, Any] = {"path": str(report_path)}
     if report_path.is_file():
-        metadata["sha256"] = hashlib.sha256(report_path.read_bytes()).hexdigest()
+        metadata["sha256"] = sha256_file(report_path)
         report_metadata = _bill_semantic_plan_report_metadata(report_path)
         metadata["missing_bill_keys"] = report_metadata.get(
             "missing_from_report_missing_bill_keys",
@@ -300,7 +300,7 @@ def _bill_semantic_materialization_plan(
             str(missing_from_report_path) if missing_from_report_path is not None else None
         ),
         "missing_from_report_sha256": (
-            hashlib.sha256(missing_from_report_path.read_bytes()).hexdigest()
+            sha256_file(missing_from_report_path)
             if missing_from_report_path is not None and missing_from_report_path.is_file()
             else None
         ),
@@ -702,7 +702,7 @@ def _validate_bill_semantics_plan_inputs(
     if not report_path.is_file():
         issues.append(f"missing_from_report: file not found: {report_path}")
         return 1
-    actual_report_sha = hashlib.sha256(report_path.read_bytes()).hexdigest()
+    actual_report_sha = sha256_file(report_path)
     if actual_report_sha != expected_report_sha:
         issues.append(
             "missing_from_report: sha256 mismatch: "
@@ -825,9 +825,7 @@ def _handle_verify_bill_semantics(args: Any) -> dict[str, Any]:
     root = Path(args.root)
     index_path = root / "index.json"
     required_model_names = _required_string_list(getattr(args, "require_model_name", None))
-    index_sha256 = (
-        hashlib.sha256(index_path.read_bytes()).hexdigest() if index_path.is_file() else None
-    )
+    index_sha256 = sha256_file(index_path) if index_path.is_file() else None
     try:
         payloads = load_bill_semantic_payloads(root)
     except Exception as exc:  # noqa: BLE001
@@ -1047,9 +1045,7 @@ def _bill_semantics_plan_verify_run_metadata(
                 getattr(args, "require_matched_source_anchors", False)
             ),
         },
-        "artifact_sha256": hashlib.sha256(plan_path.read_bytes()).hexdigest()
-        if plan_path.is_file()
-        else None,
+        "artifact_sha256": sha256_file(plan_path) if plan_path.is_file() else None,
     }
     if source_state is not None:
         run_metadata["source_state"] = source_state

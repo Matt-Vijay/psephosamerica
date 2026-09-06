@@ -14,6 +14,8 @@ from pathlib import Path
 
 from pydantic import BaseModel
 
+from src.core.files import sha256_file
+
 
 def _canonical_bytes(model: BaseModel) -> bytes:
     # Stable, sorted serialization so the content hash is reproducible.
@@ -53,4 +55,4 @@ def verify_checkpoint(path: Path) -> bool:
     if not path.exists():
         return False
     expected = path.stem
-    return hashlib.sha256(path.read_bytes()).hexdigest() == expected
+    return sha256_file(path) == expected

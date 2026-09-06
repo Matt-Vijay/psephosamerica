@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 import datetime as dt
-import hashlib
 from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
+from src.core.files import sha256_file
 from src.ingest.congress.archive import CongressArchive, manifest_from_existing_archive
 from src.ingest.congress.archive_manifest import (
     load_manifest as load_congress_archive_manifest,
@@ -715,6 +715,6 @@ def _validate_congress_archive_manifest_metadata(
     if not manifest_path.is_file():
         issues.append(f"{label} file not found: {manifest_path}")
         return
-    actual_sha = hashlib.sha256(manifest_path.read_bytes()).hexdigest()
+    actual_sha = sha256_file(manifest_path)
     if actual_sha != expected_sha:
         issues.append(f"{label} sha256 mismatch: expected {expected_sha}, got {actual_sha}")

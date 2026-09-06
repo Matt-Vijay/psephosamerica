@@ -4,19 +4,14 @@ import hashlib
 import json
 from pathlib import Path
 from typing import Any
-from uuid import uuid4
+
+from src.core.files import write_bytes_atomic
 
 
 def write_json_artifact(path: Path, payload: Any) -> str:
     path.parent.mkdir(parents=True, exist_ok=True)
     encoded = json.dumps(payload, sort_keys=True).encode("utf-8")
-    temp_path = path.with_name(f".{path.name}.{uuid4().hex}.tmp")
-    try:
-        temp_path.write_bytes(encoded)
-        temp_path.replace(path)
-    except Exception:
-        temp_path.unlink(missing_ok=True)
-        raise
+    write_bytes_atomic(path, encoded)
     return hashlib.sha256(encoded).hexdigest()
 
 
