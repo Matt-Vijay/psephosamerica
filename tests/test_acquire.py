@@ -41,6 +41,90 @@ def test_decoded_hash_caps_and_cached_role_independence(store):
         a.close()
 
 
+def test_suffix_receipts_never_satisfy_full_downloads_and_resume(store):
+    raw = b"official archive bytes"
+    calls = []
+
+    def handler(request):
+        calls.append(request.headers.get("range"))
+        if request.headers.get("range"):
+            assert request.headers["accept-encoding"] == "identity"
+            return httpx.Response(
+                206,
+                content=raw[-5:],
+                headers={"Content-Range": f"bytes {len(raw) - 5}-{len(raw) - 1}/{len(raw)}"},
+            )
+        return httpx.Response(200, content=raw)
+
+    a = client(store, handler)
+    try:
+        tail = a.fetch("https://example.test/zip", check_robots=False, suffix_bytes=5)
+        assert a.fetch("https://example.test/zip", check_robots=False, suffix_bytes=5) == tail
+        full = a.fetch("https://example.test/zip", check_robots=False)
+        assert store.artifact(full.sha256) == raw
+        assert calls == ["bytes=-5", None]
+        assert full.sha256 != tail.sha256
+        assert a.fetch("https://example.test/zip", check_robots=False, suffix_bytes=5) == full
+    finally:
+        a.close()
+
+
+@pytest.mark.parametrize("status,headers", [(200, {}), (206, {"Content-Range": "bytes 0-4/20"})])
+def test_bad_range_is_receipted_then_full_retry_can_succeed(store, status, headers):
+    a = client(store, lambda request: httpx.Response(status, headers=headers, content=b"12345"))
+    try:
+        with pytest.raises(AcquisitionError, match="range"):
+            a.fetch("https://example.test/zip", check_robots=False, suffix_bytes=5)
+        assert a._cached("https://example.test/zip") is None
+        assert store.db.execute("SELECT error FROM acquisitions ORDER BY id DESC").fetchone()[0]
+    finally:
+        a.close()
+
+
+def test_partial_does_not_refresh_stale_full_representation(store):
+    calls = []
+
+    def handler(request):
+        calls.append(request.headers.get("range"))
+        if request.headers.get("range"):
+            return httpx.Response(206, content=b"new", headers={"Content-Range": "bytes 3-5/6"})
+        return httpx.Response(200, content=b"old" if len(calls) == 1 else b"updated")
+
+    a = client(store, handler)
+    try:
+        first = a.fetch("https://example.test/cache", check_robots=False)
+        with store.db:
+            store.db.execute("UPDATE acquisitions SET observed_at='2020-01-01T00:00:00Z'")
+        a.refresh = True
+        a.fetch("https://example.test/cache", check_robots=False, suffix_bytes=3)
+        a.refresh = False
+        later = a.fetch("https://example.test/cache", check_robots=False, max_age_seconds=60)
+        assert later.sha256 != first.sha256 and calls == [None, "bytes=-3", None]
+    finally:
+        a.close()
+
+
+def test_failed_transfer_bytes_remain_in_census_budget_after_restart(store):
+    from psephos.census import census_bytes
+
+    a = client(store, lambda request: httpx.Response(200, content=b"1234567890"))
+    try:
+        with pytest.raises(AcquisitionError, match="cap"):
+            a.fetch("https://www2.census.gov/fixture", check_robots=False, max_file_bytes=5)
+        assert a.downloaded == 10
+    finally:
+        a.close()
+    assert census_bytes(store) == 10
+    restarted = client(
+        store, lambda request: pytest.fail("Exhausted budget must not request bytes"), max_bytes=-5
+    )
+    try:
+        with pytest.raises(AcquisitionError, match="no new request"):
+            restarted.fetch("https://www2.census.gov/fixture", check_robots=False)
+    finally:
+        restarted.close()
+
+
 @pytest.mark.parametrize(
     "destination", ["http://example.test/file", "https://user:password@example.test/file"]
 )

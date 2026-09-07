@@ -25,6 +25,9 @@ SAFE_HEADERS = {
     "content-type",
     "content-length",
     "content-encoding",
+    "content-range",
+    "psephos_request_range",
+    "psephos_downloaded_bytes",
     "etag",
     "last-modified",
     "date",
@@ -139,11 +142,12 @@ class Acquirer:
         assert cursor.lastrowid is not None
         return cursor.lastrowid
 
-    def _cached(self, url: str) -> Receipt | None:
+    def _cached(self, url: str, suffix_bytes: int | None = None) -> Receipt | None:
         row = self.store.db.execute(
             "SELECT a.*,b.bytes FROM acquisitions a JOIN artifacts b ON b.sha256=a.sha256 "
-            "WHERE url=? AND status BETWEEN 200 AND 299 ORDER BY a.id DESC LIMIT 1",
-            (url,),
+            "WHERE url=? AND (status=200 OR (status=206 AND "
+            "json_extract(headers,'$.psephos_request_range')=?)) ORDER BY a.id DESC LIMIT 1",
+            (url, f"bytes=-{suffix_bytes}" if suffix_bytes else None),
         ).fetchone()
         if row:
             self.store.artifact(row["sha256"])
@@ -186,15 +190,19 @@ class Acquirer:
         max_file_bytes: int = 1024**3,
         accept: str | None = None,
         max_age_seconds: int | None = None,
+        suffix_bytes: int | None = None,
     ) -> Receipt:
         validate_url(url)
-        cached = self._cached(url)
+        if suffix_bytes is not None and not 1 <= suffix_bytes <= max_file_bytes:
+            raise ValueError("Suffix range must be positive and fit the file cap")
+        cached = self._cached(url, suffix_bytes)
         fresh = not self.refresh
         if cached and max_age_seconds is not None:
             last_check = self.store.db.execute(
-                "SELECT max(observed_at) FROM acquisitions WHERE url=? "
-                "AND (status BETWEEN 200 AND 299 OR status=304)",
-                (url,),
+                "SELECT max(observed_at) FROM acquisitions WHERE url=? AND sha256=? "
+                "AND (status=200 OR ((status=206 OR status=304) AND "
+                "json_extract(headers,'$.psephos_request_range') IS ?))",
+                (url, cached.sha256, f"bytes=-{suffix_bytes}" if suffix_bytes else None),
             ).fetchone()[0]
             age = (
                 datetime.now(UTC) - datetime.fromisoformat(last_check.replace("Z", "+00:00"))
@@ -207,6 +215,8 @@ class Acquirer:
         conditional: dict[str, str] = {}
         if accept:
             conditional["Accept"] = accept
+        if suffix_bytes:
+            conditional.update(Range=f"bytes=-{suffix_bytes}", **{"Accept-Encoding": "identity"})
         if cached:
             row = self.store.db.execute(
                 "SELECT headers FROM acquisitions WHERE id=?", (cached.id,)
@@ -218,17 +228,24 @@ class Acquirer:
                 conditional["If-Modified-Since"] = headers["last-modified"]
         current = url
         for attempt in range(5):
+            if self.downloaded >= self.max_bytes:
+                raise AcquisitionError("Acquisition byte cap exhausted; no new request sent")
             self._pause(current)
             observed = utc_now()
             status = 0
             response_headers: dict[str, str] = {}
+            size = 0
             temporary: Path | None = None
             try:
                 with self.client.stream("GET", current, headers=conditional) as response:
                     status = response.status_code
                     response_headers = {
-                        k: v for k, v in response.headers.items() if k in SAFE_HEADERS
+                        k: v
+                        for k, v in response.headers.items()
+                        if k in SAFE_HEADERS and not k.startswith("psephos_")
                     }
+                    if suffix_bytes:
+                        response_headers["psephos_request_range"] = f"bytes=-{suffix_bytes}"
                     if status in (301, 302, 303, 307, 308):
                         destination = str(response.url.join(response.headers["location"]))
                         validate_url(destination)
@@ -260,8 +277,24 @@ class Acquirer:
                         time.sleep(wait)
                         continue
                     response.raise_for_status()
+                    expected_range_size = None
+                    if suffix_bytes:
+                        span = re.fullmatch(
+                            r"bytes (\d+)-(\d+)/(\d+)", response.headers.get("content-range", "")
+                        )
+                        if status != 206 or not span or response.headers.get("content-encoding"):
+                            raise AcquisitionError(
+                                "Publisher did not supply the requested identity range"
+                            )
+                        start, end, total = map(int, span.groups())
+                        if end != total - 1 or start != max(0, total - suffix_bytes):
+                            raise AcquisitionError("Publisher returned a different byte range")
+                        expected_range_size = end - start + 1
+                    elif status == 206:
+                        raise AcquisitionError(
+                            "Unrequested partial response cannot be a full artifact"
+                        )
                     file_hash = hashlib.sha256()
-                    size = 0
                     staging = self.store.root / "staging"
                     staging.mkdir(exist_ok=True)
                     with tempfile.NamedTemporaryFile(dir=staging, delete=False) as output:
@@ -277,6 +310,8 @@ class Acquirer:
                         declared = response.headers.get("content-length")
                         if declared and int(declared) != size:
                             raise AcquisitionError("Incomplete HTTP representation")
+                    if expected_range_size is not None and size != expected_range_size:
+                        raise AcquisitionError("Incomplete suffix representation")
                     sha = file_hash.hexdigest()
                     target = self.store.object_path(sha)
                     target.parent.mkdir(parents=True, exist_ok=True)
@@ -291,6 +326,7 @@ class Acquirer:
                             "INSERT OR IGNORE INTO artifacts VALUES (?,?)", (sha, size)
                         )
                     response_headers["psephos_request_started_at"] = observed
+                    response_headers["psephos_downloaded_bytes"] = str(size)
                     observed = utc_now()
                     response_headers["psephos_observed_at_basis"] = "complete response retained"
                     receipt_id = self._record(
@@ -298,6 +334,7 @@ class Acquirer:
                     )
                     return Receipt(receipt_id, url, sha, observed, size)
             except (httpx.HTTPError, OSError, AcquisitionError) as exc:
+                response_headers["psephos_downloaded_bytes"] = str(size)
                 self._record(url, current, observed, status, response_headers, None, str(exc))
                 raise AcquisitionError(f"{url}: {exc}") from exc
             finally:

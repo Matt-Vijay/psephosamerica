@@ -23,3 +23,23 @@ See docs/collection-wave.md for the measured result and limitations. Final retri
 review fixed bounded image metadata, source list hierarchy and exact publisher links;
 docs/retrieval-review.json records the verification. No collection restart or legal
 applicability engine was added.
+
+Completed geographic checkpoint: pinned 2025 Census source discovery, separate
+from zoning/legal applicability; see docs/geographic-discovery.md and its receipt.
+
+Deferred lead, not accepted corpus or a collector assignment: Virginia administrative
+code. Parent's September 7 publisher probes found the advertised developer services
+at https://law.lis.virginia.gov/developers/ and /xmlapi/ link to operational **/api/**
+endpoints; `AdministrativeCodeGetTitleListOfXml/` and
+`AdministrativeCodeGetSectionListOfXml/9/25/875/` returned JSON, not XML. The latter
+supplies membership/hierarchy but sampled Body=null. Actual section bodies are in
+https://law.lis.virginia.gov/admincodefull/title9/agency25/chapter875/ (675,102 bytes;
+reported SHA-256 2a037d27ebf70686449e6bc0c8a5514ac50e4f8a06272f144477a66eb1e1023a).
+Its HTML title is misleading; inspect the chapter heading, seven tables, four images,
+IBR, part-scoped definitions and history before any fidelity claim. Broader inventory
+completeness is unverified; these memory-only probes are not canonical receipts.
+The publisher FAQ at https://codecommission.dls.virginia.gov/faq_va_admin_code.shtml
+describes daily permanent-code updates at effectiveness (some exempt actions lag)
+and exclusion of emergency regulations. Developer access is not blanket reuse
+permission: Commonwealth copyright/IBR notices require a separate bounded preflight.
+Do not launch this or the deferred Florida administrative-code work automatically.

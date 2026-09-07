@@ -345,7 +345,8 @@ def zoning_at(
         "v.observed_at,fa.sha256 AS artifact_sha,fa.id AS acquisition_id,v.metadata FROM feature_bounds b "
         "JOIN features f ON f.rowid=b.rowid JOIN chosen v ON v.id=f.version_id "
         "JOIN acquisitions fa ON fa.id=f.acquisition_id "
-        "JOIN documents d ON d.id=v.document_id WHERE 1=1"
+        "JOIN documents d ON d.id=v.document_id JOIN collections c ON c.id=d.collection_id "
+        "WHERE c.kind='zoning_geography'"
         + where
         + " AND b.minx<=? AND b.maxx>=? AND b.miny<=? AND b.maxy>=? ORDER BY f.id",
         (*params, longitude, longitude, latitude, latitude),

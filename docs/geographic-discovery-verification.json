@@ -1,0 +1,1550 @@
+{
+  "created_at": "2026-09-07T19:04:42Z",
+  "command": ".venv/bin/python scripts/verify_census.py --data data --output docs/geographic-discovery-verification.json",
+  "python": "3.12.13",
+  "dependencies": {
+    "httpx": "0.28.1",
+    "pyogrio": "0.13.0",
+    "pyproj": "3.8.0",
+    "shapely": "2.1.2",
+    "mcp": "1.29.1"
+  },
+  "data": {
+    "vintage": "2025-01-01",
+    "published_on": "2025-09-23",
+    "counts": {
+      "STATE": 56,
+      "COUNTY": 3235,
+      "PLACE": 32629,
+      "COUSUB": 31263
+    },
+    "total_features": 67183,
+    "inventory": {
+      "indexed": 93,
+      "omitted_scope": 21
+    },
+    "classes": {
+      "COUNTY/C7": 41,
+      "COUNTY/H1": 3115,
+      "COUNTY/H4": 21,
+      "COUNTY/H5": 20,
+      "COUNTY/H6": 38,
+      "COUSUB/C2": 233,
+      "COUSUB/C5": 4289,
+      "COUSUB/T1": 16162,
+      "COUSUB/T5": 45,
+      "COUSUB/T9": 254,
+      "COUSUB/Z1": 9646,
+      "COUSUB/Z2": 18,
+      "COUSUB/Z3": 306,
+      "COUSUB/Z5": 20,
+      "COUSUB/Z7": 152,
+      "COUSUB/Z9": 138,
+      "PLACE/C1": 15070,
+      "PLACE/C2": 269,
+      "PLACE/C5": 4152,
+      "PLACE/C6": 17,
+      "PLACE/C7": 41,
+      "PLACE/C8": 8,
+      "PLACE/C9": 176,
+      "PLACE/M2": 100,
+      "PLACE/U1": 12030,
+      "PLACE/U2": 766,
+      "STATE/not_in_state_layout": 56
+    },
+    "functional_status": {
+      "COUNTY/A": 3116,
+      "COUNTY/B": 3,
+      "COUNTY/C": 33,
+      "COUNTY/F": 43,
+      "COUNTY/G": 1,
+      "COUNTY/N": 28,
+      "COUNTY/S": 11,
+      "COUSUB/A": 16161,
+      "COUSUB/B": 17,
+      "COUSUB/C": 29,
+      "COUSUB/F": 4830,
+      "COUSUB/G": 1603,
+      "COUSUB/I": 254,
+      "COUSUB/N": 8063,
+      "COUSUB/S": 306,
+      "PLACE/A": 19546,
+      "PLACE/B": 2,
+      "PLACE/F": 8,
+      "PLACE/I": 35,
+      "PLACE/N": 142,
+      "PLACE/S": 12896,
+      "STATE/A": 56
+    },
+    "entity_types": {
+      "state_or_equivalent": 56,
+      "county_or_equivalent": 3235,
+      "census_designated_place": 12896,
+      "incorporated_place": 19733,
+      "legal_county_subdivision": 26127,
+      "county_subdivision_equivalent": 4830,
+      "statistical_county_subdivision": 306
+    },
+    "duplicate_keys": 0,
+    "missing_rtree_rows": 0,
+    "invalid_source_polygons": [],
+    "native_properties_exact": true,
+    "crs": "EPSG:4269 → EPSG:4326, always_xy=True; no invented legal boundary precision",
+    "all114_archive_bytes": 547262699,
+    "selected93_archive_bytes": 418534430,
+    "selected93_uncompressed_bytes": 691980250,
+    "cumulative_consumed_bytes": 428490371,
+    "download_cap_bytes": 536870912,
+    "receipt_http_statuses": {
+      "200": 105,
+      "206": 114,
+      "429": 26
+    },
+    "unique_objects_rehashed": 217,
+    "unique_object_bytes": 428401358,
+    "acquisition_range": [
+      "2026-09-07T18:41:32Z",
+      "2026-09-07T18:52:35Z"
+    ],
+    "source_evidence": [
+      {
+        "url": "https://www.census.gov/geographies/mapping-files/2025/geo/tiger-line-file.html",
+        "acquisition_id": 10733,
+        "sha256": "4cfe729667a07203335d6d426ee5102e78216408afd22be1f27b515e7ea83e65",
+        "bytes": 318659
+      },
+      {
+        "url": "https://www2.census.gov/geo/pdfs/maps-data/data/tiger/tgrshp2025/TGRSHP2025_TechDoc_Ch1.pdf",
+        "acquisition_id": 10598,
+        "sha256": "ce40bee768cdb00f9dadc154ca0b1dc6ca91180c1b9362e5d2b70cbea2d75003",
+        "bytes": 150512
+      },
+      {
+        "url": "https://www2.census.gov/geo/pdfs/maps-data/data/tiger/tgrshp2025/TGRSHP2025_TechDoc_Ch3.pdf",
+        "acquisition_id": 10599,
+        "sha256": "5dcc09b90cab9b32838fa854311c89f20243bcdb061b6cd71e4893d0af845d3e",
+        "bytes": 323309
+      },
+      {
+        "url": "https://www2.census.gov/geo/pdfs/maps-data/data/tiger/tgrshp2025/TGRSHP2025_TechDoc_Ch4.pdf",
+        "acquisition_id": 10600,
+        "sha256": "b71a2cac5e22848a4859452c736f551f8875d25aaf3f701794a6966b5b3219dc",
+        "bytes": 1020901
+      },
+      {
+        "url": "https://www2.census.gov/geo/pdfs/maps-data/data/tiger/tgrshp2025/TGRSHP2025_TechDoc_F-S.pdf",
+        "acquisition_id": 10734,
+        "sha256": "c10c384f724df52b1cd5015c35365d3c922c356548fe8ab39d383afc8ee646ef",
+        "bytes": 625722
+      },
+      {
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/STATE/",
+        "acquisition_id": 10594,
+        "sha256": "b1666a19966cad7a85fb2d6b7b26c658a8694b131ecc180c0735fb51ae75ad1b",
+        "bytes": 14734
+      },
+      {
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/COUNTY/",
+        "acquisition_id": 10595,
+        "sha256": "3ff4a287d4d678418611adcdc7459386489c21243f0b02ae2c722d8461b991dc",
+        "bytes": 14737
+      },
+      {
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/PLACE/",
+        "acquisition_id": 10596,
+        "sha256": "21b76761b2ffde5582f8482480af661748a7f9b9eb294a5b4a045986033522d3",
+        "bytes": 27054
+      },
+      {
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/COUSUB/",
+        "acquisition_id": 10597,
+        "sha256": "c1d5ad7f9f3de77c12485cfc5d257875119acf3efb892c418646179aa3eb584b",
+        "bytes": 27167
+      }
+    ],
+    "archives": [
+      {
+        "name": "tl_2025_us_state.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/STATE/tl_2025_us_state.zip",
+        "features": 56,
+        "bytes": 9956072,
+        "uncompressed_bytes": 15628879,
+        "sha256": "59a220888a8d9be8117c4fcd38f542bd02d81abf0d198c78113595ad540dd957",
+        "acquisition_id": 10736
+      },
+      {
+        "name": "tl_2025_us_county.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/COUNTY/tl_2025_us_county.zip",
+        "features": 3235,
+        "bytes": 83989800,
+        "uncompressed_bytes": 133382878,
+        "sha256": "9c6e9d9076abce2670d1de255de3710c35ecca00a7005d88e012dec52d95f763",
+        "acquisition_id": 10740
+      },
+      {
+        "name": "tl_2025_01_place.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/PLACE/tl_2025_01_place.zip",
+        "features": 594,
+        "bytes": 5250692,
+        "uncompressed_bytes": 8487890,
+        "sha256": "502d0e2e0266e4e73a00582b5b82252e4484f6cac61c0dbe7df85d9f5a30a144",
+        "acquisition_id": 10741
+      },
+      {
+        "name": "tl_2025_02_place.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/PLACE/tl_2025_02_place.zip",
+        "features": 355,
+        "bytes": 2846788,
+        "uncompressed_bytes": 4463877,
+        "sha256": "582c37f2fe680af15d7508e222153d5aa163867f47f2d96fbacd05695b0d985d",
+        "acquisition_id": 10742
+      },
+      {
+        "name": "tl_2025_04_place.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/PLACE/tl_2025_04_place.zip",
+        "features": 467,
+        "bytes": 2821601,
+        "uncompressed_bytes": 4649483,
+        "sha256": "7c52a87725285cd6e6655daf6cf733c37942256bc7e190ac01ddb174a0acd330",
+        "acquisition_id": 10743
+      },
+      {
+        "name": "tl_2025_05_place.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/PLACE/tl_2025_05_place.zip",
+        "features": 626,
+        "bytes": 2444799,
+        "uncompressed_bytes": 4110901,
+        "sha256": "348061c5f3cac0d83394ac7c1cfb0bff9ba891061429aa46d8abbdec83092999",
+        "acquisition_id": 10744
+      },
+      {
+        "name": "tl_2025_06_place.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/PLACE/tl_2025_06_place.zip",
+        "features": 1619,
+        "bytes": 9885068,
+        "uncompressed_bytes": 16050187,
+        "sha256": "2b59dc5d54c69c7a451795401fc2a1c1c68b172f1d912d3486080e04a83e23e8",
+        "acquisition_id": 10745
+      },
+      {
+        "name": "tl_2025_08_place.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/PLACE/tl_2025_08_place.zip",
+        "features": 482,
+        "bytes": 2791333,
+        "uncompressed_bytes": 4671527,
+        "sha256": "e0072e2f1c049e53d598119014e6bc93f82a0a02082b3604d81b0a8c3e8b043c",
+        "acquisition_id": 10746
+      },
+      {
+        "name": "tl_2025_09_place.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/PLACE/tl_2025_09_place.zip",
+        "features": 215,
+        "bytes": 886904,
+        "uncompressed_bytes": 1494211,
+        "sha256": "5766992fb77774fd47a2b7868747b6007a5cbbdeaa04e793506aee3faa13d52e",
+        "acquisition_id": 10747
+      },
+      {
+        "name": "tl_2025_10_place.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/PLACE/tl_2025_10_place.zip",
+        "features": 79,
+        "bytes": 454114,
+        "uncompressed_bytes": 801369,
+        "sha256": "638eda256e3785b8653ec776787866e6eda890a9d9bf2653c6fcc6aeba6cebb8",
+        "acquisition_id": 10748
+      },
+      {
+        "name": "tl_2025_11_place.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/PLACE/tl_2025_11_place.zip",
+        "features": 1,
+        "bytes": 86364,
+        "uncompressed_bytes": 219658,
+        "sha256": "1ac8c0230c3e656bf79d9ee3a52f4d48f97626fce5e4f6c7701bca6f948b9623",
+        "acquisition_id": 10749
+      },
+      {
+        "name": "tl_2025_12_place.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/PLACE/tl_2025_12_place.zip",
+        "features": 958,
+        "bytes": 7068141,
+        "uncompressed_bytes": 11689014,
+        "sha256": "4394a80089284477cf79daefb754afd7e9f90683415d3398376e5c2152960876",
+        "acquisition_id": 10750
+      },
+      {
+        "name": "tl_2025_13_place.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/PLACE/tl_2025_13_place.zip",
+        "features": 676,
+        "bytes": 5220272,
+        "uncompressed_bytes": 8360263,
+        "sha256": "85af23730c518c008e6869ce63dfa02d17ae61de601dd204b880ff43f5d31ff5",
+        "acquisition_id": 10751
+      },
+      {
+        "name": "tl_2025_15_place.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/PLACE/tl_2025_15_place.zip",
+        "features": 163,
+        "bytes": 758840,
+        "uncompressed_bytes": 1299313,
+        "sha256": "38018cb6a3e66c2f0174056903d0e8c6c2d18fa5c15b0014d059f2bead42f65b",
+        "acquisition_id": 10752
+      },
+      {
+        "name": "tl_2025_16_place.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/PLACE/tl_2025_16_place.zip",
+        "features": 236,
+        "bytes": 1052099,
+        "uncompressed_bytes": 1833348,
+        "sha256": "d0202acb86094eab323a1cd2deef23e12b4fa9e29d8d77bcfabb862235f847d4",
+        "acquisition_id": 10753
+      },
+      {
+        "name": "tl_2025_17_place.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/PLACE/tl_2025_17_place.zip",
+        "features": 1461,
+        "bytes": 6140463,
+        "uncompressed_bytes": 10343693,
+        "sha256": "5c2ce6d7ca6a5045ea46563898c168a6e6b259d7ad116c6f27148ce3a40822b3",
+        "acquisition_id": 10754
+      },
+      {
+        "name": "tl_2025_18_place.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/PLACE/tl_2025_18_place.zip",
+        "features": 974,
+        "bytes": 2425860,
+        "uncompressed_bytes": 4217226,
+        "sha256": "2428563ed4db0a74b2041dec577e4230103329eb2875ac1827076bf477f82201",
+        "acquisition_id": 10755
+      },
+      {
+        "name": "tl_2025_19_place.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/PLACE/tl_2025_19_place.zip",
+        "features": 1026,
+        "bytes": 1895750,
+        "uncompressed_bytes": 3449513,
+        "sha256": "b945d74f84c7fd20d1e77cd49522cc1ea542f16652987171b10616f15875ce21",
+        "acquisition_id": 10756
+      },
+      {
+        "name": "tl_2025_20_place.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/PLACE/tl_2025_20_place.zip",
+        "features": 740,
+        "bytes": 1675287,
+        "uncompressed_bytes": 3009942,
+        "sha256": "0cdaf30d567ebbb8f75421200a6e3345728313cffd791567cce308fdac047583",
+        "acquisition_id": 10757
+      },
+      {
+        "name": "tl_2025_21_place.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/PLACE/tl_2025_21_place.zip",
+        "features": 555,
+        "bytes": 2768605,
+        "uncompressed_bytes": 4474258,
+        "sha256": "40d09b3263922786f5970b7e55dfb8e7b1a97c74a62efacab4e070e8738e9e64",
+        "acquisition_id": 10758
+      },
+      {
+        "name": "tl_2025_22_place.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/PLACE/tl_2025_22_place.zip",
+        "features": 484,
+        "bytes": 1948019,
+        "uncompressed_bytes": 3228189,
+        "sha256": "982330b7333d268b26ff60666b3ad4b683b95a1db7cef9053d39bfb580c6dcfd",
+        "acquisition_id": 10759
+      },
+      {
+        "name": "tl_2025_23_place.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/PLACE/tl_2025_23_place.zip",
+        "features": 155,
+        "bytes": 682536,
+        "uncompressed_bytes": 1168361,
+        "sha256": "2bc5461577f18dd3e89ac5d314c0ce2fc8def3de3a3f633a35423488a8aa0ce5",
+        "acquisition_id": 10760
+      },
+      {
+        "name": "tl_2025_24_place.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/PLACE/tl_2025_24_place.zip",
+        "features": 536,
+        "bytes": 2730658,
+        "uncompressed_bytes": 4452799,
+        "sha256": "e984dd58cc06b01363958221a661e1eef89b3daa328ace515f1daee0da4594cc",
+        "acquisition_id": 10761
+      },
+      {
+        "name": "tl_2025_25_place.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/PLACE/tl_2025_25_place.zip",
+        "features": 248,
+        "bytes": 1191390,
+        "uncompressed_bytes": 1981845,
+        "sha256": "950f7d0a669caf721f770d1cc58883560b1cf84f5d7be845e6e3d05a855c86fa",
+        "acquisition_id": 10762
+      },
+      {
+        "name": "tl_2025_26_place.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/PLACE/tl_2025_26_place.zip",
+        "features": 745,
+        "bytes": 1484329,
+        "uncompressed_bytes": 2602944,
+        "sha256": "91cd708b8f9809a50ebed360fe7242969ba357a542481da81d9edc5821d35d3b",
+        "acquisition_id": 10763
+      },
+      {
+        "name": "tl_2025_27_place.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/PLACE/tl_2025_27_place.zip",
+        "features": 916,
+        "bytes": 2556050,
+        "uncompressed_bytes": 4433854,
+        "sha256": "60d7e34ecbf7bf225b4b29d908acddcd6a9e05c39ae505cdb83791e3dfd81873",
+        "acquisition_id": 10764
+      },
+      {
+        "name": "tl_2025_28_place.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/PLACE/tl_2025_28_place.zip",
+        "features": 427,
+        "bytes": 1510851,
+        "uncompressed_bytes": 2570371,
+        "sha256": "08aa0b23ab4d88f3dac2891fd82c2f6a67ea90816c14111c0147de85dae5f3e7",
+        "acquisition_id": 10765
+      },
+      {
+        "name": "tl_2025_29_place.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/PLACE/tl_2025_29_place.zip",
+        "features": 1081,
+        "bytes": 3082129,
+        "uncompressed_bytes": 5201848,
+        "sha256": "7182d92a73ef3167714d66ef192fce374636c549fb1d4e635af9580dc49cddf1",
+        "acquisition_id": 10766
+      },
+      {
+        "name": "tl_2025_30_place.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/PLACE/tl_2025_30_place.zip",
+        "features": 497,
+        "bytes": 2262510,
+        "uncompressed_bytes": 3741791,
+        "sha256": "2a39433bd9e5a81a683e39ae9bbb914c9ce63c50a92855ddeee8c0ae02b63f74",
+        "acquisition_id": 10767
+      },
+      {
+        "name": "tl_2025_31_place.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/PLACE/tl_2025_31_place.zip",
+        "features": 593,
+        "bytes": 826250,
+        "uncompressed_bytes": 1552616,
+        "sha256": "aa01fa8c3dafcea27cbe6bd009f38eb774b4c765fd2e5b81701d69a534da16e0",
+        "acquisition_id": 10768
+      },
+      {
+        "name": "tl_2025_32_place.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/PLACE/tl_2025_32_place.zip",
+        "features": 138,
+        "bytes": 848456,
+        "uncompressed_bytes": 1457601,
+        "sha256": "9842a490c27930be50f19cbc21b0c623f16b6d1d40f2e4cb1b0b2b5c7b2f7d83",
+        "acquisition_id": 10769
+      },
+      {
+        "name": "tl_2025_33_place.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/PLACE/tl_2025_33_place.zip",
+        "features": 100,
+        "bytes": 379207,
+        "uncompressed_bytes": 688270,
+        "sha256": "e5ccfa3bcca3899566dc5d4831ba3557779f53856bedffde393f824d0bcc44c7",
+        "acquisition_id": 10770
+      },
+      {
+        "name": "tl_2025_34_place.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/PLACE/tl_2025_34_place.zip",
+        "features": 700,
+        "bytes": 2939779,
+        "uncompressed_bytes": 4863792,
+        "sha256": "28602a4302564a9eecf8e92f861fad6864d806581ee2ce8bea9997999f3e440e",
+        "acquisition_id": 10771
+      },
+      {
+        "name": "tl_2025_35_place.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/PLACE/tl_2025_35_place.zip",
+        "features": 528,
+        "bytes": 2368303,
+        "uncompressed_bytes": 3905882,
+        "sha256": "1cbbc3121c3aeb65c2eaa4371d30ceab09a7a6f4f066beee0a9f76077c42348e",
+        "acquisition_id": 10772
+      },
+      {
+        "name": "tl_2025_36_place.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/PLACE/tl_2025_36_place.zip",
+        "features": 1293,
+        "bytes": 3380697,
+        "uncompressed_bytes": 5652176,
+        "sha256": "4f667ef3a40f1569b58a37052e2464053436bd5e978b34ca333e8185a6a6808d",
+        "acquisition_id": 10737
+      },
+      {
+        "name": "tl_2025_37_place.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/PLACE/tl_2025_37_place.zip",
+        "features": 776,
+        "bytes": 8497219,
+        "uncompressed_bytes": 13467397,
+        "sha256": "c6b8dabd4c953bb44dd4201b34eae83dceeb880055e1c4efd00faa43c272ea79",
+        "acquisition_id": 10773
+      },
+      {
+        "name": "tl_2025_38_place.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/PLACE/tl_2025_38_place.zip",
+        "features": 406,
+        "bytes": 537253,
+        "uncompressed_bytes": 1051342,
+        "sha256": "bec89e2ff577b0717d31d58c33bcc54b36732822f6de8c32ccfd966f0527cea9",
+        "acquisition_id": 10774
+      },
+      {
+        "name": "tl_2025_39_place.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/PLACE/tl_2025_39_place.zip",
+        "features": 1265,
+        "bytes": 4069844,
+        "uncompressed_bytes": 6797849,
+        "sha256": "6c4c280e539dadc21bedda385b1c7a4b3ee24998c774d1b7e0a49e0199b272e9",
+        "acquisition_id": 10775
+      },
+      {
+        "name": "tl_2025_40_place.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/PLACE/tl_2025_40_place.zip",
+        "features": 846,
+        "bytes": 2971163,
+        "uncompressed_bytes": 5124654,
+        "sha256": "e9d840ae15b4c3e194427987a31f84ed685fe9d82ac8d3349986a99b18e365cb",
+        "acquisition_id": 10776
+      },
+      {
+        "name": "tl_2025_41_place.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/PLACE/tl_2025_41_place.zip",
+        "features": 426,
+        "bytes": 2364412,
+        "uncompressed_bytes": 3971977,
+        "sha256": "d05814de06701cca35df9e160017cd11d5ffe43a2530a8fa7f4b3a521e9e1f0f",
+        "acquisition_id": 10738
+      },
+      {
+        "name": "tl_2025_42_place.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/PLACE/tl_2025_42_place.zip",
+        "features": 2003,
+        "bytes": 4590506,
+        "uncompressed_bytes": 7650627,
+        "sha256": "b9b8a25b906bc0c338cc4cfea45d8e5de12247a913cbd821b93368c55e2e9dc5",
+        "acquisition_id": 10777
+      },
+      {
+        "name": "tl_2025_44_place.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/PLACE/tl_2025_44_place.zip",
+        "features": 36,
+        "bytes": 292174,
+        "uncompressed_bytes": 554090,
+        "sha256": "520647e2008a90b0f8f68ec9eefb40f929b77debc5561db3132ed3decb8d3429",
+        "acquisition_id": 10778
+      },
+      {
+        "name": "tl_2025_45_place.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/PLACE/tl_2025_45_place.zip",
+        "features": 475,
+        "bytes": 5279552,
+        "uncompressed_bytes": 8379116,
+        "sha256": "f1a69f4a169b19ca69d09da21e157dfd6177c0959bec80352b0a7a0165885d68",
+        "acquisition_id": 10779
+      },
+      {
+        "name": "tl_2025_46_place.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/PLACE/tl_2025_46_place.zip",
+        "features": 485,
+        "bytes": 817119,
+        "uncompressed_bytes": 1526449,
+        "sha256": "050183397bec5bef01804ccd9f3ba4ec7d3f80edd27603a71160959af4fad0ef",
+        "acquisition_id": 10780
+      },
+      {
+        "name": "tl_2025_47_place.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/PLACE/tl_2025_47_place.zip",
+        "features": 504,
+        "bytes": 5051239,
+        "uncompressed_bytes": 8020136,
+        "sha256": "3f6d5ae04e8f1217a7d0be244d3a841345902d9d4def83b0a07d1fc75960cc8e",
+        "acquisition_id": 10781
+      },
+      {
+        "name": "tl_2025_48_place.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/PLACE/tl_2025_48_place.zip",
+        "features": 1863,
+        "bytes": 9782040,
+        "uncompressed_bytes": 15768251,
+        "sha256": "5a0c4d49641f69028ee9f5c343bf09936ec00a378e5e6393115b106bab935e13",
+        "acquisition_id": 10782
+      },
+      {
+        "name": "tl_2025_49_place.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/PLACE/tl_2025_49_place.zip",
+        "features": 334,
+        "bytes": 1652963,
+        "uncompressed_bytes": 2819999,
+        "sha256": "3db4d3fc1d9ca4b7c6911b01079558bb13e89703933858247f0bc4ff75d9e3d9",
+        "acquisition_id": 10783
+      },
+      {
+        "name": "tl_2025_50_place.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/PLACE/tl_2025_50_place.zip",
+        "features": 180,
+        "bytes": 596853,
+        "uncompressed_bytes": 1043708,
+        "sha256": "6b932d7ab2aa279cac6e2ec713e0283d71f88661396df1630d85dc8eef5f58f5",
+        "acquisition_id": 10784
+      },
+      {
+        "name": "tl_2025_51_place.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/PLACE/tl_2025_51_place.zip",
+        "features": 700,
+        "bytes": 3860419,
+        "uncompressed_bytes": 6266035,
+        "sha256": "b2ce73226f4b3a0f0a60d7116e65f468cd94a739f30c345106ff1e292c57a1f5",
+        "acquisition_id": 10785
+      },
+      {
+        "name": "tl_2025_53_place.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/PLACE/tl_2025_53_place.zip",
+        "features": 639,
+        "bytes": 2855604,
+        "uncompressed_bytes": 4766558,
+        "sha256": "b99039759e33cf931175302da80de9bd8d284c384721d52efde34dfbef2b64f5",
+        "acquisition_id": 10786
+      },
+      {
+        "name": "tl_2025_54_place.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/PLACE/tl_2025_54_place.zip",
+        "features": 439,
+        "bytes": 1642581,
+        "uncompressed_bytes": 2706808,
+        "sha256": "756188b7c2187c2e7cb43867546e406e3236df360b0baa72b17db4af0fd4ecd2",
+        "acquisition_id": 10787
+      },
+      {
+        "name": "tl_2025_55_place.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/PLACE/tl_2025_55_place.zip",
+        "features": 808,
+        "bytes": 3482721,
+        "uncompressed_bytes": 5882757,
+        "sha256": "a48a36cae9450fe11916cb94bbf1054d0ebc6c878e18de7a7e27039ad6fc5763",
+        "acquisition_id": 10788
+      },
+      {
+        "name": "tl_2025_56_place.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/PLACE/tl_2025_56_place.zip",
+        "features": 205,
+        "bytes": 904349,
+        "uncompressed_bytes": 1563811,
+        "sha256": "3b077402b1090f9afed9662da7f70d66b791b01f61d8ac4b7032df2293715e96",
+        "acquisition_id": 10789
+      },
+      {
+        "name": "tl_2025_60_place.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/PLACE/tl_2025_60_place.zip",
+        "features": 77,
+        "bytes": 82335,
+        "uncompressed_bytes": 240857,
+        "sha256": "fc60deea78302bcb968bf28600b77f7a98db2dfe15bee2ff00cf61ea4ffaba24",
+        "acquisition_id": 10790
+      },
+      {
+        "name": "tl_2025_66_place.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/PLACE/tl_2025_66_place.zip",
+        "features": 57,
+        "bytes": 267049,
+        "uncompressed_bytes": 518119,
+        "sha256": "1047ceb9991b1ad0d65ec3e643004f6a3ee25db111dcba71e0a623b80c3eaebb",
+        "acquisition_id": 10791
+      },
+      {
+        "name": "tl_2025_69_place.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/PLACE/tl_2025_69_place.zip",
+        "features": 135,
+        "bytes": 584280,
+        "uncompressed_bytes": 1077282,
+        "sha256": "78d08e63b4cb00f441a4476af0d6361bc6d784e74919be68a3d54454343bec76",
+        "acquisition_id": 10792
+      },
+      {
+        "name": "tl_2025_72_place.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/PLACE/tl_2025_72_place.zip",
+        "features": 292,
+        "bytes": 761319,
+        "uncompressed_bytes": 1322652,
+        "sha256": "32483d1f41d3852de44afb6d91d6d89c4fa7320c6b010b3766855c013df03d47",
+        "acquisition_id": 10793
+      },
+      {
+        "name": "tl_2025_78_place.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/PLACE/tl_2025_78_place.zip",
+        "features": 10,
+        "bytes": 56249,
+        "uncompressed_bytes": 170616,
+        "sha256": "fa84e8bb32e91802a8268b5d3715e418a3356f7226cc2ce86ebd951593f8f4e4",
+        "acquisition_id": 10794
+      },
+      {
+        "name": "tl_2025_05_cousub.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/COUSUB/tl_2025_05_cousub.zip",
+        "features": 1095,
+        "bytes": 8594201,
+        "uncompressed_bytes": 14154503,
+        "sha256": "065c73cfd566cf8bf0010ad14d4278addb4d2a4f6c741f12447e7648f14b88a6",
+        "acquisition_id": 10796
+      },
+      {
+        "name": "tl_2025_09_cousub.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/COUSUB/tl_2025_09_cousub.zip",
+        "features": 174,
+        "bytes": 871098,
+        "uncompressed_bytes": 1519714,
+        "sha256": "2a30bc276de4d69ae94d92c87881ff85905f5a16680af485c0e15a253c5d6ed1",
+        "acquisition_id": 10739
+      },
+      {
+        "name": "tl_2025_11_cousub.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/COUSUB/tl_2025_11_cousub.zip",
+        "features": 1,
+        "bytes": 86209,
+        "uncompressed_bytes": 233058,
+        "sha256": "288b8a5479c13c839f760f12ef3f7a5044bb3dc478ef3f5e49b384e3bb5906ed",
+        "acquisition_id": 10797
+      },
+      {
+        "name": "tl_2025_17_cousub.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/COUSUB/tl_2025_17_cousub.zip",
+        "features": 1695,
+        "bytes": 6718661,
+        "uncompressed_bytes": 11631231,
+        "sha256": "b189799b7b0eddec47b831ef1c1babf84b6114abd868410982f15136ddee2f0e",
+        "acquisition_id": 10799
+      },
+      {
+        "name": "tl_2025_18_cousub.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/COUSUB/tl_2025_18_cousub.zip",
+        "features": 1012,
+        "bytes": 3676561,
+        "uncompressed_bytes": 6548181,
+        "sha256": "2cfa1a3fba307c927fca9777b897f3c7e25fa76eab60b87257ad11b6bf9bbc62",
+        "acquisition_id": 10801
+      },
+      {
+        "name": "tl_2025_19_cousub.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/COUSUB/tl_2025_19_cousub.zip",
+        "features": 1663,
+        "bytes": 4730463,
+        "uncompressed_bytes": 8525854,
+        "sha256": "fe98deee3c0e245d2f1a28b5db5f583a33b1992963e060834b2f7f608630e9dd",
+        "acquisition_id": 10803
+      },
+      {
+        "name": "tl_2025_20_cousub.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/COUSUB/tl_2025_20_cousub.zip",
+        "features": 1521,
+        "bytes": 5401600,
+        "uncompressed_bytes": 9581340,
+        "sha256": "adbc765d2a014a6fd9f1f7448c7adf7a02afa0b1ecf1eca85a6c36925089c5f1",
+        "acquisition_id": 10804
+      },
+      {
+        "name": "tl_2025_22_cousub.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/COUSUB/tl_2025_22_cousub.zip",
+        "features": 576,
+        "bytes": 7912887,
+        "uncompressed_bytes": 12833741,
+        "sha256": "5489b1bb96206f294da6ecf5b8faf1d7ba4f7a5763b09499ed51d089a7db4078",
+        "acquisition_id": 10806
+      },
+      {
+        "name": "tl_2025_23_cousub.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/COUSUB/tl_2025_23_cousub.zip",
+        "features": 529,
+        "bytes": 3622704,
+        "uncompressed_bytes": 5895315,
+        "sha256": "4837e4ae8b164f9a2c18518521b32222bef6fa267deed2b10999558a4b6239e1",
+        "acquisition_id": 10807
+      },
+      {
+        "name": "tl_2025_24_cousub.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/COUSUB/tl_2025_24_cousub.zip",
+        "features": 290,
+        "bytes": 3180786,
+        "uncompressed_bytes": 5241677,
+        "sha256": "bf7c5a8274ae8c9f3638118129a1bff715f958eb17dfcd5a96ef235b90a11415",
+        "acquisition_id": 10809
+      },
+      {
+        "name": "tl_2025_25_cousub.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/COUSUB/tl_2025_25_cousub.zip",
+        "features": 357,
+        "bytes": 1988237,
+        "uncompressed_bytes": 3288842,
+        "sha256": "495c0f1c8690c518842f5351e6186a1408a277f21990cb64d4553e90051a4910",
+        "acquisition_id": 10811
+      },
+      {
+        "name": "tl_2025_26_cousub.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/COUSUB/tl_2025_26_cousub.zip",
+        "features": 1580,
+        "bytes": 4372487,
+        "uncompressed_bytes": 7609984,
+        "sha256": "f5bcc25955b4c4ee9442a7e9d8f6f62fd7271a6352553f6d64f862861a1a06e8",
+        "acquisition_id": 10813
+      },
+      {
+        "name": "tl_2025_27_cousub.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/COUSUB/tl_2025_27_cousub.zip",
+        "features": 2760,
+        "bytes": 9507543,
+        "uncompressed_bytes": 16608879,
+        "sha256": "fcfa1566debf373b9b0b3f3aafba1782e9feee8744d29b4a21c4b1344fd6cca2",
+        "acquisition_id": 10814
+      },
+      {
+        "name": "tl_2025_28_cousub.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/COUSUB/tl_2025_28_cousub.zip",
+        "features": 410,
+        "bytes": 7777898,
+        "uncompressed_bytes": 12798306,
+        "sha256": "a34995998fa81c85e012e6386d043655e15451746ad770d4ddece14966de1633",
+        "acquisition_id": 10815
+      },
+      {
+        "name": "tl_2025_29_cousub.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/COUSUB/tl_2025_29_cousub.zip",
+        "features": 1394,
+        "bytes": 7104089,
+        "uncompressed_bytes": 12062797,
+        "sha256": "8a3df3922bc71f3873a6ea398d45f7574b41f89ce23a5c9ee90304a723a6824f",
+        "acquisition_id": 10816
+      },
+      {
+        "name": "tl_2025_31_cousub.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/COUSUB/tl_2025_31_cousub.zip",
+        "features": 1182,
+        "bytes": 3868508,
+        "uncompressed_bytes": 6966034,
+        "sha256": "f05f6b7ab13c6e6dfe75dcda4ab0c54e0cc7e4425ea165b08b19f4dfa630c501",
+        "acquisition_id": 10817
+      },
+      {
+        "name": "tl_2025_33_cousub.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/COUSUB/tl_2025_33_cousub.zip",
+        "features": 260,
+        "bytes": 1156156,
+        "uncompressed_bytes": 1982930,
+        "sha256": "b938f597e01ddf739e01931240bf0232035e6765981a77fc294b6e20920d54e8",
+        "acquisition_id": 10818
+      },
+      {
+        "name": "tl_2025_34_cousub.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/COUSUB/tl_2025_34_cousub.zip",
+        "features": 569,
+        "bytes": 5190637,
+        "uncompressed_bytes": 8515557,
+        "sha256": "854e2653d13ddf555754151a84c3b13db17961d2cf6ca7de3bf167b94828ca72",
+        "acquisition_id": 10819
+      },
+      {
+        "name": "tl_2025_36_cousub.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/COUSUB/tl_2025_36_cousub.zip",
+        "features": 1023,
+        "bytes": 4677844,
+        "uncompressed_bytes": 7854134,
+        "sha256": "d3dc29853def54df056028dc5ae7db7031a104f494da873428501e92b7798b58",
+        "acquisition_id": 10820
+      },
+      {
+        "name": "tl_2025_37_cousub.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/COUSUB/tl_2025_37_cousub.zip",
+        "features": 1041,
+        "bytes": 13208512,
+        "uncompressed_bytes": 21094399,
+        "sha256": "8cbb5df2c83b1682322f729f4cd80fdb58d00ca8d3aaaff18b02b85762243f53",
+        "acquisition_id": 10822
+      },
+      {
+        "name": "tl_2025_38_cousub.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/COUSUB/tl_2025_38_cousub.zip",
+        "features": 1761,
+        "bytes": 4580862,
+        "uncompressed_bytes": 8098778,
+        "sha256": "1e4042951f2e2528596903c185ba5840fde04eb66305cfa0b0bf973000d1d877",
+        "acquisition_id": 10823
+      },
+      {
+        "name": "tl_2025_39_cousub.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/COUSUB/tl_2025_39_cousub.zip",
+        "features": 1607,
+        "bytes": 6544907,
+        "uncompressed_bytes": 11199707,
+        "sha256": "20c7b4d21072822962566f7255f8bc843a3817c72b3314b001a2750cd2cfe38d",
+        "acquisition_id": 10824
+      },
+      {
+        "name": "tl_2025_42_cousub.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/COUSUB/tl_2025_42_cousub.zip",
+        "features": 2572,
+        "bytes": 11309313,
+        "uncompressed_bytes": 18362064,
+        "sha256": "f07025c53f4192bc0c81c457930f8d6051ac7b5dad1945dd2ef042e6510b8bc8",
+        "acquisition_id": 10825
+      },
+      {
+        "name": "tl_2025_44_cousub.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/COUSUB/tl_2025_44_cousub.zip",
+        "features": 40,
+        "bytes": 406246,
+        "uncompressed_bytes": 747246,
+        "sha256": "6050551f2c4194e936581081aabdc1e8c43eab23a81c8213a90e00ab661ef355",
+        "acquisition_id": 10826
+      },
+      {
+        "name": "tl_2025_46_cousub.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/COUSUB/tl_2025_46_cousub.zip",
+        "features": 1328,
+        "bytes": 5835049,
+        "uncompressed_bytes": 10997197,
+        "sha256": "b4e9d70cfae0f52060cc1a445b4a793360181ec82b82f8b4ea2f7d0e163cbe50",
+        "acquisition_id": 10827
+      },
+      {
+        "name": "tl_2025_47_cousub.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/COUSUB/tl_2025_47_cousub.zip",
+        "features": 855,
+        "bytes": 14018100,
+        "uncompressed_bytes": 22594987,
+        "sha256": "53ab8efb5fb141de93d642da1e3dc6b92409fb39e0889bb6d8e7e301241b5e4d",
+        "acquisition_id": 10828
+      },
+      {
+        "name": "tl_2025_50_cousub.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/COUSUB/tl_2025_50_cousub.zip",
+        "features": 256,
+        "bytes": 748775,
+        "uncompressed_bytes": 1347972,
+        "sha256": "1be0c0cf3b7d36bfaa0b615b477f5df07525d761a5e737540ea2342897973986",
+        "acquisition_id": 10829
+      },
+      {
+        "name": "tl_2025_51_cousub.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/COUSUB/tl_2025_51_cousub.zip",
+        "features": 552,
+        "bytes": 12408089,
+        "uncompressed_bytes": 19804527,
+        "sha256": "74171325f4ec15bc4f3f27aa02748dd1246e377b478ad333217428b8e24a30b1",
+        "acquisition_id": 10830
+      },
+      {
+        "name": "tl_2025_54_cousub.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/COUSUB/tl_2025_54_cousub.zip",
+        "features": 225,
+        "bytes": 4643104,
+        "uncompressed_bytes": 7509658,
+        "sha256": "be6e620dfece5ed6ef2ff03ec055355a2e3b482e0c0e87f7dfaa36c211129314",
+        "acquisition_id": 10831
+      },
+      {
+        "name": "tl_2025_55_cousub.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/COUSUB/tl_2025_55_cousub.zip",
+        "features": 1925,
+        "bytes": 8612562,
+        "uncompressed_bytes": 14926727,
+        "sha256": "6b20908ea07191640dc5112123905cb14c250a7260655e8ae7f5d0f81c8f589d",
+        "acquisition_id": 10832
+      },
+      {
+        "name": "tl_2025_60_cousub.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/COUSUB/tl_2025_60_cousub.zip",
+        "features": 16,
+        "bytes": 32764,
+        "uncompressed_bytes": 156660,
+        "sha256": "27eab0f7a20f7e0453766caf2f4518a5ab7c86958ee43965d4a4c5776e5097ca",
+        "acquisition_id": 10833
+      },
+      {
+        "name": "tl_2025_66_cousub.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/COUSUB/tl_2025_66_cousub.zip",
+        "features": 20,
+        "bytes": 467142,
+        "uncompressed_bytes": 832414,
+        "sha256": "5c4eb200858af0cc131f78b2c2495c44f19c6fef9d1fe0afbb315d8359558f73",
+        "acquisition_id": 10834
+      },
+      {
+        "name": "tl_2025_69_cousub.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/COUSUB/tl_2025_69_cousub.zip",
+        "features": 12,
+        "bytes": 855052,
+        "uncompressed_bytes": 1464638,
+        "sha256": "6a1ff584e9c5dfb76cffb1fea56cb794263c1e7ea1651ce8d35b669e336ed413",
+        "acquisition_id": 10835
+      },
+      {
+        "name": "tl_2025_72_cousub.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/COUSUB/tl_2025_72_cousub.zip",
+        "features": 939,
+        "bytes": 3934254,
+        "uncompressed_bytes": 6650139,
+        "sha256": "6930acc0987823109e570a04507c48991a4e446802648054d3661b104aab989c",
+        "acquisition_id": 10836
+      },
+      {
+        "name": "tl_2025_78_cousub.zip",
+        "url": "https://www2.census.gov/geo/tiger/TIGER2025/COUSUB/tl_2025_78_cousub.zip",
+        "features": 23,
+        "bytes": 881871,
+        "uncompressed_bytes": 1510201,
+        "sha256": "ad6d6167b8e30d5a29759bd49158960baf9a1e079ce38b12cdbc0819ceccb9e7",
+        "acquisition_id": 10837
+      }
+    ],
+    "connecticut_county_equivalents": [
+      {
+        "GEOID": "09110",
+        "NAME": "Capitol",
+        "CLASSFP": "H5",
+        "FUNCSTAT": "N"
+      },
+      {
+        "GEOID": "09120",
+        "NAME": "Greater Bridgeport",
+        "CLASSFP": "H5",
+        "FUNCSTAT": "N"
+      },
+      {
+        "GEOID": "09130",
+        "NAME": "Lower Connecticut River Valley",
+        "CLASSFP": "H5",
+        "FUNCSTAT": "N"
+      },
+      {
+        "GEOID": "09140",
+        "NAME": "Naugatuck Valley",
+        "CLASSFP": "H5",
+        "FUNCSTAT": "N"
+      },
+      {
+        "GEOID": "09150",
+        "NAME": "Northeastern Connecticut",
+        "CLASSFP": "H5",
+        "FUNCSTAT": "N"
+      },
+      {
+        "GEOID": "09160",
+        "NAME": "Northwest Hills",
+        "CLASSFP": "H5",
+        "FUNCSTAT": "N"
+      },
+      {
+        "GEOID": "09170",
+        "NAME": "South Central Connecticut",
+        "CLASSFP": "H5",
+        "FUNCSTAT": "N"
+      },
+      {
+        "GEOID": "09180",
+        "NAME": "Southeastern Connecticut",
+        "CLASSFP": "H5",
+        "FUNCSTAT": "N"
+      },
+      {
+        "GEOID": "09190",
+        "NAME": "Western Connecticut",
+        "CLASSFP": "H5",
+        "FUNCSTAT": "N"
+      }
+    ],
+    "failure_resume": {
+      "archive": "tl_2025_36_place.zip",
+      "features": 1293,
+      "artifact_sha": "4f667ef3a40f1569b58a37052e2464053436bd5e978b34ca333e8185a6a6808d",
+      "failure": "Injected after one real feature; version/features rolled back",
+      "resumed_same_artifact": true,
+      "idempotent_version": "a81409d78a0fecfcdbe5eb11cc1f7cf2",
+      "external_requests": 0,
+      "downloaded_bytes": 0,
+      "whole_catalog_copied": false
+    }
+  },
+  "mcp": {
+    "calls": [
+      {
+        "tool": "legal_sources_at",
+        "arguments": {
+          "longitude": -73.9857,
+          "latitude": 40.7484
+        },
+        "seconds": 0.169533,
+        "json_bytes": 6806,
+        "response_sha256": "c469bccec2dd804ba9c0dfa32131bc63ceae148be4357624f32c40fcddf3fd10"
+      },
+      {
+        "tool": "legal_coverage",
+        "arguments": {
+          "view": "documents",
+          "collection": "nyc-zoning",
+          "limit": 1
+        },
+        "seconds": 0.008651,
+        "json_bytes": 2900,
+        "response_sha256": "03dc41647ccfc771b661093b111148565be6673775cef82f2c140f8faa144162"
+      },
+      {
+        "tool": "legal_read",
+        "arguments": {
+          "key_or_id": "nyc-zr:/appendix-b-index-special-purpose-districts",
+          "length": 3000
+        },
+        "seconds": 0.414179,
+        "json_bytes": 8447,
+        "response_sha256": "10765feb3784160a1644d921931bcb2ce5f00b6d659500da88f0f7291d09e615"
+      },
+      {
+        "tool": "source_receipt",
+        "arguments": {
+          "acquisition_id": 178
+        },
+        "seconds": 0.002867,
+        "json_bytes": 1054,
+        "response_sha256": "a56122cf298d1cfec1feb80e1bc3ca41a87959115217d9103a69ffe6568400eb"
+      },
+      {
+        "tool": "zoning_at",
+        "arguments": {
+          "longitude": -73.9857,
+          "latitude": 40.7484
+        },
+        "seconds": 0.386487,
+        "json_bytes": 5331,
+        "response_sha256": "7ec0b946a728035883549315cf9637225ebc11bd26afcaac6816b3052a338c16"
+      },
+      {
+        "tool": "zoning_at",
+        "arguments": {
+          "longitude": -73.9857,
+          "latitude": 40.7484,
+          "collection": "nyc-zoning-gis"
+        },
+        "seconds": 0.626604,
+        "json_bytes": 5331,
+        "response_sha256": "7ec0b946a728035883549315cf9637225ebc11bd26afcaac6816b3052a338c16"
+      },
+      {
+        "tool": "legal_sources_at",
+        "arguments": {
+          "longitude": -122.675,
+          "latitude": 45.52
+        },
+        "seconds": 0.027385,
+        "json_bytes": 6146,
+        "response_sha256": "3ffb0d925871001d4d3413a21b67e761bac7b46021c85f7ef997a0c844a6b296"
+      },
+      {
+        "tool": "legal_coverage",
+        "arguments": {
+          "view": "documents",
+          "collection": "portland-zoning",
+          "limit": 1
+        },
+        "seconds": 0.006578,
+        "json_bytes": 2848,
+        "response_sha256": "eccf22c02af1f8f9bcc285bcd42dffe5e4807062635dedb40c6abcc39b0c0de2"
+      },
+      {
+        "tool": "legal_read",
+        "arguments": {
+          "key_or_id": "portland:title-33/page-1",
+          "length": 3000
+        },
+        "seconds": 0.21046,
+        "json_bytes": 2648,
+        "response_sha256": "56d3b8da38932481ec31ce023345d7f33b566c6122effebffd8fd40a664f4077"
+      },
+      {
+        "tool": "source_receipt",
+        "arguments": {
+          "acquisition_id": 151
+        },
+        "seconds": 0.002948,
+        "json_bytes": 1057,
+        "response_sha256": "f58b03ddf81c2039116c8efa7b4c97e2cc05eee1c162dcb10869ba9b8f325a51"
+      },
+      {
+        "tool": "zoning_at",
+        "arguments": {
+          "longitude": -122.675,
+          "latitude": 45.52
+        },
+        "seconds": 0.197202,
+        "json_bytes": 5805,
+        "response_sha256": "5d8c3908d2e07f0e92acc412bf149df788ee99ef6b27124b9bdee32fe176183e"
+      },
+      {
+        "tool": "zoning_at",
+        "arguments": {
+          "longitude": -122.675,
+          "latitude": 45.52,
+          "collection": "portland-zoning-gis"
+        },
+        "seconds": 0.252455,
+        "json_bytes": 5805,
+        "response_sha256": "5d8c3908d2e07f0e92acc412bf149df788ee99ef6b27124b9bdee32fe176183e"
+      },
+      {
+        "tool": "legal_sources_at",
+        "arguments": {
+          "longitude": -72.685,
+          "latitude": 41.7658
+        },
+        "seconds": 0.017013,
+        "json_bytes": 6096,
+        "response_sha256": "920f560ef812130cba3c6a4374c833babd4bdeb271f4cc056e28d21091a3f092"
+      },
+      {
+        "tool": "legal_sources_at",
+        "arguments": {
+          "longitude": -157.8583,
+          "latitude": 21.3069
+        },
+        "seconds": 0.011171,
+        "json_bytes": 4779,
+        "response_sha256": "421ae4fd6eaaa5a49174d569918287862c93b7ba752b76c75144446f2164763b"
+      },
+      {
+        "tool": "legal_sources_at",
+        "arguments": {
+          "longitude": -76.6122,
+          "latitude": 39.2904
+        },
+        "seconds": 0.056429,
+        "json_bytes": 6139,
+        "response_sha256": "50a725e67a10a054b4b2304b52c2a6d99f7394ebdb27dacb77783e6e42797e5d"
+      },
+      {
+        "tool": "legal_sources_at",
+        "arguments": {
+          "longitude": -74.040747,
+          "latitude": 40.700167
+        },
+        "seconds": 0.024775,
+        "json_bytes": 11234,
+        "response_sha256": "c5a6db9af103e6b1a62c3a8be36f62c1705e6e77bf53b61bf4a6deb94a1402c5"
+      },
+      {
+        "tool": "legal_sources_at",
+        "arguments": {
+          "longitude": -73.7949,
+          "latitude": 40.7282
+        },
+        "seconds": 0.016223,
+        "json_bytes": 6800,
+        "response_sha256": "0dbfab32419d1a112c3b75dc4ced17e85a320d54fe0db77bf46cbf1dee4422f3"
+      },
+      {
+        "tool": "legal_sources_at",
+        "arguments": {
+          "longitude": -40,
+          "latitude": 30
+        },
+        "seconds": 0.005141,
+        "json_bytes": 1268,
+        "response_sha256": "4dcb1301bfd69814cc326305a7aefe87eec9bbf3c4fb84dbff72504d8b1a3088"
+      },
+      {
+        "tool": "legal_sources_at",
+        "arguments": {
+          "longitude": -73.9857,
+          "latitude": 40.7484,
+          "geometry_as_of": "2024-12-31"
+        },
+        "seconds": 0.005147,
+        "json_bytes": 1328,
+        "response_sha256": "f85f6825a74c44940d6499cd3b75bc7f44dfda2288df06025b3d96216a27e6e8"
+      },
+      {
+        "tool": "legal_sources_at",
+        "arguments": {
+          "longitude": -73.9857,
+          "latitude": 40.7484,
+          "observation_cutoff": "2026-01-01T00:00:00Z"
+        },
+        "seconds": 0.004111,
+        "json_bytes": 1338,
+        "response_sha256": "cdb412662b15162cca18058fe24c945c0dc70266cd70c4a545e159e4af520905"
+      }
+    ],
+    "points": {
+      "nyc": {
+        "entities": [
+          {
+            "layer": "COUNTY",
+            "GEOID": "36061",
+            "name": "New York",
+            "type": "county_or_equivalent",
+            "route_status": "not_crosswalked",
+            "collections": []
+          },
+          {
+            "layer": "COUSUB",
+            "GEOID": "3606144919",
+            "name": "Manhattan",
+            "type": "legal_county_subdivision",
+            "route_status": "not_crosswalked",
+            "collections": []
+          },
+          {
+            "layer": "PLACE",
+            "GEOID": "3651000",
+            "name": "New York",
+            "type": "incorporated_place",
+            "route_status": "retained_collections",
+            "collections": [
+              "nyc-zoning",
+              "nyc-zoning-gis"
+            ]
+          },
+          {
+            "layer": "STATE",
+            "GEOID": "36",
+            "name": "New York",
+            "type": "state_or_equivalent",
+            "route_status": "retained_collections",
+            "collections": [
+              "ny-state-laws"
+            ]
+          }
+        ],
+        "geometry_coverage": {
+          "collection": "census-geography-2025",
+          "eligible_archives": 93,
+          "expected_selected_archives": 93,
+          "missing_point_scope_archives": [],
+          "omitted_cousub_statefp_at_point": [],
+          "geometry_warning_count": 0,
+          "geometry_warnings": []
+        },
+        "separate_zoning_match_ids": [
+          "21bc11c2a7e7e27b8b5319154ec1017d",
+          "4ca8eb841cc150f0ecaf71376d87e4a1",
+          "e188ff31e0907e75a07064341596ecd4"
+        ]
+      },
+      "portland": {
+        "entities": [
+          {
+            "layer": "COUNTY",
+            "GEOID": "41051",
+            "name": "Multnomah",
+            "type": "county_or_equivalent",
+            "route_status": "not_crosswalked",
+            "collections": []
+          },
+          {
+            "layer": "PLACE",
+            "GEOID": "4159000",
+            "name": "Portland",
+            "type": "incorporated_place",
+            "route_status": "retained_collections",
+            "collections": [
+              "portland-zoning",
+              "portland-zoning-gis",
+              "portland-zoning-guides"
+            ]
+          },
+          {
+            "layer": "STATE",
+            "GEOID": "41",
+            "name": "Oregon",
+            "type": "state_or_equivalent",
+            "route_status": "retained_collections",
+            "collections": [
+              "oregon-ors"
+            ]
+          }
+        ],
+        "geometry_coverage": {
+          "collection": "census-geography-2025",
+          "eligible_archives": 93,
+          "expected_selected_archives": 93,
+          "missing_point_scope_archives": [],
+          "omitted_cousub_statefp_at_point": [
+            "41"
+          ],
+          "geometry_warning_count": 0,
+          "geometry_warnings": []
+        },
+        "separate_zoning_match_ids": [
+          "26597a95f9cdc192e3e367724f7f4890"
+        ]
+      },
+      "hartford": {
+        "entities": [
+          {
+            "layer": "COUNTY",
+            "GEOID": "09110",
+            "name": "Capitol",
+            "type": "county_or_equivalent",
+            "route_status": "not_crosswalked",
+            "collections": []
+          },
+          {
+            "layer": "COUSUB",
+            "GEOID": "0911037070",
+            "name": "Hartford",
+            "type": "legal_county_subdivision",
+            "route_status": "not_crosswalked",
+            "collections": []
+          },
+          {
+            "layer": "PLACE",
+            "GEOID": "0937000",
+            "name": "Hartford",
+            "type": "incorporated_place",
+            "route_status": "not_crosswalked",
+            "collections": []
+          },
+          {
+            "layer": "STATE",
+            "GEOID": "09",
+            "name": "Connecticut",
+            "type": "state_or_equivalent",
+            "route_status": "retained_collections",
+            "collections": [
+              "ct-rcsa"
+            ]
+          }
+        ],
+        "geometry_coverage": {
+          "collection": "census-geography-2025",
+          "eligible_archives": 93,
+          "expected_selected_archives": 93,
+          "missing_point_scope_archives": [],
+          "omitted_cousub_statefp_at_point": [],
+          "geometry_warning_count": 0,
+          "geometry_warnings": []
+        }
+      },
+      "honolulu": {
+        "entities": [
+          {
+            "layer": "COUNTY",
+            "GEOID": "15003",
+            "name": "Honolulu",
+            "type": "county_or_equivalent",
+            "route_status": "not_crosswalked",
+            "collections": []
+          },
+          {
+            "layer": "PLACE",
+            "GEOID": "1571550",
+            "name": "Urban Honolulu",
+            "type": "census_designated_place",
+            "route_status": "not_crosswalked",
+            "collections": []
+          },
+          {
+            "layer": "STATE",
+            "GEOID": "15",
+            "name": "Hawaii",
+            "type": "state_or_equivalent",
+            "route_status": "unregistered_jurisdiction",
+            "collections": []
+          }
+        ],
+        "geometry_coverage": {
+          "collection": "census-geography-2025",
+          "eligible_archives": 93,
+          "expected_selected_archives": 93,
+          "missing_point_scope_archives": [],
+          "omitted_cousub_statefp_at_point": [
+            "15"
+          ],
+          "geometry_warning_count": 0,
+          "geometry_warnings": []
+        }
+      },
+      "baltimore": {
+        "entities": [
+          {
+            "layer": "COUNTY",
+            "GEOID": "24510",
+            "name": "Baltimore",
+            "type": "county_or_equivalent",
+            "route_status": "not_crosswalked",
+            "collections": []
+          },
+          {
+            "layer": "COUSUB",
+            "GEOID": "2451090000",
+            "name": "Baltimore",
+            "type": "county_subdivision_equivalent",
+            "route_status": "not_crosswalked",
+            "collections": []
+          },
+          {
+            "layer": "PLACE",
+            "GEOID": "2404000",
+            "name": "Baltimore",
+            "type": "incorporated_place",
+            "route_status": "not_crosswalked",
+            "collections": []
+          },
+          {
+            "layer": "STATE",
+            "GEOID": "24",
+            "name": "Maryland",
+            "type": "state_or_equivalent",
+            "route_status": "retained_collections",
+            "collections": [
+              "md-code"
+            ]
+          }
+        ],
+        "geometry_coverage": {
+          "collection": "census-geography-2025",
+          "eligible_archives": 93,
+          "expected_selected_archives": 93,
+          "missing_point_scope_archives": [],
+          "omitted_cousub_statefp_at_point": [],
+          "geometry_warning_count": 0,
+          "geometry_warnings": []
+        }
+      },
+      "nyc_exact_source_vertex": {
+        "longitude": -74.040747,
+        "latitude": 40.700167,
+        "city_on_boundary": true,
+        "match_geoids": [
+          "34017",
+          "36061",
+          "3401736000",
+          "3606144919",
+          "3436000",
+          "3651000",
+          "34",
+          "36"
+        ]
+      },
+      "nyc_second_county": {
+        "same_city_geoid": "3651000",
+        "county_geoid": "36081"
+      }
+    },
+    "call_count": 20,
+    "total_seconds": 2.445359,
+    "json_bytes": 93160
+  },
+  "seconds": 34.83086,
+  "runtime_hashes": {
+    "src/psephos/census.py": "7df9615c14b73305b94e46c31566bff94f86cca7dc979ff55e1d4cebbaa79d6b",
+    "src/psephos/acquire.py": "29bb2956fe524cd5c28481e9b8d1327dfa7255e1736879c6f409cb28f16e031c",
+    "src/psephos/geography.py": "545dbf2797df3aa120b428bf44919aa74d41c80909d5f6a115d149ca5bd17ad3",
+    "src/psephos/server.py": "ea1f1a73ec63ce7a21e14b0c98417ace8048698cc94a01ba8b2534b215cf2335",
+    "src/psephos/cli.py": "a6ed46ac5dfcadca6fcf55dfc0215451fcbd64bef848aa35cbe668b60fb14ecb",
+    "src/psephos/sources.py": "0d5f18918f74217ea82abdedeac45feb47aed7436f4f9b11c7b63ce2939d4f4e",
+    "scripts/verify_census.py": "2696866619da9dfb14b8b8d261427b6fa71312a9ae1f42e0dcfc1eaf1aefdeb1"
+  }
+}

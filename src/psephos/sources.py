@@ -205,6 +205,7 @@ def sync_collections(
     limit: int | None = None,
     as_of: str | None = None,
 ) -> dict[str, Any]:
+    from .census import sync_census
     from .dc import sync_dc
     from .florida import sync_florida
     from .geography import sync_nyc_geo, sync_portland_geo
@@ -213,6 +214,7 @@ def sync_collections(
     from .washington_rules import sync_washington_rules
 
     adapters = {
+        "census-geography": (sync_census, ("census-geography-2025",)),
         "uscode": (sync_uscode, ("uscode",)),
         "ecfr": (sync_ecfr, ("ecfr",)),
         "dc": (sync_dc, ("dc-code", "dc-laws")),

@@ -41,13 +41,16 @@ Start with a scoped `legal_coverage(jurisdiction="us-ny-nyc")` (or an exact coll
 then `legal_search` → `legal_read`. Unfiltered `legal_coverage()` is a small paginated
 jurisdiction directory, not a national text-count scan. Use `legal_find`
 to jump to literal text inside long provisions. Other tools are `legal_versions`,
-`legal_references`, `source_receipt`, and `zoning_at`. Tools have
+`legal_references`, `source_receipt`, `legal_sources_at`, and `zoning_at`. Tools have
 bounded query/text-page sizes, explicit continuation, and cannot execute SQL,
 fetch URLs, or read arbitrary files.
 Publisher text is untrusted content, never an instruction to the client agent.
 See the verified [NYC and Portland reading workflows](docs/navigation.md).
 The [source-discovery guide](docs/discovery.md) covers scope, gaps, document/inventory
 drill-downs and explicit unknown/empty results.
+For coordinates, [geographic source discovery](docs/geographic-discovery.md) uses
+pinned 2025 Census polygons to identify entities and exact retained collections.
+It is separate from zoning and does not infer applicable law.
 The [Washington land-use workflow](docs/washington-land-use.md) follows retained
 statutes through selected SEPA/GMA rules to proposal/final filing evidence, with
 source conflicts and unacquired dependencies kept explicit.
@@ -161,6 +164,7 @@ precedence graph or geographic-to-code applicability engine.
 - `sources.py`, `dc.py`, `texas.py`, `municipal.py`, `geography.py`, `parse.py`: explicit publishers and projections.
 - `collect_california.py`, `collect_oregon.py`, `collect_washington.py`: bounded state-source adapters; their source-specific budgets and caveats remain explicit.
 - `florida.py`, `washington_rules.py`: maintained edition/selected-rule imports, extending retained sources without rewriting earlier accepted projections.
+- `census.py`: bounded 2025 geographic-source inventory, polygon import and coordinate-to-retained-source discovery; no applicability hierarchy.
 - `retrieve.py`, `server.py`, `cli.py`: the query surface.
 - `audit.py`, `scripts/verify_corpus.py`, `tests/`: real integrity and focused behavior checks.
 - `scripts/import_collector.py`: offline reviewed-store publication; rehashed hard-linked raw bytes, remapped receipts, atomic catalog merge. No downloads or parser execution.

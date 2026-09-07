@@ -36,7 +36,7 @@ def test_layer_membership_shrink_and_failed_refresh_are_atomic(store):
         ("us", "United States", "federal", None),
         name="Fixture layer",
         authority="Publisher",
-        kind="gis",
+        kind="zoning_geography",
         homepage="https://example.test/",
         source_status="Fixture",
         access="Fixture",
@@ -112,6 +112,7 @@ def test_real_stdio_mcp_protocol_in_fresh_store(store):
                 "legal_versions",
                 "legal_references",
                 "zoning_at",
+                "legal_sources_at",
                 "source_receipt",
             }
             result = await session.call_tool("legal_read", {"key_or_id": "test:1"})
@@ -135,7 +136,7 @@ def test_invalid_acquired_geometry_is_warned_not_repaired(store):
         ("us", "United States", "federal", None),
         name="Fixture",
         authority="Publisher",
-        kind="gis",
+        kind="zoning_geography",
         homepage="https://example.test/",
         source_status="Fixture",
         access="Fixture",

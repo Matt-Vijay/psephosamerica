@@ -78,6 +78,11 @@ snapshots. All original artifacts/acquisition receipts remain; indexes are rebui
 
 ## Subsequent work
 
+The [geographic source-discovery checkpoint](geographic-discovery.md) adds pinned
+2025 Census entities and exact retained-source routing through `legal_sources_at`,
+separate from zoning. Its [receipt](geographic-discovery-verification.json) measures
+only that addition; it does not rerun or revise earlier campaign evidence.
+
 The [completed collection wave](collection-wave.md) published 45 accepted batches
 from isolated source stores and rehashed the entire expanded catalog. The
 [portable receipt](collection-wave.json) freezes that later measurement separately

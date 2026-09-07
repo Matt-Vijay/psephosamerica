@@ -82,6 +82,15 @@ def main() -> None:
     geo.add_argument("--collection")
     geo.add_argument("--as-of")
     geo.add_argument("--observed-before")
+    discovery = commands.add_parser(
+        "sources-at", help="Discover Census entities and retained legal sources, not applicable law"
+    )
+    discovery.add_argument("longitude", type=float)
+    discovery.add_argument("latitude", type=float)
+    discovery.add_argument("--geometry-as-of")
+    discovery.add_argument("--observed-before")
+    discovery.add_argument("--offset", type=int, default=0)
+    discovery.add_argument("--limit", type=int, default=10)
     commands.add_parser("serve", help="Run the read-only stdio MCP server")
     args = parser.parse_args()
     try:
@@ -151,6 +160,18 @@ def main() -> None:
                         as_of=args.as_of,
                         observation_cutoff=args.observed_before,
                         start=args.start,
+                        limit=args.limit,
+                    )
+                elif args.command == "sources-at":
+                    from .census import legal_sources_at
+
+                    result = legal_sources_at(
+                        store,
+                        args.longitude,
+                        args.latitude,
+                        geometry_as_of=args.geometry_as_of,
+                        observation_cutoff=args.observed_before,
+                        offset=args.offset,
                         limit=args.limit,
                     )
                 elif args.command == "zoning":
