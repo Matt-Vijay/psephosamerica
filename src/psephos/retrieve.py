@@ -450,6 +450,18 @@ class Reader:
         )
         if citation:
             key_or_id = f"usc:/us/usc/t{citation[1]}/s{citation[2]}"
+        florida = re.fullmatch(
+            r"Fla\.\s*Stat\.\s*(?:§\s*)?(\d+[A-Z]?\.\d+[A-Z]?)(?:\s*\((20\d{2})\))?",
+            key_or_id,
+            re.I,
+        )
+        if florida:
+            # A printed citation is an exact identifier, not authority to invent a URL.
+            key_or_id = (
+                f"Fla. Stat. § {florida[1]} ({florida[2]})"
+                if florida[2]
+                else "fl:stat/" + florida[1]
+            )
         exact = (
             self.db.execute("SELECT 1 FROM provisions WHERE id=?", (key_or_id,)).fetchone()
             is not None
@@ -470,7 +482,18 @@ class Reader:
             "UNION SELECT id FROM provisions WHERE id=? "
             "UNION SELECT id FROM provisions WHERE citation=? COLLATE NOCASE "
             "UNION SELECT id FROM provisions WHERE key GLOB ?) LIMIT 3",
-            (*params, key_or_id, key_or_id, key_or_id, key_or_id + "/_occurrence/[0-9]*"),
+            (
+                *params,
+                key_or_id,
+                key_or_id,
+                key_or_id,
+                key_or_id
+                + (
+                    "/occurrence/[0-9]*"
+                    if key_or_id.startswith("fl:stat/")
+                    else "/_occurrence/[0-9]*"
+                ),
+            ),
         ).fetchall()
         if not rows:
             return {

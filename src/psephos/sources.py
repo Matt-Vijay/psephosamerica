@@ -206,6 +206,7 @@ def sync_collections(
     as_of: str | None = None,
 ) -> dict[str, Any]:
     from .dc import sync_dc
+    from .florida import sync_florida
     from .geography import sync_nyc_geo, sync_portland_geo
     from .municipal import sync_nyc, sync_portland, sync_portland_guides
     from .texas import sync_texas
@@ -216,6 +217,7 @@ def sync_collections(
         "ecfr": (sync_ecfr, ("ecfr",)),
         "dc": (sync_dc, ("dc-code", "dc-laws")),
         "texas": (sync_texas, ("texas",)),
+        "florida": (sync_florida, ("florida-statutes-2026",)),
         "nyc": (sync_nyc, ("nyc-zoning",)),
         "portland": (sync_portland, ("portland-zoning",)),
         "portland-guides": (sync_portland_guides, ("portland-zoning-guides",)),

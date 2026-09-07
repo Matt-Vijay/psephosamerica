@@ -1,0 +1,340 @@
+{
+  "historical_preservation": {
+    "versions_unchanged": 52,
+    "provision_ids_unchanged": 1831,
+    "provision_ids_sha256": "f6d438fb685c7f611f440a02799db8fdf638c4dd34907e083ff06c38144c53f4",
+    "original_collection_metadata_sha256": "11ec0efb6a6804adbba3dd6ab7df7b7d13ffb237e49bb94ad43a3c105abe136b",
+    "policy": "Original review nested intact as historical_discovery_review; current scope is separate."
+  },
+  "edition": {
+    "year": 2026,
+    "titles": 49,
+    "chapters": 638,
+    "new_chapters": 586,
+    "section_nodes": 24993,
+    "index_entries": 24993,
+    "unit_kinds": {
+      "section": 24993,
+      "scope_notes": 638
+    },
+    "duplicated_native_numbers": 0,
+    "inventory": [
+      {
+        "status": "indexed",
+        "items": 687
+      }
+    ],
+    "missing_chapters": 0,
+    "parser_refusals_remaining": 0,
+    "all_chapter_index_body_store_membership": "PASS",
+    "exact_parser_truth": [
+      {
+        "chapter": "14",
+        "units": 31,
+        "sha256": "8d2891b62375671a2f34276f3c918863431bdcd8bcd0eccb381423a79440547c",
+        "bytes": 180050,
+        "url": "https://www.flsenate.gov/Laws/Statutes/2026/Chapter14/All",
+        "acquisition_id": 10010
+      },
+      {
+        "chapter": "27",
+        "units": 71,
+        "sha256": "6bc56bbfd05da383dca9a82984ac6e3a48377e6b66bb51e840cb6125d611b3ea",
+        "bytes": 345057,
+        "url": "https://www.flsenate.gov/Laws/Statutes/2026/Chapter27/All",
+        "acquisition_id": 10005
+      },
+      {
+        "chapter": "83",
+        "units": 76,
+        "sha256": "715efc548ed76821de6a6a8231662e98b4c7e611709e1507a7047b47cc0293fc",
+        "bytes": 258900,
+        "url": "https://www.flsenate.gov/Laws/Statutes/2026/Chapter83/All",
+        "acquisition_id": 10006
+      },
+      {
+        "chapter": "403",
+        "units": 336,
+        "sha256": "6e8aae852d6671a16de955167df6782f6e52c36928aefd34bf8eed8621f296d4",
+        "bytes": 1983722,
+        "url": "https://www.flsenate.gov/Laws/Statutes/2026/Chapter403/All",
+        "acquisition_id": 10007
+      },
+      {
+        "chapter": "560",
+        "units": 68,
+        "sha256": "a40e733a74cee5d8bd5ea3298905f756e10ab931e4bf8e9b403ca4db09ce9430",
+        "bytes": 369661,
+        "url": "https://www.flsenate.gov/Laws/Statutes/2026/Chapter560/All",
+        "acquisition_id": 10008
+      }
+    ]
+  },
+  "acquisition": {
+    "preflight_acquisition_floor": 9962,
+    "request_statuses": {
+      "200": 628,
+      "0": 2
+    },
+    "successful_decoded_response_bytes": 138404518,
+    "distinct_response_objects": 628,
+    "distinct_response_bytes": 138404518,
+    "new_object_bytes": 138404518,
+    "acquisition_rows_sha256": "0daf77c8e8f89a0a96a8127e57c02eda002cfdaded9b48df636c9779a106fca0",
+    "first_observed_at": "2026-09-07T05:04:59Z",
+    "last_observed_at": "2026-09-07T18:16:13Z",
+    "errors": [
+      {
+        "id": 10009,
+        "url": "https://www.flsenate.gov/Laws/Statutes/2026/Chapter83",
+        "status": 0,
+        "observed_at": "2026-09-07T08:07:56Z",
+        "error": "The read operation timed out"
+      },
+      {
+        "id": 10101,
+        "url": "https://www.flsenate.gov/Laws/Statutes/2026/Chapter215/All",
+        "status": 0,
+        "observed_at": "2026-09-07T13:50:20Z",
+        "error": "The read operation timed out"
+      }
+    ],
+    "minimum_host_seconds": 10.1,
+    "run_cap_bytes": 268435456,
+    "chapter_cap_bytes": 8388608,
+    "note": "Decoded retained bytes, not compressed network transfer size; cache reuse makes no new acquisition row."
+  },
+  "source_integrity": {
+    "rehashed_objects": 688,
+    "rehashed_bytes": 150262942,
+    "object_manifest_sha256": "f4df544d287166de39226b32c585b00042ab6b58d09099a3edc802c7e337d3d3"
+  },
+  "run_history": [
+    {
+      "started_at": "2026-09-07T10:28:33Z",
+      "finished_at": "2026-09-07T10:28:46Z",
+      "new_versions": 1,
+      "reused_versions": 7,
+      "downloaded_bytes": 180050,
+      "rejections": []
+    },
+    {
+      "started_at": "2026-09-07T11:31:30Z",
+      "finished_at": "2026-09-07T14:00:59Z",
+      "new_versions": 92,
+      "reused_versions": 53,
+      "downloaded_bytes": 18316759,
+      "rejections": [
+        {
+          "chapter": "215",
+          "reason": "https://www.flsenate.gov/Laws/Statutes/2026/Chapter215/All: The read operation timed out"
+        }
+      ]
+    },
+    {
+      "started_at": "2026-09-07T15:54:14Z",
+      "finished_at": "2026-09-07T18:16:13Z",
+      "new_versions": 493,
+      "reused_versions": 145,
+      "downloaded_bytes": 113922581,
+      "rejections": []
+    }
+  ],
+  "offline_resume": {
+    "reused_versions": 638,
+    "new_versions": 0,
+    "new_acquisitions": 0,
+    "downloaded_bytes": 0,
+    "network_transport": "raises on every request"
+  },
+  "mcp": {
+    "calls": [
+      {
+        "tool": "legal_coverage",
+        "arguments": {
+          "collection": "florida-statutes-2026"
+        },
+        "seconds": 0.00532,
+        "bytes": 4141,
+        "sha256": "f87b0ac64d9726b8caa9ef484b7256fe1a1e1b5f2a5151c604cd71aae05c7068"
+      },
+      {
+        "tool": "legal_read",
+        "arguments": {
+          "key_or_id": "Fla. Stat. \u00a783.51 (2026)",
+          "length": 1000
+        },
+        "seconds": 0.162935,
+        "bytes": 3853,
+        "sha256": "05df8e77c9deba54a6581c77059899be12c15757c039e95441cae7562026def2"
+      },
+      {
+        "tool": "legal_find",
+        "arguments": {
+          "key_or_id": "debac69d1753d5d9bd3e826f670cc119",
+          "query": "single-family home or duplex",
+          "limit": 1
+        },
+        "seconds": 0.155447,
+        "bytes": 1810,
+        "sha256": "0ba8947c928409e7de0ea9716f16af64239fafbaf0eeaf73ff9578d5c2835d51"
+      },
+      {
+        "tool": "legal_read",
+        "arguments": {
+          "key_or_id": "debac69d1753d5d9bd3e826f670cc119",
+          "offset": 794,
+          "length": 1200
+        },
+        "seconds": 0.15167,
+        "bytes": 4055,
+        "sha256": "c78e4b6b9287f66ae115f65245702187f99093e590e1934c9a9c1c2be61cf9a2"
+      },
+      {
+        "tool": "legal_read",
+        "arguments": {
+          "key_or_id": "Fla. Stat. \u00a783.43 (2026)",
+          "length": 3000
+        },
+        "seconds": 0.156781,
+        "bytes": 5803,
+        "sha256": "7373a5558d08bf07385c935b3692fca2642fe109ebe21e65b45d4246a0d334ce"
+      },
+      {
+        "tool": "legal_read",
+        "arguments": {
+          "key_or_id": "Fla. Stat. \u00a7250.01 (2026)",
+          "length": 1500
+        },
+        "seconds": 0.155399,
+        "bytes": 4163,
+        "sha256": "6953621a079d4b3dc588d30879976b905804cef52aa9b6f232d15fc4a89edeae"
+      },
+      {
+        "tool": "legal_read",
+        "arguments": {
+          "key_or_id": "Fla. Stat. \u00a783.505 (2026)",
+          "length": 1000
+        },
+        "seconds": 0.159978,
+        "bytes": 3811,
+        "sha256": "ae48df057391eddffd7457cafc53cd058fc16e327970c1dd19d831965cea3e42"
+      },
+      {
+        "tool": "legal_read",
+        "arguments": {
+          "key_or_id": "Fla. Stat. \u00a7403.087 (2026)",
+          "length": 1500
+        },
+        "seconds": 0.182098,
+        "bytes": 4409,
+        "sha256": "10a4b70fcf53767893f6aee0105889454ec11a7942e6481099be5050fdbb29d4"
+      },
+      {
+        "tool": "legal_read",
+        "arguments": {
+          "key_or_id": "Fla. Stat. \u00a7560.602 (2026)",
+          "length": 2500
+        },
+        "seconds": 0.207602,
+        "bytes": 4198,
+        "sha256": "36ac2f77e7536f6d5ac4881b79d1aa74c818efc12368a1101c011b1d72da9858"
+      },
+      {
+        "tool": "legal_read",
+        "arguments": {
+          "key_or_id": "Fla. Stat. \u00a7560.103 (2026)",
+          "length": 1500
+        },
+        "seconds": 0.20294,
+        "bytes": 4381,
+        "sha256": "43ff1c5059d660da38502977285df1460d6bcdd6b18fd6e096b61d8c6903545c"
+      },
+      {
+        "tool": "legal_find",
+        "arguments": {
+          "key_or_id": "Fla. Stat. \u00a727.40 (2026)",
+          "query": "July 1, 2027",
+          "limit": 1
+        },
+        "seconds": 0.151014,
+        "bytes": 1799,
+        "sha256": "28a6fd81427ba2334d69127e285aeadfee36300001a9d7eee358046a05a9c06a"
+      },
+      {
+        "tool": "legal_read",
+        "arguments": {
+          "key_or_id": "8f6983474ff30d63fcfdeeba0eadda2c",
+          "offset": 10166,
+          "length": 1500
+        },
+        "seconds": 0.186714,
+        "bytes": 4724,
+        "sha256": "ebec2a25f1e1458517a3289088f6d54d596e02860c197f429f9f8aaf25795e44"
+      },
+      {
+        "tool": "legal_references",
+        "arguments": {
+          "provision_id": "5c8b2a394c10e849edbbe22a04bb38bc",
+          "limit": 20
+        },
+        "seconds": 0.036272,
+        "bytes": 354,
+        "sha256": "75439daf212672f538a983f47744156999bb0ec25025430de8ecb47183f10bdb"
+      },
+      {
+        "tool": "source_receipt",
+        "arguments": {
+          "acquisition_id": 10008
+        },
+        "seconds": 0.002106,
+        "bytes": 824,
+        "sha256": "3c58fd9cfe017307616be42c5933c20f039d156574c940f4411efd056756186f"
+      },
+      {
+        "tool": "legal_read",
+        "arguments": {
+          "key_or_id": "5c8b2a394c10e849edbbe22a04bb38bc",
+          "as_of": "2026-12-31"
+        },
+        "seconds": 0.027745,
+        "bytes": 347,
+        "sha256": "f20ede3e45978b6320a285e5dddb5ec16068ca380b61f14e1ae7f5f2e4e30801"
+      },
+      {
+        "tool": "legal_read",
+        "arguments": {
+          "key_or_id": "5c8b2a394c10e849edbbe22a04bb38bc",
+          "observation_cutoff": "2026-09-07T00:00:00Z"
+        },
+        "seconds": 0.042057,
+        "bytes": 347,
+        "sha256": "f20ede3e45978b6320a285e5dddb5ec16068ca380b61f14e1ae7f5f2e4e30801"
+      },
+      {
+        "tool": "legal_read",
+        "arguments": {
+          "key_or_id": "Fla. Stat. \u00a7560.602 (2025)"
+        },
+        "seconds": 0.002201,
+        "bytes": 347,
+        "sha256": "f20ede3e45978b6320a285e5dddb5ec16068ca380b61f14e1ae7f5f2e4e30801"
+      }
+    ],
+    "seconds": 2.228076,
+    "scope": "One offline stdio run, not a latency distribution or legal applicability opinion. Printed citations followed explicitly; no prose-link inference."
+  },
+  "status": "PASS",
+  "recorded_at": "2026-09-07T18:16:31Z",
+  "software": {
+    "python": "3.12.13",
+    "httpx": "0.28.1",
+    "lxml": "6.1.3",
+    "mcp": "1.29.1"
+  },
+  "runtime_sha256": {
+    "src/psephos/florida.py": "db9aa485314e5d016aad2117a49b4c2fda20df04e9d87f3c851bc8d11ef493f6",
+    "src/psephos/retrieve.py": "dd2269a5520481c6a0278801416aec17cf8c5374613a46315aa24825610ba465",
+    "scripts/verify_florida.py": "657e2e8397f4b67f45f7453c03e02ee3bdb92a2708a501012e5cbab04ba9ce25"
+  }
+}

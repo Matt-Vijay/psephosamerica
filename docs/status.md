@@ -117,3 +117,17 @@ metadata output without altering stored evidence. Exact native Washington citati
 resolution preserves both cutoffs. Live compilation, certified archives, proposals,
 filings, agency characterizations and legal effectiveness remain distinct. This is
 not statewide regulatory completeness or a new historical-law reconstruction.
+
+The [Florida edition checkpoint](florida-edition.md) extends the earlier 52-chapter
+slice to all 638 chapters listed under the retained 49-title 2026 Senate inventory:
+24,993 section nodes and 638 separately labeled context units. Its
+[receipt](florida-edition-verification.json) verifies all index/body/store
+memberships, rehashes 688 objects / 150,262,942 bytes, preserves the original 52
+version rows and 1,831 provision IDs, and exactly reconstructs five representative
+chapters / 582 units. A network-denying resume reused every version with no new
+source data; 17 real MCP calls exercised tenancy, environmental-permit and business
+reading paths, notes, references and both cutoffs. The current source card reports
+the expanded scope while preserving its old review as historical metadata.
+Administrative/local law, source media and exact legal effectiveness remain
+outside this edition-completeness claim. Earlier campaign/replay/discovery receipts
+are frozen; they were not rewritten or rerun to manufacture a new whole-corpus audit.

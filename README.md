@@ -51,6 +51,9 @@ drill-downs and explicit unknown/empty results.
 The [Washington land-use workflow](docs/washington-land-use.md) follows retained
 statutes through selected SEPA/GMA rules to proposal/final filing evidence, with
 source conflicts and unacquired dependencies kept explicit.
+The [Florida edition guide](docs/florida-edition.md) covers the maintained 2026
+Senate chapter import and exact printed-citation reading, with source notes and
+unknown effective dates preserved.
 
 The [completed collection wave](docs/collection-wave.md) adds reviewed source
 material from 44 states to the Texas baseline: 77 collections and 1,383,595 mixed
@@ -157,6 +160,7 @@ precedence graph or geographic-to-code applicability engine.
 - `src/psephos/store.py`, `acquire.py`: catalog, receipts and immutable storage.
 - `sources.py`, `dc.py`, `texas.py`, `municipal.py`, `geography.py`, `parse.py`: explicit publishers and projections.
 - `collect_california.py`, `collect_oregon.py`, `collect_washington.py`: bounded state-source adapters; their source-specific budgets and caveats remain explicit.
+- `florida.py`, `washington_rules.py`: maintained edition/selected-rule imports, extending retained sources without rewriting earlier accepted projections.
 - `retrieve.py`, `server.py`, `cli.py`: the query surface.
 - `audit.py`, `scripts/verify_corpus.py`, `tests/`: real integrity and focused behavior checks.
 - `scripts/import_collector.py`: offline reviewed-store publication; rehashed hard-linked raw bytes, remapped receipts, atomic catalog merge. No downloads or parser execution.

@@ -57,7 +57,7 @@ embedding a paginated discovery page. Neither change alters acquisition or audit
 work. The maintenance outputs were checked on offline fixtures, not a live resync
 or another whole-corpus audit.
 
-## Partial state example
+## Historical partial-state example
 
 ```text
 legal_coverage(jurisdiction="us-fl")
@@ -66,11 +66,16 @@ legal_coverage(collection="florida-statutes-2026", view="documents", limit=2)
 legal_read(key_or_id="fl:stat/1.01")
 ```
 
-The Florida card states exactly which seven titles were accepted: I, II, III, IX,
+At the discovery checkpoint, the Florida card stated which seven titles were accepted: I, II, III, IX,
 XI, XII and XIII. Its 101 inventory items mix 49 title indexes with 52 chapter
 bodies. **59 indexed items means seven title indexes plus 52 documents**, not 59
 legal documents or statewide completeness; 42 title indexes remain pending.
 The 2026 edition label supplies no invented exact snapshot/effective date.
+This is a frozen measurement, not the live Florida denominator. The subsequent
+[Florida edition import](florida-edition.md) expands actual publisher-listed chapter
+membership; the old review remains nested as `historical_discovery_review` and the
+new `discovery_review` reports current coverage. Query the live card and inventory
+for any pending or failed chapters.
 
 Mississippi's existing card now exposes its original scope: 24 statewide court-rule
 volumes, not local rules or all Mississippi law. New Jersey's annotation separates
@@ -85,7 +90,8 @@ listings are separate. Only `collections.metadata` changed. Raw data, acquisitio
 rows, versions, provisions and original acceptance/publication ledgers did not.
 Historical replay correctly keeps its earlier metadata, without these later notes.
 
-The guarded operator command is idempotent and refuses changed metadata/receipts:
+The historical guarded operator command is idempotent at its own checkpoint and
+refuses changed metadata/receipts (including the later Florida scope expansion):
 
 ```sh
 .venv/bin/python scripts/annotate_discovery.py --data data
@@ -145,7 +151,10 @@ unknown/empty cases, and an undated Florida read correctly excluded by `as_of`.
 .venv/bin/pytest -q tests/test_discovery.py tests/test_store_retrieval.py tests/test_geography_mcp.py tests/test_sync_audit_summary.py
 ```
 
-Verification uses this accepted corpus and its current annotations; it is not a
-generic benchmark. It never fetches data or runs the earlier full-corpus/replay
+Verification targets the accepted corpus and annotations at this discovery
+checkpoint; it is not a generic benchmark. It never fetches data or runs the earlier full-corpus/replay
 campaigns. Other collections can still have incomplete scope metadata: cards say
 when it is not explicitly described, and counts do not fill that evidentiary gap.
+The recorded Florida expectations belong to this discovery checkpoint; do not
+rerun its mutating annotation step against a later expanded catalog or rewrite its
+frozen receipt. Use the Florida-specific verifier for that later work.
