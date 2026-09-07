@@ -1,0 +1,830 @@
+{
+  "status": "PASS",
+  "recorded_at": "2026-09-07T19:53:21Z",
+  "publisher_titles": 34,
+  "new_printable_titles": 33,
+  "omitted_listed_titles": [],
+  "title_8": "Not listed by publisher; not a guessed missing title",
+  "new_unit_kinds": {
+    "title_context": 33,
+    "chapter_context": 366,
+    "section": 3095,
+    "changes_context": 33,
+    "figures_context": 3
+  },
+  "titles": [
+    {
+      "title": "1",
+      "counts": {
+        "title_context": 1,
+        "chapter_context": 7,
+        "section": 43,
+        "changes_context": 1
+      },
+      "url": "https://www.portland.gov/code/1/all",
+      "acquisition_id": 10874,
+      "sha256": "572ccbd0501419ccd47c4044ae16d8e605b34994e36a00c406cf1935972e346c",
+      "bytes": 151053,
+      "observed_at": "2026-09-07T19:19:07Z",
+      "native_members": 50
+    },
+    {
+      "title": "2",
+      "counts": {
+        "title_context": 1,
+        "chapter_context": 8,
+        "section": 86,
+        "changes_context": 1
+      },
+      "url": "https://www.portland.gov/code/2/all",
+      "acquisition_id": 10883,
+      "sha256": "52178e75e6df41cc21fd361b304093e1e4f648b6807737ee6bcbe879ec079ee2",
+      "bytes": 348528,
+      "observed_at": "2026-09-07T19:26:47Z",
+      "native_members": 94
+    },
+    {
+      "title": "3",
+      "counts": {
+        "title_context": 1,
+        "chapter_context": 55,
+        "section": 351,
+        "changes_context": 1
+      },
+      "url": "https://www.portland.gov/code/3/all",
+      "acquisition_id": 10892,
+      "sha256": "53b9c3ab00bf3ce6d5165e354e66ab13eb4172f05cb358f4ae4ccb17eebed458",
+      "bytes": 945905,
+      "observed_at": "2026-09-07T19:27:22Z",
+      "native_members": 406
+    },
+    {
+      "title": "4",
+      "counts": {
+        "title_context": 1,
+        "chapter_context": 7,
+        "section": 13,
+        "changes_context": 1
+      },
+      "url": "https://www.portland.gov/code/4/all",
+      "acquisition_id": 10948,
+      "sha256": "c72106a02dcc8aaf649ed7387350b4fa72c4d34d476b282177bcdcba3de5f9bd",
+      "bytes": 88436,
+      "observed_at": "2026-09-07T19:29:21Z",
+      "native_members": 20
+    },
+    {
+      "title": "5",
+      "counts": {
+        "title_context": 1,
+        "chapter_context": 8,
+        "section": 54,
+        "changes_context": 1
+      },
+      "url": "https://www.portland.gov/code/5/all",
+      "acquisition_id": 10956,
+      "sha256": "2068b38870bc8143540c03bc376e7af1f355ab7f90eb55c00b83caecaed7e340",
+      "bytes": 210372,
+      "observed_at": "2026-09-07T19:29:41Z",
+      "native_members": 62
+    },
+    {
+      "title": "6",
+      "counts": {
+        "title_context": 1,
+        "chapter_context": 7,
+        "section": 138,
+        "changes_context": 1
+      },
+      "url": "https://www.portland.gov/code/6/all",
+      "acquisition_id": 10965,
+      "sha256": "eed31963e2317b2ce0604efc4e702b8cdbc7549a1730ece6cb97591e8f415d83",
+      "bytes": 493948,
+      "observed_at": "2026-09-07T19:30:04Z",
+      "native_members": 145
+    },
+    {
+      "title": "7",
+      "counts": {
+        "title_context": 1,
+        "chapter_context": 10,
+        "section": 141,
+        "changes_context": 1
+      },
+      "url": "https://www.portland.gov/code/7/all",
+      "acquisition_id": 10973,
+      "sha256": "bf35b9ebe5aa645203d960dd9f5a3e53bb577ec9902b2f4c9184e5d9432385f0",
+      "bytes": 499746,
+      "observed_at": "2026-09-07T19:30:33Z",
+      "native_members": 151
+    },
+    {
+      "title": "9",
+      "counts": {
+        "title_context": 1,
+        "chapter_context": 1,
+        "section": 14,
+        "changes_context": 1
+      },
+      "url": "https://www.portland.gov/code/9/all",
+      "acquisition_id": 10984,
+      "sha256": "6e5bd5fc69aa0507910a13e95767c7fc80834d8629bd9676b9f34443da103fea",
+      "bytes": 93334,
+      "observed_at": "2026-09-07T19:30:55Z",
+      "native_members": 15
+    },
+    {
+      "title": "10",
+      "counts": {
+        "title_context": 1,
+        "chapter_context": 7,
+        "section": 31,
+        "changes_context": 1
+      },
+      "url": "https://www.portland.gov/code/10/all",
+      "acquisition_id": 10986,
+      "sha256": "1133056bd92a6c18d8d9cd5693e0ee9986770091b9e3818a5909b0caf15feb6d",
+      "bytes": 122493,
+      "observed_at": "2026-09-07T19:31:00Z",
+      "native_members": 38
+    },
+    {
+      "title": "11",
+      "counts": {
+        "title_context": 1,
+        "chapter_context": 11,
+        "section": 74,
+        "changes_context": 1
+      },
+      "url": "https://www.portland.gov/code/11/all",
+      "acquisition_id": 10994,
+      "sha256": "9706d394015ec7a33449ff49a10b09aafe98b69a43ab437c0788751e7712446b",
+      "bytes": 423064,
+      "observed_at": "2026-09-07T19:31:23Z",
+      "native_members": 85
+    },
+    {
+      "title": "12",
+      "counts": {
+        "title_context": 1,
+        "chapter_context": 1,
+        "section": 20,
+        "changes_context": 1
+      },
+      "url": "https://www.portland.gov/code/12/all",
+      "acquisition_id": 11015,
+      "sha256": "ee7b9381daf92bda5041aaf8d27cd430c0e18107b4d28a23cc6a59c8da7b4b0a",
+      "bytes": 166376,
+      "observed_at": "2026-09-07T19:32:07Z",
+      "native_members": 21
+    },
+    {
+      "title": "13",
+      "counts": {
+        "title_context": 1,
+        "chapter_context": 4,
+        "section": 10,
+        "changes_context": 1
+      },
+      "url": "https://www.portland.gov/code/13/all",
+      "acquisition_id": 11017,
+      "sha256": "5e5733ce09dce9914d3eec1bc51eba66244463e918443c5002e8bee95952fd7e",
+      "bytes": 89201,
+      "observed_at": "2026-09-07T19:32:11Z",
+      "native_members": 14
+    },
+    {
+      "title": "14",
+      "counts": {
+        "title_context": 1,
+        "chapter_context": 29,
+        "section": 263,
+        "changes_context": 1
+      },
+      "url": "https://www.portland.gov/code/14/all",
+      "acquisition_id": 11022,
+      "sha256": "a56b658559a9b18af243c87be7bac61d7c62747457bf156cded74e608ac65d52",
+      "bytes": 804605,
+      "observed_at": "2026-09-07T19:32:20Z",
+      "native_members": 292
+    },
+    {
+      "title": "15",
+      "counts": {
+        "title_context": 1,
+        "chapter_context": 2,
+        "section": 12,
+        "changes_context": 1
+      },
+      "url": "https://www.portland.gov/code/15/all",
+      "acquisition_id": 11053,
+      "sha256": "418e067250b57f3eab6dbdd9c6d69b55d9ba3bd679e08064129d743d2c8f99ff",
+      "bytes": 81533,
+      "observed_at": "2026-09-07T19:33:26Z",
+      "native_members": 14
+    },
+    {
+      "title": "16",
+      "counts": {
+        "title_context": 1,
+        "chapter_context": 10,
+        "section": 362,
+        "changes_context": 1
+      },
+      "url": "https://www.portland.gov/code/16/all",
+      "acquisition_id": 11056,
+      "sha256": "0e430278765297a321e624300d6f82fc764e1074f936167f6d63a44bebd74e6a",
+      "bytes": 1093831,
+      "observed_at": "2026-09-07T19:33:31Z",
+      "native_members": 372
+    },
+    {
+      "title": "17",
+      "counts": {
+        "title_context": 1,
+        "chapter_context": 58,
+        "section": 566,
+        "changes_context": 1
+      },
+      "url": "https://www.portland.gov/code/17/all",
+      "acquisition_id": 11067,
+      "sha256": "530cffa569b848b1a642aab190920ce25d19d418e424506cd31b5ee3078f914d",
+      "bytes": 1652231,
+      "observed_at": "2026-09-07T19:34:45Z",
+      "native_members": 624
+    },
+    {
+      "title": "18",
+      "counts": {
+        "title_context": 1,
+        "chapter_context": 11,
+        "section": 34,
+        "changes_context": 1
+      },
+      "url": "https://www.portland.gov/code/18/all",
+      "acquisition_id": 11126,
+      "sha256": "c402564ade863c466910d9532b755b0e251e8eafc428319ba41bf9e7b6f76d58",
+      "bytes": 159446,
+      "observed_at": "2026-09-07T19:36:51Z",
+      "native_members": 45
+    },
+    {
+      "title": "19",
+      "counts": {
+        "title_context": 1,
+        "chapter_context": 5,
+        "section": 98,
+        "changes_context": 1
+      },
+      "url": "https://www.portland.gov/code/19/all",
+      "acquisition_id": 11138,
+      "sha256": "632f01ffda2562365a42648142704c908439c933000588ac38d5701c32b4094b",
+      "bytes": 283422,
+      "observed_at": "2026-09-07T19:37:14Z",
+      "native_members": 103
+    },
+    {
+      "title": "20",
+      "counts": {
+        "title_context": 1,
+        "chapter_context": 6,
+        "section": 50,
+        "changes_context": 1
+      },
+      "url": "https://www.portland.gov/code/20/all",
+      "acquisition_id": 11144,
+      "sha256": "4457eaf4bb13e4c3f27cd7de4fed73c363ece60086037f8a948a70c64eb237eb",
+      "bytes": 180475,
+      "observed_at": "2026-09-07T19:37:33Z",
+      "native_members": 56
+    },
+    {
+      "title": "21",
+      "counts": {
+        "title_context": 1,
+        "chapter_context": 11,
+        "section": 88,
+        "changes_context": 1
+      },
+      "url": "https://www.portland.gov/code/21/all",
+      "acquisition_id": 11151,
+      "sha256": "01af259266896f38bc512ad2c9f1643734849cbf2343ecd2e145b665d1d7b8b4",
+      "bytes": 309855,
+      "observed_at": "2026-09-07T19:37:54Z",
+      "native_members": 99
+    },
+    {
+      "title": "22",
+      "counts": {
+        "title_context": 1,
+        "chapter_context": 8,
+        "section": 30,
+        "changes_context": 1
+      },
+      "url": "https://www.portland.gov/code/22/all",
+      "acquisition_id": 11163,
+      "sha256": "5551b4d4bfc8ca1b7fb37d25cd7667a123f120abc670f832a77aea6f8ed6e05a",
+      "bytes": 154594,
+      "observed_at": "2026-09-07T19:38:21Z",
+      "native_members": 38
+    },
+    {
+      "title": "23",
+      "counts": {
+        "title_context": 1,
+        "chapter_context": 4,
+        "section": 37,
+        "changes_context": 1
+      },
+      "url": "https://www.portland.gov/code/23/all",
+      "acquisition_id": 11172,
+      "sha256": "60dc61309b6271a7bb4ba87a12dddd36e0994f4ba5c1c619c7974f4f0596732b",
+      "bytes": 158506,
+      "observed_at": "2026-09-07T19:38:41Z",
+      "native_members": 41
+    },
+    {
+      "title": "24",
+      "counts": {
+        "title_context": 1,
+        "chapter_context": 17,
+        "section": 140,
+        "figures_context": 1,
+        "changes_context": 1
+      },
+      "url": "https://www.portland.gov/code/24/all",
+      "acquisition_id": 10840,
+      "sha256": "9f5bb564b16baa726dbfc413df303cf419149c3baf8ecba8d58f7826857bbce4",
+      "bytes": 504540,
+      "observed_at": "2026-09-07T19:10:34Z",
+      "native_members": 158
+    },
+    {
+      "title": "25",
+      "counts": {
+        "title_context": 1,
+        "chapter_context": 10,
+        "section": 59,
+        "changes_context": 1
+      },
+      "url": "https://www.portland.gov/code/25/all",
+      "acquisition_id": 11199,
+      "sha256": "f0987053752b43cf197a1dd6be3184e823c223ddf32d031f71f4c4bf1adaa33a",
+      "bytes": 167500,
+      "observed_at": "2026-09-07T19:39:42Z",
+      "native_members": 69
+    },
+    {
+      "title": "26",
+      "counts": {
+        "title_context": 1,
+        "chapter_context": 10,
+        "section": 66,
+        "changes_context": 1
+      },
+      "url": "https://www.portland.gov/code/26/all",
+      "acquisition_id": 11210,
+      "sha256": "1af8c4f58c04babe4728c475d235c8125388ea066fd4e5231d79b1c43205eff9",
+      "bytes": 183102,
+      "observed_at": "2026-09-07T19:40:09Z",
+      "native_members": 76
+    },
+    {
+      "title": "27",
+      "counts": {
+        "title_context": 1,
+        "chapter_context": 5,
+        "section": 27,
+        "changes_context": 1
+      },
+      "url": "https://www.portland.gov/code/27/all",
+      "acquisition_id": 11221,
+      "sha256": "82863b2f73060359079a539b49bc7f18a1403288d78cf61666d34a59a2ae0b0e",
+      "bytes": 143587,
+      "observed_at": "2026-09-07T19:40:33Z",
+      "native_members": 32
+    },
+    {
+      "title": "28",
+      "counts": {
+        "title_context": 1,
+        "chapter_context": 9,
+        "section": 27,
+        "changes_context": 1
+      },
+      "url": "https://www.portland.gov/code/28/all",
+      "acquisition_id": 11227,
+      "sha256": "bef7c5ca8294f2a82370f6ad7eedc96330a68d45b6451220d83d5c02d7c5e5d0",
+      "bytes": 238662,
+      "observed_at": "2026-09-07T19:40:47Z",
+      "native_members": 36
+    },
+    {
+      "title": "29",
+      "counts": {
+        "title_context": 1,
+        "chapter_context": 12,
+        "section": 97,
+        "changes_context": 1
+      },
+      "url": "https://www.portland.gov/code/29/all",
+      "acquisition_id": 11237,
+      "sha256": "d4b81ba225f5fd7fc750ab9cd932c8aa7273b937c711ee7336001311497a266e",
+      "bytes": 310982,
+      "observed_at": "2026-09-07T19:41:16Z",
+      "native_members": 109
+    },
+    {
+      "title": "30",
+      "counts": {
+        "title_context": 1,
+        "chapter_context": 1,
+        "section": 24,
+        "changes_context": 1
+      },
+      "url": "https://www.portland.gov/code/30/all",
+      "acquisition_id": 11250,
+      "sha256": "e1acf3770716b2757441ae8e43e9cf66dfef18a61e06de92ef4cc985e2fd6bc1",
+      "bytes": 211431,
+      "observed_at": "2026-09-07T19:41:43Z",
+      "native_members": 25
+    },
+    {
+      "title": "31",
+      "counts": {
+        "title_context": 1,
+        "chapter_context": 5,
+        "section": 45,
+        "changes_context": 1
+      },
+      "url": "https://www.portland.gov/code/31/all",
+      "acquisition_id": 11252,
+      "sha256": "a19927a38bd458deba0e639e2fdf1839c31234af2ff79c0316e0e702de9fa3f4",
+      "bytes": 176972,
+      "observed_at": "2026-09-07T19:41:50Z",
+      "native_members": 50
+    },
+    {
+      "title": "32",
+      "counts": {
+        "title_context": 1,
+        "chapter_context": 21,
+        "section": 69,
+        "figures_context": 2,
+        "changes_context": 1
+      },
+      "url": "https://www.portland.gov/code/32/all",
+      "acquisition_id": 11258,
+      "sha256": "786af48a4d40f87debf9640cedd02735e2b963871100bf318ab10a2bdbe6620a",
+      "bytes": 357888,
+      "observed_at": "2026-09-07T19:42:10Z",
+      "native_members": 92
+    },
+    {
+      "title": "34",
+      "counts": {
+        "title_context": 1,
+        "chapter_context": 1,
+        "section": 5,
+        "changes_context": 1
+      },
+      "url": "https://www.portland.gov/code/34/all",
+      "acquisition_id": 11307,
+      "sha256": "d3d969a0c11c7dbe2a7bf98b969af62a43f1916d3576325d6153b53bafafd966",
+      "bytes": 63275,
+      "observed_at": "2026-09-07T19:43:52Z",
+      "native_members": 6
+    },
+    {
+      "title": "35",
+      "counts": {
+        "title_context": 1,
+        "chapter_context": 5,
+        "section": 21,
+        "changes_context": 1
+      },
+      "url": "https://www.portland.gov/code/35/all",
+      "acquisition_id": 11309,
+      "sha256": "55473896680d1417311c5df75f1680e5999566efec662856607d8bf146319d93",
+      "bytes": 146700,
+      "observed_at": "2026-09-07T19:43:58Z",
+      "native_members": 26
+    }
+  ],
+  "reused_title33": {
+    "id": "672a7ce5dc0330c653bdaa2a3667b8d9",
+    "artifact_sha": "86ba1da866c9cc1acf56df185abfddff784c23b8fbd4601fbb1c0337abb0f354",
+    "acquisition_id": 151,
+    "snapshot_date": "2026-07-01",
+    "units": 1855
+  },
+  "membership_and_independent_chapter_body_comparison": "PASS for every new section",
+  "media_outcomes": {
+    "retained_not_transcribed": 40
+  },
+  "root_acquisition_id": 10838,
+  "terms_acquisition_id": 10841,
+  "acquisition": {
+    "request_statuses": {
+      "200": 477
+    },
+    "downloaded_payload_bytes": 48026316,
+    "cap_bytes": 134217728,
+    "file_cap_bytes": 8388608,
+    "minimum_host_seconds": 2.1,
+    "first_observed_at": "2026-09-07T19:10:29Z",
+    "last_observed_at": "2026-09-07T19:44:07Z",
+    "errors": []
+  },
+  "integrity": {
+    "rehashed_objects": 477,
+    "rehashed_bytes": 48026316,
+    "manifest_sha256": "ace0864b01df97178c608f6e647585c78be55dc55d20835676584e4245c3f484"
+  },
+  "limits": [
+    "Current publisher display; exact snapshot/effectiveness unknown for HTML",
+    "Title 33 reused at July 1, 2026, not refreshed",
+    "No certified comprehensive city-law claim; charter/policies/model codes excluded",
+    "Images retained where available, not transcribed; source figure-label disagreements preserved",
+    "No invented Title 33 section-to-PDF-page map"
+  ],
+  "mcp": {
+    "calls": [
+      {
+        "tool": "legal_coverage",
+        "arguments": {
+          "collection": "portland-city-code"
+        },
+        "seconds": 0.006652,
+        "bytes": 2456,
+        "sha256": "7ff3509eb4fd4340212ab45d2b0685cc35cc16f2be252faaaa1989e0028d6277"
+      },
+      {
+        "tool": "legal_search",
+        "arguments": {
+          "query": "Application for Permits",
+          "collection": "portland-city-code",
+          "limit": 2
+        },
+        "seconds": 0.958264,
+        "bytes": 2964,
+        "sha256": "46d03c9531be73fddf6df59fd38c76bb15f7e250c2d81db38054f2ce7b69f323"
+      },
+      {
+        "tool": "legal_read",
+        "arguments": {
+          "key_or_id": "pdx-code:24/10/070",
+          "length": 1800
+        },
+        "seconds": 0.284733,
+        "bytes": 9303,
+        "sha256": "091bec9ae3106052abc1daf7e594a5c37e5d8140f09dda1d1bc05f213bf8d1d3"
+      },
+      {
+        "tool": "source_receipt",
+        "arguments": {
+          "acquisition_id": 10840
+        },
+        "seconds": 0.002227,
+        "bytes": 895,
+        "sha256": "26c83fffa82bd53aa4d72937bfcef406818450ba63eacd48fa2ece5ee3be37b1"
+      },
+      {
+        "tool": "legal_search",
+        "arguments": {
+          "query": "Tree Permit",
+          "collection": "portland-city-code",
+          "limit": 2
+        },
+        "seconds": 0.104347,
+        "bytes": 2456,
+        "sha256": "ce9b38f64ff474ba423eee3cdf6988cde0f824255f6d3060b0797056e5b8d236"
+      },
+      {
+        "tool": "legal_read",
+        "arguments": {
+          "key_or_id": "pdx-code:11/30",
+          "length": 1800
+        },
+        "seconds": 0.216873,
+        "bytes": 6116,
+        "sha256": "4be6b967007b7037fdc2f8013ecf60c35619bdea45d694a60c12839aee7955fe"
+      },
+      {
+        "tool": "source_receipt",
+        "arguments": {
+          "acquisition_id": 10994
+        },
+        "seconds": 0.00235,
+        "bytes": 895,
+        "sha256": "2bac0789a4773167001ce05499a7329850a86c6180253478a6dcd651790f06b5"
+      },
+      {
+        "tool": "legal_search",
+        "arguments": {
+          "query": "Erosion",
+          "collection": "portland-city-code",
+          "limit": 2
+        },
+        "seconds": 0.224294,
+        "bytes": 2651,
+        "sha256": "d55d6379eb19f1981d55469ab78f93d7d630953255376b7b0be534ec68e84204"
+      },
+      {
+        "tool": "legal_read",
+        "arguments": {
+          "key_or_id": "pdx-code:17/38/050",
+          "length": 1800
+        },
+        "seconds": 0.221718,
+        "bytes": 6531,
+        "sha256": "37b00ffee85e929ed65b0ac9da8d525adcbb30ef49c9963925ca0e79b3df0287"
+      },
+      {
+        "tool": "source_receipt",
+        "arguments": {
+          "acquisition_id": 11067
+        },
+        "seconds": 0.002265,
+        "bytes": 897,
+        "sha256": "63b20b6ea58e17da785cebc7d676527c0504e330b2307bb05a2a744c0a19dac1"
+      },
+      {
+        "tool": "legal_search",
+        "arguments": {
+          "query": "Local Improvement",
+          "collection": "portland-city-code",
+          "limit": 2
+        },
+        "seconds": 0.791494,
+        "bytes": 2711,
+        "sha256": "bc9994710ab02f277c5a1672bbac680359069c2584c39d5a116737d18de45d0e"
+      },
+      {
+        "tool": "legal_read",
+        "arguments": {
+          "key_or_id": "pdx-code:17/08",
+          "length": 1800
+        },
+        "seconds": 0.253288,
+        "bytes": 6858,
+        "sha256": "addef91b4b66f7e089a23c5d982d0a4d84ae45bef5040c5c19c2d9e2df2de3f9"
+      },
+      {
+        "tool": "source_receipt",
+        "arguments": {
+          "acquisition_id": 11067
+        },
+        "seconds": 0.003022,
+        "bytes": 897,
+        "sha256": "63b20b6ea58e17da785cebc7d676527c0504e330b2307bb05a2a744c0a19dac1"
+      },
+      {
+        "tool": "legal_search",
+        "arguments": {
+          "query": "Housing",
+          "collection": "portland-city-code",
+          "limit": 2
+        },
+        "seconds": 1.540683,
+        "bytes": 2408,
+        "sha256": "17bbbe65cd21025dc9fa714738138588642c266348270ba499105ffad8802bfb"
+      },
+      {
+        "tool": "legal_read",
+        "arguments": {
+          "key_or_id": "pdx-code:29/90",
+          "length": 1800
+        },
+        "seconds": 0.232135,
+        "bytes": 4748,
+        "sha256": "5b20147f75a0f2d3091f9360ed19fe91e1cd3fd998777aaf2d548bfe326bd8a6"
+      },
+      {
+        "tool": "source_receipt",
+        "arguments": {
+          "acquisition_id": 11237
+        },
+        "seconds": 0.002568,
+        "bytes": 894,
+        "sha256": "c8167e5704c26898a46408926cf45f875d7801c1394c0b2a6c1a946c5864b3ed"
+      },
+      {
+        "tool": "legal_read",
+        "arguments": {
+          "key_or_id": "PCC 24.70.090",
+          "length": 6500
+        },
+        "seconds": 0.23366,
+        "bytes": 9903,
+        "sha256": "54622fcbbfff9a67b33304a07bb4cc5dd1321b3e27cc864a3db97150680b6c70"
+      },
+      {
+        "tool": "legal_read",
+        "arguments": {
+          "key_or_id": "1b50d89c66a185d83e92d2c4b9e94697",
+          "as_of": "2099-01-01"
+        },
+        "seconds": 0.036356,
+        "bytes": 342,
+        "sha256": "2fcf3c26e9a44c7a7722222ed917599bf65735eb0e0c0c0392548ff84f7edc3c"
+      },
+      {
+        "tool": "legal_read",
+        "arguments": {
+          "key_or_id": "1b50d89c66a185d83e92d2c4b9e94697",
+          "observation_cutoff": "2026-09-06T00:00:00Z"
+        },
+        "seconds": 0.007638,
+        "bytes": 342,
+        "sha256": "2fcf3c26e9a44c7a7722222ed917599bf65735eb0e0c0c0392548ff84f7edc3c"
+      },
+      {
+        "tool": "legal_read",
+        "arguments": {
+          "key_or_id": "pdx-code:20/12/265",
+          "length": 1000
+        },
+        "seconds": 0.229941,
+        "bytes": 6649,
+        "sha256": "b500eecbbae1ba7ef44937829be1e67fdf8ac30e6cc80d94a7dfbfbc8e393735"
+      },
+      {
+        "tool": "legal_references",
+        "arguments": {
+          "provision_id": "00848da7c5990137a5b66c835355815d",
+          "limit": 100
+        },
+        "seconds": 0.039649,
+        "bytes": 2393,
+        "sha256": "7c8baf877136f397d8d0efba4e373f248abf35f803497779807ef4dd48c2bda6"
+      },
+      {
+        "tool": "legal_read",
+        "arguments": {
+          "key_or_id": "pdx-code:7/07/035",
+          "length": 1000
+        },
+        "seconds": 0.256455,
+        "bytes": 5684,
+        "sha256": "a4410deb5bd981d1edfce70d2c5874d2847670769705fce51db631478e0d310e"
+      },
+      {
+        "tool": "legal_references",
+        "arguments": {
+          "provision_id": "005d3f1a0b073f2469c62b93d57329d4",
+          "limit": 100
+        },
+        "seconds": 0.039476,
+        "bytes": 1397,
+        "sha256": "ed3ec3b13c8f75161afd7ad05e82e4decb840542606db3c1f0d9869895286a75"
+      },
+      {
+        "tool": "legal_read",
+        "arguments": {
+          "key_or_id": "pdx-code:32/34/020",
+          "length": 1000
+        },
+        "seconds": 0.228898,
+        "bytes": 11895,
+        "sha256": "44763f91bfedac4fc4ce23ab7bcf228c48178a55a907883fc9d2326471cefffb"
+      },
+      {
+        "tool": "legal_references",
+        "arguments": {
+          "provision_id": "0f80786fc4c3ba5529c1248a8ce19f83",
+          "limit": 100
+        },
+        "seconds": 0.040587,
+        "bytes": 5577,
+        "sha256": "1a600284f32a7868832c7e28e781c8d4515ca5223784f04aeec6e09052b233a7"
+      },
+      {
+        "tool": "legal_read",
+        "arguments": {
+          "key_or_id": "ORS 166.155",
+          "length": 1500
+        },
+        "seconds": 0.204524,
+        "bytes": 4652,
+        "sha256": "a6f0fd0a3fd2a9bb5984bf59014073bc6346ba76cb6eda665b1dfd0b0c1c1cab"
+      },
+      {
+        "tool": "legal_sources_at",
+        "arguments": {
+          "longitude": -122.65,
+          "latitude": 45.52
+        },
+        "seconds": 0.195682,
+        "bytes": 6018,
+        "sha256": "cbb1329c80f0052357ca77ec7a76f9e724f64e4ece359da72cfa6652d11d3ea0"
+      }
+    ],
+    "scope": "One offline real stdio MCP route proof, not a benchmark or legal applicability opinion"
+  },
+  "runtime_sha256": {
+    "src/psephos/portland_code.py": "9453d8d0cda69b0e6fb579ea700aa95426f119f18bde69102b5396aaa771b9c0",
+    "src/psephos/retrieve.py": "f2e9a1301f7c8b5bbd6e17e4eab3df61251c591d2bd7807e776e398b1bc83d88",
+    "scripts/verify_portland.py": "f1433a83741e83c6de20d8c4bb90f2b3873121eb84a000384ab5afa3bc3c7c40"
+  }
+}

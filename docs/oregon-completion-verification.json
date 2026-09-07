@@ -1,0 +1,853 @@
+{
+  "status": "PASS",
+  "recorded_at": "2026-09-07T19:51:58Z",
+  "publisher_edition": "2025 ORS; excludes later special/regular sessions; online text not legally official print edition",
+  "expected_chapters": 689,
+  "retained_chapters": 689,
+  "missing_chapters": 0,
+  "old_versions_unchanged": 597,
+  "old_provisions_unchanged": 65234,
+  "old_provision_ids_sha256": "76aa70ec39d0dc915bb723ec5d456054a2c4d161024951495bd7b3d42e2fb12d",
+  "new_chapters": 92,
+  "new_unit_kinds": {
+    "chapter_front_matter": 92,
+    "section": 8377
+  },
+  "new_chapter_parser_and_native_text_preservation": "PASS",
+  "chapter_receipts": [
+    {
+      "id": 11365,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors767.html",
+      "sha256": "aa828348f1a05d0638eac40f578faf1cf19b3f976a3c1c17b11e7f30b396a5fc",
+      "observed_at": "2026-09-07T19:50:28Z",
+      "bytes": 89882,
+      "chapter": "767",
+      "units": 185
+    },
+    {
+      "id": 11325,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors721.html",
+      "sha256": "adf25343b0ff32d6d8dc4a2c62a9dc1bac48788c022740c7a067d55f1d9d9c69",
+      "observed_at": "2026-09-07T19:49:03Z",
+      "bytes": 10160,
+      "chapter": "721",
+      "units": 12
+    },
+    {
+      "id": 11326,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors722.html",
+      "sha256": "91fa5a4cfc7f8c8f77e528df354f6756b649bd22fb743a79cecd0c7a944a966d",
+      "observed_at": "2026-09-07T19:49:05Z",
+      "bytes": 134709,
+      "chapter": "722",
+      "units": 293
+    },
+    {
+      "id": 11382,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors803.html",
+      "sha256": "81a43f3004785039772ccf1c1e3d126e586a9c46ae62903859869e2dc5118f41",
+      "observed_at": "2026-09-07T19:51:03Z",
+      "bytes": 548425,
+      "chapter": "803",
+      "units": 140
+    },
+    {
+      "id": 11353,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors749.html",
+      "sha256": "879413b817c46230dd3a225ac97d6025568c35320450d73f2e21741de275c504",
+      "observed_at": "2026-09-07T19:50:02Z",
+      "bytes": 14791,
+      "chapter": "749",
+      "units": 29
+    },
+    {
+      "id": 11358,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors757.html",
+      "sha256": "ea2df143db2388787f00cc9a2279f579c0b1ff139c42f78c42be056d03046e91",
+      "observed_at": "2026-09-07T19:50:13Z",
+      "bytes": 1141573,
+      "chapter": "757",
+      "units": 336
+    },
+    {
+      "id": 11332,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors727.html",
+      "sha256": "42d4f4e0f302fa5c2d09161a08608557224dc964ca1fd26aa38b496bed21599f",
+      "observed_at": "2026-09-07T19:49:18Z",
+      "bytes": 4891,
+      "chapter": "727",
+      "units": 1
+    },
+    {
+      "id": 11401,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors826.html",
+      "sha256": "3fe5db3195798e8536c6879a2d09cee55e38246745422caa57f0cb4f782e442e",
+      "observed_at": "2026-09-07T19:51:43Z",
+      "bytes": 81606,
+      "chapter": "826",
+      "units": 24
+    },
+    {
+      "id": 11393,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors818.html",
+      "sha256": "62f88e18cb24f285075778d597494eda5b0106e97bcc092c77ef5f9a38eec806",
+      "observed_at": "2026-09-07T19:51:27Z",
+      "bytes": 294143,
+      "chapter": "818",
+      "units": 42
+    },
+    {
+      "id": 11397,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors822.html",
+      "sha256": "671435ae891eb2caddf990bf933362d2f128c166ebb9e2b4315f21d9cc3efbb8",
+      "observed_at": "2026-09-07T19:51:35Z",
+      "bytes": 364605,
+      "chapter": "822",
+      "units": 93
+    },
+    {
+      "id": 11368,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors770.html",
+      "sha256": "336d487ca553e4a8e378fdf503b8b3f7a1dc6696e3b59943e0d3b21e7f83fffa",
+      "observed_at": "2026-09-07T19:50:34Z",
+      "bytes": 5522,
+      "chapter": "770",
+      "units": 5
+    },
+    {
+      "id": 11362,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors761.html",
+      "sha256": "13035104cb16380732490757034ac3cfd051889878f8c2fb751ef2a8b1c8a155",
+      "observed_at": "2026-09-07T19:50:21Z",
+      "bytes": 26556,
+      "chapter": "761",
+      "units": 52
+    },
+    {
+      "id": 11386,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors809.html",
+      "sha256": "9934830d8a6161e7d53aee6351e6e2cf8de45a558b7190f114a829c53457b057",
+      "observed_at": "2026-09-07T19:51:12Z",
+      "bytes": 287123,
+      "chapter": "809",
+      "units": 97
+    },
+    {
+      "id": 11400,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors825.html",
+      "sha256": "79c9bf8c0ebd31251ef040024ea9855aa3df386b6d68a865322be77038bfc430",
+      "observed_at": "2026-09-07T19:51:41Z",
+      "bytes": 399811,
+      "chapter": "825",
+      "units": 124
+    },
+    {
+      "id": 11356,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors752.html",
+      "sha256": "e8890dbad5148e3c203b3adb3fab5cc960ef7fac1dfec3eae5e7b6953fb47923",
+      "observed_at": "2026-09-07T19:50:09Z",
+      "bytes": 28102,
+      "chapter": "752",
+      "units": 26
+    },
+    {
+      "id": 11337,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors735.html",
+      "sha256": "c4a5093ce1e51958ae5222d5aaa60329c7768effef6e96b32f68f56c91953522",
+      "observed_at": "2026-09-07T19:49:29Z",
+      "bytes": 479063,
+      "chapter": "735",
+      "units": 173
+    },
+    {
+      "id": 11334,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors732.html",
+      "sha256": "aeb2bcb144e8ad475ae7e7cb58f185b7440f5530a39d1635f9dd46b0f72a9f57",
+      "observed_at": "2026-09-07T19:49:22Z",
+      "bytes": 652378,
+      "chapter": "732",
+      "units": 183
+    },
+    {
+      "id": 11391,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors815.html",
+      "sha256": "c52bb3a6a267a591dacf1c59b4c59ea05f59bf19e342b8aee01fd3320c31d807",
+      "observed_at": "2026-09-07T19:51:22Z",
+      "bytes": 329156,
+      "chapter": "815",
+      "units": 94
+    },
+    {
+      "id": 11376,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors780.html",
+      "sha256": "2f15cb38d77a0ca9619e27cc636ec830f03e431d642b4edeb8a07921db07c4ad",
+      "observed_at": "2026-09-07T19:50:51Z",
+      "bytes": 13143,
+      "chapter": "780",
+      "units": 7
+    },
+    {
+      "id": 11342,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors740.html",
+      "sha256": "c80d8daea6317d97d082bfa31925612d56aac0eba13ba016547e381be20bcbc3",
+      "observed_at": "2026-09-07T19:49:39Z",
+      "bytes": 29561,
+      "chapter": "740",
+      "units": 63
+    },
+    {
+      "id": 11351,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors747.html",
+      "sha256": "55ab1a9639b18779af06d78b03e593b0a92ac514f46d7eba6480395e4d905593",
+      "observed_at": "2026-09-07T19:49:58Z",
+      "bytes": 13165,
+      "chapter": "747",
+      "units": 25
+    },
+    {
+      "id": 11379,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors783.html",
+      "sha256": "7856756996a3caf9be59e85007a00883a3234de7bffea6827818deea905e6616",
+      "observed_at": "2026-09-07T19:50:57Z",
+      "bytes": 95635,
+      "chapter": "783",
+      "units": 46
+    },
+    {
+      "id": 11331,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors726.html",
+      "sha256": "26edaef645643a45e2b7881a0765d7feed91572fa1585475b7b88f080d165ae0",
+      "observed_at": "2026-09-07T19:49:16Z",
+      "bytes": 113154,
+      "chapter": "726",
+      "units": 49
+    },
+    {
+      "id": 11361,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors760.html",
+      "sha256": "a50c742f8ab5718ee37a9e02712c8deb1d5965a3cbe5786c3441e51d1f40c7de",
+      "observed_at": "2026-09-07T19:50:19Z",
+      "bytes": 42364,
+      "chapter": "760",
+      "units": 91
+    },
+    {
+      "id": 11338,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors736.html",
+      "sha256": "9c169eb378c7f94919caabcb31b5ac57a1273a8894834d25f350df63f556cd29",
+      "observed_at": "2026-09-07T19:49:31Z",
+      "bytes": 55743,
+      "chapter": "736",
+      "units": 121
+    },
+    {
+      "id": 11360,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors759.html",
+      "sha256": "24b103e08f7022419a59bfd25d5b7c01f7068c2f7eadb946466eb86d317621cd",
+      "observed_at": "2026-09-07T19:50:17Z",
+      "bytes": 481000,
+      "chapter": "759",
+      "units": 142
+    },
+    {
+      "id": 11340,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors738.html",
+      "sha256": "1ad631fbe5d17abbbf72f219cca8e5387ccaf15af7fbe815fec706bb0f23a12e",
+      "observed_at": "2026-09-07T19:49:35Z",
+      "bytes": 40041,
+      "chapter": "738",
+      "units": 85
+    },
+    {
+      "id": 11402,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors830.html",
+      "sha256": "279d307c19cd4c2027d4352a983a8cc44e15a22d038891bbffad4063adc5865f",
+      "observed_at": "2026-09-07T19:51:45Z",
+      "bytes": 552786,
+      "chapter": "830",
+      "units": 201
+    },
+    {
+      "id": 11380,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors801.html",
+      "sha256": "bd820f57c4b0a3b5c662754027b3898d62c59ff8c9dde2b8b850e2a0a99a9def",
+      "observed_at": "2026-09-07T19:50:59Z",
+      "bytes": 738014,
+      "chapter": "801",
+      "units": 188
+    },
+    {
+      "id": 11369,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors771.html",
+      "sha256": "7861502887fd8cc6aade58deda47a26ab95c5437b0053002290be548787e2f01",
+      "observed_at": "2026-09-07T19:50:36Z",
+      "bytes": 5815,
+      "chapter": "771",
+      "units": 7
+    },
+    {
+      "id": 11396,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors821.html",
+      "sha256": "a3eecf6d4dad9216192856d78f5024fb97aba76665fd9184c6c7e385d81c1822",
+      "observed_at": "2026-09-07T19:51:33Z",
+      "bytes": 170777,
+      "chapter": "821",
+      "units": 57
+    },
+    {
+      "id": 11404,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors836.html",
+      "sha256": "619e189adf1d205cfcfda5593ec1aa0fcde3e3a482b581313aa9cf104849493b",
+      "observed_at": "2026-09-07T19:51:50Z",
+      "bytes": 165912,
+      "chapter": "836",
+      "units": 82
+    },
+    {
+      "id": 11348,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors744.html",
+      "sha256": "df49697b0cf0796aa4a4e39338c0218f40e2c0ea99846e2996073a386bbd44ea",
+      "observed_at": "2026-09-07T19:49:52Z",
+      "bytes": 737051,
+      "chapter": "744",
+      "units": 297
+    },
+    {
+      "id": 11324,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors717.html",
+      "sha256": "35dc36a21490c5bca5d7aaa65333e498d243d19843454a155299faca421703f7",
+      "observed_at": "2026-09-07T19:49:01Z",
+      "bytes": 115293,
+      "chapter": "717",
+      "units": 50
+    },
+    {
+      "id": 11316,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors708.html",
+      "sha256": "9d9d4c9b4f13eb9b7ca63d658523e8685f151002de1899b983b8f644b2284037",
+      "observed_at": "2026-09-07T19:48:44Z",
+      "bytes": 74517,
+      "chapter": "708",
+      "units": 161
+    },
+    {
+      "id": 11328,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors724.html",
+      "sha256": "7d06192b59b3e4f52d1a7fc42e04350441f0b98c670e8ddf4da7c97abe327fda",
+      "observed_at": "2026-09-07T19:49:10Z",
+      "bytes": 4249,
+      "chapter": "724",
+      "units": 2
+    },
+    {
+      "id": 11373,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors776.html",
+      "sha256": "07f7cadeadbe2ee3e5b8b330df4d281c4e27c84286a77d6bc6dc2a6b7892692d",
+      "observed_at": "2026-09-07T19:50:44Z",
+      "bytes": 122743,
+      "chapter": "776",
+      "units": 86
+    },
+    {
+      "id": 11343,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors741.html",
+      "sha256": "77b607969dd5c7d6f766da3fce3970cede2a5df7e89b21e1512c499b8ba7438b",
+      "observed_at": "2026-09-07T19:49:41Z",
+      "bytes": 151372,
+      "chapter": "741",
+      "units": 83
+    },
+    {
+      "id": 11381,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors802.html",
+      "sha256": "5d939021d4ff529f6ddf3785fdc5f919f940943f7fa5d4e10aa683d1aa78b75d",
+      "observed_at": "2026-09-07T19:51:01Z",
+      "bytes": 328977,
+      "chapter": "802",
+      "units": 86
+    },
+    {
+      "id": 11344,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors742.html",
+      "sha256": "d0f0acdaad159868f1a7e3aa7ffbfd458ccae8fe348074189f777b28b5f620a7",
+      "observed_at": "2026-09-07T19:49:43Z",
+      "bytes": 558655,
+      "chapter": "742",
+      "units": 192
+    },
+    {
+      "id": 11387,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors810.html",
+      "sha256": "2763b85ad244d00852ac9235140809047170186ef57bb158bdf6e191512600cb",
+      "observed_at": "2026-09-07T19:51:14Z",
+      "bytes": 283226,
+      "chapter": "810",
+      "units": 78
+    },
+    {
+      "id": 11372,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors774.html",
+      "sha256": "4e93b95642131f3f01522c7a4b08c357c272dff4b66597b92d8ad56a623f88d0",
+      "observed_at": "2026-09-07T19:50:42Z",
+      "bytes": 38455,
+      "chapter": "774",
+      "units": 17
+    },
+    {
+      "id": 11403,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors835.html",
+      "sha256": "862ec0a4f9442da324f02f1c9e5df7e499e22c571ed1de2778fa5624e5c8a4e2",
+      "observed_at": "2026-09-07T19:51:48Z",
+      "bytes": 57841,
+      "chapter": "835",
+      "units": 31
+    },
+    {
+      "id": 11335,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors733.html",
+      "sha256": "9ecb9191ee86d6bcd52db5cd06fc7bbd0bb46affd9912be37a62a883b5d8216a",
+      "observed_at": "2026-09-07T19:49:24Z",
+      "bytes": 269060,
+      "chapter": "733",
+      "units": 89
+    },
+    {
+      "id": 11363,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors763.html",
+      "sha256": "21c923e14316b20890e2e28b8d59dc563b4a0accead4e9ce3ddbd9ec32cf658b",
+      "observed_at": "2026-09-07T19:50:23Z",
+      "bytes": 20696,
+      "chapter": "763",
+      "units": 39
+    },
+    {
+      "id": 11354,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors750.html",
+      "sha256": "251c47e8dc11780b442e35b6d65486d2d95eaae47a2940bca0fa87c48b9a12dd",
+      "observed_at": "2026-09-07T19:50:04Z",
+      "bytes": 214075,
+      "chapter": "750",
+      "units": 83
+    },
+    {
+      "id": 11398,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors823.html",
+      "sha256": "4b99ad77c74bf1343dcd4133dac211cb8f02178501894570997c5f6dab31cfa4",
+      "observed_at": "2026-09-07T19:51:37Z",
+      "bytes": 108354,
+      "chapter": "823",
+      "units": 68
+    },
+    {
+      "id": 11389,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors813.html",
+      "sha256": "45e663f5ac9a0f6a8254cdeb8f34027e9a3dd9ab0d7e5745d39d1071b91fa4f8",
+      "observed_at": "2026-09-07T19:51:18Z",
+      "bytes": 351941,
+      "chapter": "813",
+      "units": 86
+    },
+    {
+      "id": 11388,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors811.html",
+      "sha256": "72052d6af6393d607bc2830fd1969b14c4dc7e2211fd70193188f44bfaa17705",
+      "observed_at": "2026-09-07T19:51:16Z",
+      "bytes": 717616,
+      "chapter": "811",
+      "units": 207
+    },
+    {
+      "id": 11406,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors838.html",
+      "sha256": "ce25c6cc35c9f136625ca99969327d229d17016eeb8f07e34535cd31f3e97fec",
+      "observed_at": "2026-09-07T19:51:54Z",
+      "bytes": 34556,
+      "chapter": "838",
+      "units": 16
+    },
+    {
+      "id": 11315,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors707.html",
+      "sha256": "cfdedf1fe9a1b35e67e59238a55464d4652b14c36e3fea6ae9a87e379cb41988",
+      "observed_at": "2026-09-07T19:48:43Z",
+      "bytes": 292046,
+      "chapter": "707",
+      "units": 122
+    },
+    {
+      "id": 11370,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors772.html",
+      "sha256": "89e95a16762ce5711248fe29fb0e192b8cce68146f008b5fb00deb3e483a6ecd",
+      "observed_at": "2026-09-07T19:50:38Z",
+      "bytes": 83440,
+      "chapter": "772",
+      "units": 51
+    },
+    {
+      "id": 11374,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors777.html",
+      "sha256": "2c50274fe8b20bf7723241cc9d3ec79cc0ee82b50ed266e0bb434a82e057802d",
+      "observed_at": "2026-09-07T19:50:46Z",
+      "bytes": 338836,
+      "chapter": "777",
+      "units": 242
+    },
+    {
+      "id": 11330,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors725A.html",
+      "sha256": "2ae80c5d714c8759f097d21878a53be1446091cdf98f82ec13263fd9e71cf500",
+      "observed_at": "2026-09-07T19:49:14Z",
+      "bytes": 187194,
+      "chapter": "725A",
+      "units": 40
+    },
+    {
+      "id": 11385,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors807.html",
+      "sha256": "fe85b2e5ab1cb2983628592b59c9dd81167a4bdb8a3f3f524a0f566bc1ae14cd",
+      "observed_at": "2026-09-07T19:51:10Z",
+      "bytes": 418196,
+      "chapter": "807",
+      "units": 108
+    },
+    {
+      "id": 11390,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors814.html",
+      "sha256": "9a43a4539834a09fc2ee9531b5d908ccaa50b4cdf71fd03c91d72deedc306177",
+      "observed_at": "2026-09-07T19:51:20Z",
+      "bytes": 175561,
+      "chapter": "814",
+      "units": 74
+    },
+    {
+      "id": 11345,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors743.html",
+      "sha256": "9fbc707793d8e314bcd0252a54a864a707c17e4b2f7d5a3d32640ad2e9beb4a0",
+      "observed_at": "2026-09-07T19:49:45Z",
+      "bytes": 840777,
+      "chapter": "743",
+      "units": 550
+    },
+    {
+      "id": 11405,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors837.html",
+      "sha256": "d31a190eb2c9ea42002ab5d00084c671576a04e7e517634dac47f0a33b19be9e",
+      "observed_at": "2026-09-07T19:51:52Z",
+      "bytes": 128527,
+      "chapter": "837",
+      "units": 44
+    },
+    {
+      "id": 11375,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors778.html",
+      "sha256": "94aa2fa4a951d29a4acf8ba1408defdbe106207f470bc19fbd28b60b40da0a87",
+      "observed_at": "2026-09-07T19:50:49Z",
+      "bytes": 106431,
+      "chapter": "778",
+      "units": 68
+    },
+    {
+      "id": 11317,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors708A.html",
+      "sha256": "f89c92aad816b85df2350a4e0638b3b40dc2245ef2f25246308ab653f7e4e6f4",
+      "observed_at": "2026-09-07T19:48:47Z",
+      "bytes": 272972,
+      "chapter": "708A",
+      "units": 95
+    },
+    {
+      "id": 11355,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors751.html",
+      "sha256": "52a004f07655bc66ccfbdd6ef6014fe63505dc806ab1805757658255c1c0b960",
+      "observed_at": "2026-09-07T19:50:06Z",
+      "bytes": 56099,
+      "chapter": "751",
+      "units": 32
+    },
+    {
+      "id": 11346,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors743A.html",
+      "sha256": "2ebe249ece90057d6405836962dc987f42bee49fdbc66f684435ea4d804916b3",
+      "observed_at": "2026-09-07T19:49:48Z",
+      "bytes": 400697,
+      "chapter": "743A",
+      "units": 78
+    },
+    {
+      "id": 11322,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors715.html",
+      "sha256": "ed49c97a7ca99430230805b3d192ae694d65e008c2451ef72e550f388b5b9b26",
+      "observed_at": "2026-09-07T19:48:57Z",
+      "bytes": 29143,
+      "chapter": "715",
+      "units": 21
+    },
+    {
+      "id": 11318,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors709.html",
+      "sha256": "d51164a37513c52c79cb39489d036e07a50840b8748cac2c14db9060e340146d",
+      "observed_at": "2026-09-07T19:48:49Z",
+      "bytes": 140385,
+      "chapter": "709",
+      "units": 63
+    },
+    {
+      "id": 11399,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors824.html",
+      "sha256": "c6205c25daa1fa9898ba46f2c58bca90b70503b680ee3128addf35186167218a",
+      "observed_at": "2026-09-07T19:51:39Z",
+      "bytes": 218394,
+      "chapter": "824",
+      "units": 89
+    },
+    {
+      "id": 11347,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors743B.html",
+      "sha256": "34b9745006e7b1d8feecff937c7492c512ec6addd864b6bdfa70e04889324a2d",
+      "observed_at": "2026-09-07T19:49:50Z",
+      "bytes": 682278,
+      "chapter": "743B",
+      "units": 109
+    },
+    {
+      "id": 11371,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors773.html",
+      "sha256": "ceaeb0cad1d16ea1630122f24f6cf925d49687916b0e98b307e99baa8e1054ca",
+      "observed_at": "2026-09-07T19:50:40Z",
+      "bytes": 8935,
+      "chapter": "773",
+      "units": 14
+    },
+    {
+      "id": 11350,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors746.html",
+      "sha256": "eb0cb90a39a3922715cacca3d4a137cf9327eb8bb14d34fcb6d0cc0e02fdb5a8",
+      "observed_at": "2026-09-07T19:49:56Z",
+      "bytes": 415991,
+      "chapter": "746",
+      "units": 134
+    },
+    {
+      "id": 11352,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors748.html",
+      "sha256": "085155b25443c08000d9ce12c34fd65529809ef20642959bb721fb60c260a005",
+      "observed_at": "2026-09-07T19:50:00Z",
+      "bytes": 168246,
+      "chapter": "748",
+      "units": 115
+    },
+    {
+      "id": 11392,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors816.html",
+      "sha256": "d93047322eb4a557940e787e02e58f56f0e3b180864acad369f763b8361875a5",
+      "observed_at": "2026-09-07T19:51:24Z",
+      "bytes": 159288,
+      "chapter": "816",
+      "units": 43
+    },
+    {
+      "id": 11333,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors731.html",
+      "sha256": "f0918466e7d95e4ecf57c6215d4d49f11c69b3cfb99b3b58134526ad21ca617e",
+      "observed_at": "2026-09-07T19:49:20Z",
+      "bytes": 710814,
+      "chapter": "731",
+      "units": 244
+    },
+    {
+      "id": 11357,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors756.html",
+      "sha256": "9c4399afc0c2fe67725382f8cdf6a4c38ba0bc1c1012ede3a9f210c6b50cd241",
+      "observed_at": "2026-09-07T19:50:11Z",
+      "bytes": 164372,
+      "chapter": "756",
+      "units": 97
+    },
+    {
+      "id": 11378,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors782.html",
+      "sha256": "569ca0f2f81d75162197475538a0df44dfcda93744e4dcfff223d3576ca5b3db",
+      "observed_at": "2026-09-07T19:50:55Z",
+      "bytes": 4288,
+      "chapter": "782",
+      "units": 1
+    },
+    {
+      "id": 11327,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors723.html",
+      "sha256": "43b3f3dde2ba0998dbbe37416c298d9712a4cc67fa67cbf037c188996360ea3b",
+      "observed_at": "2026-09-07T19:49:08Z",
+      "bytes": 366668,
+      "chapter": "723",
+      "units": 181
+    },
+    {
+      "id": 11323,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors716.html",
+      "sha256": "99671b0d29ade31a675e597d300de7cf957c4a31e2f387d2b1c739b13e25fcea",
+      "observed_at": "2026-09-07T19:48:59Z",
+      "bytes": 200518,
+      "chapter": "716",
+      "units": 139
+    },
+    {
+      "id": 11359,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors758.html",
+      "sha256": "5aa02f4abb0a1dae30a978cdf755b38aa5bf5079e663f6b0b7adfebdba9784a7",
+      "observed_at": "2026-09-07T19:50:15Z",
+      "bytes": 231928,
+      "chapter": "758",
+      "units": 75
+    },
+    {
+      "id": 11319,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors711.html",
+      "sha256": "606bcbafa3bb1894743cab7041d430d2695664f5bb0119d6d1a63638032130d9",
+      "observed_at": "2026-09-07T19:48:51Z",
+      "bytes": 247741,
+      "chapter": "711",
+      "units": 129
+    },
+    {
+      "id": 11341,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors739.html",
+      "sha256": "601420f71dc6bd92f140635639f45a9e5fc80982083453e5ad35af0ca31e46f4",
+      "observed_at": "2026-09-07T19:49:37Z",
+      "bytes": 39259,
+      "chapter": "739",
+      "units": 84
+    },
+    {
+      "id": 11366,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors768.html",
+      "sha256": "c9f158e7abc3377401a7b4720ea3b2effb76dfb659a59a25518f9e88da8bc167",
+      "observed_at": "2026-09-07T19:50:30Z",
+      "bytes": 14886,
+      "chapter": "768",
+      "units": 25
+    },
+    {
+      "id": 11336,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors734.html",
+      "sha256": "a892fd0548b2b1cb92e748b8f5327609b3902145e1d82b67b2c050f6515486fa",
+      "observed_at": "2026-09-07T19:49:26Z",
+      "bytes": 350394,
+      "chapter": "734",
+      "units": 108
+    },
+    {
+      "id": 11364,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors764.html",
+      "sha256": "5b0d91e0c3eeb7d286ebfb40f9a5fedc03b33d4a65057ccb7a8bbe292f7df296",
+      "observed_at": "2026-09-07T19:50:25Z",
+      "bytes": 14467,
+      "chapter": "764",
+      "units": 26
+    },
+    {
+      "id": 11384,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors806.html",
+      "sha256": "e066db4a9258bdea46362aeb8ec9bbed0a277249a08eb0a12aa7cc164c92ee32",
+      "observed_at": "2026-09-07T19:51:08Z",
+      "bytes": 95936,
+      "chapter": "806",
+      "units": 41
+    },
+    {
+      "id": 11383,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors805.html",
+      "sha256": "26301044726a9d8f3d431b57a572c0a7256e717461c1f822693ac3c578b62916",
+      "observed_at": "2026-09-07T19:51:05Z",
+      "bytes": 209156,
+      "chapter": "805",
+      "units": 70
+    },
+    {
+      "id": 11367,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors769.html",
+      "sha256": "fee300f49d4c574fd216c452c98ff3d27b81e83e31093f9f9915a0d4aaed67c9",
+      "observed_at": "2026-09-07T19:50:32Z",
+      "bytes": 3831,
+      "chapter": "769",
+      "units": 1
+    },
+    {
+      "id": 11349,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors745.html",
+      "sha256": "bb0d824218ae0366edabc722aedf50f2520acf3735557e0fe5522a44c8785d49",
+      "observed_at": "2026-09-07T19:49:54Z",
+      "bytes": 27848,
+      "chapter": "745",
+      "units": 60
+    },
+    {
+      "id": 11320,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors713.html",
+      "sha256": "99fbd1199029d4c68e8c2e296e6b33e79bea1caca4fc8c02ecfd54fde2333fa4",
+      "observed_at": "2026-09-07T19:48:53Z",
+      "bytes": 87747,
+      "chapter": "713",
+      "units": 38
+    },
+    {
+      "id": 11321,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors714.html",
+      "sha256": "c8663c8396cad249b93e621502f17a1f6776040fdddbf66e20c0ecfaa46fce47",
+      "observed_at": "2026-09-07T19:48:55Z",
+      "bytes": 67693,
+      "chapter": "714",
+      "units": 56
+    },
+    {
+      "id": 11395,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors820.html",
+      "sha256": "6342ea5edc92282cb7fd52a9292e3ebdb4390efa747fa107330c8748bd4c26c0",
+      "observed_at": "2026-09-07T19:51:31Z",
+      "bytes": 117511,
+      "chapter": "820",
+      "units": 53
+    },
+    {
+      "id": 11339,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors737.html",
+      "sha256": "8cfb2e8bbdd9786fd74848b4676153cc681de95625d9d6b60ad6cf05a8f7bad5",
+      "observed_at": "2026-09-07T19:49:33Z",
+      "bytes": 162980,
+      "chapter": "737",
+      "units": 92
+    },
+    {
+      "id": 11394,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors819.html",
+      "sha256": "4a9460fb89b3cf29ee2b2bafdf61769094bd00b4a3ec7cc11de9039a1ef632cc",
+      "observed_at": "2026-09-07T19:51:29Z",
+      "bytes": 121326,
+      "chapter": "819",
+      "units": 39
+    },
+    {
+      "id": 11329,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors725.html",
+      "sha256": "344c384abd99cf5dbb1a055387d9bf95271b1c87e6d332b16801c3b2c3b2b19c",
+      "observed_at": "2026-09-07T19:49:12Z",
+      "bytes": 125904,
+      "chapter": "725",
+      "units": 73
+    },
+    {
+      "id": 11377,
+      "url": "https://www.oregonlegislature.gov/bills_laws/ors/ors781.html",
+      "sha256": "eee7ad44d7fcdd92d8d3d9251512303c1e5401724833582ad4b9ed152c65746a",
+      "observed_at": "2026-09-07T19:50:53Z",
+      "bytes": 3636,
+      "chapter": "781",
+      "units": 1
+    }
+  ],
+  "campaign_payload_bytes": 20090622,
+  "cap_bytes": 67108864,
+  "file_cap_bytes": 12582912,
+  "minimum_host_seconds": 2.1,
+  "first_acquisition_id": 11315,
+  "limitations": "Closed retained publisher chapter inventory, not complete current state law, regulations, subsequent amendments or independently transcribed embedded media."
+}

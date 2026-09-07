@@ -72,6 +72,11 @@ page counts are not provision counts. The review visually checked PDF page 169,
 Table 130-2, including its column headings and footnotes. It did not visually verify
 all 1,855 pages or determine which development standard applies to a parcel.
 
+The [municipal-code adapter](portland-code.md) adds separately observed Clerk
+printable titles outside Title 33, with native inventory/body reconciliation,
+source histories and explicit figure limits. It reuses this Title 33 PDF rather
+than silently refreshing it or inferring section-to-page links.
+
 The [PortlandMaps layer](https://www.portlandmaps.com/arcgis/rest/services/Public/Zoning/MapServer/3)
 provides explicit object-ID inventory and paginated geometry. Each accepted version
 contains the entire enumerated layer and exact page receipts. Missing/duplicate IDs
@@ -86,6 +91,13 @@ The acquisition stores that exact evidence; it does not treat the PDF as a concl
 redistribution license. Confirm operative terms before redistributing a corpus.
 
 ## Later state collection
+
+The subsequent [Oregon completion receipt](oregon-completion-verification.json)
+closes the retained 2025 ORS chapter inventory at 689/689. It adds 92 former gaps
+using 20,090,622 response bytes; 597 accepted versions and 65,234 prior provision
+IDs remain unchanged. This still excludes later sessions, regulations and
+untranscribed media. `scripts/complete_oregon.py` resumes this bounded campaign
+from the retained store with a cumulative 64 MiB cap.
 
 The [completed wave](collection-wave.md) adds bounded state sources, with exact
 inventory states and mixed retrieval-unit counts kept distinct. Oregon now supplies

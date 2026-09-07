@@ -210,6 +210,7 @@ def sync_collections(
     from .florida import sync_florida
     from .geography import sync_nyc_geo, sync_portland_geo
     from .municipal import sync_nyc, sync_portland, sync_portland_guides
+    from .portland_code import sync_portland_code
     from .texas import sync_texas
     from .washington_rules import sync_washington_rules
 
@@ -222,6 +223,7 @@ def sync_collections(
         "florida": (sync_florida, ("florida-statutes-2026",)),
         "nyc": (sync_nyc, ("nyc-zoning",)),
         "portland": (sync_portland, ("portland-zoning",)),
+        "portland-code": (sync_portland_code, ("portland-city-code",)),
         "portland-guides": (sync_portland_guides, ("portland-zoning-guides",)),
         "nyc-gis": (sync_nyc_geo, ("nyc-zoning-gis",)),
         "portland-gis": (sync_portland_geo, ("portland-zoning-gis",)),

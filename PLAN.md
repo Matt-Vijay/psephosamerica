@@ -27,6 +27,14 @@ applicability engine was added.
 Completed geographic checkpoint: pinned 2025 Census source discovery, separate
 from zoning/legal applicability; see docs/geographic-discovery.md and its receipt.
 
+Completed municipal/coverage addition: all Clerk-listed Portland titles are
+accounted for (33 new HTML titles plus retained Title 33), with native section/body
+reconciliation and real MCP routes. The maintained Oregon adapter completed its
+92 known gaps without rewriting the 597 accepted versions. See
+docs/portland-code.md, docs/oregon-completion-verification.json and the single
+docs/coverage-ledger.json. The ledger uses retained July 2025 Census estimates for
+separate population-reach metrics; it does not certify complete current legal layers.
+
 Deferred lead, not accepted corpus or a collector assignment: Virginia administrative
 code. Parent's September 7 publisher probes found the advertised developer services
 at https://law.lis.virginia.gov/developers/ and /xmlapi/ link to operational **/api/**

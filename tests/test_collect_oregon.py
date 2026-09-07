@@ -1,11 +1,63 @@
 from pathlib import Path
 
 import pytest
+from conftest import retain
 from lxml import html
 
+from psephos import collect_oregon
 from psephos.collect_oregon import CHAPTERS, PRIORITY, chapter_units, chapter_url
 from psephos.parse import readable
-from psephos.store import Store
+from psephos.store import Provision, Store
+
+
+def test_completing_gaps_does_not_reindex_accepted_projection(store, monkeypatch):
+    monkeypatch.setattr(collect_oregon, "CHAPTERS", ("001",))
+    monkeypatch.setattr(collect_oregon, "PRIORITY", {"001"})
+    store.collection(
+        "oregon-ors",
+        ("us-or", "Oregon", "state", "us"),
+        name="ORS",
+        authority="Fixture",
+        kind="code",
+        homepage=collect_oregon.INDEX,
+        source_status="Fixture",
+        access="Fixture",
+    )
+    source = retain(store, b"accepted old source")
+    original = store.ingest(
+        collection="oregon-ors",
+        document="ors:chapter:1",
+        title="Chapter 1",
+        url=chapter_url("001"),
+        acquisition=source.id,
+        snapshot_basis="Unknown",
+        parser="old-accepted",
+        provisions=[
+            Provision(
+                "ors:1.001", "ORS 1.001", "Old", "Old accepted projection", "", chapter_url("001")
+            )
+        ],
+    )
+    store.inventory("oregon-ors", "001", chapter_url("001"), "indexed")
+    preflight = retain(
+        store,
+        b'<html><p>2025 Edition does not include later changes</p><table><tbody groupstring="Volume"><tr><td>Volume 1 (1)</td></tr></tbody></table></html>',
+    )
+
+    class CachedPreflightOnly:
+        delay = 2.1
+        refresh = False
+
+        def fetch(self, url):
+            assert url in {collect_oregon.INDEX, collect_oregon.DISCLAIMER, collect_oregon.UPDATE}
+            return preflight
+
+    collect_oregon.sync_oregon(store, CachedPreflightOnly())
+    assert store.db.execute("SELECT id FROM versions").fetchall()[0][0] == original[0]
+    assert store.db.execute("SELECT count(*) FROM versions").fetchone()[0] == 1
+    assert (
+        store.db.execute("SELECT text FROM provisions").fetchone()[0] == "Old accepted projection"
+    )
 
 
 def test_inventory_is_actual_fixed_689_link_seed():

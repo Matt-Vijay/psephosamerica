@@ -379,6 +379,9 @@ class Reader:
     ) -> dict[str, Any]:
         if not 1 <= limit <= 30 or len(query) > 500:
             raise ValueError("limit must be 1..30 and query at most 500 characters")
+        for name, value in (("collection", collection), ("jurisdiction", jurisdiction)):
+            if value is not None and (not value.strip() or len(value) > 200):
+                raise ValueError(f"{name} must be a nonempty exact identifier, or omitted")
         terms = re.findall(r"[\w]+", query, re.UNICODE)
         if not terms or len(terms) > 30:
             raise ValueError(
@@ -462,6 +465,9 @@ class Reader:
                 if florida[2]
                 else "fl:stat/" + florida[1]
             )
+        portland = re.fullmatch(r"PCC (\d{1,2}[A-C]?\.\d{2,3}(?:\.\d{3})?)", key_or_id)
+        if portland:
+            key_or_id = "Portland City Code " + portland[1]
         exact = (
             self.db.execute("SELECT 1 FROM provisions WHERE id=?", (key_or_id,)).fetchone()
             is not None
@@ -596,7 +602,10 @@ class Reader:
         if result["markup"]:
             try:
                 for medium in media_links(xml_root(result["markup"].encode()), result["url"]):
-                    if medium not in media:
+                    if not any(
+                        all(m.get(k) == medium.get(k) for k in ("source_locator", "url", "alt"))
+                        for m in media
+                    ):
                         media.append(medium)
             except (ValueError, etree.XMLSyntaxError):
                 result["text_completeness"] = "markup_inspection_warning"
@@ -616,7 +625,7 @@ class Reader:
         media_cutoff = cutoff_observation(observation_cutoff)
         for medium in result["media"]:
             receipt = self.db.execute(
-                "SELECT sha256,id FROM acquisitions WHERE url=? AND status=200 "
+                "SELECT sha256,id FROM acquisitions WHERE url=? AND status=200 AND sha256 IS NOT NULL AND error IS NULL "
                 "AND (? IS NULL OR observed_at<=?) ORDER BY id DESC LIMIT 1",
                 (medium.get("url", ""), media_cutoff, media_cutoff),
             ).fetchone()
@@ -679,6 +688,42 @@ class Reader:
             )
             expected_url = None
             expected_collection = None
+            portland_link = re.fullmatch(
+                r"https://www\.portland\.gov/code/(\d+)(?:/[a-zA-Z0-9-]+)*", target
+            )
+            portland_citation = re.fullmatch(r"PCC (\d{1,2}[A-C]?\.\d{2,3}(?:\.\d{3})?)", target)
+            if (portland_link and portland_link[1] == "33") or (
+                portland_citation and portland_citation[1].startswith("33.")
+            ):
+                ref.update(
+                    acquired_targets=[],
+                    resolution_status="chapter_to_pdf_page_mapping_unverified",
+                    navigation={"collection": "portland-zoning", "document": "portland:title-33"},
+                    resolution_basis="Retained Title 33 PDF exists; no verified section-to-page map",
+                )
+                continue
+            if portland_link:
+                expected_url, expected_collection = target, "portland-city-code"
+                target = "pdx-code:" + target.split("/code/", 1)[1]
+            elif portland_citation:
+                # Use a retained citation/key, never turn a printed number into a guessed URL.
+                keys = self.db.execute(
+                    "SELECT DISTINCT p.key FROM provisions p JOIN versions v ON v.id=p.version_id "
+                    "JOIN documents d ON d.id=v.document_id WHERE d.collection_id='portland-city-code' "
+                    "AND p.citation=? COLLATE NOCASE LIMIT 2",
+                    ("Portland City Code " + portland_citation[1],),
+                ).fetchall()
+                expected_collection = "portland-city-code"
+                if len(keys) != 1:
+                    ref.update(
+                        acquired_targets=[],
+                        resolution_status="missing_or_ambiguous_native_citation",
+                        resolution_basis="exact_retained_citation_required",
+                    )
+                    continue
+                target = keys[0][0]
+            elif ref["relation"] == "printed_oregon_statute_citation":
+                expected_collection = "oregon-ors"
             # Other publishers' malformed URLs are still evidence, not a reason to fail a read.
             link = urlsplit(
                 ref["target"]
@@ -752,7 +797,7 @@ class Reader:
                     for row in targets
                     if _washington_reference(row["url"]) == (row["key"], row["url"], "wa-wsr")
                 ]
-            if washington is not None:
+            if washington is not None or portland_link is not None or portland_citation is not None:
                 ambiguous = len(targets) > 1 or filing_candidates_saturated
                 ref["publisher_citation_family"] = expected_collection
                 ref["resolution_status"] = (

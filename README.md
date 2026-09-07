@@ -57,6 +57,11 @@ source conflicts and unacquired dependencies kept explicit.
 The [Florida edition guide](docs/florida-edition.md) covers the maintained 2026
 Senate chapter import and exact printed-citation reading, with source notes and
 unknown effective dates preserved.
+The [Portland municipal-code guide](docs/portland-code.md) covers the Clerk's
+printable-title inventory, retained source figures and code-reading paths beyond
+Title 33. The [coverage ledger](docs/coverage-ledger.json) separates complete
+publisher editions, partial scopes and missing layers; counts alone are not
+comprehensive legal coverage.
 
 The [completed collection wave](docs/collection-wave.md) adds reviewed source
 material from 44 states to the Texas baseline: 77 collections and 1,383,595 mixed

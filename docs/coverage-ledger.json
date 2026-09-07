@@ -1,0 +1,711 @@
+{
+  "reviewed_on": "2026-09-07",
+  "purpose": "Operational coverage accountability from retained inventories and accepted receipts; not a new corpus audit, applicability determination or current-law certification.",
+  "status_meanings": {
+    "complete_publisher_edition": "The explicitly named publisher export inventory is closed. This may be an older edition, a narrowed compilation or raw files with projection exclusions; it does not establish a complete current legal layer.",
+    "partial": "Some accepted body material is retained, but the named legal family or inventory is incomplete.",
+    "acquired_but_unverified": "Acquired material exists but the stronger edition claim specified in the row has not been verified.",
+    "blocked": "Recorded access/policy failures prevented the scoped source acquisition; this is not proof every possible publisher is inaccessible.",
+    "absent": "No accepted body material for this family is evidenced here; an inventory lead alone is not body coverage."
+  },
+  "count_semantics": "Inventory units are named per row. Null means unknown, not zero. Excluded counts describe the stated inventory only, never all omitted law. Raw-file retention is not synonymous with searchable-text fidelity.",
+  "layer_complete_meaning": "True would require verified complete current coverage of the entire named legal layer, beyond an individual publisher compilation. No row makes that claim; false means not established, not necessarily zero source coverage.",
+  "shared_exclusions": [
+    "No blanket completeness of uncodified/session law, later amendments, historical editions, incorporated external standards, case law or legally operative effectiveness.",
+    "Constitution, court-rule, guidance, proposed-rule and metadata-only records do not substitute for statewide statutes or administrative regulations.",
+    "Unknown precise snapshot dates remain unknown. Observation, incorporation, publication and effective dates are distinct.",
+    "Acceptance verifies a scoped projection; provenance-only replay support is not an unaccepted-source label. No redistribution permission is inferred."
+  ],
+  "evidence_conventions": {
+    "paths": "Project-relative paths. Each row's evidence locates its accepted family scope; absence is checked against the accepted collection inventory, not inferred from a source name.",
+    "wave": "docs/collection-wave.json#/collection_units; docs/collection-wave.md#boundaries-that-matter",
+    "accepted_manifest_hashes": "replay/catalog.json#/batches: match acceptance_manifest.path; its sha256 identifies the exact accepted manifest, not a prior/rejected review.",
+    "manifest_fields": "completeness_review, reviewed_accounting, clock_review and evidence_sha256; source-family inventory totals are also in docs/collection-wave.json collection_units selected by collection id.",
+    "current_inventory": "data/legal.sqlite3: inventories WHERE collection_id=<exact collection id>; collection metadata retains source inventory artifact and clock evidence.",
+    "baseline": "docs/integrity.json#/coverage/collections; docs/source-manifest.json; docs/sources.md",
+    "limits": "Baseline legal classifications reuse existing acceptance reviews, not a new whole-corpus certification. Portland/Oregon completion receipts update those scopes separately. Population uses separately retained and reconciled Census CSVs; it does not certify legal completeness."
+  },
+  "population": {
+    "vintage": "2025-07-01",
+    "field": "POPESTIMATE2025",
+    "denominator": 341784857,
+    "denominator_scope": "50 states plus DC; national SUMLEV010 equals 51 non-PR SUMLEV040 rows. Regions and Puerto Rico excluded from sums.",
+    "source_store": "data/population-evidence",
+    "receipts": [
+      {
+        "id": 2,
+        "url": "https://www2.census.gov/programs-surveys/popest/datasets/2020-2025/state/totals/NST-EST2025-ALLDATA.csv",
+        "sha256": "92188e29cb0a67dcf95afa7d6c47359409782f086478b70ea4128eb70e223ca9",
+        "observed_at": "2026-09-07T19:33:52Z",
+        "bytes": 53555,
+        "rows": 66
+      },
+      {
+        "id": 3,
+        "url": "https://www2.census.gov/programs-surveys/popest/datasets/2020-2025/cities/totals/sub-est2025_36.csv",
+        "sha256": "29b57993b8ddadd786825930702b05cc15a26f6c1c7f000d32734580ffe464fb",
+        "observed_at": "2026-09-07T19:33:54Z",
+        "bytes": 323004,
+        "rows": 3400
+      },
+      {
+        "id": 4,
+        "url": "https://www2.census.gov/programs-surveys/popest/datasets/2020-2025/cities/totals/sub-est2025_41.csv",
+        "sha256": "d053ba1f5ca4838aa89c6b155b3b7b8bc089df6a10f2dddb3ad3dccc5d24a8e3",
+        "observed_at": "2026-09-07T19:33:56Z",
+        "bytes": 51483,
+        "rows": 568
+      }
+    ],
+    "entity_population": {
+      "us-ak": {
+        "geoid": "02",
+        "people": 737270
+      },
+      "us-al": {
+        "geoid": "01",
+        "people": 5193088
+      },
+      "us-ar": {
+        "geoid": "05",
+        "people": 3114791
+      },
+      "us-az": {
+        "geoid": "04",
+        "people": 7623818
+      },
+      "us-ca": {
+        "geoid": "06",
+        "people": 39355309
+      },
+      "us-co": {
+        "geoid": "08",
+        "people": 6012561
+      },
+      "us-ct": {
+        "geoid": "09",
+        "people": 3688496
+      },
+      "us-dc": {
+        "geoid": "11",
+        "people": 693645
+      },
+      "us-de": {
+        "geoid": "10",
+        "people": 1059952
+      },
+      "us-fl": {
+        "geoid": "12",
+        "people": 23462518
+      },
+      "us-ga": {
+        "geoid": "13",
+        "people": 11302748
+      },
+      "us-hi": {
+        "geoid": "15",
+        "people": 1432820
+      },
+      "us-ia": {
+        "geoid": "19",
+        "people": 3238387
+      },
+      "us-id": {
+        "geoid": "16",
+        "people": 2029733
+      },
+      "us-il": {
+        "geoid": "17",
+        "people": 12719141
+      },
+      "us-in": {
+        "geoid": "18",
+        "people": 6973333
+      },
+      "us-ks": {
+        "geoid": "20",
+        "people": 2977220
+      },
+      "us-ky": {
+        "geoid": "21",
+        "people": 4606864
+      },
+      "us-la": {
+        "geoid": "22",
+        "people": 4618189
+      },
+      "us-ma": {
+        "geoid": "25",
+        "people": 7154084
+      },
+      "us-md": {
+        "geoid": "24",
+        "people": 6265347
+      },
+      "us-me": {
+        "geoid": "23",
+        "people": 1414874
+      },
+      "us-mi": {
+        "geoid": "26",
+        "people": 10127884
+      },
+      "us-mn": {
+        "geoid": "27",
+        "people": 5830405
+      },
+      "us-mo": {
+        "geoid": "29",
+        "people": 6270541
+      },
+      "us-ms": {
+        "geoid": "28",
+        "people": 2954160
+      },
+      "us-mt": {
+        "geoid": "30",
+        "people": 1144694
+      },
+      "us-nc": {
+        "geoid": "37",
+        "people": 11197968
+      },
+      "us-nd": {
+        "geoid": "38",
+        "people": 799358
+      },
+      "us-ne": {
+        "geoid": "31",
+        "people": 2018006
+      },
+      "us-nh": {
+        "geoid": "33",
+        "people": 1415342
+      },
+      "us-nj": {
+        "geoid": "34",
+        "people": 9548215
+      },
+      "us-nm": {
+        "geoid": "35",
+        "people": 2125498
+      },
+      "us-nv": {
+        "geoid": "32",
+        "people": 3282188
+      },
+      "us-ny": {
+        "geoid": "36",
+        "people": 20002427
+      },
+      "us-ny-nyc": {
+        "geoid": "3651000",
+        "people": 8584629
+      },
+      "us-oh": {
+        "geoid": "39",
+        "people": 11900510
+      },
+      "us-ok": {
+        "geoid": "40",
+        "people": 4123288
+      },
+      "us-or": {
+        "geoid": "41",
+        "people": 4273586
+      },
+      "us-or-portland": {
+        "geoid": "4159000",
+        "people": 635109
+      },
+      "us-pa": {
+        "geoid": "42",
+        "people": 13059432
+      },
+      "us-ri": {
+        "geoid": "44",
+        "people": 1114521
+      },
+      "us-sc": {
+        "geoid": "45",
+        "people": 5570274
+      },
+      "us-sd": {
+        "geoid": "46",
+        "people": 935094
+      },
+      "us-tn": {
+        "geoid": "47",
+        "people": 7315076
+      },
+      "us-tx": {
+        "geoid": "48",
+        "people": 31709821
+      },
+      "us-ut": {
+        "geoid": "49",
+        "people": 3538904
+      },
+      "us-va": {
+        "geoid": "51",
+        "people": 8880107
+      },
+      "us-vt": {
+        "geoid": "50",
+        "people": 644663
+      },
+      "us-wa": {
+        "geoid": "53",
+        "people": 8001020
+      },
+      "us-wi": {
+        "geoid": "55",
+        "people": 5972787
+      },
+      "us-wv": {
+        "geoid": "54",
+        "people": 1766147
+      },
+      "us-wy": {
+        "geoid": "56",
+        "people": 588753
+      }
+    },
+    "metrics": {
+      "federal_statutes": {
+        "any_retained_body": {
+          "jurisdiction_ids": [
+            "us"
+          ],
+          "people": 341784857,
+          "percent_of_us": 100.0
+        },
+        "closed_publisher_inventory": {
+          "jurisdiction_ids": [
+            "us"
+          ],
+          "people": 341784857,
+          "percent_of_us": 100.0
+        },
+        "verified_complete_current_layer": {
+          "jurisdiction_ids": [],
+          "people": 0,
+          "percent_of_us": 0.0
+        }
+      },
+      "federal_regulations": {
+        "any_retained_body": {
+          "jurisdiction_ids": [
+            "us"
+          ],
+          "people": 341784857,
+          "percent_of_us": 100.0
+        },
+        "closed_publisher_inventory": {
+          "jurisdiction_ids": [
+            "us"
+          ],
+          "people": 341784857,
+          "percent_of_us": 100.0
+        },
+        "verified_complete_current_layer": {
+          "jurisdiction_ids": [],
+          "people": 0,
+          "percent_of_us": 0.0
+        }
+      },
+      "state_statutes": {
+        "any_retained_body": {
+          "jurisdiction_ids": [
+            "us-ak",
+            "us-ar",
+            "us-az",
+            "us-ca",
+            "us-co",
+            "us-dc",
+            "us-de",
+            "us-fl",
+            "us-ia",
+            "us-id",
+            "us-il",
+            "us-ks",
+            "us-ky",
+            "us-ma",
+            "us-md",
+            "us-me",
+            "us-mi",
+            "us-mn",
+            "us-mt",
+            "us-nc",
+            "us-nd",
+            "us-ne",
+            "us-nh",
+            "us-nj",
+            "us-nv",
+            "us-ny",
+            "us-ok",
+            "us-or",
+            "us-pa",
+            "us-ri",
+            "us-sc",
+            "us-sd",
+            "us-tx",
+            "us-ut",
+            "us-va",
+            "us-wa",
+            "us-wi",
+            "us-wv",
+            "us-wy"
+          ],
+          "people": 277365735,
+          "percent_of_us": 81.1521
+        },
+        "closed_publisher_inventory": {
+          "jurisdiction_ids": [
+            "us-ak",
+            "us-co",
+            "us-dc",
+            "us-de",
+            "us-fl",
+            "us-ia",
+            "us-md",
+            "us-me",
+            "us-mi",
+            "us-nc",
+            "us-nj",
+            "us-or",
+            "us-pa",
+            "us-tx",
+            "us-ut",
+            "us-va",
+            "us-wi",
+            "us-wv",
+            "us-wy"
+          ],
+          "people": 143548158,
+          "percent_of_us": 41.9996
+        },
+        "verified_complete_current_layer": {
+          "jurisdiction_ids": [],
+          "people": 0,
+          "percent_of_us": 0.0
+        }
+      },
+      "state_regulations": {
+        "any_retained_body": {
+          "jurisdiction_ids": [
+            "us-ct",
+            "us-ga",
+            "us-la",
+            "us-mn",
+            "us-nm",
+            "us-nv",
+            "us-sc",
+            "us-wa"
+          ],
+          "people": 44418818,
+          "percent_of_us": 12.9961
+        },
+        "closed_publisher_inventory": {
+          "jurisdiction_ids": [
+            "us-la",
+            "us-nv",
+            "us-sc"
+          ],
+          "people": 13470651,
+          "percent_of_us": 3.9413
+        },
+        "verified_complete_current_layer": {
+          "jurisdiction_ids": [],
+          "people": 0,
+          "percent_of_us": 0.0
+        }
+      },
+      "local_code": {
+        "any_retained_body": {
+          "jurisdiction_ids": [
+            "us-or-portland"
+          ],
+          "people": 635109,
+          "percent_of_us": 0.1858
+        },
+        "closed_publisher_inventory": {
+          "jurisdiction_ids": [
+            "us-or-portland"
+          ],
+          "people": 635109,
+          "percent_of_us": 0.1858
+        },
+        "verified_complete_current_layer": {
+          "jurisdiction_ids": [],
+          "people": 0,
+          "percent_of_us": 0.0
+        }
+      },
+      "local_zoning_text": {
+        "any_retained_body": {
+          "jurisdiction_ids": [
+            "us-ny-nyc",
+            "us-or-portland"
+          ],
+          "people": 9219738,
+          "percent_of_us": 2.6975
+        },
+        "closed_publisher_inventory": {
+          "jurisdiction_ids": [
+            "us-ny-nyc",
+            "us-or-portland"
+          ],
+          "people": 9219738,
+          "percent_of_us": 2.6975
+        },
+        "verified_complete_current_layer": {
+          "jurisdiction_ids": [],
+          "people": 0,
+          "percent_of_us": 0.0
+        }
+      }
+    },
+    "semantics": "Population living in a source jurisdiction, not laws per person or a legal-applicability finding. Each entity is counted once within a layer; never add layers or overlapping geography. Closed publisher inventories may be old/narrowed or have projection exclusions.",
+    "geometry_vintage": "2025-01-01",
+    "identity_basis": "Exact retained Census STATEFP/STUSPS crosswalk and whole-place GEOIDs 3651000/4159000. July estimates and January geometry are separate vintages; no overlay population is inferred.",
+    "reproduce": "python scripts/coverage_population.py --data data --check"
+  },
+  "fully_verified_combined_coverage": {
+    "established": false,
+    "verified_jurisdictions": [],
+    "verified_people": 0,
+    "verified_percent": 0.0,
+    "actual_comprehensive_coverage": null,
+    "reason": "No complete combined current statute, administrative-regulation and local-law layer has been verified. Publisher-edition statuses must not be added together or population-weighted as if they established that claim."
+  },
+  "layers": [
+    {"jurisdiction_id":"us","family":"statutes","status":"complete_publisher_edition","collection_ids":["uscode"],"layer_complete":false,
+      "inventory":{"unit":"XML archive members","expected":58,"retained":58,"excluded":0,"reserved_title_entries":1},"edition":"OLRC release 119-102; current-through-public-law date 2026-07-12","fidelity_exclusions":"Compiled acts, court rules and notices remain separate unit kinds; live reading URLs are not frozen release evidence.","evidence":["docs/integrity.json#/coverage/collections","docs/sources.md#federal","artifact:190a227afe0fff10944e0e600a15f14f4b16e59fef34d435e73456245e96b98b"]},
+    {"jurisdiction_id":"us","family":"regulations","status":"complete_publisher_edition","collection_ids":["ecfr"],"layer_complete":false,
+      "inventory":{"unit":"2026-09-03 nonreserved title XML snapshots","expected":49,"retained":49,"excluded":0,"reserved_titles":1},"edition":"eCFR incorporation state 2026-09-03; government-maintained, not the official legal CFR edition","fidelity_exclusions":"Two required 21 CFR 10.31 image locators are blocked; reads disclose incomplete_without_source_media. Historical 2024-01-01 backfill is only 3/49 titles, with 46 pending; those are not current-title gaps.","evidence":["docs/integrity.json#/coverage/collections","docs/sources.md#federal","artifact:77279f0b1e3dbcde3cae86ba1f27cacf827ca825b60d6bc59fffacf98c005f41","data/legal.sqlite3: inventories.collection_id=ecfr, item edition suffix"]},
+    {"jurisdiction_id":"us-al","family":"statutes","status":"blocked","collection_ids":[],"layer_complete":false,
+      "inventory":{"expected":null,"retained":0,"excluded":null},"note":"State lead held unpublished: unresolved HTML robots policy; isolated material is not accepted coverage.","evidence":["docs/collection-wave.json#/held_not_published/us-al"]},
+    {"jurisdiction_id":"us-al","family":"regulations","status":"absent","collection_ids":[],"layer_complete":false,
+      "note":"No accepted regulatory body; no separate family-wide access finding asserted.","evidence":["docs/collection-wave.json#/held_not_published/us-al"]},
+    {"jurisdiction_id":"us-ak","family":"statutes","status":"complete_publisher_edition","collection_ids":["ak-statutes"],"layer_complete":false,
+      "inventory":{"unit":"title inventory entries","expected":47,"retained":47,"excluded":0,"body_exports":45,"confirmed_empty":2},"edition":"2025 title exports","fidelity_exclusions":"Interior section membership not independently reconciled everywhere; AS28.15.191 lacks a native anchor and remains with 28.15.190.","evidence":["data/collectors/leads/publish/acceptance-west-ak-20260907-01.json#/completeness_review"]},
+    {"jurisdiction_id":"us-ak","family":"regulations","status":"absent","collection_ids":[],"layer_complete":false,
+      "note":"AAC not acquired.","evidence":["data/collectors/leads/publish/acceptance-west-ak-20260907-01.json#/completeness_review"]},
+    {"jurisdiction_id":"us-az","family":"statutes","status":"partial","collection_ids":["az-ars"],"layer_complete":false,
+      "inventory":{"unit":"enumerated Title 1 sections","expected":67,"retained":3,"excluded":64},"scope":"1-401, 1-402 and 1-215 only; no statewide denominator established","edition":"Observed online compilation; precise snapshot unknown","evidence":["data/collectors/leads/publish/acceptance-west-az-20260907-01.json#/completeness_review"]},
+    {"jurisdiction_id":"us-az","family":"regulations","status":"blocked","collection_ids":[],"layer_complete":false,
+      "note":"SOS regulation endpoint returned 403; no regulatory body accepted.","evidence":["data/collectors/leads/publish/acceptance-west-az-20260907-01.json#/completeness_review"]},
+    {"jurisdiction_id":"us-ar","family":"statutes","status":"partial","collection_ids":["ar-election-laws-constitution"],"layer_complete":false,
+      "inventory":{"unit":"selected anthology","expected":1,"retained":1,"excluded":null},"scope":"2025 election-law/constitution volume, 883 pages; not general code","fidelity_exclusions":"Front pages 2-4 have encoding corruption; general-code source access blocked.","evidence":["data/collectors/leads/publish/acceptance-south-ar-20260907-01.json#/completeness_review"]},
+    {"jurisdiction_id":"us-ar","family":"regulations","status":"blocked","collection_ids":[],"layer_complete":false,
+      "note":"Administrative-code source robots access prevented collection.","evidence":["data/collectors/leads/publish/acceptance-south-ar-20260907-01.json#/completeness_review"]},
+    {"jurisdiction_id":"us-ca","family":"statutes","status":"acquired_but_unverified","collection_ids":["us-ca-codes"],"layer_complete":false,
+      "inventory":{"unit":"baseline code/constitution exports","expected":30,"retained":30,"excluded":0},"edition":"Retained Sunday baseline; HTTP Last-Modified 2026-08-31 is not legal effectiveness","fidelity_exclusions":"All baseline members retained, but current-edition closure fails: weekday deltas unacquired and 25 TipIn media pages absent. Native inventory status imported_baseline_missing_updates.","evidence":["data/collectors/leads/publish/acceptance-west-ca-20260907-01.json#/completeness_review","docs/sources.md#california-reuse-correction"]},
+    {"jurisdiction_id":"us-ca","family":"regulations","status":"absent","collection_ids":[],"layer_complete":false,
+      "evidence":["data/collectors/leads/publish/acceptance-west-ca-20260907-01.json#/completeness_review","docs/sources.md#california-reuse-correction"]},
+    {"jurisdiction_id":"us-co","family":"statutes","status":"complete_publisher_edition","collection_ids":["colorado-crs"],"layer_complete":false,
+      "inventory":{"unit":"HTML archive members","expected":48,"retained":48,"excluded":0},"edition":"2026; 46 statutory titles, constitution and general index","fidelity_exclusions":"191 tables and two image appearances preserved; images not transcribed.","evidence":["data/collectors/leads/publish/acceptance-west-co-20260907-01.json#/completeness_review"]},
+    {"jurisdiction_id":"us-co","family":"regulations","status":"absent","collection_ids":[],"layer_complete":false,
+      "evidence":["data/collectors/leads/publish/acceptance-west-co-20260907-01.json#/completeness_review"]},
+    {"jurisdiction_id":"us-ct","family":"statutes","status":"blocked","collection_ids":[],"layer_complete":false,
+      "note":"General Statutes TLS acquisition failure; no accepted statute body.","evidence":["data/collectors/leads/publish/acceptance-northeast-ct-20260907-01.json#/completeness_review"]},
+    {"jurisdiction_id":"us-ct","family":"regulations","status":"partial","collection_ids":["ct-rcsa"],"layer_complete":false,
+      "inventory":{"unit":"titles","expected":63,"retained":10,"excluded":53,"selected_subtitle_exports":124},"edition":"Observed publisher exports; no uniform effective date","fidelity_exclusions":"Title 1 aggregate omits subtitle 1-205; selected subtitle GUID exports, not aggregate-title success alone, establish coverage.","evidence":["data/collectors/leads/publish/acceptance-northeast-ct-20260907-01.json#/completeness_review"]},
+    {"jurisdiction_id":"us-de","family":"statutes","status":"complete_publisher_edition","collection_ids":["de-code"],"layer_complete":false,
+      "inventory":{"unit":"PDF volumes","expected":32,"retained":32,"excluded":0},"edition":"31 titles incorporated through 2026-08-10 plus independently undated constitution","fidelity_exclusions":"8,588 physical pages include 31 blank/cover-only pages; layout extraction is not facsimile/signature authentication.","evidence":["data/collectors/leads/publish/acceptance-northeast-de-20260907-01.json#/completeness_review"]},
+    {"jurisdiction_id":"us-de","family":"regulations","status":"absent","collection_ids":[],"layer_complete":false,
+      "evidence":["data/collectors/leads/publish/acceptance-northeast-de-20260907-01.json#/completeness_review"]},
+    {"jurisdiction_id":"us-fl","family":"statutes","status":"complete_publisher_edition","collection_ids":["florida-statutes-2026"],"layer_complete":false,
+      "inventory":{"unit":"chapters","expected":638,"retained":638,"excluded":0,"titles":49,"section_nodes":24993},"edition":"2026 publisher-listed edition; exact snapshot/publication/effect unknown","fidelity_exclusions":"Whole-section notes and future text preserved; auxiliary PDF indexes/external media not claimed. 687 mixed inventory rows are 49 titles plus 638 chapters. Original 52 versions remain frozen.","evidence":["docs/florida-edition-verification.json#/edition","docs/florida-edition-verification.json#/historical_preservation"]},
+    {"jurisdiction_id":"us-fl","family":"regulations","status":"absent","collection_ids":[],"layer_complete":false,
+      "evidence":["docs/florida-edition-verification.json#/edition","docs/florida-edition-verification.json#/historical_preservation"]},
+    {"jurisdiction_id":"us-ga","family":"statutes","status":"blocked","collection_ids":[],"layer_complete":false,
+      "note":"Statute source access/policy unresolved or denied; no accepted statutory body.","evidence":["data/collectors/leads/publish/acceptance-south-ga-20260907-01.json#/completeness_review"]},
+    {"jurisdiction_id":"us-ga","family":"regulations","status":"partial","collection_ids":["ga-administrative-rules"],"layer_complete":false,
+      "inventory":{"unit":"department PDFs","expected":154,"retained":124,"excluded":30,"fully_indexed":120,"partially_indexed":4},"edition":"Filings through 2026-08-14","fidelity_exclusions":"23 exact page omissions in four retained PDFs; 27 pending and three budget-blocked departments; lifetime collector byte cap reached.","evidence":["data/collectors/leads/publish/acceptance-south-ga-20260907-01.json#/completeness_review"]},
+    {"jurisdiction_id":"us-hi","family":"statutes","status":"blocked","collection_ids":[],"layer_complete":false,
+      "note":"State lead held unpublished: unresolved HTML robots policy; isolated evidence is not accepted coverage.","evidence":["docs/collection-wave.json#/held_not_published/us-hi"]},
+    {"jurisdiction_id":"us-hi","family":"regulations","status":"absent","collection_ids":[],"layer_complete":false,
+      "note":"No accepted regulatory body; no separate family-wide access finding asserted.","evidence":["docs/collection-wave.json#/held_not_published/us-hi"]},
+    {"jurisdiction_id":"us-id","family":"statutes","status":"partial","collection_ids":["id-statutes"],"layer_complete":false,
+      "inventory":{"unit":"chapters within five selected titles","expected":79,"retained":79,"excluded":null},"scope":"Titles 1, 34, 50, 73 and 74 only; 610 PDF pages","edition":"Observed exports; remaining titles and constitution excluded","evidence":["data/collectors/leads/publish/acceptance-west-id-20260907-01.json#/completeness_review"]},
+    {"jurisdiction_id":"us-id","family":"regulations","status":"absent","collection_ids":[],"layer_complete":false,
+      "evidence":["data/collectors/leads/publish/acceptance-west-id-20260907-01.json#/completeness_review"]},
+    {"jurisdiction_id":"us-il","family":"statutes","status":"partial","collection_ids":["il-statutes"],"layer_complete":false,
+      "inventory":{"unit":"ILCS chapter inventories","expected":68,"retained":1,"excluded":67},"scope":"Chapter 10: all 12 nonrepealed acts plus 12 metadata-only repeal labels; separate constitution does not close ILCS","edition":"Observed web exports; not the separately noted FTP bulk snapshot","evidence":["data/collectors/leads/publish/acceptance-midwest-il-20260907-01.json#/completeness_review"]},
+    {"jurisdiction_id":"us-il","family":"regulations","status":"absent","collection_ids":["il-regulations"],"layer_complete":false,
+      "inventory":{"unit":"title inventories","expected":33,"retained":0,"excluded":33},"note":"Inventory only, no acquired regulation body.","evidence":["data/collectors/leads/publish/acceptance-midwest-il-20260907-01.json#/completeness_review"]},
+    {"jurisdiction_id":"us-in","family":"statutes","status":"blocked","collection_ids":["in-current-code"],"layer_complete":false,
+      "note":"No current code body; in-historical-constitutions contains only Article I of the original 1816 and 1851 constitutions, not current statutes.","evidence":["data/collectors/leads/publish/acceptance-midwest-in-20260907-01.json"]},
+    {"jurisdiction_id":"us-in","family":"regulations","status":"blocked","collection_ids":["in-current-regulations"],"layer_complete":false,
+      "note":"No current administrative-code body accepted.","evidence":["data/collectors/leads/publish/acceptance-midwest-in-20260907-01.json"]},
+    {"jurisdiction_id":"us-ia","family":"statutes","status":"complete_publisher_edition","collection_ids":["ia-code"],"layer_complete":false,
+      "inventory":{"unit":"publisher PDF volumes","expected":8,"retained":8,"excluded":0},"edition":"2026 volumes, Titles I-XVI plus included constitutions/appendices; preface incorporation 2026-01-01, precise snapshot unknown","fidelity_exclusions":"31 pages have no extracted text; raw retained. Chapter containers are not section counts; separate external indexes excluded.","evidence":["data/collectors/leads/publish/acceptance-midwest-ia-20260907-01.json#/completeness_review"]},
+    {"jurisdiction_id":"us-ia","family":"regulations","status":"absent","collection_ids":[],"layer_complete":false,
+      "evidence":["data/collectors/leads/publish/acceptance-midwest-ia-20260907-01.json#/completeness_review"]},
+    {"jurisdiction_id":"us-ks","family":"statutes","status":"partial","collection_ids":["ks-statutes"],"layer_complete":false,
+      "inventory":{"unit":"chapter catalog entries","expected":91,"retained":1,"excluded":90},"scope":"Chapter 1, 34/34 sections; separate ks-session-laws has both 2026 volumes but does not complete consolidated statutes","fidelity_exclusions":"Separate ks-constitution has 241/242 pages; one publisher URL broken.","evidence":["data/collectors/leads/publish/acceptance-midwest-ks-20260907-01.json#/completeness_review"]},
+    {"jurisdiction_id":"us-ks","family":"regulations","status":"absent","collection_ids":[],"layer_complete":false,
+      "evidence":["data/collectors/leads/publish/acceptance-midwest-ks-20260907-01.json#/completeness_review"]},
+    {"jurisdiction_id":"us-ky","family":"statutes","status":"partial","collection_ids":["ky-krs"],"layer_complete":false,
+      "inventory":{"unit":"chapters within Titles I and X","expected":20,"retained":20,"excluded":null},"scope":"967 selected source documents; 420 substantive, 544 repeal/history and three renumber notices. Other catalog: 732 pending, 51 not utilized; not operative-section counts.","edition":"Selected observed exports; no full KRS claim","evidence":["data/collectors/leads/publish/acceptance-midwest-ky-20260907-01.json#/completeness_review"]},
+    {"jurisdiction_id":"us-ky","family":"regulations","status":"absent","collection_ids":[],"layer_complete":false,
+      "evidence":["data/collectors/leads/publish/acceptance-midwest-ky-20260907-01.json#/completeness_review"]},
+    {"jurisdiction_id":"us-la","family":"statutes","status":"absent","collection_ids":[],"layer_complete":false,
+      "evidence":["data/collectors/leads/publish/acceptance-south-la-20260907-01.json#/completeness_review"]},
+    {"jurisdiction_id":"us-la","family":"regulations","status":"complete_publisher_edition","collection_ids":["la-administrative-code"],"layer_complete":false,
+      "inventory":{"unit":"unique DOCX compilations","expected":154,"retained":154,"excluded":0,"publisher_inventory_rows":155},"edition":"Observed official compilation set; no uniform effective-day assertion","fidelity_exclusions":"432 units have incomplete title/part identity; 1,360 automatic Word numbers not computed in plaintext; 516 media elements retained raw, not transcribed. Unincorporated register changes excluded.","evidence":["data/collectors/leads/publish/acceptance-south-la-20260907-01.json#/completeness_review"]},
+    {"jurisdiction_id":"us-me","family":"statutes","status":"complete_publisher_edition","collection_ids":["me-statutes"],"layer_complete":false,
+      "inventory":{"unit":"title DOCX exports","expected":64,"retained":64,"excluded":0},"edition":"59 title incorporation dates 2025-10-01; five 2026-01-01; not one common snapshot day","fidelity_exclusions":"Embedded figures raw-retained/marked, not transcribed; constitution/session laws/later amendments excluded.","evidence":["data/collectors/leads/publish/acceptance-northeast-me-20260907-01.json#/completeness_review","data/collectors/leads/northeast/me-accepted/report.json#/inventories"]},
+    {"jurisdiction_id":"us-me","family":"regulations","status":"absent","collection_ids":[],"layer_complete":false,
+      "evidence":["data/collectors/leads/publish/acceptance-northeast-me-20260907-01.json#/completeness_review","data/collectors/leads/northeast/me-accepted/report.json#/inventories"]},
+    {"jurisdiction_id":"us-md","family":"statutes","status":"complete_publisher_edition","collection_ids":["md-code"],"layer_complete":false,
+      "inventory":{"unit":"include-enactments article PDFs","expected":65,"retained":65,"excluded":0},"edition":"Complete retained include-enactments view; 2027RS API path/October view is not proof of present effectiveness","fidelity_exclusions":"33,967 PDF pages; January view, session laws and precise snapshot/effect not established.","evidence":["data/collectors/leads/publish/acceptance-northeast-md-20260907-01.json#/completeness_review"]},
+    {"jurisdiction_id":"us-md","family":"regulations","status":"absent","collection_ids":[],"layer_complete":false,
+      "note":"COMAR excluded.","evidence":["data/collectors/leads/publish/acceptance-northeast-md-20260907-01.json#/completeness_review"]},
+    {"jurisdiction_id":"us-ma","family":"statutes","status":"partial","collection_ids":["ma-general-laws"],"layer_complete":false,
+      "inventory":{"unit":"chapters within two selected titles","expected":17,"retained":17,"excluded":null},"scope":"Part I Titles I and VIII only; 819 source documents mix sections, repeals and status. 833 indexed inventory rows are not statewide chapter coverage.","edition":"Selected observed publisher text","evidence":["data/collectors/leads/publish/acceptance-northeast-ma-20260907-01.json#/completeness_review"]},
+    {"jurisdiction_id":"us-ma","family":"regulations","status":"absent","collection_ids":[],"layer_complete":false,
+      "evidence":["data/collectors/leads/publish/acceptance-northeast-ma-20260907-01.json#/completeness_review"]},
+    {"jurisdiction_id":"us-mi","family":"statutes","status":"complete_publisher_edition","collection_ids":["mi-mcl"],"layer_complete":false,
+      "inventory":{"unit":"publisher chapter/group entries","expected":241,"retained":241,"excluded":0},"edition":"Observed MCL compilation including 1963 constitution; precise date unknown","fidelity_exclusions":"Unincorporated changes and full session-law/history coverage excluded.","evidence":["data/collectors/leads/publish/acceptance-midwest-mi-20260907-01.json#/completeness_review"]},
+    {"jurisdiction_id":"us-mi","family":"regulations","status":"blocked","collection_ids":["mi-admin"],"layer_complete":false,
+      "note":"Publisher reproduction restriction recorded; no administrative-law body indexed.","evidence":["data/collectors/leads/publish/acceptance-midwest-mi-20260907-01.json#/completeness_review"]},
+    {"jurisdiction_id":"us-mn","family":"statutes","status":"partial","collection_ids":["mn-statutes"],"layer_complete":false,
+      "inventory":{"unit":"subject parts","expected":105,"retained":11,"excluded":94},"scope":"42/42 chapters within first 11 subject parts; separate constitution does not close statutes","edition":"Selected observed compilation","evidence":["data/collectors/leads/publish/acceptance-midwest-mn-20260907-01.json#/completeness_review"]},
+    {"jurisdiction_id":"us-mn","family":"regulations","status":"partial","collection_ids":["mn-rules"],"layer_complete":false,
+      "inventory":{"unit":"chapters","expected":832,"retained":7,"excluded":825},"scope":"OAH chapters 1400, 1405, 1408, 1410, 1415, 1420 and 6000","evidence":["data/collectors/leads/publish/acceptance-midwest-mn-20260907-01.json#/completeness_review"]},
+    {"jurisdiction_id":"us-ms","family":"statutes","status":"blocked","collection_ids":[],"layer_complete":false,
+      "note":"Legislature TLS/robots and SOS access failures. ms-court-rules is 24 court-rule volumes, not a statute collection.","evidence":["data/collectors/leads/publish/acceptance-south-ms-20260907-01.json#/completeness_review"]},
+    {"jurisdiction_id":"us-ms","family":"regulations","status":"blocked","collection_ids":[],"layer_complete":false,
+      "note":"SOS administrative source returned 403; court rules do not substitute for administrative regulations.","evidence":["data/collectors/leads/publish/acceptance-south-ms-20260907-01.json#/completeness_review"]},
+    {"jurisdiction_id":"us-mo","family":"statutes","status":"blocked","collection_ids":["mo-statutes"],"layer_complete":false,
+      "inventory":{"unit":"withheld chapter entries","expected":468,"retained":0,"excluded":468},"note":"mo-session-laws and mo-supplement-appendices retain selected material, not complete current codified statutes; proposals are not enacted law.","evidence":["data/collectors/leads/publish/acceptance-midwest-mo-20260907-01.json#/completeness_review"]},
+    {"jurisdiction_id":"us-mo","family":"regulations","status":"absent","collection_ids":["mo-regulations"],"layer_complete":false,
+      "note":"One pending inventory lead, no body.","evidence":["data/collectors/leads/publish/acceptance-midwest-mo-20260907-01.json#/completeness_review"]},
+    {"jurisdiction_id":"us-mt","family":"statutes","status":"partial","collection_ids":["mt-mca-title1"],"layer_complete":false,
+      "inventory":{"unit":"selected title","expected":1,"retained":1,"excluded":null},"scope":"Title 1 only, 285 units; other MCA titles absent; separate constitution retained","edition":"Observed publisher title","evidence":["data/collectors/leads/publish/acceptance-west-mt-20260907-01.json#/completeness_review"]},
+    {"jurisdiction_id":"us-mt","family":"regulations","status":"absent","collection_ids":[],"layer_complete":false,
+      "evidence":["data/collectors/leads/publish/acceptance-west-mt-20260907-01.json#/completeness_review"]},
+    {"jurisdiction_id":"us-ne","family":"statutes","status":"partial","collection_ids":["ne-revised-statutes"],"layer_complete":false,
+      "inventory":{"unit":"numbered chapter exports","expected":90,"retained":50,"excluded":40},"scope":"Chapters 1-50; 51-90 missing. Even all 90 would exclude UCC, constitution and Revised Statutes Appendix.","edition":"Observed chapter compilation","evidence":["data/collectors/leads/publish/acceptance-midwest-ne-20260907-01.json#/completeness_review"]},
+    {"jurisdiction_id":"us-ne","family":"regulations","status":"absent","collection_ids":[],"layer_complete":false,
+      "evidence":["data/collectors/leads/publish/acceptance-midwest-ne-20260907-01.json#/completeness_review"]},
+    {"jurisdiction_id":"us-nv","family":"statutes","status":"partial","collection_ids":["nevada-nrs"],"layer_complete":false,
+      "inventory":{"unit":"chapter exports","expected":835,"retained":220,"excluded":615},"scope":"Titles 1-14 complete, preliminary material and partial Title 15","edition":"Observed publisher compilation; precise date unknown","evidence":["data/collectors/leads/publish/acceptance-west-nv-20260907-01.json#/completeness_review"]},
+    {"jurisdiction_id":"us-nv","family":"regulations","status":"complete_publisher_edition","collection_ids":["nevada-nac"],"layer_complete":false,
+      "inventory":{"unit":"chapter HTML exports","expected":408,"retained":408,"excluded":0},"edition":"Complete observed NAC inventory; precise dates unknown","fidelity_exclusions":"77 referenced images retained across the NV batch, not transcribed; unincorporated changes and external incorporated materials excluded.","evidence":["data/collectors/leads/publish/acceptance-west-nv-20260907-01.json#/completeness_review"]},
+    {"jurisdiction_id":"us-nh","family":"statutes","status":"partial","collection_ids":["nh-rsa"],"layer_complete":false,
+      "inventory":{"unit":"titles","expected":67,"retained":3,"excluded":64},"scope":"Titles LXIV, XVII and II; 33 chapter documents, 29 bodies and four notices","edition":"Observed online RSA","evidence":["data/collectors/leads/publish/acceptance-northeast-nh-20260907-01.json#/completeness_review"]},
+    {"jurisdiction_id":"us-nh","family":"regulations","status":"absent","collection_ids":[],"layer_complete":false,
+      "evidence":["data/collectors/leads/publish/acceptance-northeast-nh-20260907-01.json#/completeness_review"]},
+    {"jurisdiction_id":"us-nj","family":"statutes","status":"complete_publisher_edition","collection_ids":["nj-statutes"],"layer_complete":false,
+      "inventory":{"unit":"whole-body document partitions","expected":71,"retained":71,"excluded":0},"edition":"STATUTES.TXT body through P.L.2025 c.405/J.R.22; 69 numbered titles plus Appendix A and preface","fidelity_exclusions":"TOC through P.L.2026 c.30/J.R.1 is newer, not body currency. Body receipt 1855 and TOC receipt 1857 are distinct; no synthetic update/consolidation.","evidence":["data/collectors/leads/publish/acceptance-northeast-nj-20260907-01.json#/completeness_review","data/legal.sqlite3: collections.id=nj-statutes metadata.discovery_review"]},
+    {"jurisdiction_id":"us-nj","family":"regulations","status":"absent","collection_ids":[],"layer_complete":false,
+      "evidence":["data/collectors/leads/publish/acceptance-northeast-nj-20260907-01.json#/completeness_review","data/legal.sqlite3: collections.id=nj-statutes metadata.discovery_review"]},
+    {"jurisdiction_id":"us-nm","family":"statutes","status":"absent","collection_ids":[],"layer_complete":false,
+      "note":"No accepted statutory body; regulation acquisition is not statute coverage.","evidence":["data/collectors/leads/publish/acceptance-west-nm-20260907-01.json#/completeness_review"]},
+    {"jurisdiction_id":"us-nm","family":"regulations","status":"partial","collection_ids":["nm-nmac"],"layer_complete":false,
+      "inventory":{"unit":"selected Title 20 entries plus one sample part","expected":223,"retained":223,"excluded":null},"scope":"222 Title 20 entries: 188 current parts and 34 repeal/history entries; plus 1.24.10. Not statewide NMAC.","edition":"Observed selected parts","evidence":["data/collectors/leads/publish/acceptance-west-nm-20260907-01.json#/completeness_review"]},
+    {"jurisdiction_id":"us-ny","family":"statutes","status":"partial","collection_ids":["ny-state-laws"],"layer_complete":false,
+      "inventory":{"unit":"selected whole Senate PDF volumes","expected":null,"retained":49,"excluded":null,"pending_selected":32,"failed_selected":1,"superseded_legacy_ids":8},"edition":"Selected observed volumes; authoritative statewide inventory unavailable without account","fidelity_exclusions":"44,664 retained pages; six blank terminal pages omitted from text. Manual selected list is not a statewide denominator.","evidence":["data/collectors/leads/publish/acceptance-northeast-ny-20260907-01.json#/completeness_review"]},
+    {"jurisdiction_id":"us-ny","family":"regulations","status":"absent","collection_ids":[],"layer_complete":false,
+      "note":"NYCRR not acquired.","evidence":["data/collectors/leads/publish/acceptance-northeast-ny-20260907-01.json#/completeness_review"]},
+    {"jurisdiction_id":"us-nc","family":"statutes","status":"complete_publisher_edition","collection_ids":["north-carolina-statutes"],"layer_complete":false,
+      "inventory":{"unit":"chapter exports","expected":396,"retained":396,"excluded":0},"edition":"Observed publisher chapter set; precise snapshot unknown","fidelity_exclusions":"Separate whole constitution retained; no all-session-law/current-effect claim.","evidence":["data/collectors/leads/publish/acceptance-south-nc-20260907-01.json#/completeness_review"]},
+    {"jurisdiction_id":"us-nc","family":"regulations","status":"blocked","collection_ids":["north-carolina-administrative-code"],"layer_complete":false,
+      "note":"Robots HTTPS timeout; zero regulation text.","evidence":["data/collectors/leads/publish/acceptance-south-nc-20260907-01.json#/completeness_review"]},
+    {"jurisdiction_id":"us-nd","family":"statutes","status":"partial","collection_ids":["nd-century-code"],"layer_complete":false,
+      "inventory":{"unit":"chapter PDF exports","expected":2524,"retained":219,"excluded":2305},"scope":"Nine selected titles","fidelity_exclusions":"217 acquired statuses plus two identifier gaps: 01-03-19 and 05-02-10.1 differ from catalog labels; text retained. Not full Century Code.","evidence":["data/collectors/leads/publish/acceptance-midwest-nd-20260907-01.json#/completeness_review"]},
+    {"jurisdiction_id":"us-nd","family":"regulations","status":"absent","collection_ids":[],"layer_complete":false,
+      "evidence":["data/collectors/leads/publish/acceptance-midwest-nd-20260907-01.json#/completeness_review"]},
+    {"jurisdiction_id":"us-oh","family":"statutes","status":"blocked","collection_ids":[],"layer_complete":false,
+      "note":"State lead acquisition blocked; no accepted legal corpus.","evidence":["docs/collection-wave.json#/blocked_not_published/us-oh"]},
+    {"jurisdiction_id":"us-oh","family":"regulations","status":"absent","collection_ids":[],"layer_complete":false,
+      "note":"No accepted regulatory body; no separate family-wide access finding asserted.","evidence":["docs/collection-wave.json#/blocked_not_published/us-oh"]},
+    {"jurisdiction_id":"us-ok","family":"statutes","status":"partial","collection_ids":["ok-senate-scoped-code"],"layer_complete":false,
+      "inventory":{"unit":"publisher title/constitution entries","expected":127,"retained":6,"excluded":121},"scope":"Constitution and Titles 1-5; 121 other inventory entries outside scope","edition":"Older retained PDFs of unknown legal currency; creation metadata/upload folders are not edition or effect dates","evidence":["data/collectors/leads/publish/acceptance-south-ok-20260907-01.json#/completeness_review"]},
+    {"jurisdiction_id":"us-ok","family":"regulations","status":"absent","collection_ids":[],"layer_complete":false,
+      "evidence":["data/collectors/leads/publish/acceptance-south-ok-20260907-01.json#/completeness_review"]},
+    {"jurisdiction_id":"us-or","family":"statutes","status":"complete_publisher_edition","collection_ids":["oregon-ors"],"layer_complete":false,
+      "inventory":{"unit":"observed chapter HTML files","expected":689,"retained":689,"excluded":0,"pending":0,"byte_cap_failed":0},"edition":"2025 ORS; excludes 2025 special-session and 2026 regular-session changes","fidelity_exclusions":"All 92 former gaps completed, including ORS707. Existing 597 versions and 65234 provision IDs preserved. New chapter projections preserve native full text; embedded media are not independently transcribed. Fixed native-UI inventory needs refresh for later editions; later amendments not consolidated.","evidence":["docs/oregon-completion-verification.json","data/collectors/leads/publish/acceptance-west-or-20260907-01.json#/completeness_review","docs/sources.md#later-state-collection"],"reproduce":"python scripts/complete_oregon.py --data data --out docs/oregon-completion-verification.json (retained store; 64MiB cumulative completion cap)"},
+    {"jurisdiction_id":"us-or","family":"regulations","status":"blocked","collection_ids":[],"layer_complete":false,
+      "note":"Annual OAR endpoint returned cybersecurity block markup, not source data; no administrative-rule body acquired.","evidence":["data/collectors/leads/publish/acceptance-west-or-20260907-01.json#/completeness_review","docs/sources.md#later-state-collection"]},
+    {"jurisdiction_id":"us-pa","family":"statutes","status":"complete_publisher_edition","collection_ids":["pa-consolidated"],"layer_complete":false,
+      "inventory":{"unit":"consolidated title/constitution entries","expected":75,"retained":75,"excluded":0,"body_exports":52,"explained_no_current_text":23},"edition":"Observed consolidated compilation only","fidelity_exclusions":"Unconsolidated Pennsylvania statutes excluded. 21 unimplemented-consolidation and two repeal/reservation entries are not missing bodies or operative sections.","evidence":["data/collectors/leads/publish/acceptance-northeast-pa-20260907-01.json#/completeness_review"]},
+    {"jurisdiction_id":"us-pa","family":"regulations","status":"absent","collection_ids":[],"layer_complete":false,
+      "evidence":["data/collectors/leads/publish/acceptance-northeast-pa-20260907-01.json#/completeness_review"]},
+    {"jurisdiction_id":"us-ri","family":"statutes","status":"partial","collection_ids":["ri-general-laws"],"layer_complete":false,
+      "inventory":{"unit":"titles","expected":49,"retained":5,"excluded":44},"scope":"Titles 1, 25, 38, 43 and 47; 378 documents mix 351 sections and 27 dispositions","edition":"Observed selected General Laws","evidence":["data/collectors/leads/publish/acceptance-northeast-ri-20260907-01.json#/completeness_review"]},
+    {"jurisdiction_id":"us-ri","family":"regulations","status":"absent","collection_ids":[],"layer_complete":false,
+      "evidence":["data/collectors/leads/publish/acceptance-northeast-ri-20260907-01.json#/completeness_review"]},
+    {"jurisdiction_id":"us-sc","family":"statutes","status":"partial","collection_ids":["sc-code"],"layer_complete":false,
+      "inventory":{"unit":"chapter exports","expected":1308,"retained":322,"excluded":986},"scope":"Titles 1-15 complete","edition":"Through 2025 session; precise snapshot/effect unknown","evidence":["data/collectors/leads/publish/acceptance-south-sc-20260907-01.json#/completeness_review"]},
+    {"jurisdiction_id":"us-sc","family":"regulations","status":"complete_publisher_edition","collection_ids":["sc-regulations"],"layer_complete":false,
+      "inventory":{"unit":"raw publisher PDFs","expected":125,"retained":125,"excluded":0},"edition":"107 direct exports incorporated through 2026-03-27; 18 nested Chapter 61 exports independently undated","fidelity_exclusions":"220 blank/image-only pages across regulation/constitution PDFs omitted from text but raw retained. This is complete raw compilation membership, not full-text completeness or certified official edition.","evidence":["data/collectors/leads/publish/acceptance-south-sc-20260907-01.json#/completeness_review"]},
+    {"jurisdiction_id":"us-sd","family":"statutes","status":"partial","collection_ids":["sd-codified-laws"],"layer_complete":false,
+      "inventory":{"unit":"titles","expected":71,"retained":8,"excluded":63},"scope":"Titles 1, 2, 6, 7, 8, 9, 11 and 12; all 289 selected chapter exports","edition":"Observed selected compilation","evidence":["data/collectors/leads/publish/acceptance-midwest-sd-20260907-01.json#/completeness_review"]},
+    {"jurisdiction_id":"us-sd","family":"regulations","status":"absent","collection_ids":[],"layer_complete":false,
+      "evidence":["data/collectors/leads/publish/acceptance-midwest-sd-20260907-01.json#/completeness_review"]},
+    {"jurisdiction_id":"us-tn","family":"statutes","status":"blocked","collection_ids":[],"layer_complete":false,
+      "note":"State lead acquisition blocked; no accepted legal corpus.","evidence":["docs/collection-wave.json#/blocked_not_published/us-tn"]},
+    {"jurisdiction_id":"us-tn","family":"regulations","status":"absent","collection_ids":[],"layer_complete":false,
+      "note":"No accepted regulatory body; no separate family-wide access finding asserted.","evidence":["docs/collection-wave.json#/blocked_not_published/us-tn"]},
+    {"jurisdiction_id":"us-tx","family":"statutes","status":"complete_publisher_edition","collection_ids":["texas"],"layer_complete":false,
+      "inventory":{"unit":"code ZIPs","expected":31,"retained":31,"excluded":0,"chapter_members":4993},"edition":"Statutes through 89th Second Called Session 2025; constitution through November 2025 amendments; precise snapshot unknown","fidelity_exclusions":"5,024 indexed rows mix 31 ZIP entries and 4,993 members. Parallel future-effective versions and notes retained, not consolidated.","evidence":["docs/integrity.json#/coverage/collections","docs/sources.md#dc-and-texas","artifact:a7ceb31fab5c336fde77bc3c7f054a917ebfdf559d0e1c751ce8a1e22fce6685"]},
+    {"jurisdiction_id":"us-tx","family":"regulations","status":"absent","collection_ids":[],"layer_complete":false,
+      "evidence":["docs/integrity.json#/coverage/collections","docs/sources.md#dc-and-texas","artifact:a7ceb31fab5c336fde77bc3c7f054a917ebfdf559d0e1c751ce8a1e22fce6685"]},
+    {"jurisdiction_id":"us-ut","family":"statutes","status":"complete_publisher_edition","collection_ids":["utah-code"],"layer_complete":false,
+      "inventory":{"unit":"nonempty title XML exports","expected":96,"retained":96,"excluded":0,"heading_only_future_title_stub":1},"edition":"Observed current/future title exports; blanket legal/snapshot dates unknown","fidelity_exclusions":"97th entry, future Title 16, is a retained rejected 95-byte heading-only stub, not missing substantive law. 144 unresolved glyphs marked; XML attributes and four flag JPEGs retained.","evidence":["data/collectors/leads/publish/acceptance-west-ut-20260907-01.json#/completeness_review"]},
+    {"jurisdiction_id":"us-ut","family":"regulations","status":"absent","collection_ids":[],"layer_complete":false,
+      "evidence":["data/collectors/leads/publish/acceptance-west-ut-20260907-01.json#/completeness_review"]},
+    {"jurisdiction_id":"us-vt","family":"statutes","status":"blocked","collection_ids":[],"layer_complete":false,
+      "note":"Lead blocked; historical transcriptions unaccepted and no canonical legal import. No complete current-source inventory established.","evidence":["docs/collection-wave.json#/blocked_not_published/us-vt"]},
+    {"jurisdiction_id":"us-vt","family":"regulations","status":"absent","collection_ids":[],"layer_complete":false,
+      "note":"No accepted regulatory body; no separate family-wide access finding asserted.","evidence":["docs/collection-wave.json#/blocked_not_published/us-vt"]},
+    {"jurisdiction_id":"us-va","family":"statutes","status":"complete_publisher_edition","collection_ids":["va-code"],"layer_complete":false,
+      "inventory":{"unit":"CSV title exports","expected":76,"retained":76,"excluded":0},"edition":"Observed title exports; precise snapshot/effect unknown","fidelity_exclusions":"33,383 native rows retained including headings/repeals and duplicate occurrences; separate constitution retained. Uncodified acts, charters, authorities and compacts excluded.","evidence":["data/collectors/leads/publish/acceptance-south-va-20260907-01.json#/completeness_review"]},
+    {"jurisdiction_id":"us-va","family":"regulations","status":"absent","collection_ids":[],"layer_complete":false,
+      "inventory":{"unit":"noted Administrative Code titles","expected":24,"retained":0,"excluded":24},"evidence":["data/collectors/leads/publish/acceptance-south-va-20260907-01.json#/completeness_review"]},
+    {"jurisdiction_id":"us-wa","family":"statutes","status":"partial","collection_ids":["wa-rcw"],"layer_complete":false,
+      "inventory":{"unit":"chapter exports","expected":2785,"retained":425,"excluded":2360,"pending":2358,"failed":2},"scope":"Wave's 424 chapters plus later 43.21C. Complete selected nine titles plus incidental chapters; 101 title-inventory rows are not chapter bodies.","edition":"Live publisher chapters; exact blanket snapshot unknown","evidence":["data/collectors/leads/publish/acceptance-west-wa-20260907-01.json#/completeness_review","docs/washington-land-use-verification.json#/measurements"]},
+    {"jurisdiction_id":"us-wa","family":"regulations","status":"partial","collection_ids":["wa-wac"],"layer_complete":false,
+      "inventory":{"unit":"chapters within Titles 197 and 365","expected":30,"retained":9,"excluded":21},"scope":"197-11 plus eight Title 365 chapters; other statewide chapter denominator unexpanded. wa-wsr/wa-rulemaking-notices are selected filing/index/guidance evidence, not whole WAC.","edition":"Observed selected chapters; individual source clocks retained","evidence":["data/collectors/leads/publish/acceptance-west-wa-20260907-01.json#/completeness_review","docs/washington-land-use-verification.json#/measurements"]},
+    {"jurisdiction_id":"us-wv","family":"statutes","status":"complete_publisher_edition","collection_ids":["wv-code"],"layer_complete":false,
+      "inventory":{"unit":"chapter preview exports","expected":138,"retained":138,"excluded":0},"edition":"Observed whole publisher chapter inventory; precise snapshot unknown","fidelity_exclusions":"44 tables and native appended-section ordering preserved; constitution, regulations and session laws excluded.","evidence":["data/collectors/leads/publish/acceptance-south-wv-20260907-01.json#/completeness_review"]},
+    {"jurisdiction_id":"us-wv","family":"regulations","status":"absent","collection_ids":[],"layer_complete":false,
+      "evidence":["data/collectors/leads/publish/acceptance-south-wv-20260907-01.json#/completeness_review"]},
+    {"jurisdiction_id":"us-wi","family":"statutes","status":"complete_publisher_edition","collection_ids":["wi-statutes"],"layer_complete":false,
+      "inventory":{"unit":"chapter PDFs","expected":470,"retained":470,"excluded":0},"edition":"Publisher Updated 2023-24 Statutes notice published 2026-09-04, through stated Act 247 currency","fidelity_exclusions":"8,637 physical pages, not provision counts; independent indices, prefaces and constitution excluded; publisher certification not independently authenticated.","evidence":["data/collectors/leads/publish/acceptance-midwest-wi-20260907-01.json#/completeness_review"]},
+    {"jurisdiction_id":"us-wi","family":"regulations","status":"absent","collection_ids":[],"layer_complete":false,
+      "evidence":["data/collectors/leads/publish/acceptance-midwest-wi-20260907-01.json#/completeness_review"]},
+    {"jurisdiction_id":"us-wy","family":"statutes","status":"complete_publisher_edition","collection_ids":["wy-statutes"],"layer_complete":false,
+      "inventory":{"unit":"PDF volumes","expected":45,"retained":45,"excluded":0},"edition":"43 statutory titles explicitly 2026-07-01; constitution and noncodified water laws independently undated","fidelity_exclusions":"13,653 text pages plus two blank placeholders; no regulation or all-history claim.","evidence":["data/collectors/leads/publish/acceptance-west-wy-20260907-01.json#/completeness_review"]},
+    {"jurisdiction_id":"us-wy","family":"regulations","status":"absent","collection_ids":[],"layer_complete":false,
+      "evidence":["data/collectors/leads/publish/acceptance-west-wy-20260907-01.json#/completeness_review"]},
+    {"jurisdiction_id":"us-dc","family":"statutes","status":"complete_publisher_edition","collection_ids":["dc-code"],"layer_complete":false,
+      "inventory":{"unit":"codified repository title members","expected":55,"retained":55,"excluded":0},"edition":"Commit 6231fae42de60c3c498548c489b0ca84ef60353a; codified 2026-05-19, current-through 2026-04-29","fidelity_exclusions":"Separate dc-laws has 4,544 instrument records, 2,961 metadata-only and 1,583 body records; title closure is not complete session-law text or complete current D.C. law.","evidence":["docs/integrity.json#/coverage/collections","docs/sources.md#dc-and-texas","data/legal.sqlite3: collections.id=dc-code metadata.commit"]},
+    {"jurisdiction_id":"us-dc","family":"regulations","status":"absent","collection_ids":[],"layer_complete":false,
+      "evidence":["docs/integrity.json#/coverage/collections","docs/sources.md#dc-and-texas","data/legal.sqlite3: collections.id=dc-code metadata.commit"]},
+    {"jurisdiction_id":"us-ny-nyc","family":"municipal_code","status":"absent","collection_ids":[],"layer_complete":false,
+      "scope":"No general city code/charter body claimed; zoning is a separate row","evidence":["docs/collection-wave.json#/collection_units"]},
+    {"jurisdiction_id":"us-ny-nyc","family":"zoning_text","status":"complete_publisher_edition","collection_ids":["nyc-zoning"],"layer_complete":false,
+      "inventory":{"unit":"publisher chapter/appendix pages","expected":117,"retained":117,"excluded":0},"edition":"Publisher approved-changes-through 2026-08-13","fidelity_exclusions":"16 appendix pages are not necessarily 16 distinct legal appendices. Source images/diagrams are not independently transcribed/certified; no complete municipal-law claim.","evidence":["docs/integrity.json#/coverage/collections","docs/sources.md#municipal-text-and-geography","artifact:23730576171f20f58558bc97ee3fad35acb5750e666be6aa5af98eb5909bdd24"]},
+    {"jurisdiction_id":"us-ny-nyc","family":"zoning_geometry","status":"complete_publisher_edition","collection_ids":["nyc-zoning-gis"],"layer_complete":false,
+      "inventory":{"unit":"archive feature classes","expected":6,"retained":6,"excluded":0,"features":16901},"edition":"Publisher archive description 202606; exact snapshot day unknown","fidelity_exclusions":"Six separate zoning feature classes, not a legal applicability engine; invalid source polygons remain warned, not repaired.","evidence":["docs/integrity.json#/coverage/collections","docs/integrity.json#/geometry","docs/sources.md#municipal-text-and-geography"]},
+    {"jurisdiction_id":"us-or-portland","family":"municipal_code","status":"complete_publisher_edition","collection_ids":["portland-city-code","portland-zoning"],"layer_complete":false,
+      "inventory":{"unit":"Clerk-listed titles: 33 printable HTML plus reused Title33 PDF","expected":34,"retained":34,"excluded":0,"new_sections":3095,"chapter_contexts":366},"edition":"HTML observed September7,2026, exact legal snapshot unknown; Title33 retained July1,2026 edition","fidelity_exclusions":"Every new section reconciled against native chapter body; 40 city image originals retained but not transcribed. Figure labels conflict and remain warned. Recent/upcoming changes not applied. Charter, policies, emergency rules and incorporated model codes are not all acquired.","evidence":["docs/portland-code-verification.json","docs/portland-code.md","data/legal.sqlite3: acquisitions.id=10838 (title inventory)","data/legal.sqlite3: acquisitions.id=10841 (terms)"]},
+    {"jurisdiction_id":"us-or-portland","family":"zoning_text","status":"complete_publisher_edition","collection_ids":["portland-zoning"],"layer_complete":false,
+      "inventory":{"unit":"Title 33 printable PDF edition","expected":1,"retained":1,"excluded":0,"pdf_pages":1855},"edition":"2026-07-01; later November 1 ordinance not silently folded in","fidelity_exclusions":"Page retrieval, not individually validated provisions or full visual table/diagram interpretation. Two portland-zoning-guides pages are supporting guidance, not further code coverage.","evidence":["docs/integrity.json#/coverage/collections","docs/sources.md#municipal-text-and-geography","data/legal.sqlite3: acquisitions.id=151","artifact:86ba1da866c9cc1acf56df185abfddff784c23b8fbd4601fbb1c0337abb0f354"]},
+    {"jurisdiction_id":"us-or-portland","family":"zoning_geometry","status":"complete_publisher_edition","collection_ids":["portland-zoning-gis"],"layer_complete":false,
+      "inventory":{"unit":"ArcGIS layer 3 OBJECTIDs","expected":15703,"retained":15703,"excluded":0},"edition":"Observed live layer; precise snapshot unknown","fidelity_exclusions":"Membership closure is not transactional attribute snapshot isolation; invalid source geometry remains warned. Zoning/plan/overlay/unincorporated fields retain distinct meanings.","evidence":["docs/integrity.json#/coverage/collections","docs/sources.md#municipal-text-and-geography","artifact:0e4bb219713af7c992ec6459ac10debf5159e6791826fd0fc282c48d5f57ab46"]}
+  ],
+  "completion_queue": [
+    {"collection":"oregon-ors","remaining":"0 listed chapter files","assessment":"Completed the clearest bounded maintained-adapter gap: 92 files, 20090622 bytes. Adds 4273586 residents to closed-edition reach, not complete current-law coverage.","evidence":"docs/oregon-completion-verification.json"},
+    {"collection":"wa-rcw","remaining":"2,358 pending plus two failed chapter exports","assessment":"Maintained adapter and exact inventory; large acquisition, not demonstrated cheap.","evidence":"docs/washington-land-use-verification.json#/measurements; data/legal.sqlite3 inventories.collection_id=wa-rcw"},
+    {"collection":"ne-revised-statutes","remaining":"40 numbered chapters","assessment":"Bounded worker-adapter opportunity, not maintained-core replay; UCC/appendix still excluded after those chapters.","evidence":"data/collectors/leads/publish/acceptance-midwest-ne-20260907-01.json#/completeness_review"},
+    {"collections":["us-ca-codes","ny-state-laws","il-statutes","ga-administrative-rules"],"assessment":"Larger-state candidates, not population-ranked or proven cheap: CA delta/media closure; NY authoritative denominator missing; IL 67 unexpanded chapters and 10.1-second pacing; GA 30 missing departments, budget and page gaps. No fabricated costs or population benefit."},
+    {"collection":"utah-code","remaining":"No missing nonempty title export","assessment":"Future Title 16 is a heading-only source stub: annotation/projection accountability, not a download-completion opportunity.","evidence":"data/collectors/leads/publish/acceptance-west-ut-20260907-01.json#/completeness_review"}
+  ]
+}

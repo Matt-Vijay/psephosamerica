@@ -254,6 +254,17 @@ def sync_oregon(s: Store, a: Acquirer, limit: int | None = None, as_of: str | No
     order = sorted(CHAPTERS, key=lambda c: (c not in PRIORITY, CHAPTERS.index(c)))
     for chapter in order[:limit]:
         url = chapter_url(chapter)
+        if (
+            not a.refresh
+            and s.db.execute(
+                "SELECT 1 FROM inventories i JOIN documents d ON d.id=? "
+                "WHERE i.collection_id=? AND i.item=? AND i.status='indexed' "
+                "AND EXISTS (SELECT 1 FROM versions v WHERE v.document_id=d.id)",
+                ("ors:chapter:" + chapter.lstrip("0"), COLLECTION, chapter),
+            ).fetchone()
+        ):
+            # Accepted older projections remain intact; completing gaps is not reindexing.
+            continue
         try:
             raw = a.fetch(url, max_file_bytes=12 * 1024**2)
             title, units, metadata = chapter_units(s.artifact(raw.sha256), chapter, url)
