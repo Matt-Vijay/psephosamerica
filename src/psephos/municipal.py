@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import re
 import shutil
 import subprocess
@@ -109,8 +110,8 @@ def nyc_units(data: bytes, url: str) -> Iterator[Provision]:
             url=url,
             unit_kind="appendix",
             metadata={
-                "image_links": node.xpath(".//img/@src"),
                 "tables": len(node.xpath(".//table")),
+                "list_numbering": "Ordered item markers are source DOM positions, not publisher paragraph labels. External CSS numbering is not reconstructed; inspect source markup for explicit attributes.",
                 "warning": "Diagrams/maps require the original image/PDF; they are not converted to legal text.",
             },
             references=source_links(node, url),
@@ -145,7 +146,7 @@ def nyc_units(data: bytes, url: str) -> Iterator[Provision]:
                 "date_basis": "Publisher label Last Amended; not inferred from Drupal field name",
                 "chapter_url": url,
                 "tables": len(bodies[0].xpath(".//table")),
-                "image_links": bodies[0].xpath(".//img/@src"),
+                "list_numbering": "Ordered item markers are source DOM positions, not publisher paragraph labels. External CSS numbering is not reconstructed; inspect source markup for explicit attributes.",
             },
             references=source_links(wrapper, section_url),
         )
@@ -220,6 +221,42 @@ def sync_nyc(s: Store, a: Acquirer, limit: int | None, as_of: str | None) -> Non
             progress("nyc-zoning", item, count, new)
         except (ValueError, AcquisitionError) as exc:
             s.inventory("nyc-zoning", item, url, "failed", str(exc))
+
+
+def reindex_nyc(s: Store) -> dict[str, int]:
+    """Reproject retained NYC bytes offline; never overwrite old versions or their offsets."""
+    rows = s.db.execute(
+        "SELECT v.*,d.title,d.url FROM versions v JOIN documents d ON d.id=v.document_id "
+        "WHERE d.collection_id='nyc-zoning' AND v.parser LIKE 'nyc-1/%' ORDER BY v.rowid"
+    ).fetchall()
+    if not rows:
+        raise ValueError("No retained NYC source versions; acquire nyc first")
+    seen = set()
+    added = 0
+    for row in rows:
+        identity = (row["document_id"], row["artifact_sha"], row["member"], row["snapshot_date"])
+        if identity in seen:
+            continue
+        seen.add(identity)
+        _, _, new = s.ingest(
+            collection="nyc-zoning",
+            document=row["document_id"],
+            title=row["title"],
+            url=row["url"],
+            acquisition=row["acquisition_id"],
+            member=row["member"],
+            snapshot_date=row["snapshot_date"],
+            snapshot_basis=row["snapshot_basis"],
+            published_on=row["published_on"],
+            effective_on=row["effective_on"],
+            amended_on=row["amended_on"],
+            available_at=row["available_at"],
+            parser="nyc-1",
+            metadata=json.loads(row["metadata"]),
+            provisions=nyc_units(s.artifact(row["artifact_sha"]), row["url"]),
+        )
+        added += new
+    return {"source_versions": len(seen), "new_projection_versions": added, "downloaded_bytes": 0}
 
 
 def pdf_units(path: Path, document_key: str, citation: str, url: str) -> Iterator[Provision]:

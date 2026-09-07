@@ -28,6 +28,10 @@ def main() -> None:
         "--as-of", help="Acquire a source-supported historical snapshot when available"
     )
     commands.add_parser("status", help="Measured coverage, clocks, provenance, and failures")
+    reindex = commands.add_parser(
+        "reindex", help="Reproject retained source bytes offline; preserve old IDs"
+    )
+    reindex.add_argument("collection", choices=["nyc"])
     commands.add_parser(
         "audit", help="Rehash source bytes and check catalog/key/geometry integrity"
     )
@@ -41,6 +45,9 @@ def main() -> None:
     read.add_argument("--offset", type=int, default=0)
     read.add_argument("--length", type=int, default=10000)
     read.add_argument("--markup", action="store_true")
+    read.add_argument(
+        "--media-offset", type=int, default=0, help="Page source-media descriptors separately"
+    )
     find = commands.add_parser("find", help="Jump to literal text in an exact source provision")
     find.add_argument("key")
     find.add_argument("query")
@@ -79,6 +86,14 @@ def main() -> None:
                 limit=args.limit,
                 as_of=args.as_of,
             )
+        elif args.command == "reindex":
+            from .municipal import reindex_nyc
+
+            store = Store(args.data)
+            try:
+                result = reindex_nyc(store)
+            finally:
+                store.close()
         else:
             store = Store(args.data, readonly=True)
             try:
@@ -106,6 +121,7 @@ def main() -> None:
                         offset=args.offset,
                         length=args.length,
                         include_markup=args.markup,
+                        media_offset=args.media_offset,
                     )
                 elif args.command == "find":
                     result = reader.find(

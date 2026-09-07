@@ -11,6 +11,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+TEXT_PROJECTION = "text-3"
+
 SCHEMA = """
 PRAGMA foreign_keys=ON;
 CREATE TABLE IF NOT EXISTS artifacts (
@@ -243,7 +245,7 @@ class Store:
         available_at: str | None = None,
     ) -> tuple[str, int, bool]:
         """Atomic per-document import; no partly parsed document becomes retrievable."""
-        parser += "/text-2"
+        parser += "/" + TEXT_PROJECTION
         source = self.db.execute(
             "SELECT sha256,observed_at FROM acquisitions WHERE id=? AND status BETWEEN 200 AND 299",
             (acquisition,),

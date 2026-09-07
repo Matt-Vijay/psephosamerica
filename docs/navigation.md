@@ -4,11 +4,33 @@ These paths are exercised against retained sources by
 `python scripts/verify_corpus.py --data data --out verification.json`.
 [The recorded MCP receipt](navigation-verification.json) includes source-version
 IDs, hashes, offsets and timings. It is not an applicability or buildability test.
+The later [retrieval-review receipt](retrieval-review.json) verifies the list,
+media-pagination and exact-link fixes through the installed non-editable package:
+28 real MCP calls and complete correspondence across 117 retained NYC documents
+and 4,068 units. The earlier receipt's immutable IDs/offsets remain valid.
 
 `legal_find` searches literal text, case-insensitively with flexible whitespace.
 Use its immutable `id` and `read_offset` in `legal_read`, then follow `next_offset`
 for all qualifications. Offsets count Unicode characters in that exact text
 version, not bytes or markup. A search excerpt is only a navigation aid.
+
+Current HTML list projections preserve nesting and source order. `[ordered item N]`
+is a DOM position, **not** an inferred legal paragraph label: NYC's bare lists can
+use external CSS numbering that this projection does not reconstruct. Literal
+source labels and cross-references remain in the text; full attributes are in
+preserved markup. Do not assume a marker means `(a)`, `(i)`, or a cited paragraph.
+
+For already-retained NYC data, `psephos reindex nyc` reprojects local source bytes
+without network access. The `/text-3` parser generation has new immutable IDs;
+old IDs still return their old text and offsets. These are parser projections of
+the same source state, not additional legal snapshots. Repeating reindex adds
+nothing. Other collections are not reprojected by this command.
+
+Default reads consolidate raw image metadata into a single `media` list, with
+`media_count` and `media_next_offset`. Pass the latter as `media_offset` (CLI:
+`--media-offset`) to continue in pages of 20 descriptors. Inline image bytes are
+omitted from descriptors, not erased from source markup/artifacts. Text and markup
+have independent pagination; source-media warnings do not certify a transcription.
 
 ## NYC: general definition, scoped modification, district text
 
@@ -18,6 +40,9 @@ version, not bytes or markup. A search excerpt is only a navigation aid.
 2. `legal_find(key_or_id="nyc-zr:12-10", query="qualifying residential site", limit=1)`
    locates the retained General Definition labeled Last Amended 12/5/2024. Read
    from the returned offset; do not treat the opening conditions as the whole rule.
+   `legal_references` follows its explicit chapter-fragment links to acquired
+   `nyc-zr:23-21` and `nyc-zr:66-11` only when the section's publisher URL matches
+   that chapter and identifier. The original link/evidence and cutoffs are preserved.
 3. Read `nyc-zr:114-02` separately. A definition modified for a special district is
    not silently substituted into the general definition.
 4. `zoning_at(-73.985428, 40.748817, collection="nyc-zoning-gis")` returns the acquired

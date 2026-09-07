@@ -6,6 +6,7 @@ import argparse
 import asyncio
 import json
 import platform
+import re
 import sys
 import time
 from pathlib import Path
@@ -20,6 +21,50 @@ from psephos.geography import PDX_LAYER, zoning_at
 from psephos.retrieve import Reader
 from psephos.sources import USC_INDEX, checked_zip
 from psephos.store import Store, digest, utc_now
+
+
+def verify_nyc_reprojection(store):
+    """If both parser generations are retained, check their complete source-unit correspondence."""
+    pairs = store.db.execute(
+        "SELECT old.id AS old_id,new.id AS new_id,old.artifact_sha FROM versions old "
+        "JOIN versions new ON old.document_id=new.document_id AND old.artifact_sha=new.artifact_sha "
+        "AND old.member IS new.member AND old.snapshot_date IS new.snapshot_date "
+        "WHERE old.parser='nyc-1/text-2' AND new.parser='nyc-1/text-3' ORDER BY old.id"
+    ).fetchall()
+    units, artifacts = 0, set()
+
+    def content(text):
+        return " ".join(re.sub(r"(?m)^\s*(?:\[ordered item \d+\]|•) ?", "", text).split())
+
+    for pair in pairs:
+        if pair["artifact_sha"] not in artifacts:
+            store.artifact(pair["artifact_sha"])  # Rehash only the affected immutable sources.
+            artifacts.add(pair["artifact_sha"])
+        before, after = [
+            {
+                r["key"]: dict(r)
+                for r in store.db.execute("SELECT * FROM provisions WHERE version_id=?", (pair[k],))
+            }
+            for k in ("old_id", "new_id")
+        ]
+        assert before.keys() == after.keys()
+        for key, old in before.items():
+            new = after[key]
+            assert old["id"] != new["id"]
+            assert all(
+                old[k] == new[k]
+                for k in ("markup", "url", "parent_key", "citation", "heading", "unit_kind")
+            ), key
+            assert content(old["text"]) == content(new["text"]), key
+            units += 1
+    return {
+        "source_version_pairs": len(pairs),
+        "units_compared": units,
+        "affected_artifacts_rehashed": len(artifacts),
+        "result": "PASS" if pairs else "NOT_APPLICABLE: earlier parser generation not retained",
+        "checks": "Same source bytes, keys, markup, citations, hierarchy, URLs and unit kinds; normalized content unchanged after removing DOM-position markers. Distinct immutable IDs preserve each projection's offsets.",
+        "source_pair_digest": digest(json.dumps([dict(p) for p in pairs], sort_keys=True).encode()),
+    }
 
 
 def verify_publishers(store, allow_network):
@@ -179,9 +224,21 @@ async def verify_mcp(root):
         )
         found = jump["matches"][0]
         definition_text = await call(
-            "legal_read", key_or_id=jump["id"], offset=found["read_offset"], length=3000
+            "legal_read", key_or_id=jump["id"], offset=found["read_offset"], length=4200
         )
         assert "General Definition" in definition_text["text"]
+        assert "\n    [ordered item " in definition_text["text"]
+        assert "not publisher paragraph labels" in definition_text["metadata"]["list_numbering"]
+        definition_json = json.dumps(definition_text, ensure_ascii=False, indent=2).encode()
+        assert len(definition_json) < 32000 and b"data:image" not in definition_json
+        nyc_refs = await call("legal_references", provision_id=jump["id"], limit=100)
+        linked_sections = {
+            target["key"]
+            for ref in nyc_refs["references"]
+            if ref["resolution_basis"] == "exact_acquired_publisher_url"
+            for target in ref["acquired_targets"]
+        }
+        assert {"nyc-zr:23-21", "nyc-zr:66-11"} <= linked_sections
         scoped = await call("legal_read", key_or_id="nyc-zr:114-02", length=3000)
         assert "qualifying residential site" in scoped["text"].lower()
         index = await call(
@@ -221,6 +278,12 @@ async def verify_mcp(root):
                     "id": jump["id"],
                     "artifact_sha": jump["artifact_sha"],
                     "match_offset": found["match_offset"],
+                    "projection_parser": definition_text["parser"],
+                    "read_text_characters": len(definition_text["text"]),
+                    "read_json_utf8_bytes": len(definition_json),
+                    "media_descriptor_count": definition_text["media_count"],
+                    "nested_list_levels_verified": 3,
+                    "exact_publisher_links_verified": ["nyc-zr:23-21", "nyc-zr:66-11"],
                 },
                 "nyc_scoped_modification": scoped["id"],
                 "nyc_special_district_index": index["id"],
@@ -245,6 +308,7 @@ def main():
     started = time.monotonic()
     store = Store(args.data, readonly=not args.publisher_checks)
     try:
+        reprojection = verify_nyc_reprojection(store)
         publishers = verify_publishers(store, args.publisher_checks)
     finally:
         store.close()
@@ -253,6 +317,7 @@ def main():
         "status": "PASS",
         "python": platform.python_version(),
         "publishers": publishers,
+        "nyc_reprojection": reprojection,
         "mcp": asyncio.run(verify_mcp(args.data)),
     }
     report["seconds"] = round(time.monotonic() - started, 3)

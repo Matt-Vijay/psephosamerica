@@ -1,9 +1,11 @@
+import json
 from dataclasses import replace
 
 import pytest
 from conftest import retain
 
 from psephos.audit import audit
+from psephos.municipal import nyc_units, reindex_nyc
 from psephos.retrieve import Reader
 from psephos.store import Provision, Reference, Store
 
@@ -186,6 +188,140 @@ def test_source_media_placeholders_survive_reader_projection(store):
         {"kind": "TipIn", "status": "not_transcribed", "acquired_receipt": None}
     ]
     assert audit(store)["media_bearing_units"] == [{"collection_id": "test", "units": 1}]
+
+
+def test_media_metadata_is_bounded_and_paginated_without_changing_source(store):
+    embedded = "data:image/png;base64," + "A" * 200000
+    locators = [embedded, *[f"https://example.gov/figure-{i}.png" for i in range(25)]]
+    markup = (
+        "<section><p>Full legal text.</p>"
+        + "".join(f'<img src="{u}"/>' for u in locators)
+        + "</section>"
+    )
+    source = retain(store, markup.encode())
+    store.ingest(
+        collection="test",
+        document="images",
+        title="Images",
+        url=source.url,
+        acquisition=source.id,
+        snapshot_basis="fixture",
+        parser="legacy-images",
+        provisions=[
+            Provision(
+                "images",
+                "Images",
+                "",
+                "Full legal text.",
+                markup,
+                source.url,
+                metadata={"image_links": locators},
+            )
+        ],
+    )
+    r = Reader(store)
+    first = r.read("images", length=4)
+    assert first["text"] == "Full" and first["next_offset"] == 4
+    assert len(first["media"]) == 20 and first["media_count"] == 26
+    assert first["media_next_offset"] == 20
+    assert "image_links" not in first["metadata"]
+    assert embedded not in json.dumps(first) and len(json.dumps(first)) < 20000
+    rest = r.read(first["id"], media_offset=first["media_next_offset"])
+    assert len(rest["media"]) == 6 and rest["media_next_offset"] is None
+    assert rest["text"] == "Full legal text."
+    retained = store.db.execute(
+        "SELECT markup FROM provisions WHERE id=?", (first["id"],)
+    ).fetchone()[0]
+    assert retained == markup and embedded in retained
+    with pytest.raises(ValueError):
+        r.read("images", media_offset=-1)
+
+
+def test_nyc_fragment_links_need_exact_acquired_publisher_path_and_cutoffs(store):
+    base = "https://zoningresolution.planning.nyc.gov"
+    chapter = base + "/article-ii/chapter-3"
+    urls = [
+        chapter + "#23-21",
+        chapter + "/23-21",
+        base + "/article-vi/chapter-6#23-21",
+        "https://example.gov/article-ii/chapter-3#23-21",
+    ]
+    refs = tuple(Reference(u, "publisher_link", "23-21", f'<a href="{u}">23-21</a>') for u in urls)
+    ingest(store, "Read section 23-21", refs=refs)
+    target = retain(store, b"Acquired target", "2026-02-01T00:00:00Z")
+    store.ingest(
+        collection="test",
+        document="nyc-target",
+        title="Target",
+        url=chapter,
+        acquisition=target.id,
+        snapshot_basis="fixture",
+        snapshot_date="2025-02-01",
+        parser="nyc",
+        provisions=[
+            Provision("nyc-zr:23-21", "NYC 23-21", "", "Acquired target", "", chapter + "/23-21")
+        ],
+    )
+    r = Reader(store)
+    source_id = r.read("key")["id"]
+    result = {e["target"]: e for e in r.references(source_id)["references"]}
+    for u in urls[:2]:
+        assert result[u]["acquired_targets"][0]["key"] == "nyc-zr:23-21"
+        assert result[u]["resolution_basis"] == "exact_acquired_publisher_url"
+        assert result[u]["evidence"] == f'<a href="{u}">23-21</a>'
+    assert all(not result[u]["acquired_targets"] for u in urls[2:])
+    for cutoff in ({"as_of": "2025-01-31"}, {"observation_cutoff": "2026-01-31T00:00:00Z"}):
+        assert not any(
+            e["acquired_targets"] for e in r.references(source_id, **cutoff)["references"]
+        )
+
+
+def test_offline_nyc_reindex_preserves_old_offsets_and_is_idempotent(store, monkeypatch):
+    url = "https://zoningresolution.planning.nyc.gov/article-i/chapter-2"
+    raw = b"""<html><main><article class="node--type-section" data-section="12-10" about="/article-i/chapter-2/12-10">
+    <div class="section-header-wrapper"><h3>Terms</h3></div>
+    <div class="sec-body"><ol><li>first condition</li><li>needle</li></ol></div>
+    </article></main></html>"""
+    source = retain(store, raw)
+    store.collection(
+        "nyc-zoning",
+        ("us", "United States", "federal", None),
+        name="NYC fixture",
+        authority="Fixture",
+        kind="code",
+        homepage=url,
+        source_status="fixture",
+        access="offline",
+    )
+    unit = next(nyc_units(raw, url))
+    old_text = "12-10 — Terms\nfirst condition\nneedle"
+    with monkeypatch.context() as old:
+        old.setattr("psephos.store.TEXT_PROJECTION", "text-2")
+        store.ingest(
+            collection="nyc-zoning",
+            document="nyc-document",
+            title="Terms",
+            url=url,
+            acquisition=source.id,
+            snapshot_date="2025-01-01",
+            snapshot_basis="fixture",
+            parser="nyc-1",
+            provisions=[replace(unit, text=old_text)],
+        )
+    reader = Reader(store)
+    before = reader.find(unit.key, "needle")
+    assert reindex_nyc(store) == {
+        "source_versions": 1,
+        "new_projection_versions": 1,
+        "downloaded_bytes": 0,
+    }
+    after = reader.find(unit.key, "needle")
+    assert after["id"] != before["id"] and after["artifact_sha"] == before["artifact_sha"]
+    assert after["matches"][0]["match_offset"] > before["matches"][0]["match_offset"]
+    assert reader.read(before["id"])["text"] == old_text
+    assert not reader.read(after["id"], as_of="2024-12-31")["found"]
+    assert reindex_nyc(store)["new_projection_versions"] == 0
+    assert store.db.execute("SELECT count(*) FROM acquisitions").fetchone()[0] == 1
 
 
 def test_pdf_running_header_does_not_outrank_substantive_page(store):

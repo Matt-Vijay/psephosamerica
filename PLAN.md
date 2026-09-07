@@ -20,5 +20,6 @@ Completed continuation: literal phrase navigation, source-guided NYC/Portland
 workflows and the bounded regional collection wave. All accepted batches are
 published, the writer is quiescent, and held/blocked stores remain isolated.
 See docs/collection-wave.md for the measured result and limitations. Final retrieval
-review targets bounded metadata, source list hierarchy and exact publisher links;
-it does not restart collection or add a legal applicability engine.
+review fixed bounded image metadata, source list hierarchy and exact publisher links;
+docs/retrieval-review.json records the verification. No collection restart or legal
+applicability engine was added.

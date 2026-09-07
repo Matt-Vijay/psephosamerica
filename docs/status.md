@@ -84,3 +84,10 @@ from isolated source stores and rehashed the entire expanded catalog. The
 from the baseline above. Held and blocked states remain separate. Whole-source
 inventory, readable text, mixed PDF pages and current legal effect are different
 claims. No population-coverage percentage is asserted.
+
+The subsequent [retrieval review](retrieval-review.json) corrects list structure,
+bounded image metadata and exact NYC links, with 41 focused tests and an installed
+wheel/MCP check. Reindexing adds 117 parser projections while preserving all old IDs,
+source bytes and normalized legal content; it adds no legal snapshots or latest
+source units. The [California reuse correction](sources.md#california-reuse-correction)
+is an annotation addendum, not a rewrite of frozen acquisition/publication evidence.

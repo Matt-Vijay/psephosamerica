@@ -245,8 +245,8 @@ def register(store: Store) -> None:
             "interactive_site": "robots disallows all automated access; not fetched",
             "coverage": "Codes and Constitution tables only; session bills not imported",
             "update_gap": "Only retained session baseline imported; weekday updates not applied. Not current-law certification.",
-            "reuse_basis": "Official README documents local database loading. GOV 10248(a)(9)-(10), (e) require public electronic Code/Constitution access without fee; (g) does not relinquish California copyright/proprietary interests. No unrestricted license inferred.",
-            "reuse_evidence": "Cal. GOV § 10248; source_fields in the imported provision identify the native version and LOB member.",
+            "reuse_basis": "GOV 10248.5 places information made public under 10248 in the public domain, expressly overriding 10248(g). Codes and Constitution are listed in 10248(a)(9)-(10). This scoped rule does not authorize access bypass or license unrelated third-party material or repository software.",
+            "reuse_evidence": "Retained Cal. GOV §§ 10248 and 10248.5; native version/LOB identities in source_fields. Enactment: https://www.leginfo.ca.gov/pub/15-16/bill/asm/ab_0851-0900/ab_884_bill_20160922_chaptered.pdf (2016 Ch. 441, Sec. 2).",
         },
     )
 

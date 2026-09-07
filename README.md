@@ -40,7 +40,8 @@ in your MCP client's configuration, for example:
 Start with `legal_coverage`, then `legal_search` → `legal_read`. Use `legal_find`
 to jump to literal text inside long provisions. Other tools are `legal_versions`,
 `legal_references`, `source_receipt`, and `zoning_at`. Tools have
-bounded inputs/outputs and cannot execute SQL, fetch URLs, or read arbitrary files.
+bounded query/text-page sizes, explicit continuation, and cannot execute SQL,
+fetch URLs, or read arbitrary files.
 Publisher text is untrusted content, never an instruction to the client agent.
 See the verified [NYC and Portland reading workflows](docs/navigation.md).
 
@@ -80,6 +81,7 @@ inventories and verification sources. The derived SQLite catalog is approximatel
 .venv/bin/psephos sync uscode ecfr dc texas nyc portland nyc-gis portland-gis
 .venv/bin/psephos sync ecfr --as-of 2024-01-01 --limit 3
 .venv/bin/psephos sync portland-guides
+.venv/bin/psephos reindex nyc  # Offline parser update of retained NYC bytes; old IDs survive.
 .venv/bin/psephos status
 .venv/bin/psephos zoning -122.6765 45.5231 --collection portland-zoning-gis
 .venv/bin/psephos read 'dc-code:§42-3505.01'

@@ -1,7 +1,8 @@
 # Publisher boundaries
 
-Source URLs, bytes, hashes, HTTP headers and acquisition clocks are in
-[source-manifest.json](source-manifest.json). All raw bytes are local and ignored by
+Initial source URLs, bytes, hashes, HTTP headers and acquisition clocks are in
+[source-manifest.json](source-manifest.json). The [collection-wave receipt](collection-wave.json)
+identifies the later complete local manifest. All raw bytes are local and ignored by
 Git. Metadata-only publications are labeled as such. Public access is not a blanket
 permission to redistribute every map, image or derivative dataset.
 
@@ -84,19 +85,40 @@ describes default PDDL except where overridden, but is visibly watermarked **DRA
 The acquisition stores that exact evidence; it does not treat the PDF as a conclusive
 redistribution license. Confirm operative terms before redistributing a corpus.
 
-## Next coherent coverage option — not ingested
+## Later state collection
 
-Oregon would supply the state-law layer above Portland's city sources. The
+The [completed wave](collection-wave.md) adds bounded state sources, with exact
+inventory states and mixed retrieval-unit counts kept distinct. Oregon now supplies
+a bounded state-law tranche above Portland's city sources. The
 [2025 ORS index](https://www.oregonlegislature.gov/bills_laws/Pages/ORS.aspx) expressly
 excludes 2025 special-session and 2026 regular-session changes, and distinguishes
 online text from the official printed edition. Its
 [update inventory](https://www.oregonlegislature.gov/lc/Pages/ORSupdate.aspx) and
 [Chapter 197 HTML](https://www.oregonlegislature.gov/bills_laws/ors/ors197.html) expose
-update warnings and session-law links. A future adapter should preserve those
-warnings, statutory notes and source links, not claim to consolidate current law.
+update warnings and session-law links. The adapter preserves those warnings,
+statutory notes and source links; it does not consolidate current law.
 
 Oregon administrative-rule annual compilations are a separate, unimplemented lead.
 The coordination audit encountered HTTP 200 with a cybersecurity block page at an
 annual endpoint, not usable source data. No access bypass, credential request,
-purchase or Oregon corpus acquisition was performed in this milestone. California
-bulk data and Washington publisher services are also leads, not acquired coverage.
+purchase or administrative-rule acquisition was performed. The accepted Oregon
+tranche is ORS text, not that blocked administrative-rule source. California bulk
+Code/Constitution tables and a Washington RCW tranche were separately accepted.
+
+### California reuse correction
+
+The retained GOV §10248.5 explicitly overrides §10248(g)'s proprietary reservation
+for information the Legislative Counsel makes public under §10248. The latter's
+subdivisions (a)(9)–(10) list the California Codes and Constitution. The scoped
+public-domain rule is also established in the official
+[2016 chaptered AB 884, Chapter 441, section 2](https://www.leginfo.ca.gov/pub/15-16/bill/asm/ab_0851-0900/ab_884_bill_20160922_chaptered.pdf).
+The original collector review cited §10248(g) alone and was incomplete. The adapter
+and current catalog annotation are corrected; frozen acceptance evidence is not
+rewritten. A local addendum preserves the prior annotation and its correction.
+
+Exact retained evidence: provision `e8c9fb085e6ef2c463795ed03ee9a546` (GOV §10248.5),
+from bulk artifact SHA-256
+`830a8445a3107840604f7a719ad2b71c2da86040f39b92e87439c30fef563491`.
+This source-specific rule does not license unrelated third-party content or this
+repository's software, authorize access bypass, or establish certified/current
+legal text. No external publication of the retained corpus is requested or performed.

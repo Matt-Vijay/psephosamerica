@@ -6,10 +6,11 @@ import json
 import re
 from datetime import UTC, date, datetime
 from typing import Any
+from urllib.parse import urlsplit
 
 from lxml import etree
 
-from .parse import media_links, xml_root
+from .parse import media_links, source_medium, xml_root
 from .store import Store
 
 TEMPORAL_LIMIT = (
@@ -346,25 +347,40 @@ class Reader:
         offset: int = 0,
         length: int = 10000,
         include_markup: bool = False,
+        media_offset: int = 0,
     ) -> dict[str, Any]:
-        if offset < 0 or not 1 <= length <= 24000:
-            raise ValueError("offset must be nonnegative; length must be 1..24000")
+        if offset < 0 or media_offset < 0 or not 1 <= length <= 24000:
+            raise ValueError("offsets must be nonnegative; length must be 1..24000")
         result = self._locate(key_or_id, as_of=as_of, observation_cutoff=observation_cutoff)
         if not result["found"]:
             return result
-        result["media"] = list(result["metadata"].get("media", []))
+        # Old parsers duplicated raw image attributes (including base64) in metadata.
+        # One paginated descriptor list is sufficient; immutable source markup is untouched.
+        media = list(result["metadata"].pop("media", []))
+        legacy_images = result["metadata"].pop("image_links", [])
         result["text_completeness"] = result["metadata"].get(
             "text_quality", "publisher_text_projection"
         )
         if result["markup"]:
             try:
                 for medium in media_links(xml_root(result["markup"].encode()), result["url"]):
-                    if medium not in result["media"]:
-                        result["media"].append(medium)
+                    if medium not in media:
+                        media.append(medium)
             except (ValueError, etree.XMLSyntaxError):
                 result["text_completeness"] = "markup_inspection_warning"
-        if result["media"]:
+        for locator in legacy_images:
+            medium = source_medium(locator, result["url"])
+            if not any(m.get("source_locator") == medium["source_locator"] for m in media):
+                media.append(medium)
+        if media:
             result["text_completeness"] = "incomplete_without_source_media"
+        result["media"] = media[media_offset : media_offset + 20]
+        result["media_count"] = len(media)
+        result["media_next_offset"] = media_offset + 20 if media_offset + 20 < len(media) else None
+        result["media_offset"] = media_offset
+        result["media_semantics"] = (
+            "Distinct source descriptors, 20 per page. Embedded image bytes and oversized attributes stay in paginated markup/original artifacts; metadata image lists are consolidated here."
+        )
         media_cutoff = cutoff_observation(observation_cutoff)
         for medium in result["media"]:
             receipt = self.db.execute(
@@ -430,14 +446,45 @@ class Reader:
             target = (
                 "usc:" + ref["target"] if ref["target"].startswith("/us/usc/") else ref["target"]
             )
+            expected_url = None
+            # Other publishers' malformed URLs are still evidence, not a reason to fail a read.
+            link = urlsplit(
+                ref["target"]
+                if ref["target"].startswith("https://zoningresolution.planning.nyc.gov/")
+                else ""
+            )
+            if (
+                link.scheme == "https"
+                and link.netloc == "zoningresolution.planning.nyc.gov"
+                and not link.query
+            ):
+                if (
+                    link.fragment
+                    and re.fullmatch(r"\d{2,3}-\d{2,3}", link.fragment)
+                    and re.fullmatch(r"/article-[ivx]+/chapter-\d+", link.path)
+                ):
+                    target = "nyc-zr:" + link.fragment
+                    expected_url = f"https://{link.netloc}{link.path}/{link.fragment}"
+                elif not link.fragment and re.fullmatch(
+                    r"/article-[ivx]+/chapter-\d+/\d{2,3}-\d{2,3}", link.path
+                ):
+                    target = "nyc-zr:" + link.path.rsplit("/", 1)[1]
+                    expected_url = ref["target"]
+                elif not link.fragment and link.path.startswith("/appendix-"):
+                    target = "nyc-zr:" + link.path
+                    expected_url = ref["target"]
             ref["acquired_targets"] = [
                 dict(r)
                 for r in self.db.execute(
                     prefix + "SELECT p.id,p.key,p.citation,v.snapshot_date FROM provisions p "
-                    "JOIN chosen v ON v.id=p.version_id WHERE p.key=? LIMIT 3",
-                    (*params, target),
+                    "JOIN chosen v ON v.id=p.version_id WHERE p.key=? "
+                    "AND (? IS NULL OR p.url=?) LIMIT 3",
+                    (*params, target, expected_url, expected_url),
                 )
             ]
+            ref["resolution_basis"] = (
+                "exact_acquired_publisher_url" if expected_url else "exact_acquired_source_key"
+            )
         return {
             "references": references,
             "next_offset": offset + limit if len(rows) > limit else None,

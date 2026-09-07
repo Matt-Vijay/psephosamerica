@@ -58,10 +58,27 @@ def xml_root(data: bytes) -> etree._Element:
 
 
 def readable(node: etree._Element) -> str:
-    """Keep paragraph/row boundaries and inline punctuation; XML is retained for full fidelity."""
+    """Keep source blocks and list nesting; DOM item positions are not legal paragraph labels."""
+    lines: list[str] = []
     parts: list[str] = []
+    line_indent = 0
 
-    def walk(element: etree._Element) -> None:
+    def flush() -> None:
+        line = re.sub(r"[^\S\t]+", " ", "".join(parts)).strip()
+        if line:
+            lines.append("  " * line_indent + line)
+        parts.clear()
+
+    def emit(text: str, indent: int) -> None:
+        nonlocal line_indent
+        for index, line in enumerate(text.replace("\r\n", "\n").replace("\r", "\n").split("\n")):
+            if index:
+                flush()
+            if not parts:
+                line_indent = indent
+            parts.append(line)
+
+    def walk(element: etree._Element, indent: int = 0) -> None:
         tag = local_name(element).lower()
         if not tag:
             return
@@ -72,26 +89,38 @@ def readable(node: etree._Element) -> str:
                 or child_text(element, "GID")
                 or "see source markup"
             )
-            if locator.startswith("data:"):
+            if locator.lstrip().lower().startswith("data:"):
                 locator = "embedded source image"
-            parts.append(f"\n[Source media: {locator}; wording/figure not transcribed.]\n")
+            flush()
+            emit(f"[Source media: {locator}; wording/figure not transcribed.]", indent)
+            flush()
             return
         if tag in BLOCKS:
-            parts.append("\n")
+            flush()
         elif tag in {"td", "th", "entry"}:
-            parts.append("\t")
+            emit("\t", indent)
+        parent = element.getparent()
+        if tag == "li" and parent is not None and local_name(parent).lower() in {"ol", "ul"}:
+            # Bare ol elements can use external publisher CSS counters. Never guess (a)/(i)
+            # from nesting depth; retain order with explicitly non-citation position markers.
+            position = 1 + sum(
+                local_name(s).lower() == "li" for s in element.itersiblings(preceding=True)
+            )
+            marker = f"[ordered item {position}]" if local_name(parent).lower() == "ol" else "•"
+            emit(marker + " ", indent)
+            indent += 1
         if element.text:
-            parts.append(element.text)
+            emit(element.text, indent)
         for child in element:
-            walk(child)
+            walk(child, indent)
             if child.tail:
-                parts.append(child.tail)
+                emit(child.tail, indent)
         if tag in BLOCKS:
-            parts.append("\n")
+            flush()
 
     walk(node)
-    lines = [re.sub(r"[^\S\n\t]+", " ", line).strip() for line in "".join(parts).splitlines()]
-    return "\n".join(line for line in lines if line)
+    flush()
+    return "\n".join(lines)
 
 
 def child_text(node: etree._Element, name: str) -> str:
@@ -109,17 +138,29 @@ def media_links(node: etree._Element, base_url: str) -> list[dict[str, str]]:
         if tag not in {"img", "graphic", "gph"}:
             continue
         locator = element.get("src") or element.get("href") or child_text(element, "GID")
-        result.append(
-            {
-                "source_locator": locator if not locator.startswith("data:") else "embedded image",
-                "url": urljoin(base_url, locator)
-                if locator and not locator.startswith("data:")
-                else "",
-                "alt": element.get("alt", ""),
-                "status": "not_transcribed; locator not necessarily fetchable",
-            }
-        )
+        result.append(source_medium(locator, base_url, element.get("alt", "")))
     return result
+
+
+def source_medium(locator: str, base_url: str, alt: str = "") -> dict[str, str]:
+    """Bound image descriptors, never inline image bytes. Full attributes stay in markup."""
+    embedded = locator.lstrip().lower().startswith("data:")
+    long_locator = len(locator) > 2048
+    return {
+        "source_locator": "embedded image"
+        if embedded
+        else "see source markup"
+        if long_locator
+        else locator,
+        "url": urljoin(base_url, locator) if locator and not embedded and not long_locator else "",
+        "alt": alt[:1024],
+        "status": "not_transcribed; locator not necessarily fetchable",
+        **(
+            {"descriptor_warning": "Oversized attributes omitted; inspect paginated source markup."}
+            if long_locator or len(alt) > 1024
+            else {}
+        ),
+    }
 
 
 def source_links(node: etree._Element, base_url: str) -> tuple[Reference, ...]:

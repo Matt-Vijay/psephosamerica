@@ -69,10 +69,12 @@ def create_server(root: Path) -> FastMCP:
         offset: int = 0,
         length: int = 10000,
         include_markup: bool = False,
+        media_offset: int = 0,
     ) -> dict[str, Any]:
         """Read a provision with hierarchy, neighbors, source links, clocks, and raw-artifact hash.
 
         Follow next_offset for long sections; preserved markup has its own pagination.
+        Media descriptors are separate pages of 20; follow media_next_offset with media_offset.
         Source sections, definitions, exceptions, tables, and notes are not summarized away.
         A PDF page unit is explicitly marked and is not claimed to be one complete legal provision.
         """
@@ -84,6 +86,7 @@ def create_server(root: Path) -> FastMCP:
                 offset=offset,
                 length=length,
                 include_markup=include_markup,
+                media_offset=media_offset,
             )
 
     @server.tool()

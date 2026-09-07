@@ -74,6 +74,22 @@ def test_nyc_embedded_phantom_article_is_not_another_section():
     assert "Preserved words" in units[0].text
 
 
+def test_nested_legal_lists_keep_structure_without_guessing_css_labels():
+    # NYC's retained definition has bare ol/li, with external CSS labels unavailable.
+    root = xml_root(b"""<section><p>Conditions:</p><ol><li>Residential, if:
+    <ol><li>all of:<ol><li>area;</li><li>frontage;</li></ol>and a qualification.</li>
+    <li>an alternative.</li></ol></li><li>Commercial; see (b)(1).</li></ol>
+    <p>Outside the list.</p></section>""")
+    assert readable(root) == (
+        "Conditions:\n[ordered item 1] Residential, if:\n"
+        "  [ordered item 1] all of:\n    [ordered item 1] area;\n"
+        "    [ordered item 2] frontage;\n    and a qualification.\n"
+        "  [ordered item 2] an alternative.\n"
+        "[ordered item 2] Commercial; see (b)(1).\nOutside the list."
+    )
+    assert not root.xpath(".//*[@type]")  # No invented (a)/(i) source labels.
+
+
 def test_portland_guide_is_source_guidance_not_a_codified_unit():
     data = b"""<html><nav>Not source content</nav><main><h1>Overlay Zones</h1>
     <article><p>Maps do not show all restrictions.</p><ul><li>d - Design Overlay Zone
