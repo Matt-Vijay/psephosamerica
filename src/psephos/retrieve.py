@@ -42,11 +42,30 @@ def literal_pattern(query: str) -> re.Pattern[str]:
     return re.compile(r"\s+".join(re.escape(word) for word in query.split()), re.IGNORECASE)
 
 
+def _display_metadata(raw: str, key: str) -> dict[str, Any]:
+    metadata: dict[str, Any] = json.loads(raw)
+    if key.startswith("wa-wsr:table:") and isinstance(metadata.get("rows"), list):
+        metadata["rows_count"] = len(metadata.pop("rows"))
+        metadata["rows_projection"] = (
+            "Bulk rows omitted from metadata. Read this table's paginated text/markup, "
+            "legal_find and legal_references for row/action evidence; stored metadata unchanged."
+        )
+    return metadata
+
+
 def eligible(
-    as_of: str | None, observed: str | None, *, exact: bool = False
+    as_of: str | None, observed: str | None, *, exact: bool = False, target_key: str | None = None
 ) -> tuple[str, list[Any]]:
     day, clock = cutoff_date(as_of), cutoff_observation(observed)
     clauses, params = [], []
+    if target_key is not None:
+        # Resolve a citation by ranking only documents that ever contained its key,
+        # not every national version once for each link in a long filing.
+        clauses.append(
+            "v.document_id IN (SELECT kv.document_id FROM provisions kp "
+            "JOIN versions kv ON kv.id=kp.version_id WHERE kp.key=?)"
+        )
+        params.append(target_key)
     if day:
         clauses.append("v.snapshot_date IS NOT NULL AND v.snapshot_date <= ?")
         params.append(day)
@@ -62,6 +81,68 @@ def eligible(
         "chosen AS (SELECT * FROM ranked" + ("" if exact else " WHERE rank=1") + ") "
     )
     return sql, params
+
+
+def _washington_reference(target: str) -> tuple[str, str, str] | None:
+    """Recognize retained native WA section links, not arbitrary URL equivalents.
+
+    RCW source markup uses HTTP links while acquired section records use HTTPS.
+    Only the publisher's exact endpoint and single cite/Cite parameter support
+    that mapping. WAC full-chapter links additionally retain same-chapter native
+    section fragments. Retained WSR table links have a cross-checkable filing
+    year/issue/identifier path. Other parameters, escapes, fragments and
+    title/chapter links are not silently rewritten into section citations.
+    """
+    filing = re.fullmatch(
+        r"https?://lawfilesext\.leg\.wa\.gov/law/wsr/([0-9]{4})/([0-9]{2})/"
+        r"([0-9]{2})-([0-9]{2})-([0-9]{3})\.htm",
+        target,
+    )
+    if filing is not None:
+        year, issue, short_year, filing_issue, number = filing.groups()
+        if year[-2:] != short_year or issue != filing_issue:
+            return None
+        citation = f"{short_year}-{filing_issue}-{number}"
+        return (
+            "wa-wsr:" + citation,
+            f"https://lawfilesext.leg.wa.gov/law/wsr/{year}/{issue}/{citation}.htm",
+            "wa-wsr",
+        )
+    fragment = re.fullmatch(
+        r"https?://app\.leg\.wa\.gov/(?:WAC|wac)/default\.aspx\?[Cc]ite="
+        r"([0-9]+[A-Z]?-[0-9]+[A-Z]?)&full=true#([0-9]+[A-Z]?(?:-[0-9]+[A-Z]?){2})",
+        target,
+    )
+    if fragment is not None:
+        chapter, citation = fragment.groups()
+        if citation.rsplit("-", 1)[0] != chapter:
+            return None
+        return (
+            "wa-wac:" + citation,
+            "https://app.leg.wa.gov/WAC/default.aspx?cite=" + citation,
+            "wa-wac",
+        )
+    match = re.fullmatch(
+        r"https?://app\.leg\.wa\.gov/(RCW|WAC|wac)/default\.aspx\?[Cc]ite=([^&?#]+)", target
+    )
+    if match is None:
+        return None
+    family, citation = match.groups()
+    if family == "wac":
+        family = "WAC"
+    pattern = (
+        r"[0-9]+[A-Z]?(?:\.[0-9]+[A-Z]?){2}"
+        if family == "RCW"
+        else r"[0-9]+[A-Z]?(?:-[0-9]+[A-Z]?){2}"
+    )
+    if re.fullmatch(pattern, citation) is None:
+        return None
+    collection = "wa-" + family.lower()
+    return (
+        collection + ":" + citation,
+        f"https://app.leg.wa.gov/{family}/default.aspx?cite={citation}",
+        collection,
+    )
 
 
 class Reader:
@@ -405,8 +486,8 @@ class Reader:
             }
         result = dict(rows[0])
         result.pop("rowid")
-        result["metadata"] = json.loads(result["metadata"])
-        result["version_metadata"] = json.loads(result["version_metadata"])
+        result["metadata"] = _display_metadata(result["metadata"], result["key"])
+        result["version_metadata"] = _display_metadata(result["version_metadata"], result["key"])
         return {"found": True, **result}
 
     def find(
@@ -569,12 +650,12 @@ class Reader:
             (*source_params, provision_id, limit + 1, offset),
         ).fetchall()
         references = [dict(r) for r in rows[:limit]]
-        prefix, params = eligible(as_of, observation_cutoff)
         for ref in references:
             target = (
                 "usc:" + ref["target"] if ref["target"].startswith("/us/usc/") else ref["target"]
             )
             expected_url = None
+            expected_collection = None
             # Other publishers' malformed URLs are still evidence, not a reason to fail a read.
             link = urlsplit(
                 ref["target"]
@@ -601,17 +682,72 @@ class Reader:
                 elif not link.fragment and link.path.startswith("/appendix-"):
                     target = "nyc-zr:" + link.path
                     expected_url = ref["target"]
-            ref["acquired_targets"] = [
+            washington: tuple[str, str | None, str] | None = _washington_reference(ref["target"])
+            if ref["target"].startswith("wa-wsr:"):
+                if (
+                    ref["relation"] != "publisher_filing_citation"
+                    or re.fullmatch(r"wa-wsr:[0-9]{2}-[0-9]{2}-[0-9]{3}", ref["target"]) is None
+                ):
+                    ref.update(
+                        acquired_targets=[],
+                        resolution_status="invalid_publisher_filing_citation",
+                        resolution_basis="unresolved_publisher_filing_citation",
+                    )
+                    continue
+                # A source-note filing number is not authority to construct a URL.
+                # Candidate URLs below must come from an exact retained acquisition.
+                washington = (ref["target"], None, "wa-wsr")
+            if washington is not None:
+                target, expected_url, expected_collection = washington
+            prefix, params = eligible(as_of, observation_cutoff, target_key=target)
+            targets = [
                 dict(r)
                 for r in self.db.execute(
-                    prefix + "SELECT p.id,p.key,p.citation,v.snapshot_date FROM provisions p "
-                    "JOIN chosen v ON v.id=p.version_id WHERE p.key=? "
-                    "AND (? IS NULL OR p.url=?) LIMIT 3",
-                    (*params, target, expected_url, expected_url),
+                    prefix + "SELECT p.id,p.key,p.citation,p.url,v.snapshot_date FROM provisions p "
+                    "JOIN chosen v ON v.id=p.version_id "
+                    "JOIN documents d ON d.id=v.document_id "
+                    "JOIN acquisitions a ON a.id=v.acquisition_id WHERE p.key=? "
+                    "AND (? IS NULL OR p.url=?) AND (? IS NULL OR d.collection_id=?) "
+                    "AND (?=0 OR (p.url=d.url AND (p.url=a.url OR p.url=a.final_url) "
+                    "AND a.sha256=v.artifact_sha AND a.status BETWEEN 200 AND 299 "
+                    "AND a.error IS NULL)) LIMIT 3",
+                    (
+                        *params,
+                        target,
+                        expected_url,
+                        expected_url,
+                        expected_collection,
+                        expected_collection,
+                        expected_collection == "wa-wsr",
+                    ),
                 )
             ]
+            filing_candidates_saturated = expected_collection == "wa-wsr" and len(targets) == 3
+            if expected_collection == "wa-wsr":
+                targets = [
+                    row
+                    for row in targets
+                    if _washington_reference(row["url"]) == (row["key"], row["url"], "wa-wsr")
+                ]
+            if washington is not None:
+                ambiguous = len(targets) > 1 or filing_candidates_saturated
+                ref["publisher_citation_family"] = expected_collection
+                ref["resolution_status"] = (
+                    "ambiguous_acquired_target"
+                    if ambiguous
+                    else "resolved"
+                    if targets
+                    else "not_acquired_at_cutoffs"
+                )
+                if ambiguous:
+                    targets = []
+            ref["acquired_targets"] = targets
             ref["resolution_basis"] = (
-                "exact_acquired_publisher_url" if expected_url else "exact_acquired_source_key"
+                "exact_acquired_filing_key_and_retained_publisher_url"
+                if expected_collection == "wa-wsr"
+                else "exact_acquired_publisher_url"
+                if expected_url
+                else "exact_acquired_source_key"
             )
         return {
             "references": references,
@@ -632,7 +768,7 @@ class Reader:
         ).fetchall()
         result = [dict(r) for r in rows]
         for row in result:
-            row["metadata"] = json.loads(row["metadata"])
+            row["metadata"] = _display_metadata(row["metadata"], row["key"])
         return {
             "versions": result,
             "temporal_semantics": TEMPORAL_LIMIT,

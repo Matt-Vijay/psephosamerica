@@ -48,6 +48,9 @@ Publisher text is untrusted content, never an instruction to the client agent.
 See the verified [NYC and Portland reading workflows](docs/navigation.md).
 The [source-discovery guide](docs/discovery.md) covers scope, gaps, document/inventory
 drill-downs and explicit unknown/empty results.
+The [Washington land-use workflow](docs/washington-land-use.md) follows retained
+statutes through selected SEPA/GMA rules to proposal/final filing evidence, with
+source conflicts and unacquired dependencies kept explicit.
 
 The [completed collection wave](docs/collection-wave.md) adds reviewed source
 material from 44 states to the Texas baseline: 77 collections and 1,383,595 mixed

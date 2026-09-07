@@ -1,0 +1,725 @@
+{
+  "title": "Washington SEPA/GMA local reading checkpoint",
+  "status": "PASS",
+  "recorded_at": "2026-09-07 04:49:16 UTC",
+  "base_commit": "e9d679ad735dea7843a78ea545f38e99f6d9b5cb",
+  "scope": "Bounded current Washington source acquisition, exact parser preservation and offline reading/navigation; not legal applicability, historical reconstruction or statewide regulatory completeness.",
+  "measurements": {
+    "collections": [
+      {
+        "collection_id": "wa-rcw",
+        "documents": 1,
+        "units": 76
+      },
+      {
+        "collection_id": "wa-rulemaking-notices",
+        "documents": 1,
+        "units": 1
+      },
+      {
+        "collection_id": "wa-wac",
+        "documents": 9,
+        "units": 344
+      },
+      {
+        "collection_id": "wa-wsr",
+        "documents": 7,
+        "units": 7
+      }
+    ],
+    "unit_kinds": [
+      {
+        "collection_id": "wa-rcw",
+        "unit_kind": "chapter_notes",
+        "units": 1
+      },
+      {
+        "collection_id": "wa-rcw",
+        "unit_kind": "section",
+        "units": 75
+      },
+      {
+        "collection_id": "wa-rulemaking-notices",
+        "unit_kind": "publisher_notice",
+        "units": 1
+      },
+      {
+        "collection_id": "wa-wac",
+        "unit_kind": "chapter_notes",
+        "units": 9
+      },
+      {
+        "collection_id": "wa-wac",
+        "unit_kind": "section",
+        "units": 335
+      },
+      {
+        "collection_id": "wa-wsr",
+        "unit_kind": "filing_index",
+        "units": 4
+      },
+      {
+        "collection_id": "wa-wsr",
+        "unit_kind": "rulemaking_filing",
+        "units": 3
+      }
+    ],
+    "wac_inventory": [
+      {
+        "status": "ingested",
+        "items": 9
+      },
+      {
+        "status": "inventoried",
+        "items": 2
+      },
+      {
+        "status": "outside_scope",
+        "items": 216
+      }
+    ],
+    "filings": [
+      {
+        "key": "wa-wsr:25-13-090",
+        "type": "PROPOSED RULES",
+        "filed_on": "2025-06-16",
+        "deletion_spans": 171,
+        "underlined_spans": 310
+      },
+      {
+        "key": "wa-wsr:26-01-181",
+        "type": "PERMANENT RULES",
+        "filed_on": "2025-12-23",
+        "deletion_spans": 189,
+        "underlined_spans": 348
+      },
+      {
+        "key": "wa-wsr:26-10-066",
+        "type": "PERMANENT RULES",
+        "filed_on": "2026-05-05",
+        "deletion_spans": 0,
+        "underlined_spans": 1
+      }
+    ],
+    "retained_source_objects": 27,
+    "retained_source_bytes": 6208155,
+    "receipts": [
+      {
+        "id": 9914,
+        "url": "https://leg.wa.gov/state-laws-and-rules/state-rules-wac/",
+        "sha256": "b5fd5d889cb9e86957c7ac7cb5facc1e74475e79e0cd61f7cc1033e398a6b4d4",
+        "bytes": 44524,
+        "observed_at": "2026-09-07T04:13:55Z"
+      },
+      {
+        "id": 9915,
+        "url": "https://leg.wa.gov/state-laws-and-rules/state-rules-wac/past-versions-of-state-rules/",
+        "sha256": "f1662af5db4f7167ded04d25ed9bc8e3e71011d9be1654dac7e329b2eef06275",
+        "bytes": 69598,
+        "observed_at": "2026-09-07T04:13:56Z"
+      },
+      {
+        "id": 538,
+        "url": "https://leg.wa.gov/disclaimer/",
+        "sha256": "6163892496e176d71d32c4e286d4f42351394d5c0c419c4ccf778caa7a790beb",
+        "bytes": 42312,
+        "observed_at": "2026-09-07T00:43:25Z"
+      },
+      {
+        "id": 9917,
+        "url": "https://app.leg.wa.gov/WAC/default.aspx",
+        "sha256": "0ef72c036ccebc7e45526fe8625a7a7097736121d7e8824510adce2a0699f73d",
+        "bytes": 143767,
+        "observed_at": "2026-09-07T04:13:57Z"
+      },
+      {
+        "id": 9918,
+        "url": "https://app.leg.wa.gov/WAC/default.aspx?cite=197",
+        "sha256": "9d8ff0a2f70a4820d5050198db30fc0c3eeb478f948945680cc3c757b9956636",
+        "bytes": 107546,
+        "observed_at": "2026-09-07T04:13:58Z"
+      },
+      {
+        "id": 9919,
+        "url": "https://app.leg.wa.gov/WAC/default.aspx?cite=365",
+        "sha256": "3ae80131dc07c1a81f335a6c295c273c7fc7b52c1d01c9098b8111cd0b4184aa",
+        "bytes": 117062,
+        "observed_at": "2026-09-07T04:13:59Z"
+      },
+      {
+        "id": 9920,
+        "url": "https://app.leg.wa.gov/WAC/default.aspx?cite=197-11&full=true",
+        "sha256": "ed528bb80cc6f065e770aeeed6472150ad67e74dc240309fdae1399cd97077db",
+        "bytes": 730716,
+        "observed_at": "2026-09-07T04:14:06Z"
+      },
+      {
+        "id": 9946,
+        "url": "https://app.leg.wa.gov/WAC/default.aspx?cite=365-185&full=true",
+        "sha256": "8d21cdac2810649c0759c704eb1ed8244958b3be6a20b70267e9b41003ab975c",
+        "bytes": 122299,
+        "observed_at": "2026-09-07T04:28:45Z"
+      },
+      {
+        "id": 9947,
+        "url": "https://app.leg.wa.gov/WAC/default.aspx?cite=365-190&full=true",
+        "sha256": "8a6ce59287cfb7854a743f02b3c21a4f5e5c734ceb57014111a9cfebc49fb7f2",
+        "bytes": 210572,
+        "observed_at": "2026-09-07T04:28:46Z"
+      },
+      {
+        "id": 9948,
+        "url": "https://app.leg.wa.gov/WAC/default.aspx?cite=365-191&full=true",
+        "sha256": "f3f9f6e5d38b0258c14186a17d46b69567298de7cbe7712b83c62ae1df4d6990",
+        "bytes": 139811,
+        "observed_at": "2026-09-07T04:28:47Z"
+      },
+      {
+        "id": 9949,
+        "url": "https://app.leg.wa.gov/WAC/default.aspx?cite=365-195&full=true",
+        "sha256": "f80c9fac6690aaf182034136e8fc86a2fbc782bb812ddc633d55c951615c1b55",
+        "bytes": 196021,
+        "observed_at": "2026-09-07T04:28:48Z"
+      },
+      {
+        "id": 9950,
+        "url": "https://app.leg.wa.gov/WAC/default.aspx?cite=365-196&full=true",
+        "sha256": "c6212e774d58809a68d963fefcd579bd884f67953f2393210732f8765c772d3c",
+        "bytes": 1350269,
+        "observed_at": "2026-09-07T04:28:50Z"
+      },
+      {
+        "id": 9951,
+        "url": "https://app.leg.wa.gov/WAC/default.aspx?cite=365-197&full=true",
+        "sha256": "6e1652fa2a6ab65f527be2c2fe4d4a3312b0423db8689d1e7701a9333d1b3f13",
+        "bytes": 141342,
+        "observed_at": "2026-09-07T04:28:50Z"
+      },
+      {
+        "id": 9952,
+        "url": "https://app.leg.wa.gov/WAC/default.aspx?cite=365-198&full=true",
+        "sha256": "10b0a2b2fe29ab54a81f45aae32065d13fede65cb741f4b7ea0b3847136ae1a8",
+        "bytes": 135977,
+        "observed_at": "2026-09-07T04:28:51Z"
+      },
+      {
+        "id": 9923,
+        "url": "https://app.leg.wa.gov/WAC/default.aspx?cite=365-199&full=true",
+        "sha256": "0f714c6a3f34da141f15d6cefce07bbb42e4beb59288dcdb8c5a1bdb873d13b8",
+        "bytes": 178287,
+        "observed_at": "2026-09-07T04:15:22Z"
+      },
+      {
+        "id": 9953,
+        "url": "https://app.leg.wa.gov/RCW/default.aspx?cite=43.21C&full=true",
+        "sha256": "d682b7f7ccd8e10b873e400e2ecf1f7c2fa71fc715ac56d67fae9607e9af28e2",
+        "bytes": 408878,
+        "observed_at": "2026-09-07T04:28:53Z"
+      },
+      {
+        "id": 9921,
+        "url": "https://leg.wa.gov/state-laws-and-rules/washington-state-register/",
+        "sha256": "664c31ffa85583e0737f83ef2f882bcaaf0633a90316ab25d6d3dffe784c715a",
+        "bytes": 49921,
+        "observed_at": "2026-09-07T04:14:06Z"
+      },
+      {
+        "id": 9925,
+        "url": "https://lawfilesext.leg.wa.gov/law/wsr/2026/table-26.htm",
+        "sha256": "93d8a607d06f438550c95c7a871387b4bffd959ead522fd2e64279f6a3594214",
+        "bytes": 53471,
+        "observed_at": "2026-09-07T04:15:23Z"
+      },
+      {
+        "id": 9941,
+        "url": "https://leg.wa.gov/media/vvxb5flh/keytotable.htm",
+        "sha256": "c46291b8788b484a7dd1ca2039fa9b86ec5681861b979abaeebb46c3cabeb425",
+        "bytes": 6051,
+        "observed_at": "2026-09-07T04:20:51Z"
+      },
+      {
+        "id": 9930,
+        "url": "https://lawfilesext.leg.wa.gov/law/wsr/2025/tbl25-197.htm",
+        "sha256": "f453c4cca6f8ed1682cb4b34cbafe204444fb8c3d1ad327cc4a32611a8fa23d2",
+        "bytes": 1122,
+        "observed_at": "2026-09-07T04:16:18Z"
+      },
+      {
+        "id": 9929,
+        "url": "https://lawfilesext.leg.wa.gov/law/wsr/2025/tbl25-365.htm",
+        "sha256": "e407cc762e201dc98199941ae5310901f23ef7d407954f8eba893934bdb85cde",
+        "bytes": 66868,
+        "observed_at": "2026-09-07T04:16:17Z"
+      },
+      {
+        "id": 9931,
+        "url": "https://lawfilesext.leg.wa.gov/law/wsr/WsrByIssue.htm",
+        "sha256": "1adccf2c65a86c9a80dc675780501d6867724de0e8b0280e05d561ebd71d9ae2",
+        "bytes": 97560,
+        "observed_at": "2026-09-07T04:16:19Z"
+      },
+      {
+        "id": 9938,
+        "url": "https://lawfilesext.leg.wa.gov/law/wsr/2026/10/26-10.htm",
+        "sha256": "f9855b23244c2fd9eec25ce7e7a0730d9162e63018c51054f866030b8f509a93",
+        "bytes": 57327,
+        "observed_at": "2026-09-07T04:19:23Z"
+      },
+      {
+        "id": 9939,
+        "url": "https://lawfilesext.leg.wa.gov/law/wsr/2025/13/25-13-090.htm",
+        "sha256": "a79e86025147d496ea78911a81c624577920a942b0e89ab573c331f41a26badc",
+        "bytes": 782328,
+        "observed_at": "2026-09-07T04:19:24Z"
+      },
+      {
+        "id": 9943,
+        "url": "https://lawfilesext.leg.wa.gov/law/wsr/2026/01/26-01-181.htm",
+        "sha256": "1040cb88f37a7b1ab6d70bc73d3583e7ca7109473c434c3282674938f72c8d87",
+        "bytes": 804732,
+        "observed_at": "2026-09-07T04:20:54Z"
+      },
+      {
+        "id": 9944,
+        "url": "https://lawfilesext.leg.wa.gov/law/wsr/2026/10/26-10-066.htm",
+        "sha256": "31af313144870b74ae4251f4fa86840d27fd611e136c9674237b42b7edd8a6de",
+        "bytes": 8020,
+        "observed_at": "2026-09-07T04:20:54Z"
+      },
+      {
+        "id": 9927,
+        "url": "https://www.commerce.wa.gov/about/legislative/rulemaking/",
+        "sha256": "b96c3e758f2941045061adde1cf8b4f54a8801587bdac4d3e4d36a0f54226efa",
+        "bytes": 141774,
+        "observed_at": "2026-09-07T04:15:35Z"
+      }
+    ],
+    "new_acquisition_summary": [
+      {
+        "status": 200,
+        "requests": 27
+      },
+      {
+        "status": 301,
+        "requests": 2
+      },
+      {
+        "status": 404,
+        "requests": 12
+      }
+    ],
+    "new_retained_bytes": 6165979,
+    "exact_parser_truth": {
+      "documents": 13,
+      "units": 423,
+      "fields": "identity/text/markup/metadata/hierarchy/first-write reference evidence"
+    },
+    "unrelated_annotations_unchanged": true,
+    "offline_resume": {
+      "new_documents": 0,
+      "new_versions": 0,
+      "new_acquisitions": 0,
+      "downloaded_bytes": 0,
+      "network_transport": "raises on every attempted request",
+      "note": "Inventory checked_at may advance; source bytes and versions do not."
+    }
+  },
+  "acquisition": {
+    "command": ".venv/bin/psephos --data data sync washington-land-use",
+    "new_documents": 18,
+    "downloaded_this_run": 2705169,
+    "recorded_at": "2026-09-07T04:28:53Z",
+    "seconds": 10.2218,
+    "before_collection_metadata_sha256": {
+      "florida-statutes-2026": "11ec0efb6a6804adbba3dd6ab7df7b7d13ffb237e49bb94ad43a3c105abe136b",
+      "nj-statutes": "ae0b49e1e2c7020afcb4e789a5c88dbdbcb0ff46509207d1ef76d980246dec83",
+      "wa-rcw": "7a2b598748b26b5659d975d86e23ff19ab435402b45af2b3b8d330e2f52d9b94"
+    },
+    "preflight_acquisition_floor": 9912,
+    "source_receipt_sha256": "ce93d3d7afd9255e5094ec2363efde43ac0629d129fd37ecb0a19b72418c89e6",
+    "note": "One controlled writer using native official inventories. Source-byte totals include preflight/reused objects; driver download total is a distinct measure.",
+    "access_review": {
+      "robots_404": 11,
+      "obsolete_legend_404": 1,
+      "obsolete_legend_url": "https://www.leg.wa.gov/CodeReviser/Documents/KeyToTable.htm",
+      "retained_current_legend_url": "https://leg.wa.gov/media/vvxb5flh/keytotable.htm",
+      "interpretation": "404 robots used the existing no-policy rule. Missing legend resource was replaced by its discovered current official location; no denied access was bypassed. Publisher reuse notices retained, not a blanket redistribution license."
+    }
+  },
+  "verification_stages": {
+    "initial_full_path": {
+      "status": "PASS",
+      "recorded_at": "2026-09-07T04:37:00Z",
+      "command": ".venv/bin/python scripts/verify_washington.py --data data --check-resume --out data/washington-land-use/verification.json",
+      "receipt_sha256": "369c131caa2dca0a884c81674737b70676303c8e564efa1714bd60bb4c05a170",
+      "runtime_sha256": {
+        "src/psephos/washington_rules.py": "1548d76f72aaaf9a42b271a4053eaaa8af8fd031d4e9fb5de7b2ebcacb731acc",
+        "src/psephos/retrieve.py": "a6782f255148c314f02bada2b89e22ba1dab41b241f6f6d2dae75448b32ccbc9",
+        "scripts/verify_washington.py": "d1a5ec51aa6cf5e49aa05430b3247e3ca24b3226a42fdc842bc96906c4865581"
+      },
+      "mcp": {
+        "calls": [
+          {
+            "tool": "legal_coverage",
+            "arguments": {
+              "jurisdiction": "us-wa"
+            },
+            "seconds": 0.018607,
+            "bytes": 6562,
+            "sha256": "9bfe9720fcd7d31ac90ad653dfa270cdfddc3bba8ee1a33617d74a1b864bccde"
+          },
+          {
+            "tool": "legal_search",
+            "arguments": {
+              "query": "Content of environmental review",
+              "collection": "wa-wac",
+              "limit": 3
+            },
+            "seconds": 0.303374,
+            "bytes": 3953,
+            "sha256": "3293bcb301504d0816bc3375c9b1c3e1bb48d51137bb5f0ea8dc50734488259e"
+          },
+          {
+            "tool": "legal_read",
+            "arguments": {
+              "key_or_id": "wa-wac:197-11-060",
+              "length": 1000
+            },
+            "seconds": 0.183198,
+            "bytes": 6947,
+            "sha256": "7c68b7ddbfe3724677100171a21d7b1f8ccfece1caa3dc5e97768ba0e3b8bc7b"
+          },
+          {
+            "tool": "legal_find",
+            "arguments": {
+              "key_or_id": "4e95e0934e67ab1c4f520599b9893615",
+              "query": "Phased review is not appropriate",
+              "limit": 1
+            },
+            "seconds": 0.150833,
+            "bytes": 1805,
+            "sha256": "2d9f5aadfdc4a79395a1fb99940f7005971eb513a420cb0fe0f3c35c71ab53d3"
+          },
+          {
+            "tool": "legal_read",
+            "arguments": {
+              "key_or_id": "4e95e0934e67ab1c4f520599b9893615",
+              "offset": 6432,
+              "length": 1500
+            },
+            "seconds": 0.189233,
+            "bytes": 7447,
+            "sha256": "b1b8aad2cd12d42cf2f726d88d3c3cb8fabf811260c1d75f3a19cc932a318a5c"
+          },
+          {
+            "tool": "legal_references",
+            "arguments": {
+              "provision_id": "4e95e0934e67ab1c4f520599b9893615",
+              "limit": 50
+            },
+            "seconds": 0.036775,
+            "bytes": 9921,
+            "sha256": "ec3930300a8bb8de76b6e4e2312e5dfa5bdec6cbc4274579a30dcbafda590b31"
+          },
+          {
+            "tool": "legal_read",
+            "arguments": {
+              "key_or_id": "214d724293eeea4e474563c8e2738129",
+              "length": 1000
+            },
+            "seconds": 0.189666,
+            "bytes": 6316,
+            "sha256": "05b5cdeea7130fcf8ec10737a385068c5106d88a5f9dbaef35ad2fa969bd88e1"
+          },
+          {
+            "tool": "legal_read",
+            "arguments": {
+              "key_or_id": "922de34223d667f49b70119f9214193a",
+              "length": 1000
+            },
+            "seconds": 0.183528,
+            "bytes": 6954,
+            "sha256": "ce1941627f977afe76d9f86d099fe1383a763b1831c5de32761363df2f7b0d88"
+          },
+          {
+            "tool": "legal_read",
+            "arguments": {
+              "key_or_id": "wa-wac:365-195-900",
+              "length": 1000
+            },
+            "seconds": 0.18798,
+            "bytes": 7729,
+            "sha256": "cc9a674a3a91252457afc9199209b9b7b82140f79d135db4a3fb1a8704b34ad4"
+          },
+          {
+            "tool": "legal_references",
+            "arguments": {
+              "provision_id": "33d2fd72af7e09e5b212ff5c2a14eca6",
+              "limit": 50
+            },
+            "seconds": 0.037155,
+            "bytes": 14764,
+            "sha256": "d627d199da69b07e7048989ba80b2b03b4a1bfb6ea25cc164b5a3e711c392868"
+          },
+          {
+            "tool": "legal_read",
+            "arguments": {
+              "key_or_id": "e95366db3b34e76f1979a75c3afffa43",
+              "length": 2500
+            },
+            "seconds": 0.191019,
+            "bytes": 9839,
+            "sha256": "a9c935b6fdc69aa98d72b57d45295d8af32e90448e160844e4decbf039306652"
+          },
+          {
+            "tool": "legal_references",
+            "arguments": {
+              "provision_id": "e95366db3b34e76f1979a75c3afffa43",
+              "limit": 100
+            },
+            "seconds": 0.045381,
+            "bytes": 45259,
+            "sha256": "39f948f9fdefd23421104f984520c34c5fbf2d859541c01004b7ebfa84196340"
+          },
+          {
+            "tool": "legal_references",
+            "arguments": {
+              "provision_id": "e95366db3b34e76f1979a75c3afffa43",
+              "limit": 100,
+              "offset": 100
+            },
+            "seconds": 0.037538,
+            "bytes": 16551,
+            "sha256": "60494cab09161bde43796ef297a80108dc63e8d1bc32897aec130e234365075f"
+          },
+          {
+            "tool": "legal_read",
+            "arguments": {
+              "key_or_id": "d7e86d6d5cf4f0339f2f330c77280d81",
+              "length": 1000
+            },
+            "seconds": 0.199786,
+            "bytes": 7397,
+            "sha256": "567cb7d2e88d799a109e643abfe70a25f525aa8db042aa028ac0ca629adedb4e"
+          },
+          {
+            "tool": "legal_find",
+            "arguments": {
+              "key_or_id": "d7e86d6d5cf4f0339f2f330c77280d81",
+              "query": "[DELETED]",
+              "limit": 1
+            },
+            "seconds": 0.149225,
+            "bytes": 1788,
+            "sha256": "4f3f478264f0de4699d923019c401ab5492545c1157c48acec823b20156b996c"
+          },
+          {
+            "tool": "legal_read",
+            "arguments": {
+              "key_or_id": "wa-wsr:table:2025:365",
+              "length": 500
+            },
+            "seconds": 0.1976,
+            "bytes": 47086,
+            "sha256": "d4deec0ab809901afdf0ace94f391b745dbcd93488dff6212621bca699288dbb"
+          },
+          {
+            "tool": "legal_read",
+            "arguments": {
+              "key_or_id": "wa-wsr:action-legend",
+              "length": 1000
+            },
+            "seconds": 0.190212,
+            "bytes": 4004,
+            "sha256": "47c23f0f1c12a0690cf19f9f0f2673bea3660e6d3e0a6400a3d06fe38102f19c"
+          },
+          {
+            "tool": "legal_find",
+            "arguments": {
+              "key_or_id": "wa-commerce:rulemaking-notice",
+              "query": "June 6, 2026",
+              "limit": 1
+            },
+            "seconds": 0.150779,
+            "bytes": 1814,
+            "sha256": "cb061cd2f2281c2e76ea5d6f7a6ba606354750bd4f0d2162815705e018307e42"
+          },
+          {
+            "tool": "legal_read",
+            "arguments": {
+              "key_or_id": "wa-wsr:26-10-066",
+              "length": 1000
+            },
+            "seconds": 0.1881,
+            "bytes": 7574,
+            "sha256": "0bb81eac0b957e99f541528b18bd6e6930c305455dc30006242bed7e66ffb481"
+          },
+          {
+            "tool": "source_receipt",
+            "arguments": {
+              "acquisition_id": 9944
+            },
+            "seconds": 0.001979,
+            "bytes": 863,
+            "sha256": "d11ec326d5143921f42ecdd7adf0e49d5c26b5d11732d14a9c1ca783e22e800d"
+          },
+          {
+            "tool": "legal_read",
+            "arguments": {
+              "key_or_id": "4e95e0934e67ab1c4f520599b9893615",
+              "observation_cutoff": "2026-09-07T04:00:00Z"
+            },
+            "seconds": 0.156239,
+            "bytes": 347,
+            "sha256": "f20ede3e45978b6320a285e5dddb5ec16068ca380b61f14e1ae7f5f2e4e30801"
+          },
+          {
+            "tool": "legal_read",
+            "arguments": {
+              "key_or_id": "4e95e0934e67ab1c4f520599b9893615",
+              "as_of": "2026-09-07"
+            },
+            "seconds": 0.029041,
+            "bytes": 347,
+            "sha256": "f20ede3e45978b6320a285e5dddb5ec16068ca380b61f14e1ae7f5f2e4e30801"
+          }
+        ],
+        "seconds": 3.282852,
+        "scope": "One observed offline stdio run, not a latency distribution or proof of legal completeness"
+      },
+      "note": "Exact source/parser/resume results are in measurements. This run preceded the final output-only action-table metadata projection; these historical runtime/response hashes are not final-code claims."
+    },
+    "final_affected_call": {
+      "status": "PASS",
+      "recorded_at": "2026-09-07T04:42:45Z",
+      "scope": "One affected actual MCP read after output-only bulk-row projection; no matrix/resume/acquisition repeated",
+      "tool": "legal_read",
+      "arguments": {
+        "key_or_id": "wa-wsr:table:2025:365",
+        "length": 500
+      },
+      "structured_bytes": 8052,
+      "seconds": 0.308869,
+      "response_sha256": "896f59a9002b27685c7cb7b568a7df4261151cf630fd789a34c353d23b2429bb",
+      "stored_metadata_pair_sha256": "321fe3ffdd8ea121f2cc1ba810ee8ad9d9fc0f53485873a1bd0a252f8059a935",
+      "stored_metadata_unchanged": true,
+      "selected_row_action_evidence_in_text": true,
+      "row_count_per_metadata_copy": 163,
+      "runtime_sha256": {
+        "src/psephos/retrieve.py": "039225b17f23dc8a969f6348d91794979dfceae69f5df21ced1e5810c6232324",
+        "scripts/verify_washington.py": "33585dce51229e8d44471661c8ed2021238c50db415f9b201f9ccb4b00ba3285"
+      },
+      "receipt_sha256": "0c22209a8bc3074223c370b5c3b41c3e5f3136f1d6bdada46ca135c8ee7fb7c5",
+      "previous_structured_bytes": 47086,
+      "fixture_regression": "tests/test_washington_rules.py::test_bulk_action_rows_are_disclosed_not_repeated_in_read_or_versions",
+      "note": "Exactly one actual stdio MCP read after projecting duplicated bulk rows. Text/markup/find/reference evidence and canonical stored metadata remain intact. No acquisition, full MCP matrix or resume repeated."
+    }
+  },
+  "software": {
+    "python": "3.12.13",
+    "pytest": "9.1.1",
+    "ruff": "0.16.6",
+    "mypy": "1.20.2"
+  },
+  "focused_checks": [
+    {
+      "command": ".venv/bin/pytest -q tests/test_washington_rules.py tests/test_washington_references.py tests/test_collect_washington.py tests/test_store_retrieval.py tests/test_acquire.py tests/test_sync_audit_summary.py",
+      "exit_code": 0,
+      "seconds": 0.91,
+      "output": ".........................................                                [100%]\n41 passed in 0.65s"
+    },
+    {
+      "command": ".venv/bin/ruff check src/psephos scripts/verify_washington.py tests/test_washington_rules.py tests/test_washington_references.py",
+      "exit_code": 0,
+      "seconds": 0.223,
+      "output": "All checks passed!"
+    },
+    {
+      "command": ".venv/bin/ruff format --check src/psephos/retrieve.py src/psephos/sources.py src/psephos/washington_rules.py scripts/verify_washington.py tests/test_washington_rules.py tests/test_washington_references.py",
+      "exit_code": 0,
+      "seconds": 0.222,
+      "output": "6 files already formatted"
+    },
+    {
+      "command": ".venv/bin/mypy src/psephos scripts/verify_washington.py",
+      "exit_code": 0,
+      "seconds": 0.837,
+      "output": "Success: no issues found in 18 source files"
+    }
+  ],
+  "measured_source_discrepancies": [
+    {
+      "source": "WAC live root",
+      "observation": "Compilation updated August 28, 2026",
+      "limit": "Live mutable HTML is not the certified annual archive or an immutable snapshot; no legal-effect date invented."
+    },
+    {
+      "source": "WSR 2026 affected-section parent",
+      "observation": "Links lead to printed-2025 Title 197/365 child tables; Title 365 includes 26-01-181",
+      "limit": "Preserve both scopes; a no-filings notice applies only to that linked table."
+    },
+    {
+      "source": "WSR 26-01-181",
+      "observation": "Filed December 23, 2025; effective wording January 23, 2026; expressly says 365-196-840 not adopted",
+      "limit": "Register identifier year is not filing year; Commerce says January 24 and is retained separately."
+    },
+    {
+      "source": "WSR 26-10-066 and WAC note",
+      "observation": "June 5, 2026 effective wording; Commerce notice says June 6",
+      "limit": "Attributed discrepancy, not automated legal-effect resolution."
+    }
+  ],
+  "known_unacquired_dependencies": {
+    "old_sepa_filings": [
+      "97-21-030",
+      "84-05-020"
+    ],
+    "brief_adjudication_proposal": "26-05-065",
+    "proposal_external_images": 1,
+    "scope": "Descriptors/citations retained. No external image transcription, Box/video collection, archive campaign, Seattle acquisition or automatic amendment application."
+  },
+  "boundary_check": {
+    "status": "PASS",
+    "staged_files": [
+      "README.md",
+      "docs/status.md",
+      "docs/washington-land-use.md",
+      "docs/washington-land-use-verification.json",
+      "src/psephos/retrieve.py",
+      "src/psephos/sources.py",
+      "src/psephos/washington_rules.py",
+      "scripts/verify_washington.py",
+      "tests/test_washington_references.py",
+      "tests/test_washington_rules.py"
+    ],
+    "tracked_data_tmp_env_files": 0,
+    "local_raw_receipts_ignored": true,
+    "staged_diff_check": "PASS",
+    "staged_text_pattern_scan_findings": 0,
+    "scan_scope": "Known key prefixes, private-key blocks, signed/password query parameters and absolute local paths; a basic scan, not proof against every possible secret.",
+    "source_bodies_staged": false,
+    "push_or_tag": false
+  },
+  "final_review": {
+    "status": "No remaining correctness blockers found in bounded read-only review",
+    "checks": [
+      "Original body citations preserved alongside separate authority-note evidence",
+      "Output-only table metadata projection leaves stored JSON unchanged",
+      "Exact identities, cutoff handling, ambiguity refusal and adapter wiring"
+    ]
+  },
+  "final_runtime_sha256": {
+    "src/psephos/washington_rules.py": "1548d76f72aaaf9a42b271a4053eaaa8af8fd031d4e9fb5de7b2ebcacb731acc",
+    "src/psephos/retrieve.py": "039225b17f23dc8a969f6348d91794979dfceae69f5df21ced1e5810c6232324",
+    "scripts/verify_washington.py": "33585dce51229e8d44471661c8ed2021238c50db415f9b201f9ccb4b00ba3285",
+    "src/psephos/sources.py": "1a36ea11dd1352d5ea64cb57aeb52b9bae667d069b506ff5769de1f3c011c32d",
+    "tests/test_washington_rules.py": "9dbe1e76e9e8492780135117c196b624b573f1dc7ece62f9f12907d372a41734",
+    "tests/test_washington_references.py": "626d122cfa8ce2e6bcad3a19516162fc16d5972fb183f33901145baa2472407a"
+  },
+  "verification_limits": [
+    "13 primary documents/423 units reparse exactly; other five units are indexes/legend/agency context.",
+    "22 initial MCP calls and one final affected-call check are observed runs, not latency distributions or legal-completeness certification.",
+    "Florida/New Jersey annotations and previous source history preserved; no earlier collection campaign or frozen replay rerun.",
+    "Raw publisher files, canonical catalog and local execution receipts remain ignored. This report retains hashes/URLs/measurements, not filing bodies or meeting credentials."
+  ]
+}

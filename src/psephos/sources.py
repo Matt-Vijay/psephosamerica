@@ -209,6 +209,7 @@ def sync_collections(
     from .geography import sync_nyc_geo, sync_portland_geo
     from .municipal import sync_nyc, sync_portland, sync_portland_guides
     from .texas import sync_texas
+    from .washington_rules import sync_washington_rules
 
     adapters = {
         "uscode": (sync_uscode, ("uscode",)),
@@ -220,6 +221,10 @@ def sync_collections(
         "portland-guides": (sync_portland_guides, ("portland-zoning-guides",)),
         "nyc-gis": (sync_nyc_geo, ("nyc-zoning-gis",)),
         "portland-gis": (sync_portland_geo, ("portland-zoning-gis",)),
+        "washington-land-use": (
+            sync_washington_rules,
+            ("wa-wac", "wa-rcw", "wa-wsr", "wa-rulemaking-notices"),
+        ),
     }
     if any(name not in adapters for name in collections):
         raise ValueError("Supported collections: " + ", ".join(adapters))

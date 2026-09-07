@@ -105,3 +105,15 @@ MCP/tests [receipt](discovery-verification.json) is separate from the prior audi
 Receipt read tools now filter imported headers at output without rewriting stored
 evidence. Sync/audit summaries explicitly separate requested-source results and
 corpus counts from paginated discovery.
+
+The [Washington land-use checkpoint](washington-land-use.md) adds nine complete
+selected SEPA/GMA WAC chapters, supplemental RCW 43.21C, three Register filings and
+bounded index/agency context: 18 documents and 428 mixed units, including 335 WAC
+rule sections. Its [separate receipt](washington-land-use-verification.json)
+records 27 source objects rehashed, exact reconstruction of 13 primary documents /
+423 units, a cache-only resume with zero new source data, and an initial 22-call
+MCP reading path. A final affected-call check verifies the smaller action-table
+metadata output without altering stored evidence. Exact native Washington citation
+resolution preserves both cutoffs. Live compilation, certified archives, proposals,
+filings, agency characterizations and legal effectiveness remain distinct. This is
+not statewide regulatory completeness or a new historical-law reconstruction.
