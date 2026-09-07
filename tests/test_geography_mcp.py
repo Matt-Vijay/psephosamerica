@@ -42,12 +42,16 @@ def test_layer_membership_shrink_and_failed_refresh_are_atomic(store):
         access="Fixture",
     )
 
-    def publish(ids, page_ids, accepted):
+    def publish(ids, page_ids, accepted, flag=None):
         inventory = retain(store, json.dumps(ids).encode())
+        payloads = [json.loads(page(p)) for p in page_ids]
+        if flag:
+            target = payloads[-1] if flag == "root" else payloads[-1].setdefault("properties", {})
+            target["exceededTransferLimit"] = True
         return publish_arcgis_layer(
             store,
             inventory,
-            [retain(store, page(p)) for p in page_ids],
+            [retain(store, json.dumps(p).encode()) for p in payloads],
             "OBJECTID",
             ids,
             {"accepted_at": accepted},
@@ -63,6 +67,13 @@ def test_layer_membership_shrink_and_failed_refresh_are_atomic(store):
         publish([1, 2, 4], [[1, 2]], "2026-04-01T00:00:00Z")
     with pytest.raises(ValueError, match="Duplicate"):
         publish([1, 2, 4], [[1, 2], [2, 4]], "2026-04-01T00:00:00Z")
+    with pytest.raises(ValueError, match="nonempty"):
+        publish([], [], "2026-04-01T00:00:00Z")
+    with pytest.raises(ValueError, match="unique"):
+        publish([1, 1], [[1]], "2026-04-01T00:00:00Z")
+    for flag in ("root", "properties"):
+        with pytest.raises(ValueError, match="exceededTransferLimit"):
+            publish([1, 2, 4], [[1, 2], [4]], "2026-04-01T00:00:00Z", flag)
     assert len(zoning_at(store, 0.5, 0.5)["matches"]) == 2
     assert all(m["on_boundary"] for m in zoning_at(store, 0, 0.5)["matches"])
     assert not zoning_at(store, 0.5, 0.5, as_of="2026-01-01")["matches"]

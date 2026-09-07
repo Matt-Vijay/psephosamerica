@@ -1,0 +1,170 @@
+{
+  "status": "BLOCKED_SERVICE_ACQUISITION",
+  "recorded_at": "2026-09-07T04:57:47Z",
+  "scope": "Seattle item metadata and legislative detail preflight only; zero accepted Seattle geometry, table rows or legal-text bodies.",
+  "access_blocker": "services.arcgis.com/robots.txt HTTP403; service queries not attempted, no Hub/export/proxy bypass.",
+  "receipts": [
+    {
+      "id": 9954,
+      "url": "https://www.arcgis.com/robots.txt",
+      "final_url": "https://www.arcgis.com/robots.txt",
+      "observed_at": "2026-09-07T04:55:22Z",
+      "status": 200,
+      "sha256": "d9da31493f06281ceebc4eaff54a0ba0cd4bc00f01217e6dbec7f084b263730d",
+      "headers": {
+        "cache-control": "max-age=0",
+        "content-encoding": "gzip",
+        "content-length": "88",
+        "content-type": "text/plain",
+        "date": "Mon, 07 Sep 2026 04:55:22 GMT",
+        "etag": "\"31c2b4e4e8c1a4633fc9d0416d99f476\"",
+        "last-modified": "Fri, 26 Jun 2026 03:40:18 GMT"
+      },
+      "error": null,
+      "bytes": 61
+    },
+    {
+      "id": 9955,
+      "url": "https://www.arcgis.com/sharing/rest/content/items/dd29065b5d01420e9686570c2b77502b?f=json",
+      "final_url": "https://www.arcgis.com/sharing/rest/content/items/dd29065b5d01420e9686570c2b77502b?f=json",
+      "observed_at": "2026-09-07T04:55:23Z",
+      "status": 200,
+      "sha256": "8f9d7b02d2163c8e0f3d5f5ba4277c429c372cf7b53de97d3ee26a32d6a316d8",
+      "headers": {
+        "cache-control": "no-cache",
+        "content-encoding": "gzip",
+        "content-type": "application/json;charset=utf-8",
+        "date": "Mon, 07 Sep 2026 04:55:23 GMT"
+      },
+      "error": null,
+      "bytes": 3750
+    },
+    {
+      "id": 9956,
+      "url": "https://www.arcgis.com/sharing/rest/content/items/e10db7b75d124270ae466f350cc871b6?f=json",
+      "final_url": "https://www.arcgis.com/sharing/rest/content/items/e10db7b75d124270ae466f350cc871b6?f=json",
+      "observed_at": "2026-09-07T04:55:25Z",
+      "status": 200,
+      "sha256": "6c9aa1832130f82e85a38fa586470f2f64c16856a680657a9717b5c82dc05383",
+      "headers": {
+        "cache-control": "no-cache",
+        "content-encoding": "gzip",
+        "content-type": "application/json;charset=utf-8",
+        "date": "Mon, 07 Sep 2026 04:55:25 GMT"
+      },
+      "error": null,
+      "bytes": 2990
+    },
+    {
+      "id": 9957,
+      "url": "https://services.arcgis.com/robots.txt",
+      "final_url": "https://services.arcgis.com/robots.txt",
+      "observed_at": "2026-09-07T04:55:25Z",
+      "status": 403,
+      "sha256": null,
+      "headers": {
+        "cache-control": "no-store, no-cache",
+        "date": "Mon, 07 Sep 2026 04:55:25 GMT"
+      },
+      "error": "Client error '403 Forbidden' for url 'https://services.arcgis.com/robots.txt'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403",
+      "bytes": null
+    },
+    {
+      "id": 9958,
+      "url": "https://www.arcgis.com/sharing/rest/content/items/2a32de06171e429fb7e0d3844e54891c?f=json",
+      "final_url": "https://www.arcgis.com/sharing/rest/content/items/2a32de06171e429fb7e0d3844e54891c?f=json",
+      "observed_at": "2026-09-07T04:56:34Z",
+      "status": 200,
+      "sha256": "adc7962263220f06a4b64188aabcf388f2392a8b48e94c700bbd17d5b58dc879",
+      "headers": {
+        "cache-control": "no-cache",
+        "content-encoding": "gzip",
+        "content-type": "application/json;charset=utf-8",
+        "date": "Mon, 07 Sep 2026 04:56:34 GMT"
+      },
+      "error": null,
+      "bytes": 3756
+    },
+    {
+      "id": 9959,
+      "url": "https://www.arcgis.com/sharing/rest/content/items/b1ce8ec95a374efcb6af020a20ae80b9?f=json",
+      "final_url": "https://www.arcgis.com/sharing/rest/content/items/b1ce8ec95a374efcb6af020a20ae80b9?f=json",
+      "observed_at": "2026-09-07T04:56:35Z",
+      "status": 200,
+      "sha256": "7399e2eba1568324eff061aedc3375639878bfdce7ecf00ee5a867f45fc7b470",
+      "headers": {
+        "cache-control": "no-cache",
+        "content-encoding": "gzip",
+        "content-type": "application/json;charset=utf-8",
+        "date": "Mon, 07 Sep 2026 04:56:35 GMT"
+      },
+      "error": null,
+      "bytes": 4039
+    },
+    {
+      "id": 9960,
+      "url": "https://seattle.legistar.com/robots.txt",
+      "final_url": "https://seattle.legistar.com/robots.txt",
+      "observed_at": "2026-09-07T04:56:35Z",
+      "status": 404,
+      "sha256": null,
+      "headers": {
+        "content-length": "1245",
+        "content-type": "text/html",
+        "date": "Mon, 07 Sep 2026 04:56:35 GMT"
+      },
+      "error": "Client error '404 Not Found' for url 'https://seattle.legistar.com/robots.txt'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404",
+      "bytes": null
+    },
+    {
+      "id": 9961,
+      "url": "https://seattle.legistar.com/LegislationDetail.aspx?GUID=D939B678-B923-4DE2-8E16-28297D37C2F2&ID=7300761",
+      "final_url": "https://seattle.legistar.com/LegislationDetail.aspx?GUID=D939B678-B923-4DE2-8E16-28297D37C2F2&ID=7300761",
+      "observed_at": "2026-09-07T04:56:36Z",
+      "status": 200,
+      "sha256": "6bafdd2f00b69fb0f816aa7bbaaa4ae646360aedf027ce2999f2c292109782e0",
+      "headers": {
+        "cache-control": "private",
+        "content-encoding": "gzip",
+        "content-type": "text/html; charset=utf-8",
+        "date": "Mon, 07 Sep 2026 04:56:36 GMT"
+      },
+      "error": null,
+      "bytes": 164065
+    },
+    {
+      "id": 9962,
+      "url": "https://seattle.legistar.com/LegislationDetail.aspx?GUID=BE94A92B-AE2B-4714-B644-1DEFBE30E86B&ID=7423062",
+      "final_url": "https://seattle.legistar.com/LegislationDetail.aspx?GUID=BE94A92B-AE2B-4714-B644-1DEFBE30E86B&ID=7423062",
+      "observed_at": "2026-09-07T04:56:37Z",
+      "status": 200,
+      "sha256": "f4cb321fc76bf9621752d8fc9da3fee2ec70c894e78fab0ece7dfa69e70171fe",
+      "headers": {
+        "cache-control": "private",
+        "content-encoding": "gzip",
+        "content-type": "text/html; charset=utf-8",
+        "date": "Mon, 07 Sep 2026 04:56:37 GMT"
+      },
+      "error": null,
+      "bytes": 193924
+    }
+  ],
+  "prior_research_counts_not_local_coverage": {
+    "base_polygons": 3627
+  },
+  "retained_bytes": 372585,
+  "source_limits": [
+    "ArcGIS base item PDDL wording is source-specific; lookup/overlay reuse statements differ.",
+    "GIS says NOT an official zoning map; item modification timestamp is not legal currency.",
+    "Legistar details are legislative metadata and attachment links, not full enacted text.",
+    "Known Seattle.gov403/Legistar410/Municode unavailable text not retried."
+  ],
+  "actions_deferred": [
+    "complete-layer acquisition",
+    "lookup join cardinality",
+    "offline coordinate validation",
+    "Seattle catalog publication"
+  ],
+  "disposition": "PAUSED; no suitable independently published static zoning/base lookup export found in coordinating task's bounded City-owned item search. That research is reported context, not a locally retained catalog inventory.",
+  "implementation": "Unused Seattle parameterization and its fixtures parked under ignored tmp/seattle; no Seattle runtime adapter or catalog publication."
+}

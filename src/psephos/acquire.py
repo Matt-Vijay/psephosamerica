@@ -106,8 +106,12 @@ class Acquirer:
         self.client.close()
 
     def _pause(self, url: str, delay: float | None = None) -> None:
-        host = urlsplit(url).netloc
-        remaining = self.last_request.get(host, 0) + (delay or self.delay) - time.monotonic()
+        parts = urlsplit(url)
+        host = parts.netloc
+        parser = self.robots.get(f"{parts.scheme}://{host}")
+        policy_delay = parser.crawl_delay(USER_AGENT) if parser is not None else None
+        minimum = max(self.delay, delay or 0, float(policy_delay or 0))
+        remaining = self.last_request.get(host, 0) + minimum - time.monotonic()
         if remaining > 30:
             raise AcquisitionError(
                 f"Publisher minimum delay requires {remaining:.0f}s; resume later"
@@ -171,9 +175,7 @@ class Acquirer:
         parser = self.robots[origin]
         if not parser.can_fetch(USER_AGENT, url):
             raise AcquisitionError(f"Disallowed by publisher robots policy: {url}")
-        delay = parser.crawl_delay(USER_AGENT)
-        if delay:
-            self._pause(url, max(self.delay, float(delay)))
+        # The fetch loop enforces this host's policy in its single pre-request pause.
 
     def fetch(
         self,

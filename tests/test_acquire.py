@@ -75,6 +75,60 @@ def test_robots_rechecked_after_cache_age_and_block_respected(store):
         a.close()
 
 
+def test_robots_delay_is_one_per_host_pre_request_pause(store, monkeypatch):
+    now = 1000.0
+    starts = []
+    retries = 0
+
+    def sleep(seconds):
+        nonlocal now
+        now += seconds
+
+    monkeypatch.setattr("psephos.acquire.time.monotonic", lambda: now)
+    monkeypatch.setattr("psephos.acquire.time.sleep", sleep)
+
+    def handler(request):
+        nonlocal retries
+        starts.append((str(request.url), now))
+        if request.url.path == "/robots.txt":
+            delay = 20 if request.url.host == "other.test" else 10
+            return httpx.Response(200, text=f"User-agent: *\nCrawl-delay: {delay}\n")
+        if request.url.path == "/redirect":
+            return httpx.Response(302, headers={"Location": "https://other.test/final"})
+        if request.url.path == "/retry":
+            retries += 1
+            if retries == 1:
+                return httpx.Response(429, headers={"Retry-After": "3"})
+        return httpx.Response(200, content=b"fixture")
+
+    a = client(store, handler)
+    a.delay = 10.1
+    try:
+        for path in ("first", "second", "redirect"):
+            a.fetch("https://example.test/" + path)
+        # A robots refresh is still a request to its own host, with its known policy.
+        a.fetch("https://other.test/robots.txt", check_robots=False, max_age_seconds=0)
+        a.fetch("https://example.test/after")
+        a.fetch("https://example.test/retry")
+    finally:
+        a.close()
+    assert [url for url, _ in starts] == [
+        "https://example.test/robots.txt",
+        "https://example.test/first",
+        "https://example.test/second",
+        "https://example.test/redirect",
+        "https://other.test/robots.txt",
+        "https://other.test/final",
+        "https://other.test/robots.txt",
+        "https://example.test/after",
+        "https://example.test/retry",
+        "https://example.test/retry",
+    ]
+    assert [started for _, started in starts] == pytest.approx(
+        [1000, 1010.1, 1020.2, 1030.3, 1030.3, 1050.3, 1070.3, 1070.3, 1080.4, 1090.5]
+    )
+
+
 def test_long_publisher_delays_defer_instead_of_truncating(store):
     a = client(store, lambda request: httpx.Response(200, text="User-agent: *\nCrawl-delay: 120\n"))
     try:

@@ -162,6 +162,11 @@ def geojson_features(
 ) -> Iterator[Feature]:
     if collection.get("type") != "FeatureCollection":
         raise ValueError("Publisher response is not a GeoJSON FeatureCollection")
+    properties = collection.get("properties")
+    if collection.get("exceededTransferLimit") or (
+        isinstance(properties, dict) and properties.get("exceededTransferLimit")
+    ):
+        raise ValueError("Publisher response announces exceededTransferLimit; layer is truncated")
     seen = set()
     for feature in collection["features"]:
         identity = str(feature["properties"][id_field])
@@ -188,6 +193,10 @@ def publish_arcgis_layer(
     metadata: dict[str, Any],
 ) -> tuple[str, int, bool]:
     """One whole-layer version. Failed parsing, missing IDs, or an interrupted transaction exposes nothing new."""
+    if not expected_ids:
+        raise ValueError("Expected publisher feature IDs must be nonempty")
+    if len(set(expected_ids)) != len(expected_ids):
+        raise ValueError("Expected publisher feature IDs must be unique")
     manifest = [{"artifact_sha": receipt.sha256, "acquisition_id": receipt.id} for receipt in pages]
     manifest_hash = digest(json_text([receipt.sha256 for receipt in pages]).encode())
 
