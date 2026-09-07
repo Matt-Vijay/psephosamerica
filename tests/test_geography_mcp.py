@@ -95,6 +95,7 @@ def test_real_stdio_mcp_protocol_in_fresh_store(store):
             tools = {t.name for t in (await session.list_tools()).tools}
             assert tools == {
                 "legal_coverage",
+                "legal_find",
                 "legal_search",
                 "legal_read",
                 "legal_versions",
@@ -105,6 +106,11 @@ def test_real_stdio_mcp_protocol_in_fresh_store(store):
             result = await session.call_tool("legal_read", {"key_or_id": "test:1"})
             assert not result.isError
             assert result.structuredContent["text"] == "Preserved exception."
+            found = await session.call_tool(
+                "legal_find", {"key_or_id": "test:1", "query": "exception"}
+            )
+            assert not found.isError
+            assert found.structuredContent["matches"][0]["match_offset"] == 10
             assert not (
                 await session.call_tool("source_receipt", {"acquisition_id": source.id})
             ).isError

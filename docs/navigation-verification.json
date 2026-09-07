@@ -1,0 +1,295 @@
+{
+  "generated_at": "2026-09-07T01:18:34Z",
+  "status": "PASS",
+  "python": "3.12.13",
+  "publishers": {
+    "uscode_alternate_html": {
+      "sha256": "b0a6718ec893303687e9a3f8c25fa5f5aca711bd5d8131bbd5df841a88570d09",
+      "url": "https://uscode.house.gov/download/releasepoints/us/pl/119/102/htm_usc01@119-102.zip",
+      "member": "PRELIMusc01.htm",
+      "paragraphs_compared": 3,
+      "match": true
+    },
+    "portland_independent_point": {
+      "sha256": "8d4c69f6c0d080ee1f3cae8a2922a5bb3cf3358d8af9381b39253b4f9d35f079",
+      "url": "https://www.portlandmaps.com/arcgis/rest/services/Public/Zoning/MapServer/3/query?geometry=-122.6765%2C45.5231&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&returnIdsOnly=true&f=json",
+      "object_ids": [
+        1493
+      ],
+      "match": true
+    }
+  },
+  "mcp": {
+    "tools": [
+      "legal_coverage",
+      "legal_find",
+      "legal_read",
+      "legal_references",
+      "legal_search",
+      "legal_versions",
+      "source_receipt",
+      "zoning_at"
+    ],
+    "calls": [
+      {
+        "tool": "legal_coverage",
+        "arguments": {},
+        "seconds": 6.2409
+      },
+      {
+        "tool": "legal_search",
+        "arguments": {
+          "query": "words denoting",
+          "collection": "uscode",
+          "limit": 3
+        },
+        "seconds": 0.0508
+      },
+      {
+        "tool": "legal_read",
+        "arguments": {
+          "key_or_id": "7c655ccc897802131c4df7561499c3c0"
+        },
+        "seconds": 0.1622
+      },
+      {
+        "tool": "source_receipt",
+        "arguments": {
+          "acquisition_id": 33
+        },
+        "seconds": 0.002
+      },
+      {
+        "tool": "legal_versions",
+        "arguments": {
+          "key": "ecfr:title-1/chapter-I/subchap-A/part-1/section-1.1"
+        },
+        "seconds": 0.002
+      },
+      {
+        "tool": "legal_read",
+        "arguments": {
+          "key_or_id": "ecfr:title-1/chapter-I/subchap-A/part-1/section-1.1",
+          "as_of": "2024-01-02"
+        },
+        "seconds": 0.003
+      },
+      {
+        "tool": "legal_read",
+        "arguments": {
+          "key_or_id": "e51b541245f51fa1f8f6dcfaa1c6477d",
+          "observation_cutoff": "2020-01-01T00:00:00Z"
+        },
+        "seconds": 0.0063
+      },
+      {
+        "tool": "legal_read",
+        "arguments": {
+          "key_or_id": "ecfr:title-21/chapter-I/subchap-A/part-10/subpart-B/section-10.31"
+        },
+        "seconds": 0.1316
+      },
+      {
+        "tool": "legal_read",
+        "arguments": {
+          "key_or_id": "dc-code:§42-3505.01",
+          "length": 800
+        },
+        "seconds": 0.3314
+      },
+      {
+        "tool": "legal_references",
+        "arguments": {
+          "provision_id": "354dd5473c6f5906b94eb9a5c18115c6",
+          "offset": 0,
+          "limit": 100
+        },
+        "seconds": 0.6668
+      },
+      {
+        "tool": "legal_references",
+        "arguments": {
+          "provision_id": "354dd5473c6f5906b94eb9a5c18115c6",
+          "offset": 100,
+          "limit": 100
+        },
+        "seconds": 2.5383
+      },
+      {
+        "tool": "legal_read",
+        "arguments": {
+          "key_or_id": "27613f1620b9f1fcae68233360b682c9",
+          "length": 500
+        },
+        "seconds": 0.1328
+      },
+      {
+        "tool": "legal_search",
+        "arguments": {
+          "query": "security deposit",
+          "collection": "texas",
+          "limit": 2
+        },
+        "seconds": 0.097
+      },
+      {
+        "tool": "legal_read",
+        "arguments": {
+          "key_or_id": "c2b5323ce1442089b6776e7ddc8d084b",
+          "as_of": "2099-01-01"
+        },
+        "seconds": 0.0287
+      },
+      {
+        "tool": "legal_read",
+        "arguments": {
+          "key_or_id": "portland:title-33/page-169",
+          "length": 24000
+        },
+        "seconds": 0.1364
+      },
+      {
+        "tool": "zoning_at",
+        "arguments": {
+          "longitude": -73.985428,
+          "latitude": 40.748817,
+          "collection": "nyc-zoning-gis"
+        },
+        "seconds": 0.3523
+      },
+      {
+        "tool": "zoning_at",
+        "arguments": {
+          "longitude": -122.6765,
+          "latitude": 45.5231,
+          "collection": "portland-zoning-gis"
+        },
+        "seconds": 0.1412
+      },
+      {
+        "tool": "legal_search",
+        "arguments": {
+          "query": "qualifying residential site",
+          "collection": "nyc-zoning",
+          "limit": 3
+        },
+        "seconds": 0.0696
+      },
+      {
+        "tool": "legal_find",
+        "arguments": {
+          "key_or_id": "a41ade1a762966ebb999fdb8b719011c",
+          "query": "qualifying residential site",
+          "limit": 1
+        },
+        "seconds": 0.1465
+      },
+      {
+        "tool": "legal_read",
+        "arguments": {
+          "key_or_id": "a41ade1a762966ebb999fdb8b719011c",
+          "offset": 172766,
+          "length": 3000
+        },
+        "seconds": 0.1818
+      },
+      {
+        "tool": "legal_read",
+        "arguments": {
+          "key_or_id": "nyc-zr:114-02",
+          "length": 3000
+        },
+        "seconds": 0.1346
+      },
+      {
+        "tool": "legal_find",
+        "arguments": {
+          "key_or_id": "nyc-zr:/appendix-b-index-special-purpose-districts",
+          "query": "Midtown District (MID)"
+        },
+        "seconds": 0.1355
+      },
+      {
+        "tool": "legal_read",
+        "arguments": {
+          "key_or_id": "nyc-zr:81-00",
+          "length": 1000
+        },
+        "seconds": 0.135
+      },
+      {
+        "tool": "legal_find",
+        "arguments": {
+          "key_or_id": "portland:guide/base-zones",
+          "query": "CX"
+        },
+        "seconds": 0.1369
+      },
+      {
+        "tool": "legal_find",
+        "arguments": {
+          "key_or_id": "portland:guide/overlay-zones",
+          "query": "d – Design Overlay Zone"
+        },
+        "seconds": 0.1319
+      },
+      {
+        "tool": "legal_search",
+        "arguments": {
+          "query": "33.420",
+          "collection": "portland-zoning",
+          "limit": 1
+        },
+        "seconds": 0.0646
+      },
+      {
+        "tool": "legal_read",
+        "arguments": {
+          "key_or_id": "29c70782af7cf29c125c7144f778ce21",
+          "length": 24000
+        },
+        "seconds": 0.132
+      }
+    ],
+    "dc_law_edge": {
+      "source_key": "dc-code:§42-3505.01",
+      "target_key": "dc-law:D.C. Law 10-164",
+      "relation": "publisher_history",
+      "target_representation": "law_metadata"
+    },
+    "point_matches": {
+      "nyc": [
+        {
+          "layer": "nyzma",
+          "source_key": "nyzma/1337"
+        },
+        {
+          "layer": "nyzd",
+          "source_key": "nyzd/4725"
+        },
+        {
+          "layer": "nysp",
+          "source_key": "nysp/49"
+        }
+      ],
+      "portland": [
+        "1493"
+      ]
+    },
+    "navigation": {
+      "nyc_general_definition": {
+        "id": "a41ade1a762966ebb999fdb8b719011c",
+        "artifact_sha": "01afd8c3181ad0bd50f7840db3cb4cd67c98753de2ecb9f6db0c658fe5e4b2cf",
+        "match_offset": 172916
+      },
+      "nyc_scoped_modification": "bad8a58283b8c422bb9eea2bb217023c",
+      "nyc_special_district_index": "f2850aaf2de904528116001e1da7cd2d",
+      "portland_base_guide": "4089315ab88c5a7bae8be98d451a27b0",
+      "portland_overlay_guide": "a8165046797434a4f87efbcfcc0ad239",
+      "portland_overlay_code_page": "29c70782af7cf29c125c7144f778ce21",
+      "qualification": "Source-guided reading paths, not computed legal applicability; code/guide/GIS clocks remain separate."
+    }
+  },
+  "seconds": 12.973,
+  "verification_script_sha256": "ac35962ce5b4c36db51bd464987f5ee7702befa809248db558840a571d5d0577"
+}

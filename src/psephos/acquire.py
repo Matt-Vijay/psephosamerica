@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import tempfile
 import time
 from dataclasses import dataclass
@@ -63,6 +64,19 @@ def retry_seconds(value: str, fallback: float) -> float:
         return max(0.0, (when - datetime.now(UTC)).total_seconds())
     except (TypeError, ValueError, OverflowError):
         return fallback
+
+
+def robots_lines(data: bytes) -> list[str]:
+    """Accept ordinary robots text, not a silently permissive HTML/error page."""
+    text = data.decode("utf-8-sig", "replace")
+    if text.lstrip().startswith("<"):
+        raise AcquisitionError("Publisher robots endpoint returned markup, not a policy")
+    lines = text.splitlines()
+    directives = r"\b(?:user-agent|allow|disallow|crawl-delay|request-rate|sitemap)\s*:"
+    for line in lines:
+        if len(re.findall(directives, line.split("#", 1)[0], re.I)) > 1:
+            raise AcquisitionError("Ambiguous robots policy: multiple directives on one line")
+    return lines
 
 
 class Acquirer:
@@ -141,10 +155,8 @@ class Acquirer:
             parser = RobotFileParser(robots_url)
             try:
                 receipt = self.fetch(robots_url, check_robots=False, max_age_seconds=86400)
-                parser.parse(
-                    self.store.artifact(receipt.sha256).decode("utf-8", "replace").splitlines()
-                )
-            except AcquisitionError:
+                parser.parse(robots_lines(self.store.artifact(receipt.sha256)))
+            except AcquisitionError as error:
                 row = self.store.db.execute(
                     "SELECT status FROM acquisitions WHERE url=? ORDER BY id DESC LIMIT 1",
                     (robots_url,),
@@ -152,7 +164,9 @@ class Acquirer:
                 if row and row[0] in (404, 410):
                     parser.parse([])
                 else:
-                    raise AcquisitionError(f"Cannot verify robots policy: {origin}") from None
+                    raise AcquisitionError(
+                        f"Cannot verify robots policy: {origin}: {error}"
+                    ) from None
             self.robots[origin] = parser
         parser = self.robots[origin]
         if not parser.can_fetch(USER_AGENT, url):

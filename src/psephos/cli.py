@@ -41,7 +41,12 @@ def main() -> None:
     read.add_argument("--offset", type=int, default=0)
     read.add_argument("--length", type=int, default=10000)
     read.add_argument("--markup", action="store_true")
-    for command in (search, read):
+    find = commands.add_parser("find", help="Jump to literal text in an exact source provision")
+    find.add_argument("key")
+    find.add_argument("query")
+    find.add_argument("--start", type=int, default=0)
+    find.add_argument("--limit", type=int, default=10)
+    for command in (search, read, find):
         command.add_argument("--as-of")
         command.add_argument("--observed-before")
     versions = commands.add_parser("versions", help="List acquired source versions")
@@ -101,6 +106,15 @@ def main() -> None:
                         offset=args.offset,
                         length=args.length,
                         include_markup=args.markup,
+                    )
+                elif args.command == "find":
+                    result = reader.find(
+                        args.key,
+                        args.query,
+                        as_of=args.as_of,
+                        observation_cutoff=args.observed_before,
+                        start=args.start,
+                        limit=args.limit,
                     )
                 elif args.command == "zoning":
                     from .geography import zoning_at

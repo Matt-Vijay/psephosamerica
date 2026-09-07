@@ -107,7 +107,9 @@ async def verify_mcp(root):
             return result.structuredContent
 
         coverage = await call("legal_coverage")
-        assert len(coverage["collections"]) == 9
+        assert {"uscode", "ecfr", "dc-code", "texas", "nyc-zoning", "portland-zoning"} <= {
+            c["id"] for c in coverage["collections"]
+        }
         search = await call("legal_search", query="words denoting", collection="uscode", limit=3)
         assert search["matches"][0]["key"] == "usc:/us/usc/t1/s1"
         usc = await call("legal_read", key_or_id=search["matches"][0]["id"])
@@ -164,6 +166,41 @@ async def verify_mcp(root):
             "zoning_at", longitude=-122.6765, latitude=45.5231, collection="portland-zoning-gis"
         )
         assert any(m["properties"].get("ZONE") == "CX" for m in pdx["matches"])
+        definition = await call(
+            "legal_search", query="qualifying residential site", collection="nyc-zoning", limit=3
+        )
+        assert definition["matches"][0]["key"] == "nyc-zr:12-10"
+        assert "nyc-zr:114-02" in {m["key"] for m in definition["matches"]}
+        jump = await call(
+            "legal_find",
+            key_or_id=definition["matches"][0]["id"],
+            query="qualifying residential site",
+            limit=1,
+        )
+        found = jump["matches"][0]
+        definition_text = await call(
+            "legal_read", key_or_id=jump["id"], offset=found["read_offset"], length=3000
+        )
+        assert "General Definition" in definition_text["text"]
+        scoped = await call("legal_read", key_or_id="nyc-zr:114-02", length=3000)
+        assert "qualifying residential site" in scoped["text"].lower()
+        index = await call(
+            "legal_find",
+            key_or_id="nyc-zr:/appendix-b-index-special-purpose-districts",
+            query="Midtown District (MID)",
+        )
+        assert "81-00" in index["matches"][0]["excerpt"]
+        special = await call("legal_read", key_or_id="nyc-zr:81-00", length=1000)
+        assert "midtown" in special["text"].lower()
+        base_guide = await call("legal_find", key_or_id="portland:guide/base-zones", query="CX")
+        assert any("33.130" in m["excerpt"] for m in base_guide["matches"])
+        overlay = await call(
+            "legal_find", key_or_id="portland:guide/overlay-zones", query="d – Design Overlay Zone"
+        )
+        assert "33.420" in overlay["matches"][0]["excerpt"]
+        chapter = await call("legal_search", query="33.420", collection="portland-zoning", limit=1)
+        chapter_text = await call("legal_read", key_or_id=chapter["matches"][0]["id"], length=24000)
+        assert "Purpose" in chapter_text["text"] and chapter_text["unit_kind"] == "pdf_page"
         return {
             "tools": tools,
             "calls": checks,
@@ -179,6 +216,19 @@ async def verify_mcp(root):
                 ],
                 "portland": [m["source_key"] for m in pdx["matches"]],
             },
+            "navigation": {
+                "nyc_general_definition": {
+                    "id": jump["id"],
+                    "artifact_sha": jump["artifact_sha"],
+                    "match_offset": found["match_offset"],
+                },
+                "nyc_scoped_modification": scoped["id"],
+                "nyc_special_district_index": index["id"],
+                "portland_base_guide": base_guide["id"],
+                "portland_overlay_guide": overlay["id"],
+                "portland_overlay_code_page": chapter_text["id"],
+                "qualification": "Source-guided reading paths, not computed legal applicability; code/guide/GIS clocks remain separate.",
+            },
         }
 
 
@@ -193,7 +243,7 @@ def main():
     parser.add_argument("--out", type=Path, required=True)
     args = parser.parse_args()
     started = time.monotonic()
-    store = Store(args.data)
+    store = Store(args.data, readonly=not args.publisher_checks)
     try:
         publishers = verify_publishers(store, args.publisher_checks)
     finally:

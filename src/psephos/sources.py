@@ -207,11 +207,12 @@ def sync_collections(
 ) -> dict[str, Any]:
     from .dc import sync_dc
     from .geography import sync_nyc_geo, sync_portland_geo
-    from .municipal import sync_nyc, sync_portland
+    from .municipal import sync_nyc, sync_portland, sync_portland_guides
     from .texas import sync_texas
 
     adapters = {"uscode": sync_uscode, "ecfr": sync_ecfr, "dc": sync_dc, "texas": sync_texas}
     adapters.update({"nyc": sync_nyc, "portland": sync_portland})
+    adapters["portland-guides"] = sync_portland_guides
     adapters.update({"nyc-gis": sync_nyc_geo, "portland-gis": sync_portland_geo})
     if any(name not in adapters for name in collections):
         raise ValueError("Supported collections: " + ", ".join(adapters))

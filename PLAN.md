@@ -13,6 +13,11 @@ data, tests, or compatibility requirements.
 5. Publish measured coverage, limitations, examples, install commands, and a
    coherent working checkpoint. No nationwide-completeness claim without evidence.
 
-Completed: acquisition, source projections, real corpus, geometry, read-only MCP,
-real-data receipts, fresh-install verification and documentation. Measured limits
-and the next coverage decision are in docs/status.md; no extra adapter was added.
+Completed baseline: acquisition, source projections, real corpus, geometry,
+read-only MCP, real-data receipts and fresh-install verification.
+
+Current continuation: literal phrase navigation and source-guided NYC/Portland
+workflows; population-prioritized state collection through isolated regional
+stores. One publication writer rehashes and validates accepted batches before
+merging. Hold access-policy problems and incomplete parses visibly. Do not equate
+PDF pages, statutory sections, inventory links, or reviewed source coverage.

@@ -59,7 +59,8 @@ def audit(store: Store) -> dict[str, Any]:
         ).fetchone()[0],
         "invalid_source_versions": db.execute(
             "SELECT count(*) FROM versions v JOIN acquisitions a ON a.id=v.acquisition_id "
-            "WHERE a.sha256!=v.artifact_sha OR a.status NOT BETWEEN 200 AND 299 OR v.available_at<a.observed_at"
+            "WHERE a.sha256 IS NULL OR a.sha256!=v.artifact_sha OR a.status NOT BETWEEN 200 AND 299 "
+            "OR a.error IS NOT NULL OR v.available_at IS NULL OR v.available_at<a.observed_at"
         ).fetchone()[0],
         "missing_geometry_bounds": db.execute(
             "SELECT count(*) FROM features f LEFT JOIN feature_bounds b ON b.rowid=f.rowid WHERE b.rowid IS NULL"
@@ -128,7 +129,7 @@ def audit(store: Store) -> dict[str, Any]:
         "media_bearing_units": rows(
             "SELECT d.collection_id,count(*) AS units FROM provisions p JOIN chosen v ON v.id=p.version_id "
             "JOIN documents d ON d.id=v.document_id WHERE lower(p.markup) LIKE '%<img%' OR lower(p.markup) LIKE '%<graphic%' "
-            "OR lower(p.markup) LIKE '%<gph%' GROUP BY d.collection_id"
+            "OR lower(p.markup) LIKE '%<gph%' OR json_array_length(p.metadata,'$.media')>0 GROUP BY d.collection_id"
         ),
         "software": {
             name: version(name)

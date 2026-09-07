@@ -21,6 +21,69 @@ from .store import Provision, Store
 
 NYC = "https://zoningresolution.planning.nyc.gov"
 PORTLAND = "https://www.portland.gov/code/33"
+PORTLAND_GUIDES = "https://www.portland.gov/ppd/zoning-land-use/zoning-code-overview/"
+
+
+def portland_guide(data: bytes, slug: str) -> Provision:
+    root = html.fromstring(data)
+    articles, headings = root.xpath("//main//article"), root.xpath("//main//h1")
+    if len(articles) != 1 or len(headings) != 1:
+        raise ValueError("Portland guide content region missing/ambiguous")
+    title = readable(headings[0])
+    if title.casefold() != slug.replace("-", " "):
+        raise ValueError("Portland guide title does not match requested source")
+    url = PORTLAND_GUIDES + slug
+    return Provision(
+        key="portland:guide/" + slug,
+        citation="Portland publisher guide: " + title,
+        heading=title,
+        text=readable(articles[0]),
+        markup=markup(articles[0]),
+        url=url,
+        unit_kind="publisher_guide",
+        references=source_links(articles[0], url),
+        metadata={
+            "warning": "Explanatory navigation guide, not a codified provision or an applicability finding."
+        },
+    )
+
+
+def sync_portland_guides(s: Store, a: Acquirer, limit: int | None, as_of: str | None) -> None:
+    if as_of:
+        raise ValueError("Portland guide pages have no supported historical snapshot")
+    s.collection(
+        "portland-zoning-guides",
+        ("us-or-portland", "Portland, Oregon", "municipality", "us-or"),
+        parents=(("us-or", "Oregon", "state", "us"),),
+        name="Portland zoning reader guides",
+        authority="City of Portland",
+        kind="publisher_guidance",
+        homepage=PORTLAND_GUIDES,
+        source_status="City explanatory pages, distinct from codified Title 33 text",
+        access="Public city pages; no independent redistribution license asserted",
+        metadata={
+            "warning": "Guides point to code; summaries are not a complete set of restrictions. Exact snapshot date unknown."
+        },
+    )
+    slugs = ("base-zones", "overlay-zones")
+    for slug in slugs:
+        s.inventory("portland-zoning-guides", slug, PORTLAND_GUIDES + slug, "pending")
+    for slug in slugs[:limit]:
+        url = PORTLAND_GUIDES + slug
+        raw = a.fetch(url)
+        unit = portland_guide(s.artifact(raw.sha256), slug)
+        _, count, new = s.ingest(
+            collection="portland-zoning-guides",
+            document=unit.key,
+            title=unit.heading,
+            url=url,
+            acquisition=raw.id,
+            snapshot_basis="Undated explanatory publisher page",
+            parser="portland-guide-1",
+            provisions=[unit],
+        )
+        s.inventory("portland-zoning-guides", slug, url, "indexed")
+        progress("portland-zoning-guides", slug, count, new)
 
 
 def nyc_units(data: bytes, url: str) -> Iterator[Provision]:

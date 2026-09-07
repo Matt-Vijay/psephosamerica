@@ -87,6 +87,30 @@ def create_server(root: Path) -> FastMCP:
             )
 
     @server.tool()
+    def legal_find(
+        key_or_id: str,
+        query: str,
+        as_of: str | None = None,
+        observation_cutoff: str | None = None,
+        start: int = 0,
+        limit: int = 10,
+    ) -> dict[str, Any]:
+        """Jump to literal text inside a long source section. Use returned immutable ID and read_offset with legal_read.
+
+        No regex, summaries or inferred definitions. Read surrounding qualifications and scoped modifications.
+        Offsets are Unicode characters in the exact text version, not markup or UTF-8 bytes.
+        """
+        with reader() as r:
+            return r.find(
+                key_or_id,
+                query,
+                as_of=as_of,
+                observation_cutoff=observation_cutoff,
+                start=start,
+                limit=limit,
+            )
+
+    @server.tool()
     def legal_versions(key: str, limit: int = 30) -> dict[str, Any]:
         """List acquired versions of a stable source key, not a fabricated complete history."""
         with reader() as r:

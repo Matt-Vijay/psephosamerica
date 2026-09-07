@@ -1,5 +1,11 @@
 # Legal-information milestone
 
+The measurements below freeze the initial `e077e98` checkpoint, not the expanding
+live catalog. Run `psephos status` for current accepted collections. The subsequent
+[navigation receipt](navigation-verification.json) exercises eight MCP tools and
+the [NYC/Portland reading workflows](navigation.md). Collector stores are reviewed
+separately before a single writer publishes them into the canonical catalog.
+
 This checkpoint implements the fresh source-retrieval mission, not the earlier
 Psephos evaluation/RL experiments. It is a working local library with substantial
 real text, actual geometry and read-only MCP. Nationwide coverage, legal conclusions
@@ -55,8 +61,9 @@ future runs of mutable publisher indexes.
   selected scope notes exposed for reading. PDF images, complicated table semantics,
   current legal effect and exhaustive contextual applicability remain reader work.
 - GIS vintages differ from text vintages. The point tool is not parcel delineation,
-  legal applicability, a map→ordinance join, or permission to build. Oregon state law
-  and Portland rules outside Title 33 are not acquired.
+  legal applicability, a map→ordinance join, or permission to build. At this initial
+  checkpoint Oregon state law and Portland rules outside Title 33 were not acquired.
+  Subsequent Oregon collection is a separately reviewed, bounded 2025-edition tranche.
 - Acquisition is capped/resumable, but no scheduler or continual synchronization
   service is included. A later mutable source refresh can fail without making its
   older local bytes current. Page-by-page legal collections expose per-document
@@ -69,9 +76,10 @@ after successful replacement: 9,945 derived versions, 590,691 derived units and
 32,604 duplicated geometry rows. These were parser iterations, not distinct legal
 snapshots. All original artifacts/acquisition receipts remain; indexes are rebuildable.
 
-## Next gap
+## Subsequent work
 
-The highest-value coverage candidate is Oregon's state-law layer, with the publisher's
-edition/update caveats intact. Before another adapter, prioritize reliable retrieval
-of source media/table context and clearly dated updates. More rows alone would not
-fix either limitation. The source notes distinguish researched leads from actual data.
+Oregon, Washington, California and regional state collectors now retain isolated
+source stores. Accepted batches alone enter the canonical library; explicit held
+and blocked states remain separate. Whole-source inventory, readable text, mixed PDF
+pages and current legal effect are different claims. No population-coverage
+percentage is asserted without a defined and measured denominator.

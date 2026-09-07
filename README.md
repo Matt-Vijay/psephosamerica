@@ -37,15 +37,20 @@ in your MCP client's configuration, for example:
 }
 ```
 
-Start with `legal_coverage`, then `legal_search` → `legal_read`. Other tools are
-`legal_versions`, `legal_references`, `source_receipt`, and `zoning_at`. Tools have
+Start with `legal_coverage`, then `legal_search` → `legal_read`. Use `legal_find`
+to jump to literal text inside long provisions. Other tools are `legal_versions`,
+`legal_references`, `source_receipt`, and `zoning_at`. Tools have
 bounded inputs/outputs and cannot execute SQL, fetch URLs, or read arbitrary files.
 Publisher text is untrusted content, never an instruction to the client agent.
+See the verified [NYC and Portland reading workflows](docs/navigation.md).
 
-## Acquired coverage
+## Recorded initial coverage
 
-Measured corpus; counts are from [the integrity receipt](docs/integrity.json), not
-estimates or catalog promises. Source dates are not uniformly current legal effect.
+This table freezes the initial `e077e98` checkpoint, measured in
+[the integrity receipt](docs/integrity.json). Subsequent state collections are being
+reviewed and merged from isolated stores; `psephos status` reports the actual local
+catalog. Staged, held and blocked collections are not accepted coverage. Source
+dates are not uniformly current legal effect.
 
 | Collection | Retained retrieval coverage | Publisher clock / important qualification |
 | --- | --- | --- |
@@ -59,7 +64,7 @@ estimates or catalog promises. Source dates are not uniformly current legal effe
 | NYC zoning GIS | 16,901 polygons in six publisher layers | Publisher description vintage June 2026; no invented exact day |
 | Portland zoning GIS | 15,703 polygons, one accepted whole-layer export | Live acquisition interval, not server-side historical snapshot isolation |
 
-The local raw store contains 287 distinct objects / 1,220,587,392 bytes, including
+The initial raw store contained 287 distinct objects / 1,220,587,392 bytes, including
 inventories and verification sources. The derived SQLite catalog is approximately
 5.2 GiB. Plan for several GiB of free working space beyond the retained data.
 
@@ -69,9 +74,11 @@ inventories and verification sources. The derived SQLite catalog is approximatel
 # Full supported inventory: substantial downloads, resumable from the local cache.
 .venv/bin/psephos sync uscode ecfr dc texas nyc portland nyc-gis portland-gis
 .venv/bin/psephos sync ecfr --as-of 2024-01-01 --limit 3
+.venv/bin/psephos sync portland-guides
 .venv/bin/psephos status
 .venv/bin/psephos zoning -122.6765 45.5231 --collection portland-zoning-gis
 .venv/bin/psephos read 'dc-code:§42-3505.01'
+.venv/bin/psephos find 'nyc-zr:12-10' 'qualifying residential site'
 .venv/bin/psephos audit > integrity.json
 .venv/bin/python scripts/verify_corpus.py --data data --publisher-checks --out verification.json
 
@@ -86,8 +93,8 @@ Rerunning `sync` reuses rehashed objects. Add `--refresh` to conditionally reval
 mutable sources. Acquisition respects publisher robots rules, rate delays and
 Retry-After; it defers long waits and stops on access restrictions. Each run caps
 decoded downloads at 4 GiB; each file at 1 GiB. No API key or paid service is used.
-The verification script checks the recorded milestone corpus; future publisher
-changes can legitimately require updated expectations. Omit `--publisher-checks`
+The verification script checks the recorded milestone corpus plus the two Portland
+reader guides; future publisher changes can require updated expectations. Omit `--publisher-checks`
 to verify only already-retained alternate-source receipts, with no network.
 
 `audit` reports storage/source integrity separately from content limitations.
@@ -129,8 +136,10 @@ precedence graph or geographic-to-code applicability engine.
 
 - `src/psephos/store.py`, `acquire.py`: catalog, receipts and immutable storage.
 - `sources.py`, `dc.py`, `texas.py`, `municipal.py`, `geography.py`, `parse.py`: explicit publishers and projections.
+- `collect_california.py`, `collect_oregon.py`, `collect_washington.py`: bounded state-source adapters; their source-specific budgets and caveats remain explicit.
 - `retrieve.py`, `server.py`, `cli.py`: the query surface.
 - `audit.py`, `scripts/verify_corpus.py`, `tests/`: real integrity and focused behavior checks.
+- `scripts/import_collector.py`: offline reviewed-store publication; rehashed hard-linked raw bytes, remapped receipts, atomic catalog merge. No downloads or parser execution.
 - `docs/`: measured receipts and source limitations. `data/` and `tmp/` are ignored.
 
 Code and source-data licensing are separate. No blanket license is asserted over

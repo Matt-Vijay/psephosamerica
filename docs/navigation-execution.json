@@ -1,0 +1,66 @@
+{
+  "generated_at": "2026-09-07T01:20:07Z",
+  "status": "PASS",
+  "baseline_commit": "e077e98",
+  "python": "3.12.13",
+  "software": {
+    "pytest": "9.1.1",
+    "ruff": "0.16.6",
+    "mypy": "1.20.2",
+    "httpx": "0.28.1",
+    "lxml": "6.1.3",
+    "mcp": "1.29.1",
+    "pypdf": "6.17.0",
+    "shapely": "2.1.2",
+    "pyogrio": "0.13.0",
+    "pyproj": "3.8.0"
+  },
+  "verification": {
+    "pytest": {
+      "command": ".venv/bin/pytest -q",
+      "passed": 37,
+      "seconds": 1.2
+    },
+    "lint": ".venv/bin/ruff check src scripts tests",
+    "format": ".venv/bin/ruff format --check src scripts tests",
+    "formatted_files": 27,
+    "typing": ".venv/bin/mypy src/psephos",
+    "typed_source_files": 16,
+    "diff_check": "git diff --check"
+  },
+  "wheel": {
+    "build_command": ".venv/bin/python -m pip wheel --no-deps --wheel-dir tmp/wheels/navigation .",
+    "sha256": "9c639360494a2cd5b4f7921246bc93852618e767c9a6b156e70da96f930eb20e",
+    "bytes": 65156,
+    "source_modules_byte_equal": 16,
+    "archive_files": 20,
+    "contains_raw_data_or_environment": false
+  },
+  "fresh_install": {
+    "new_python_venv": true,
+    "installed_noneditable_wheel": true,
+    "imported_from_venv_site_packages": true,
+    "working_directory_outside_repo": true,
+    "PYTHONPATH_unset": true,
+    "cached_title1_repeat_downloaded_bytes": 0,
+    "cached_title1_units": 42,
+    "live_mcp_receipt": {
+      "path": "docs/navigation-verification.json",
+      "sha256": "f82b522d46c40792306d30bab4d76b8c18bf073f7a735ec216cfb6b2e7b31c5f",
+      "status": "PASS",
+      "seconds": 12.973,
+      "calls": 27
+    }
+  },
+  "known_limits": [
+    "This rechecks the installed package and retained source corpus; it does not redownload all publishers.",
+    "Regional publication continues independently; this is not the final nationwide-coverage receipt."
+  ],
+  "lookup_scaling_checks": {
+    "prior_mixed_OR_scan_seconds": 15.2321,
+    "indexed_UNION_full_read_seconds": 0.1184,
+    "prior_per_collection_coverage_seconds": 24.0018,
+    "single_aggregate_coverage_seconds": 4.776,
+    "qualification": "Single local observations while corpus imports were ongoing, not a hardware-independent benchmark."
+  }
+}

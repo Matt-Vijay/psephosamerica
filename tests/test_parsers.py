@@ -2,7 +2,7 @@ import pytest
 from conftest import retain
 
 from psephos.dc import law_unit
-from psephos.municipal import nyc_units
+from psephos.municipal import nyc_units, portland_guide
 from psephos.parse import ecfr_units, readable, uscode_units, xml_root
 from psephos.retrieve import Reader
 
@@ -72,3 +72,16 @@ def test_nyc_embedded_phantom_article_is_not_another_section():
     units = list(nyc_units(raw, "https://zoningresolution.planning.nyc.gov/article-iii/chapter-7"))
     assert len(units) == 1 and units[0].key == "nyc-zr:37-01"
     assert "Preserved words" in units[0].text
+
+
+def test_portland_guide_is_source_guidance_not_a_codified_unit():
+    data = b"""<html><nav>Not source content</nav><main><h1>Overlay Zones</h1>
+    <article><p>Maps do not show all restrictions.</p><ul><li>d - Design Overlay Zone
+    <a href="/code/33/420">33.420</a></li></ul></article></main></html>"""
+    unit = portland_guide(data, "overlay-zones")
+    assert unit.unit_kind == "publisher_guide"
+    assert "Maps do not show all restrictions." in unit.text
+    assert "Not source content" not in unit.text
+    assert unit.references[0].target == "https://www.portland.gov/code/33/420"
+    with pytest.raises(ValueError, match="title"):
+        portland_guide(data, "base-zones")

@@ -32,6 +32,12 @@ def cutoff_observation(value: str | None) -> str | None:
     return parsed.astimezone(UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
 
 
+def literal_pattern(query: str) -> re.Pattern[str]:
+    if not query.strip() or len(query) > 500:
+        raise ValueError("Use a nonempty literal phrase of at most 500 characters")
+    return re.compile(r"\s+".join(re.escape(word) for word in query.split()), re.IGNORECASE)
+
+
 def eligible(
     as_of: str | None, observed: str | None, *, exact: bool = False
 ) -> tuple[str, list[Any]]:
@@ -59,6 +65,24 @@ class Reader:
         self.db = store.db
 
     def coverage(self, *, detailed: bool = False) -> dict[str, Any]:
+        # Count the latest units once, not one scan of the national text table per collection.
+        chosen, _ = eligible(None, None)
+        unit_counts: dict[str, list[dict[str, Any]]] = {}
+        for row in self.db.execute(
+            chosen + "SELECT d.collection_id,p.unit_kind,count(*) AS count FROM provisions p "
+            "JOIN chosen v ON v.id=p.version_id JOIN documents d ON d.id=v.document_id "
+            "GROUP BY d.collection_id,p.unit_kind"
+        ):
+            unit_counts.setdefault(row["collection_id"], []).append(
+                {"unit_kind": row["unit_kind"], "count": row["count"]}
+            )
+        feature_counts = dict(
+            self.db.execute(
+                chosen
+                + "SELECT d.collection_id,count(*) FROM features f JOIN chosen v ON v.id=f.version_id "
+                "JOIN documents d ON d.id=v.document_id GROUP BY d.collection_id"
+            )
+        )
         collections = []
         for row in self.db.execute("SELECT * FROM collections ORDER BY id"):
             entry = dict(row)
@@ -100,21 +124,8 @@ class Reader:
                 "WHERE d.collection_id=?",
                 (row["id"],),
             ).fetchone()[0]
-            chosen, _ = eligible(None, None)
-            entry["units_in_latest_documents"] = [
-                dict(r)
-                for r in self.db.execute(
-                    chosen + "SELECT p.unit_kind,count(*) AS count FROM provisions p "
-                    "JOIN chosen v ON v.id=p.version_id JOIN documents d ON d.id=v.document_id "
-                    "WHERE d.collection_id=? GROUP BY p.unit_kind",
-                    (row["id"],),
-                )
-            ]
-            entry["features_in_latest_documents"] = self.db.execute(
-                chosen + "SELECT count(*) FROM features f JOIN chosen v ON v.id=f.version_id "
-                "JOIN documents d ON d.id=v.document_id WHERE d.collection_id=?",
-                (row["id"],),
-            ).fetchone()[0]
+            entry["units_in_latest_documents"] = unit_counts.get(row["id"], [])
+            entry["features_in_latest_documents"] = feature_counts.get(row["id"], 0)
             entry["clocks"] = dict(
                 self.db.execute(
                     "SELECT min(v.snapshot_date) AS earliest_snapshot,max(v.snapshot_date) AS "
@@ -176,36 +187,54 @@ class Reader:
         rows = self.db.execute(
             sql + "SELECT p.id,p.key,p.citation,p.heading,p.unit_kind,p.url,c.id AS collection,"
             "c.jurisdiction_id,c.source_status,v.snapshot_date,v.snapshot_basis,v.observed_at,"
-            "v.published_on,v.effective_on,v.amended_on,v.artifact_sha,"
+            "v.published_on,v.effective_on,v.amended_on,v.artifact_sha,p.text AS _text,"
             "snippet(provision_search,2,'[',']',' … ',48) AS excerpt "
             "FROM provision_search JOIN provisions p ON p.rowid=provision_search.rowid "
             "JOIN chosen v ON v.id=p.version_id JOIN documents d ON d.id=v.document_id "
             "JOIN collections c ON c.id=d.collection_id WHERE "
             + " AND ".join(where)
-            + " ORDER BY CASE WHEN instr(lower(p.heading),?)>0 THEN 0 ELSE 1 END, "
+            + " ORDER BY CASE WHEN p.unit_kind='pdf_page' AND length(trim(p.text))<300 THEN 4 "
+            "WHEN instr(lower(p.heading),?)>0 THEN 0 "
+            "WHEN instr(lower(p.text),?)>0 THEN 1 WHEN instr(lower(p.text),?)>0 THEN 2 ELSE 3 END, "
             "bm25(provision_search,10,5,1),p.id LIMIT ?",
-            (*params, query.strip().lower(), limit),
+            (
+                *params,
+                query.strip().lower(),
+                "\n" + query.strip().lower() + "\n",
+                query.strip().lower(),
+                limit,
+            ),
         )
+        matches = []
+        phrase = literal_pattern(query)
+        standalone = re.compile("^" + phrase.pattern + "$", re.IGNORECASE | re.MULTILINE)
+        for row in rows:
+            item = dict(row)
+            text = item.pop("_text")
+            line = standalone.search(text)
+            match = line or phrase.search(text)
+            item["match_kind"] = (
+                "standalone_phrase" if line else "phrase" if match else "dispersed_terms"
+            )
+            item["match_offset"] = match.start() if match else None
+            item["read_offset"] = max(0, match.start() - 150) if match else None
+            matches.append(item)
         return {
-            "matches": [dict(r) for r in rows],
-            "query_mode": "lexical_all_terms",
+            "matches": matches,
+            "query_mode": "lexical_all_terms_phrase_ranked",
+            "ranking_warning": "Textual relevance, not legal precedence or universal applicability. Read scoped modifications too.",
             "as_of": as_of,
             "observation_cutoff": observation_cutoff,
             "temporal_semantics": TEMPORAL_LIMIT,
         }
 
-    def read(
+    def _locate(
         self,
         key_or_id: str,
         *,
         as_of: str | None = None,
         observation_cutoff: str | None = None,
-        offset: int = 0,
-        length: int = 10000,
-        include_markup: bool = False,
     ) -> dict[str, Any]:
-        if offset < 0 or not 1 <= length <= 24000:
-            raise ValueError("offset must be nonnegative; length must be 1..24000")
         citation = re.fullmatch(
             r"(\d+)\s*U\.?\s*S\.?\s*C\.?\s*(?:§|section|sec\.?)?\s*([\w–-]+)\.?", key_or_id, re.I
         )
@@ -225,8 +254,12 @@ class Reader:
             "v.artifact_sha,v.acquisition_id,v.artifact_url,v.member,v.parser,v.metadata AS version_metadata "
             "FROM provisions p JOIN chosen v ON v.id=p.version_id "
             "JOIN documents d ON d.id=v.document_id JOIN collections c ON c.id=d.collection_id "
-            "WHERE p.id IN (SELECT id FROM provisions WHERE key=? OR id=? "
-            "OR citation=? COLLATE NOCASE OR key GLOB ?) LIMIT 3",
+            # Separate indexed lookups: SQLite can turn the mixed OR/GLOB form into a
+            # full text-table scan once the catalog grows or gains planner statistics.
+            "WHERE p.id IN (SELECT id FROM provisions WHERE key=? "
+            "UNION SELECT id FROM provisions WHERE id=? "
+            "UNION SELECT id FROM provisions WHERE citation=? COLLATE NOCASE "
+            "UNION SELECT id FROM provisions WHERE key GLOB ?) LIMIT 3",
             (*params, key_or_id, key_or_id, key_or_id, key_or_id + "/_occurrence/[0-9]*"),
         ).fetchall()
         if not rows:
@@ -245,23 +278,99 @@ class Reader:
         result.pop("rowid")
         result["metadata"] = json.loads(result["metadata"])
         result["version_metadata"] = json.loads(result["version_metadata"])
-        result["media"] = []
+        return {"found": True, **result}
+
+    def find(
+        self,
+        key_or_id: str,
+        query: str,
+        *,
+        as_of: str | None = None,
+        observation_cutoff: str | None = None,
+        start: int = 0,
+        limit: int = 10,
+    ) -> dict[str, Any]:
+        """Find exact source text without paging through a long provision or inventing chunks."""
+        if start < 0 or not 1 <= limit <= 20:
+            raise ValueError("start must be nonnegative; limit must be 1..20")
+        pattern = literal_pattern(query)
+        source = self._locate(key_or_id, as_of=as_of, observation_cutoff=observation_cutoff)
+        if not source["found"]:
+            return source
+        text = source["text"]
+        matches: list[dict[str, Any]] = []
+        next_start = None
+        for match in pattern.finditer(text, start):
+            if len(matches) == limit:
+                next_start = match.start()
+                break
+            offset = max(0, match.start() - 150)
+            matches.append(
+                {
+                    "match_offset": match.start(),
+                    "match_end": match.end(),
+                    "read_offset": offset,
+                    "excerpt": text[offset : min(match.end() + 500, offset + 1000)],
+                }
+            )
+        return {
+            "found": True,
+            **{
+                k: source[k]
+                for k in (
+                    "id",
+                    "key",
+                    "version_id",
+                    "citation",
+                    "url",
+                    "artifact_sha",
+                    "snapshot_date",
+                    "observed_at",
+                )
+            },
+            "matches": matches,
+            "next_start": next_start,
+            "text_characters": len(text),
+            "offset_semantics": "Zero-based Unicode character offsets into this exact version's legal_read text, not its markup.",
+            "match_mode": "Case-insensitive literal text; whitespace flexible, no user regex.",
+            "warning": "Matches/excerpts are navigation, not complete definitions or applicability findings. Read surrounding qualifications.",
+            "temporal_semantics": TEMPORAL_LIMIT,
+        }
+
+    def read(
+        self,
+        key_or_id: str,
+        *,
+        as_of: str | None = None,
+        observation_cutoff: str | None = None,
+        offset: int = 0,
+        length: int = 10000,
+        include_markup: bool = False,
+    ) -> dict[str, Any]:
+        if offset < 0 or not 1 <= length <= 24000:
+            raise ValueError("offset must be nonnegative; length must be 1..24000")
+        result = self._locate(key_or_id, as_of=as_of, observation_cutoff=observation_cutoff)
+        if not result["found"]:
+            return result
+        result["media"] = list(result["metadata"].get("media", []))
         result["text_completeness"] = result["metadata"].get(
             "text_quality", "publisher_text_projection"
         )
         if result["markup"]:
             try:
-                result["media"] = media_links(xml_root(result["markup"].encode()), result["url"])
-                if result["media"]:
-                    result["text_completeness"] = "incomplete_without_source_media"
+                for medium in media_links(xml_root(result["markup"].encode()), result["url"]):
+                    if medium not in result["media"]:
+                        result["media"].append(medium)
             except (ValueError, etree.XMLSyntaxError):
                 result["text_completeness"] = "markup_inspection_warning"
+        if result["media"]:
+            result["text_completeness"] = "incomplete_without_source_media"
+        media_cutoff = cutoff_observation(observation_cutoff)
         for medium in result["media"]:
-            media_cutoff = cutoff_observation(observation_cutoff)
             receipt = self.db.execute(
                 "SELECT sha256,id FROM acquisitions WHERE url=? AND status=200 "
                 "AND (? IS NULL OR observed_at<=?) ORDER BY id DESC LIMIT 1",
-                (medium["url"], media_cutoff, media_cutoff),
+                (medium.get("url", ""), media_cutoff, media_cutoff),
             ).fetchone()
             medium["acquired_receipt"] = dict(receipt) if receipt else None
         full_text = result["text"]

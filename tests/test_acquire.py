@@ -90,3 +90,28 @@ def test_long_publisher_delays_defer_instead_of_truncating(store):
             a.fetch("https://example.test/source", check_robots=False)
     finally:
         a.close()
+
+
+@pytest.mark.parametrize(
+    "policy,reason",
+    [
+        (b"\xef\xbb\xbfUser-agent: *\nCrawl-delay: 120\n", "delay"),
+        (b"User-agent: * Disallow: /", "multiple directives"),
+        (b"<html><body>Application</body></html>", "markup"),
+    ],
+)
+def test_publisher_policy_variants_do_not_silently_allow_requests(store, policy, reason):
+    requests = []
+
+    def handler(request):
+        requests.append(request.url.path)
+        return httpx.Response(200, content=policy)
+
+    a = client(store, handler)
+    try:
+        with pytest.raises(AcquisitionError, match=reason):
+            a.fetch("https://example.test/source")
+        assert requests == ["/robots.txt"]
+        assert store.db.execute("SELECT count(*) FROM artifacts").fetchone()[0] == 1
+    finally:
+        a.close()
