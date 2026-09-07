@@ -1,5 +1,11 @@
 # Source-guided reading
 
+Start with [bounded source discovery](discovery.md): an exact
+`legal_coverage(jurisdiction="us-ny-nyc")` or
+`legal_coverage(jurisdiction="us-or-portland")` lists only that catalog scope.
+Its document/inventory views expose retained entry points and gaps without a
+national provision scan. Other potentially applicable jurisdictions are separate.
+
 These paths are exercised against retained sources by
 `python scripts/verify_corpus.py --data data --out verification.json`.
 [The recorded MCP receipt](navigation-verification.json) includes source-version

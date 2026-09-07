@@ -151,10 +151,9 @@ async def verify_mcp(root):
             )
             return result.structuredContent
 
-        coverage = await call("legal_coverage")
-        assert {"uscode", "ecfr", "dc-code", "texas", "nyc-zoning", "portland-zoning"} <= {
-            c["id"] for c in coverage["collections"]
-        }
+        for collection in ("uscode", "ecfr", "dc-code", "texas", "nyc-zoning", "portland-zoning"):
+            coverage = await call("legal_coverage", collection=collection)
+            assert [c["id"] for c in coverage["collections"]] == [collection]
         search = await call("legal_search", query="words denoting", collection="uscode", limit=3)
         assert search["matches"][0]["key"] == "usc:/us/usc/t1/s1"
         usc = await call("legal_read", key_or_id=search["matches"][0]["id"])

@@ -97,3 +97,11 @@ code for all 45 published batches and exercises exact offline reconstruction for
 Florida, New Jersey and Mississippi. Its [receipt](../replay/verification.json)
 is separate from the prior campaign; no new collection or whole-corpus audit was
 performed. The other 42 batches remain provenance-only in that replay surface.
+
+The later [source-discovery checkpoint](discovery.md) replaces the unfiltered
+national coverage dump with scoped, paginated metadata views. It adds two receipted
+current collection annotations, not legal versions or source data. Its focused
+MCP/tests [receipt](discovery-verification.json) is separate from the prior audits.
+Receipt read tools now filter imported headers at output without rewriting stored
+evidence. Sync/audit summaries explicitly separate requested-source results and
+corpus counts from paginated discovery.

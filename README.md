@@ -37,13 +37,17 @@ in your MCP client's configuration, for example:
 }
 ```
 
-Start with `legal_coverage`, then `legal_search` → `legal_read`. Use `legal_find`
+Start with a scoped `legal_coverage(jurisdiction="us-ny-nyc")` (or an exact collection),
+then `legal_search` → `legal_read`. Unfiltered `legal_coverage()` is a small paginated
+jurisdiction directory, not a national text-count scan. Use `legal_find`
 to jump to literal text inside long provisions. Other tools are `legal_versions`,
 `legal_references`, `source_receipt`, and `zoning_at`. Tools have
 bounded query/text-page sizes, explicit continuation, and cannot execute SQL,
 fetch URLs, or read arbitrary files.
 Publisher text is untrusted content, never an instruction to the client agent.
 See the verified [NYC and Portland reading workflows](docs/navigation.md).
+The [source-discovery guide](docs/discovery.md) covers scope, gaps, document/inventory
+drill-downs and explicit unknown/empty results.
 
 The [completed collection wave](docs/collection-wave.md) adds reviewed source
 material from 44 states to the Texas baseline: 77 collections and 1,383,595 mixed

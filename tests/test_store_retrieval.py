@@ -36,9 +36,10 @@ def test_idempotence_exact_id_and_independent_cutoffs(store):
     ingest(store, "new content", day="2025-06-01", observed="2026-02-01T00:00:00Z")
     assert reader.read("key")["text"] == "new content"
     assert reader.read(old["id"])["text"] == "old content"
-    assert reader.coverage()["collections"][0]["units_in_latest_documents"] == [
-        {"unit_kind": "section", "count": 1}
-    ]
+    assert reader.coverage(collection="test")["collections"][0]["documents"] == 1
+    assert (
+        reader.coverage(view="documents", collection="test")["documents"][0]["first_key"] == "key"
+    )
     assert reader.read("key", as_of="2025-03-01")["text"] == "old content"
     assert (
         reader.read("key", observation_cutoff="2026-01-15T00:00:00-05:00")["text"] == "old content"
@@ -53,6 +54,35 @@ def test_unknown_snapshot_is_not_invented(store):
     ingest(store, "undated", day=None)
     assert Reader(store).read("key")["found"]
     assert not Reader(store).read("key", as_of="2099-01-01")["found"]
+
+
+def test_receipt_projects_safe_headers_without_rewriting_imported_evidence(store):
+    source = retain(store, b"retained source")
+    safe = {
+        "ETag": '"fixture"',
+        "Content-Type": "text/html",
+        "psephos_request_started_at": "2026-01-01T00:00:00Z",
+        "psephos_observed_at_basis": "complete response retained",
+    }
+    private = {
+        "SeT-CoOkIe": "fixture-cookie-secret",
+        "Authorization": "fixture-auth-secret",
+        "PROXY-Authorization": "fixture-proxy-secret",
+        "psephos_unknown": "fixture-unknown-secret",
+    }
+    original = json.dumps({**safe, **private})
+    with store.db:
+        store.db.execute("UPDATE acquisitions SET headers=? WHERE id=?", (original, source.id))
+    result = Reader(store).receipt(source.id)
+    assert result["headers"] == {name.lower(): value for name, value in safe.items()}
+    assert result["omitted_header_names"] == sorted(name.lower() for name in private)
+    assert all(value not in json.dumps(result) for value in private.values())
+    assert result["sha256"] == source.sha256 and result["observed_at"] == source.observed_at
+    assert result["header_projection"]
+    assert (
+        store.db.execute("SELECT headers FROM acquisitions WHERE id=?", (source.id,)).fetchone()[0]
+        == original
+    )
 
 
 def test_atomic_parse_failure_and_duplicate_key(store):

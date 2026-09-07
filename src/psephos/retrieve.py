@@ -5,13 +5,16 @@ from __future__ import annotations
 import json
 import re
 from datetime import UTC, date, datetime
-from typing import Any
+from typing import Any, Literal
 from urllib.parse import urlsplit
 
 from lxml import etree
 
+from .acquire import SAFE_HEADERS
 from .parse import media_links, source_medium, xml_root
 from .store import Store
+
+RECEIPT_HEADERS = SAFE_HEADERS | {"psephos_request_started_at", "psephos_observed_at_basis"}
 
 TEMPORAL_LIMIT = (
     "As-of selects the latest acquired publisher snapshot dated on/before the requested date. "
@@ -65,98 +68,223 @@ class Reader:
     def __init__(self, store: Store):
         self.db = store.db
 
-    def coverage(self, *, detailed: bool = False) -> dict[str, Any]:
-        # Count the latest units once, not one scan of the national text table per collection.
-        chosen, _ = eligible(None, None)
-        unit_counts: dict[str, list[dict[str, Any]]] = {}
-        for row in self.db.execute(
-            chosen + "SELECT d.collection_id,p.unit_kind,count(*) AS count FROM provisions p "
-            "JOIN chosen v ON v.id=p.version_id JOIN documents d ON d.id=v.document_id "
-            "GROUP BY d.collection_id,p.unit_kind"
+    def coverage(
+        self,
+        *,
+        view: Literal["jurisdictions", "collections", "documents", "inventory"] | None = None,
+        jurisdiction: str | None = None,
+        collection: str | None = None,
+        status: str | None = None,
+        offset: int = 0,
+        limit: int = 10,
+    ) -> dict[str, Any]:
+        """Small source directory; never aggregate the national provisions/features tables."""
+        if not 1 <= limit <= 20 or not 0 <= offset <= 100000:
+            raise ValueError("Use limit 1..20 and offset 0..100000")
+        for name, value in (
+            ("jurisdiction", jurisdiction),
+            ("collection", collection),
+            ("status", status),
         ):
-            unit_counts.setdefault(row["collection_id"], []).append(
-                {"unit_kind": row["unit_kind"], "count": row["count"]}
-            )
-        feature_counts = dict(
-            self.db.execute(
-                chosen
-                + "SELECT d.collection_id,count(*) FROM features f JOIN chosen v ON v.id=f.version_id "
-                "JOIN documents d ON d.id=v.document_id GROUP BY d.collection_id"
+            if value is not None and (not value.strip() or len(value) > 200):
+                raise ValueError(f"{name} must be a nonempty exact identifier, or omitted")
+        view = (
+            view
+            if view is not None
+            else (
+                "collections"
+                if jurisdiction is not None or collection is not None
+                else "jurisdictions"
             )
         )
-        collections = []
-        for row in self.db.execute("SELECT * FROM collections ORDER BY id"):
-            entry = dict(row)
-            entry["metadata"] = json.loads(entry["metadata"])
-            if not detailed:
-                important = {
-                    "currency_notice",
-                    "release_point",
-                    "current_through",
-                    "current_through_public_law_date",
-                    "codified_date",
-                    "api_meta",
-                    "approved_changes_through",
-                    "publisher_edition_effective_on",
-                    "expected_features",
-                    "warning",
-                    "snapshot_warning",
-                    "limitation",
-                }
-                entry["metadata"] = {
-                    k: v
-                    for k, v in entry["metadata"].items()
-                    if k in important or k.endswith("_artifact")
-                }
-            entry["inventory"] = [
-                dict(r)
-                for r in self.db.execute(
-                    "SELECT status,count(*) AS items FROM inventories WHERE collection_id=? "
-                    "GROUP BY status",
-                    (row["id"],),
-                )
-            ]
-            entry["documents"] = self.db.execute(
-                "SELECT count(*) FROM documents WHERE collection_id=?",
-                (row["id"],),
-            ).fetchone()[0]
-            entry["versions"] = self.db.execute(
-                "SELECT count(*) FROM versions v JOIN documents d ON d.id=v.document_id "
-                "WHERE d.collection_id=?",
-                (row["id"],),
-            ).fetchone()[0]
-            entry["units_in_latest_documents"] = unit_counts.get(row["id"], [])
-            entry["features_in_latest_documents"] = feature_counts.get(row["id"], 0)
-            entry["clocks"] = dict(
-                self.db.execute(
-                    "SELECT min(v.snapshot_date) AS earliest_snapshot,max(v.snapshot_date) AS "
-                    "latest_snapshot,min(a.observed_at) AS first_acquired,max(a.observed_at) AS "
-                    "last_acquired FROM versions v JOIN documents d ON d.id=v.document_id "
-                    "JOIN acquisitions a ON a.id=v.acquisition_id WHERE d.collection_id=?",
-                    (row["id"],),
-                ).fetchone()
-            )
-            entry["failures"] = [
-                dict(r)
-                for r in self.db.execute(
-                    "SELECT item,url,error FROM inventories WHERE collection_id=? AND status='failed' LIMIT 30",
-                    (row["id"],),
-                )
-            ]
-            collections.append(entry)
-        return {
-            "collections": collections,
-            "jurisdictions": [
-                dict(r) for r in self.db.execute("SELECT * FROM jurisdictions ORDER BY id")
-            ],
-            "raw_artifacts": dict(
-                self.db.execute(
-                    "SELECT count(*) AS count,coalesce(sum(bytes),0) AS bytes FROM artifacts"
-                ).fetchone()
-            ),
-            "scope_warning": "Coverage is the listed acquired inventories, not all US law.",
+        if view not in {"jurisdictions", "collections", "documents", "inventory"}:
+            raise ValueError("Unknown source-directory view")
+        if view in {"documents", "inventory"} and collection is None:
+            raise ValueError(f"{view} requires an exact collection")
+        if view == "jurisdictions" and collection is not None:
+            raise ValueError("Use collections view with a collection filter")
+        if status is not None and view != "inventory":
+            raise ValueError("status filters inventory only")
+        result: dict[str, Any] = {
+            "view": view,
+            "status": "ok",
+            view: [],
+            "offset": offset,
+            "limit": limit,
+            "next_offset": None,
+            "total": 0,
+            "filters": {"jurisdiction": jurisdiction, "collection": collection, "status": status},
+            "scope_warning": "Exact catalog scope only, not applicable law or completeness. Empty/unknown coverage is not absence of legal restrictions. State/federal/local sources are separate; no automatic jurisdiction inheritance.",
+            "navigation": "Choose a jurisdiction or collection; use documents for first_key → legal_read, inventory for retained source items/gaps. Follow next_offset.",
             "temporal_semantics": TEMPORAL_LIMIT,
         }
+        jurisdiction_row = (
+            self.db.execute("SELECT * FROM jurisdictions WHERE id=?", (jurisdiction,)).fetchone()
+            if jurisdiction is not None
+            else None
+        )
+        if jurisdiction is not None and jurisdiction_row is None:
+            result["status"] = "unknown_jurisdiction"
+            return result
+        collection_row = (
+            self.db.execute("SELECT * FROM collections WHERE id=?", (collection,)).fetchone()
+            if collection is not None
+            else None
+        )
+        if collection is not None and collection_row is None:
+            result["status"] = "unknown_collection"
+            return result
+        if (
+            collection_row is not None
+            and jurisdiction is not None
+            and collection_row["jurisdiction_id"] != jurisdiction
+        ):
+            result["status"] = "scope_mismatch"
+            return result
+
+        if view == "jurisdictions":
+            where, params = (" WHERE j.id=?", [jurisdiction]) if jurisdiction else ("", [])
+            total = self.db.execute(
+                "SELECT count(*) FROM jurisdictions j" + where, params
+            ).fetchone()[0]
+            rows = self.db.execute(
+                "SELECT j.*, (SELECT count(*) FROM collections c WHERE c.jurisdiction_id=j.id) "
+                "AS registered_collections FROM jurisdictions j"
+                + where
+                + " ORDER BY j.id LIMIT ? OFFSET ?",
+                (*params, limit, offset),
+            )
+            entries = [dict(row) for row in rows]
+        elif view == "collections":
+            predicates, params = [], []
+            if collection is not None:
+                predicates.append("id=?")
+                params.append(collection)
+            if jurisdiction is not None:
+                predicates.append("jurisdiction_id=?")
+                params.append(jurisdiction)
+            where = " WHERE " + " AND ".join(predicates) if predicates else ""
+            total = self.db.execute("SELECT count(*) FROM collections" + where, params).fetchone()[
+                0
+            ]
+            rows = self.db.execute(
+                "SELECT * FROM collections" + where + " ORDER BY id LIMIT ? OFFSET ?",
+                (*params, limit, offset),
+            )
+            entries = [self._source_card(dict(row)) for row in rows]
+        else:
+            assert collection_row is not None and collection is not None
+            result["source"] = self._source_card(dict(collection_row))
+            if view == "inventory":
+                result["inventory_semantics"] = (
+                    "Source-native mixed item kinds/statuses, not legal units or a completeness percentage. Documents are a separate view; no inferred item→document join."
+                )
+                where = "collection_id=?" + (" AND status=?" if status is not None else "")
+                params = [collection, status] if status is not None else [collection]
+                total = self.db.execute(
+                    "SELECT count(*) FROM inventories WHERE " + where, params
+                ).fetchone()[0]
+                entries = [
+                    dict(row)
+                    for row in self.db.execute(
+                        "SELECT item,url,status,error,checked_at FROM inventories WHERE "
+                        + where
+                        + " ORDER BY item LIMIT ? OFFSET ?",
+                        (*params, limit, offset),
+                    )
+                ]
+                if status is not None and not total:
+                    result["status"] = "no_inventory_items_with_status"
+            else:
+                total = self.db.execute(
+                    "SELECT count(*) FROM documents WHERE collection_id=?", (collection,)
+                ).fetchone()[0]
+                rows = self.db.execute(
+                    "SELECT d.*, v.id AS version_id,v.artifact_sha,v.acquisition_id,v.member,"
+                    "v.snapshot_date,v.snapshot_basis,v.published_on,v.effective_on,v.amended_on,"
+                    "v.repealed_on,v.available_at,v.parser FROM "
+                    "(SELECT * FROM documents WHERE collection_id=? ORDER BY id LIMIT ? OFFSET ?) d "
+                    "LEFT JOIN versions v ON v.id=(SELECT id FROM versions WHERE document_id=d.id "
+                    "ORDER BY coalesce(snapshot_date,'') DESC,available_at DESC,rowid DESC LIMIT 1) ORDER BY d.id",
+                    (collection, limit, offset),
+                )
+                entries = []
+                for row in rows:
+                    entry = dict(row)
+                    first = self.db.execute(
+                        "SELECT id,key,unit_kind FROM provisions WHERE version_id=? ORDER BY ordinal LIMIT 1",
+                        (entry["version_id"],),
+                    ).fetchone()
+                    entry.update(
+                        first_key=first["key"] if first else None,
+                        first_provision_id=first["id"] if first else None,
+                        first_unit_kind=first["unit_kind"] if first else None,
+                    )
+                    entries.append(entry)
+                result["document_semantics"] = (
+                    "Latest acquired parser projection per document, not complete legal history. first_key may be a heading/context/page, not a whole law. Use legal_search within this collection for a specific provision."
+                )
+        result["total"] = total
+        if not entries and result["status"] == "ok":
+            result["status"] = "empty" if not total else "page_exhausted"
+        for entry in entries:
+            result[view].append(entry)
+            if len(json.dumps(result, ensure_ascii=False).encode()) > 24576:
+                result[view].pop()
+                if not result[view]:
+                    result["status"] = "oversized_source_metadata"
+                    result["skipped_entry_offset"] = offset
+                    result["reason"] = (
+                        "This catalog entry exceeds the bounded directory response and is skipped; no completeness claim is available. Inspect its publisher source/retained metadata separately. Follow next_offset for later entries."
+                    )
+                break
+        returned = len(result[view])
+        advanced = returned or int("skipped_entry_offset" in result)
+        result["next_offset"] = (
+            offset + advanced if advanced and offset + advanced < total else None
+        )
+        if len(json.dumps(result, ensure_ascii=False).encode()) > 24576:
+            result.pop("source", None)
+            result[view] = []
+            result.update(
+                status="oversized_source_metadata",
+                next_offset=None,
+                reason="Catalog metadata exceeds this directory's byte budget; no scope conclusion is available.",
+            )
+        return result
+
+    def _source_card(self, row: dict[str, Any]) -> dict[str, Any]:
+        metadata = json.loads(row["metadata"])
+        # Large machine inventories are drill-down evidence, not scope/currency notices.
+        bulk = {"layer_metadata", "portal", "title_inventory"}
+        row["metadata"] = {key: value for key, value in metadata.items() if key not in bulk}
+        row["omitted_machine_metadata_keys"] = sorted(bulk.intersection(metadata))
+        row["documents"] = self.db.execute(
+            "SELECT count(*) FROM documents WHERE collection_id=?", (row["id"],)
+        ).fetchone()[0]
+        row["inventory_status_counts"] = [
+            dict(r)
+            for r in self.db.execute(
+                "SELECT status,count(*) AS items FROM inventories WHERE collection_id=? GROUP BY status ORDER BY status",
+                (row["id"],),
+            )
+        ]
+        row["scope_status"] = (
+            "as_described_in_source_metadata"
+            if "discovery_review" in metadata
+            or any("scope" in key or "coverage" in key for key in metadata)
+            else "not_explicitly_described"
+        )
+        row["completeness"] = (
+            "Not inferred from document, inventory or unit counts; inspect scope/omission notices and the paginated inventory."
+        )
+        if len(json.dumps(row, ensure_ascii=False).encode()) > 8192:
+            row["metadata"] = {}
+            row["scope_status"] = "metadata_exceeds_directory_budget"
+            row["metadata_warning"] = (
+                "Scope/currency metadata is too large for this directory card; no scope conclusion is available. Inspect the retained publisher evidence separately."
+            )
+        return row
 
     def search(
         self,
@@ -521,5 +649,19 @@ class Reader:
         if row is None:
             return {"found": False}
         result = dict(row)
-        result["headers"] = json.loads(result["headers"])
+        # Imported receipts may retain headers excluded by our own HTTP acquisition.
+        # Filter at the common Reader/MCP/CLI boundary without rewriting that evidence.
+        headers = json.loads(result["headers"])
+        result["headers"] = {
+            name.lower(): value
+            for name, value in headers.items()
+            if name.lower() in RECEIPT_HEADERS
+        }
+        result["omitted_header_names"] = sorted(
+            {name.lower() for name in headers if name.lower() not in RECEIPT_HEADERS}
+        )
+        result["header_projection"] = (
+            "Case-insensitive acquisition SAFE_HEADERS plus the two internal observation-clock "
+            "fields; names normalized to lowercase. Other values omitted; stored receipt unchanged."
+        )
         return {"found": True, **result}

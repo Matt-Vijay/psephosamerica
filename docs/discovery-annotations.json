@@ -1,0 +1,232 @@
+{
+  "status": "reviewed_additive_annotations",
+  "audited_code_revision": "edc71c8",
+  "operation": "For these two collections only, require exact before_metadata_json and its SHA-256 match, then merge metadata_addition without changing any existing key. Preserve versions, inventories, provisions, source rows and acceptance manifests; issue a receipt for the current collection-metadata annotation.",
+  "annotations": [
+    {
+      "collection_id": "florida-statutes-2026",
+      "before_metadata_json": "{\"edition_year\":2026,\"exact_date_unknown\":true}",
+      "before_metadata_sha256": "8adeab4cd9863753fee909df82abbc5c77b52b36617d267db4818a2de0a051c5",
+      "metadata_addition": {
+        "discovery_review": {
+          "scope": "2026 Florida Statutes, selected complete titles I, II, III, IX, XI, XII and XIII: 52 acquired chapter bodies. This is not statewide statutory coverage.",
+          "selected_title_numbers": [
+            1,
+            2,
+            3,
+            9,
+            11,
+            12,
+            13
+          ],
+          "inventory_counts": {
+            "titles_total": 49,
+            "titles_indexed": 7,
+            "titles_pending": 42,
+            "chapter_bodies_indexed": 52
+          },
+          "inventory_caveat": "101 inventory rows mix title indexes and chapter bodies. The 59 indexed rows are seven title-index nodes plus 52 chapters, not 59 legal-text documents.",
+          "gaps": [
+            "42 unselected titles remain uncollected.",
+            "Administrative regulations, session laws, local ordinances and case law are outside this accepted scope."
+          ],
+          "currency": {
+            "edition_year": 2026,
+            "snapshot_date": null,
+            "publication_date": null,
+            "legal_effective_date": null
+          },
+          "retained_chapter_observation": {
+            "first": "2026-09-07T00:49:32Z",
+            "last": "2026-09-07T01:00:48Z"
+          },
+          "provenance": {
+            "batch_id": "south-fl-20260907-01",
+            "acceptance_manifest_sha256": "292679b6cf40ee328342ebc121da9d1058d176cd1529c7ee5ef38feac4428489",
+            "root_inventory_receipt_id": 3324,
+            "selected_title_inventory_receipt_ids": [
+              3331,
+              3334,
+              3338,
+              3341,
+              3353,
+              3374,
+              3384
+            ]
+          },
+          "browsing": "chapter-N inventory items map to fl:chapter/N documents. title-N items are indexes; versions.metadata.title_number identifies each acquired chapter's selected title.",
+          "reviewed_at": "2026-09-07T03:52:12Z",
+          "review_semantics": "Frozen description of the cited accepted batch, not a live completeness assertion. Current document/inventory listings are queried separately."
+        }
+      },
+      "evidence": {
+        "acceptance": {
+          "batch_id": "south-fl-20260907-01",
+          "manifest_path": "data/collectors/leads/publish/acceptance-south-fl-20260907-01.json",
+          "manifest_sha256": "292679b6cf40ee328342ebc121da9d1058d176cd1529c7ee5ef38feac4428489",
+          "source_logical_sha256": "f0fee0d5ea11d9f27eac91ab9c9aef1ddd96a4cdb4d72b8aaad1c3296a654d2a"
+        },
+        "receipt_namespace": "data/legal.sqlite3 acquisitions.id",
+        "receipts": [
+          {
+            "id": 3324,
+            "url": "https://www.flsenate.gov/Laws/Statutes",
+            "observed_at": "2026-09-07T00:49:23Z",
+            "sha256": "6792bb8729981ebb80bf9a1b045db50bfae9b78f058cc4a7831f9d4b37aa3bfe",
+            "status": 200
+          },
+          {
+            "id": 3331,
+            "url": "https://www.flsenate.gov/Laws/Statutes/2026/Title1/",
+            "observed_at": "2026-09-07T00:49:45Z",
+            "sha256": "91ff12b1a31808e2b4fbeae1fb32599d4f13694a57e453eb09c82b61a891d2c1",
+            "status": 200
+          },
+          {
+            "id": 3334,
+            "url": "https://www.flsenate.gov/Laws/Statutes/2026/Title2/",
+            "observed_at": "2026-09-07T00:51:31Z",
+            "sha256": "83cc4be4d1fc05691596e911b9211728305949fda645beae91ff928eb9fa1163",
+            "status": 200
+          },
+          {
+            "id": 3338,
+            "url": "https://www.flsenate.gov/Laws/Statutes/2026/Title3/",
+            "observed_at": "2026-09-07T00:52:12Z",
+            "sha256": "d568234c942be7b387b603ed4c51d3943c67ad881d4371ea59b92911f31516cb",
+            "status": 200
+          },
+          {
+            "id": 3341,
+            "url": "https://www.flsenate.gov/Laws/Statutes/2026/Title9/",
+            "observed_at": "2026-09-07T00:52:42Z",
+            "sha256": "b4bc7ccab639546c46bd48b6f0892f819013fe60d96b43fc7bcb80a2c0e8de16",
+            "status": 200
+          },
+          {
+            "id": 3353,
+            "url": "https://www.flsenate.gov/Laws/Statutes/2026/Title11/",
+            "observed_at": "2026-09-07T00:54:43Z",
+            "sha256": "8d766d5092fb8f1b19e12ad0277013247d79f827e3ea74e9469f7adda3b54d60",
+            "status": 200
+          },
+          {
+            "id": 3374,
+            "url": "https://www.flsenate.gov/Laws/Statutes/2026/Title12/",
+            "observed_at": "2026-09-07T00:58:15Z",
+            "sha256": "07cc98f7f7ff8bd48d61a6e3bac63036edeea8977086e44e066b93ba431e2f93",
+            "status": 200
+          },
+          {
+            "id": 3384,
+            "url": "https://www.flsenate.gov/Laws/Statutes/2026/Title13/",
+            "observed_at": "2026-09-07T00:59:57Z",
+            "sha256": "060032b4c5582c9dd52f8bfd4a7d8f63136288e8a67c946eed26fef9ef330eee",
+            "status": 200
+          }
+        ]
+      },
+      "browsing_examples": [
+        {
+          "document_id": "fl:chapter/1",
+          "version_id": "633775a35510680008698dee1731460e",
+          "first_unit": {
+            "id": "f69b8fccdf6b86700e6f95d0974ccc34",
+            "key": "fl:stat/1.01",
+            "unit_kind": "section"
+          }
+        },
+        {
+          "document_id": "fl:chapter/97",
+          "version_id": "e352c16f9eb6fb5cbd1762f0f3269fb0",
+          "first_unit": {
+            "id": "0f76623d85f4ed87ca77104c0f380449",
+            "key": "fl:stat/97.011",
+            "unit_kind": "section"
+          }
+        }
+      ]
+    },
+    {
+      "collection_id": "nj-statutes",
+      "before_metadata_json": "{\"disclaimer_artifact\":\"3daa68aa0054c75000536657eef74ebfde1a341cbb6a6b8511a17dea68af62b7\",\"inventory_artifact\":\"5babebf2833fecbe9a44874dc324a1aeb0ec6c62679788b2f6c021454860857f\",\"readme_artifact\":\"2c034034500940c90be84cab065f23a19ef1631cc8863c7562d1960dfbf1286d\",\"warning\":\"ZIP modification dates do not establish legal currency or effective dates. Catalog/LCTOC is not substantive statute text.\"}",
+      "before_metadata_sha256": "e031a1f3f4cec1584de1bfcdd0345b7131cbe787ce3cac0f57443e95aa234f1b",
+      "metadata_addition": {
+        "discovery_review": {
+          "scope": "Whole retained STATUTES.TXT body archive: 69 numbered title volumes, Appendix A and preface, represented as 71 documents. Source scope notes, dispositions, headings and anomalous blocks remain distinct.",
+          "currency": {
+            "body_notice": "(UPDATED THROUGH  P.L.2025, c.405, and J.R.22)",
+            "body_receipt_id": 1855,
+            "body_observed_at": "2026-09-07T00:49:50Z",
+            "toc_notice": "P.L.2026, c.30/JR1",
+            "toc_receipt_id": 1857,
+            "toc_observed_at": "2026-09-07T00:49:51Z",
+            "snapshot_date": null,
+            "publication_date": null,
+            "legal_effective_date": null
+          },
+          "gaps": [
+            "The newer LCTOC currency belongs to inventory, not the retained statute body. No later amendments are synthesized.",
+            "ZIP/file-modification and acquisition timestamps do not establish legal currency or effective dates.",
+            "No administrative regulations were accepted in this batch."
+          ],
+          "provenance": {
+            "batch_id": "northeast-nj-20260907-01",
+            "acceptance_manifest_sha256": "ff176d1c3e9fdba39d5444b725f57b6a44a389bf6d5d860868490145bdd88cb3",
+            "body_receipt_id": 1855,
+            "toc_receipt_id": 1857
+          },
+          "browsing": "Inventory items map to 'nj-statutes:' + item documents, including App.A and preface. First units may be scope notes; document IDs are containers, not always readable provision keys.",
+          "reviewed_at": "2026-09-07T03:52:12Z",
+          "review_semantics": "Frozen description of the cited accepted batch, not a live completeness assertion. Current document/inventory listings are queried separately."
+        }
+      },
+      "evidence": {
+        "acceptance": {
+          "batch_id": "northeast-nj-20260907-01",
+          "manifest_path": "data/collectors/leads/publish/acceptance-northeast-nj-20260907-01.json",
+          "manifest_sha256": "ff176d1c3e9fdba39d5444b725f57b6a44a389bf6d5d860868490145bdd88cb3",
+          "source_logical_sha256": "31265e43600800f150e68a84aa31f8e87885022e52a2f222932ed9078ee82366"
+        },
+        "receipt_namespace": "data/legal.sqlite3 acquisitions.id",
+        "receipts": [
+          {
+            "id": 1855,
+            "url": "https://pub.njleg.gov/statutes/STATUTES-TEXT.zip",
+            "observed_at": "2026-09-07T00:49:50Z",
+            "sha256": "96d15d26940dff6b96c2c34e8050c99a0687e143d395fc7ccb622e354505cf5a",
+            "status": 200
+          },
+          {
+            "id": 1857,
+            "url": "https://pub.njleg.gov/statutes/LCTOC-TEXT.zip",
+            "observed_at": "2026-09-07T00:49:51Z",
+            "sha256": "2d1f3df0eaf3fc954f7d51429ada8876e1cf118660e12941895e909eafa25dab",
+            "status": 200
+          }
+        ]
+      },
+      "browsing_examples": [
+        {
+          "document_id": "nj-statutes:1",
+          "version_id": "2a089edb141ed651c8e4551e70b098c4",
+          "first_unit": {
+            "id": "9e572940d28ff17812786c067ce7adfe",
+            "key": "nj-statutes:1/_intro",
+            "unit_kind": "scope_notes"
+          }
+        },
+        {
+          "document_id": "nj-statutes:preface",
+          "version_id": "7aa03c8725b2721463c1871b34bd2212",
+          "first_unit": {
+            "id": "bc4caff63ecfba2ef1afc6a8f66ad3e7",
+            "key": "nj-statutes:preface/_intro",
+            "unit_kind": "scope_notes"
+          }
+        }
+      ]
+    }
+  ],
+  "audit_scope": "Read-only exact collection and document/version lookups; bounded inventory groups, version-specific unit counts and primary-key/indexed source receipts. No national coverage scan, legal passage extraction, network, replay/catalog loading, source-store mutation or history change."
+}

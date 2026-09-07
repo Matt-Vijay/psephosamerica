@@ -11,7 +11,7 @@ from urllib.parse import urlsplit
 
 from shapely.geometry import shape
 
-from .retrieve import Reader, eligible
+from .retrieve import eligible
 from .store import Store, utc_now
 
 
@@ -104,28 +104,42 @@ def audit(store: Store) -> dict[str, Any]:
             if key not in {"sqlite_quick_check", "foreign_key_violations"}
         )
     )
+    version_clocks = rows(
+        "SELECT d.collection_id,count(*) AS versions,sum(v.snapshot_date IS NULL) AS undated,"
+        "sum(v.effective_on IS NOT NULL) AS explicit_effective_dates "
+        "FROM versions v JOIN documents d ON d.id=v.document_id GROUP BY d.collection_id"
+    )
+    text_quality = rows(
+        "SELECT d.collection_id,coalesce(json_extract(p.metadata,'$.text_quality'),'publisher_text_projection') AS quality,count(*) AS units "
+        "FROM provisions p JOIN chosen v ON v.id=p.version_id JOIN documents d ON d.id=v.document_id GROUP BY 1,2"
+    )
     return {
         "generated_at": utc_now(),
         "status": "PASS" if good else "FAIL",
         "meaning": "Storage/source invariants only; not a completeness or legal-accuracy certification.",
-        "coverage": Reader(store).coverage(),
+        "corpus": {
+            "registered_jurisdictions": db.execute("SELECT count(*) FROM jurisdictions").fetchone()[
+                0
+            ],
+            "registered_collections": db.execute("SELECT count(*) FROM collections").fetchone()[0],
+            "documents": db.execute("SELECT count(*) FROM documents").fetchone()[0],
+            "retained_versions": db.execute("SELECT count(*) FROM versions").fetchone()[0],
+            "retained_artifacts": len(sources),
+            "retained_artifact_bytes": sum(source["bytes"] for source in sources),
+            "acquisition_receipts": sum(domains.values()),
+            "latest_projected_units": sum(row["units"] for row in text_quality),
+            "latest_geometry_features": geometry.get("features", 0),
+        },
         "checks": checks,
         "artifacts_rehashed": len(sources),
         "artifact_failures": failures,
         "acquisition_hosts": dict(sorted(domains.items())),
-        "version_clocks": rows(
-            "SELECT d.collection_id,count(*) AS versions,sum(v.snapshot_date IS NULL) AS undated,"
-            "sum(v.effective_on IS NOT NULL) AS explicit_effective_dates "
-            "FROM versions v JOIN documents d ON d.id=v.document_id GROUP BY d.collection_id"
-        ),
+        "version_clocks": version_clocks,
         "latest_reference_relations": references,
         "exact_identifier_resolution": internal,
         "geometry": dict(geometry),
         "invalid_geometry_by_layer": dict(invalid_layers),
-        "text_quality": rows(
-            "SELECT d.collection_id,coalesce(json_extract(p.metadata,'$.text_quality'),'publisher_text_projection') AS quality,count(*) AS units "
-            "FROM provisions p JOIN chosen v ON v.id=p.version_id JOIN documents d ON d.id=v.document_id GROUP BY 1,2"
-        ),
+        "text_quality": text_quality,
         "media_bearing_units": rows(
             "SELECT d.collection_id,count(*) AS units FROM provisions p JOIN chosen v ON v.id=p.version_id "
             "JOIN documents d ON d.id=v.document_id WHERE lower(p.markup) LIKE '%<img%' OR lower(p.markup) LIKE '%<graphic%' "

@@ -1,0 +1,414 @@
+{
+  "status": "PASS",
+  "recorded_at": "2026-09-07 04:08:22 UTC",
+  "base_commit": "edc71c8",
+  "scope": "Bounded source discovery, two current metadata annotations, receipt output filtering, and maintenance caller integration. No downloads, source/history rewrite, replay campaign, real sync or whole-corpus audit.",
+  "mcp": {
+    "status": "PASS",
+    "recorded_at": "2026-09-07T04:04:59Z",
+    "scope": "Read-only actual-corpus MCP workflows; no downloads, replay campaign, national text-count scan or whole-corpus audit",
+    "startup_seconds": 0.231115,
+    "calls": [
+      {
+        "tool": "legal_coverage",
+        "arguments": {},
+        "seconds": 0.008294,
+        "structured_bytes": 1893,
+        "mcp_response_bytes": 4527,
+        "response_sha256": "3f67b90acc8c76f2b3447295eda90777fbc378a6a87fdfe2fce403812190065d",
+        "status": "ok",
+        "expected_tool_error": false
+      },
+      {
+        "tool": "legal_coverage",
+        "arguments": {
+          "view": "jurisdictions",
+          "offset": 10,
+          "limit": 2
+        },
+        "seconds": 0.002413,
+        "structured_bytes": 1044,
+        "mcp_response_bytes": 2391,
+        "response_sha256": "2a39b6b1b5ad4700fae8bd0322f39b2908f8bcacb620a8a938cb13fe3b0eff8c",
+        "status": "ok",
+        "expected_tool_error": false
+      },
+      {
+        "tool": "legal_coverage",
+        "arguments": {
+          "jurisdiction": "us-ny-nyc"
+        },
+        "seconds": 0.017463,
+        "structured_bytes": 2847,
+        "mcp_response_bytes": 6363,
+        "response_sha256": "a48dc94200b35cc97ef20b828aef575760b452c508fdfc6c69fceffdb3fd6a40",
+        "status": "ok",
+        "expected_tool_error": false
+      },
+      {
+        "tool": "legal_coverage",
+        "arguments": {
+          "view": "documents",
+          "collection": "nyc-zoning",
+          "limit": 2
+        },
+        "seconds": 0.007314,
+        "structured_bytes": 3980,
+        "mcp_response_bytes": 8680,
+        "response_sha256": "a17118dd5f9fa9db49d156bc376dffd569dc4ebca78f1c95e213b8f125cfc68b",
+        "status": "ok",
+        "expected_tool_error": false
+      },
+      {
+        "tool": "legal_search",
+        "arguments": {
+          "query": "qualifying residential site",
+          "collection": "nyc-zoning",
+          "limit": 3
+        },
+        "seconds": 0.232021,
+        "structured_bytes": 3861,
+        "mcp_response_bytes": 8429,
+        "response_sha256": "eaa6f27c8c7140eeb8bd6c1328f343361f8d623cd53178bfe0f437dca7730b8b",
+        "status": null,
+        "expected_tool_error": false
+      },
+      {
+        "tool": "legal_read",
+        "arguments": {
+          "key_or_id": "95e14ed86dd4b14f86affdcbc10f62b0",
+          "length": 1000
+        },
+        "seconds": 0.36992,
+        "structured_bytes": 12727,
+        "mcp_response_bytes": 27532,
+        "response_sha256": "2f58fa42dfa38beb5bd28879a82e0a1a8e7a2c818ec3e6937eaccb49617a820c",
+        "status": null,
+        "expected_tool_error": false
+      },
+      {
+        "tool": "legal_find",
+        "arguments": {
+          "key_or_id": "95e14ed86dd4b14f86affdcbc10f62b0",
+          "query": "qualifying residential site",
+          "limit": 1
+        },
+        "seconds": 0.160958,
+        "structured_bytes": 1849,
+        "mcp_response_bytes": 3949,
+        "response_sha256": "16c3ac72ae4789a28b32861d2938826b31c5bf811a04ba16b7abd998dba5c8d7",
+        "status": null,
+        "expected_tool_error": false
+      },
+      {
+        "tool": "source_receipt",
+        "arguments": {
+          "acquisition_id": 216
+        },
+        "seconds": 0.005673,
+        "structured_bytes": 1010,
+        "mcp_response_bytes": 2262,
+        "response_sha256": "8ff91aa800253ed7910bd51ce18d41dd8d49cb39ef5bceacf74da842d77d7fc7",
+        "status": 200,
+        "expected_tool_error": false
+      },
+      {
+        "tool": "source_receipt",
+        "arguments": {
+          "acquisition_id": 6037
+        },
+        "seconds": 0.003925,
+        "structured_bytes": 930,
+        "mcp_response_bytes": 2130,
+        "response_sha256": "e46ae440d301bcec6268889520ce1deda41cac8a22043202512e47e1e599aae7",
+        "status": 200,
+        "expected_tool_error": false
+      },
+      {
+        "tool": "legal_coverage",
+        "arguments": {
+          "jurisdiction": "us-fl"
+        },
+        "seconds": 0.005629,
+        "structured_bytes": 3904,
+        "mcp_response_bytes": 9123,
+        "response_sha256": "610de49a75120c6fb2e605801cab495e9f1a0fb67a4b171d1e005b2812beeddb",
+        "status": "ok",
+        "expected_tool_error": false
+      },
+      {
+        "tool": "legal_coverage",
+        "arguments": {
+          "view": "inventory",
+          "collection": "florida-statutes-2026",
+          "status": "pending",
+          "limit": 2
+        },
+        "seconds": 0.003104,
+        "structured_bytes": 3780,
+        "mcp_response_bytes": 8629,
+        "response_sha256": "a2fe759854326ee3a781ccca93d0201ce935b6d6997b5eaee58886e892cf1b51",
+        "status": "ok",
+        "expected_tool_error": false
+      },
+      {
+        "tool": "legal_coverage",
+        "arguments": {
+          "view": "documents",
+          "collection": "florida-statutes-2026",
+          "limit": 2
+        },
+        "seconds": 0.005577,
+        "structured_bytes": 4945,
+        "mcp_response_bytes": 11181,
+        "response_sha256": "357b7a5c73e170f5f398a64ccac7cca20d33a9934c68c11bde1c78114283fbfe",
+        "status": "ok",
+        "expected_tool_error": false
+      },
+      {
+        "tool": "legal_read",
+        "arguments": {
+          "key_or_id": "fl:stat/1.01",
+          "length": 1000
+        },
+        "seconds": 0.158508,
+        "structured_bytes": 3396,
+        "mcp_response_bytes": 7248,
+        "response_sha256": "7c472dfd9fc74591ee2ef8a3e8cd8c60ea8a36656c4cec79d167bb745aae0b5a",
+        "status": null,
+        "expected_tool_error": false
+      },
+      {
+        "tool": "legal_read",
+        "arguments": {
+          "key_or_id": "f69b8fccdf6b86700e6f95d0974ccc34",
+          "as_of": "2026-09-07"
+        },
+        "seconds": 0.031385,
+        "structured_bytes": 347,
+        "mcp_response_bytes": 830,
+        "response_sha256": "f20ede3e45978b6320a285e5dddb5ec16068ca380b61f14e1ae7f5f2e4e30801",
+        "status": null,
+        "expected_tool_error": false
+      },
+      {
+        "tool": "legal_coverage",
+        "arguments": {
+          "collection": "ms-court-rules"
+        },
+        "seconds": 0.004513,
+        "structured_bytes": 1649,
+        "mcp_response_bytes": 3698,
+        "response_sha256": "86c313132f63f0f2ae8a1570385932d9261eddc9a458a73bccbda6b6841c8857",
+        "status": "ok",
+        "expected_tool_error": false
+      },
+      {
+        "tool": "legal_coverage",
+        "arguments": {
+          "collection": "nj-statutes"
+        },
+        "seconds": 0.003359,
+        "structured_bytes": 3522,
+        "mcp_response_bytes": 7848,
+        "response_sha256": "bd1b5ad66c7131ebaab428441d29ee4b859355ef7d8a7b56bb1ed2119a85e630",
+        "status": "ok",
+        "expected_tool_error": false
+      },
+      {
+        "tool": "legal_coverage",
+        "arguments": {
+          "jurisdiction": "not-registered"
+        },
+        "seconds": 0.001861,
+        "structured_bytes": 872,
+        "mcp_response_bytes": 1933,
+        "response_sha256": "35705cfced92a7266f71abdf15fbfd8f6d3a8dbe0f2e23b41a5c60beef5c3e90",
+        "status": "unknown_jurisdiction",
+        "expected_tool_error": false
+      },
+      {
+        "tool": "legal_coverage",
+        "arguments": {
+          "collection": "not-registered"
+        },
+        "seconds": 0.001421,
+        "structured_bytes": 870,
+        "mcp_response_bytes": 1929,
+        "response_sha256": "3c332eb4746dbb063974832998c89ef9094cca72746b2a6b9d3a371cf02900ea",
+        "status": "unknown_collection",
+        "expected_tool_error": false
+      },
+      {
+        "tool": "legal_coverage",
+        "arguments": {
+          "jurisdiction": "us-or-portland",
+          "collection": "nyc-zoning"
+        },
+        "seconds": 0.0015,
+        "structured_bytes": 874,
+        "mcp_response_bytes": 1939,
+        "response_sha256": "03f91dfae677a60b15ede126a819099e962184a6fd180a19c6cac81f7c640d76",
+        "status": "scope_mismatch",
+        "expected_tool_error": false
+      },
+      {
+        "tool": "legal_coverage",
+        "arguments": {
+          "view": "documents",
+          "collection": "in-current-code"
+        },
+        "seconds": 0.005423,
+        "structured_bytes": 1730,
+        "mcp_response_bytes": 3797,
+        "response_sha256": "d01d4ca2699b334e715c05e39e4d200c403997416f8434b116e0c4a78f340e01",
+        "status": "empty",
+        "expected_tool_error": false
+      },
+      {
+        "tool": "legal_coverage",
+        "arguments": {
+          "collection": ""
+        },
+        "seconds": 0.000974,
+        "structured_bytes": 2,
+        "mcp_response_bytes": 217,
+        "response_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+        "status": null,
+        "expected_tool_error": true
+      }
+    ],
+    "header_output_check": {
+      "acquisition_id": 6037,
+      "artifact_sha256": "3c980c60144209a9acaa8291227e3f5b2f3a44af1c8348e4fcef51356148ffca",
+      "stored_headers_sha256": "426e58b90c3e6629db7a8f21172f0620b13a6656b6369adab21e6dfe0f3cb50d",
+      "emitted_header_names": [
+        "cache-control",
+        "content-length",
+        "content-type",
+        "date",
+        "psephos_request_started_at"
+      ],
+      "omitted_header_names": [
+        "content-security-policy",
+        "expires",
+        "pragma",
+        "server",
+        "set-cookie",
+        "strict-transport-security",
+        "x-content-type-options",
+        "x-frame-options",
+        "x-xss-protection"
+      ],
+      "stored_receipt_unchanged": true,
+      "policy": "Case-insensitive acquisition SAFE_HEADERS plus the two internal observation-clock fields; names normalized to lowercase. Other values omitted; stored receipt unchanged."
+    },
+    "total_seconds": 1.305083,
+    "measurement_note": "One observed sequential run, not a latency distribution or a controlled before/after benchmark. MCP duration includes local stdio overhead; byte counts distinguish structured JSON from the full MCP envelope.",
+    "runtime_sha256": {
+      "src/psephos/retrieve.py": "cee6de4dd3b6cf25e7d5e252212864a634fad338413e7e4e53fe180796fcf57c",
+      "src/psephos/server.py": "3b011cbf19745ab5d6886d61a27ec21592523ef93349929e804e330cacadab5a",
+      "src/psephos/cli.py": "89bc022b477c90756c007e5ecfc602f640c4f105a0a86b25f85343d16a402e10",
+      "scripts/verify_discovery.py": "afbd27731b3d82f4880f9233d4c67e4b24ca265f21301ccf2df97f61c75b07ee"
+    }
+  },
+  "mcp_reproduction_command": ".venv/bin/python scripts/verify_discovery.py --data data --out /path/to/new-receipt.json",
+  "annotations": {
+    "review": "docs/discovery-annotations.json",
+    "first_application": {
+      "status": "PASS",
+      "recorded_at": "2026-09-07T03:53:37Z",
+      "annotations": [
+        {
+          "collection": "florida-statutes-2026",
+          "changed": true,
+          "before_metadata_sha256": "8adeab4cd9863753fee909df82abbc5c77b52b36617d267db4818a2de0a051c5",
+          "after_metadata_sha256": "11ec0efb6a6804adbba3dd6ab7df7b7d13ffb237e49bb94ad43a3c105abe136b"
+        },
+        {
+          "collection": "nj-statutes",
+          "changed": true,
+          "before_metadata_sha256": "e031a1f3f4cec1584de1bfcdd0345b7131cbe787ce3cac0f57443e95aa234f1b",
+          "after_metadata_sha256": "ae0b49e1e2c7020afcb4e789a5c88dbdbcb0ff46509207d1ef76d980246dec83"
+        }
+      ],
+      "scope": "Only current collections.metadata; no version/provision/inventory/artifact/acquisition/publication history rewritten",
+      "review_sha256": "560b5466b20a56da5feb08b627135cca2fd51503c77735faf3554bd0d587790e"
+    },
+    "idempotent_repeat": {
+      "status": "PASS",
+      "recorded_at": "2026-09-07T03:53:37Z",
+      "annotations": [
+        {
+          "collection": "florida-statutes-2026",
+          "changed": false,
+          "before_metadata_sha256": "8adeab4cd9863753fee909df82abbc5c77b52b36617d267db4818a2de0a051c5",
+          "after_metadata_sha256": "11ec0efb6a6804adbba3dd6ab7df7b7d13ffb237e49bb94ad43a3c105abe136b"
+        },
+        {
+          "collection": "nj-statutes",
+          "changed": false,
+          "before_metadata_sha256": "e031a1f3f4cec1584de1bfcdd0345b7131cbe787ce3cac0f57443e95aa234f1b",
+          "after_metadata_sha256": "ae0b49e1e2c7020afcb4e789a5c88dbdbcb0ff46509207d1ef76d980246dec83"
+        }
+      ],
+      "scope": "Only current collections.metadata; no version/provision/inventory/artifact/acquisition/publication history rewritten",
+      "review_sha256": "560b5466b20a56da5feb08b627135cca2fd51503c77735faf3554bd0d587790e"
+    }
+  },
+  "validation": {
+    "software": {
+      "python": "3.12.13",
+      "ruff": "0.16.6",
+      "mypy": "1.20.2",
+      "pytest": "9.1.1"
+    },
+    "focused_tests": 25,
+    "gates": [
+      {
+        "command": ".venv/bin/ruff check src/psephos scripts/annotate_discovery.py scripts/verify_discovery.py scripts/verify_corpus.py tests/test_discovery.py tests/test_store_retrieval.py tests/test_geography_mcp.py tests/test_sync_audit_summary.py",
+        "exit_code": 0,
+        "output": "All checks passed!"
+      },
+      {
+        "command": ".venv/bin/ruff format --check src/psephos/retrieve.py src/psephos/server.py src/psephos/cli.py src/psephos/sources.py src/psephos/audit.py scripts/annotate_discovery.py scripts/verify_discovery.py scripts/verify_corpus.py tests/test_discovery.py tests/test_store_retrieval.py tests/test_sync_audit_summary.py",
+        "exit_code": 0,
+        "output": "11 files already formatted"
+      },
+      {
+        "command": ".venv/bin/mypy src/psephos scripts/annotate_discovery.py scripts/verify_discovery.py",
+        "exit_code": 0,
+        "output": "Success: no issues found in 18 source files"
+      },
+      {
+        "command": ".venv/bin/pytest -q tests/test_discovery.py tests/test_store_retrieval.py tests/test_geography_mcp.py tests/test_sync_audit_summary.py",
+        "exit_code": 0,
+        "output": ".........................                                                [100%]\n25 passed in 0.77s"
+      },
+      {
+        "command": ".venv/bin/psephos --data data status --jurisdiction us-fl | jq -e '.status == \"ok\" and (.collections | map(.id) | contains([\"florida-statutes-2026\"]))'",
+        "exit_code": 0,
+        "output": "true"
+      },
+      {
+        "command": "git diff --check",
+        "exit_code": 0,
+        "output": ""
+      }
+    ]
+  },
+  "prior_observation": {
+    "basis": "Parent-reported single old unfiltered Reader.coverage call; not repeated in this checkpoint",
+    "seconds": 32.699,
+    "json_bytes": 92232,
+    "comparison_limit": "Different operation and transport from the new MCP directory; not a controlled benchmark or latency distribution."
+  },
+  "limits": [
+    "Discovery navigates exact current catalog scopes, not legal applicability or point-in-time effectiveness.",
+    "Counts do not imply completeness. Document entry points may be headings/context/PDF pages; mixed inventories are not document counts.",
+    "Live offset pagination can shift under concurrent catalog changes. Oversized entries are explicitly omitted with continuation.",
+    "Only the two reviewed collection annotations were added; other metadata may remain incomplete. Frozen replay metadata intentionally stays historical.",
+    "Receipt output filtering does not rewrite original headers or historical audit/replay evidence.",
+    "Actual MCP verification uses this retained local corpus and annotations; no fresh network source validation."
+  ]
+}

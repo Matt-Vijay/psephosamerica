@@ -27,7 +27,21 @@ def main() -> None:
     sync.add_argument(
         "--as-of", help="Acquire a source-supported historical snapshot when available"
     )
-    commands.add_parser("status", help="Measured coverage, clocks, provenance, and failures")
+    status = commands.add_parser(
+        "status", help="Browse bounded acquired-source coverage, clocks, and inventory status"
+    )
+    status.add_argument(
+        "--view",
+        choices=["jurisdictions", "collections", "documents", "inventory"],
+        help="Default: jurisdictions without scope filters, otherwise collections",
+    )
+    status.add_argument("--jurisdiction", help="Exact jurisdiction ID, not inferred applicability")
+    status.add_argument(
+        "--collection", help="Exact collection ID; required for documents and inventory views"
+    )
+    status.add_argument("--status", help="Exact inventory status; inventory view only")
+    status.add_argument("--offset", type=int, default=0, help="Zero-based page offset")
+    status.add_argument("--limit", type=int, default=10, help="Page size (default 10, maximum 20)")
     reindex = commands.add_parser(
         "reindex", help="Reproject retained source bytes offline; preserve old IDs"
     )
@@ -103,7 +117,14 @@ def main() -> None:
 
                     result = audit(store)
                 elif args.command == "status":
-                    result = reader.coverage()
+                    result = reader.coverage(
+                        view=args.view,
+                        jurisdiction=args.jurisdiction,
+                        collection=args.collection,
+                        status=args.status,
+                        offset=args.offset,
+                        limit=args.limit,
+                    )
                 elif args.command == "search":
                     result = reader.search(
                         args.query,

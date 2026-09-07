@@ -210,10 +210,17 @@ def sync_collections(
     from .municipal import sync_nyc, sync_portland, sync_portland_guides
     from .texas import sync_texas
 
-    adapters = {"uscode": sync_uscode, "ecfr": sync_ecfr, "dc": sync_dc, "texas": sync_texas}
-    adapters.update({"nyc": sync_nyc, "portland": sync_portland})
-    adapters["portland-guides"] = sync_portland_guides
-    adapters.update({"nyc-gis": sync_nyc_geo, "portland-gis": sync_portland_geo})
+    adapters = {
+        "uscode": (sync_uscode, ("uscode",)),
+        "ecfr": (sync_ecfr, ("ecfr",)),
+        "dc": (sync_dc, ("dc-code", "dc-laws")),
+        "texas": (sync_texas, ("texas",)),
+        "nyc": (sync_nyc, ("nyc-zoning",)),
+        "portland": (sync_portland, ("portland-zoning",)),
+        "portland-guides": (sync_portland_guides, ("portland-zoning-guides",)),
+        "nyc-gis": (sync_nyc_geo, ("nyc-zoning-gis",)),
+        "portland-gis": (sync_portland_geo, ("portland-zoning-gis",)),
+    }
     if any(name not in adapters for name in collections):
         raise ValueError("Supported collections: " + ", ".join(adapters))
     if limit is not None and limit < 1:
@@ -223,10 +230,24 @@ def sync_collections(
     acquirer = Acquirer(store, refresh=refresh)
     try:
         for collection in collections:
-            adapters[collection](store, acquirer, limit, as_of)
-        result = Reader(store).coverage()
-        result["downloaded_this_run"] = acquirer.downloaded
-        return result
+            adapters[collection][0](store, acquirer, limit, as_of)
+        # Source aliases can emit several catalog collections. Summarize only those
+        # exact IDs; the unfiltered discovery directory is a paginated UI response.
+        selected = dict.fromkeys(
+            collection_id for name in collections for collection_id in adapters[name][1]
+        )
+        reader = Reader(store)
+        summaries = [reader.coverage(collection=collection_id) for collection_id in selected]
+        return {
+            "requested_sources": list(collections),
+            "collections": [entry for summary in summaries for entry in summary["collections"]],
+            "collection_summary_status": {
+                collection_id: summary["status"]
+                for collection_id, summary in zip(selected, summaries, strict=True)
+            },
+            "downloaded_this_run": acquirer.downloaded,
+            "meaning": "Requested-source catalog summaries, not a legal-completeness certification.",
+        }
     finally:
         acquirer.close()
         store.close()
