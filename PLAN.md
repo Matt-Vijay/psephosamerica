@@ -35,6 +35,12 @@ docs/portland-code.md, docs/oregon-completion-verification.json and the single
 docs/coverage-ledger.json. The ledger uses retained July 2025 Census estimates for
 separate population-reach metrics; it does not certify complete current legal layers.
 
+Completed Georgia continuation: all 154 department PDFs now share the August 21,
+2026 filing-through date. Original 124 versions remain. All 23,232 physical pages
+are represented, but 90 unverified OCR pages and two source-media-only pages do not
+count as verified publisher text. See docs/georgia-edition.md and its verification
+receipt; the single coverage ledger records the closed-inventory population gain.
+
 Deferred lead, not accepted corpus or a collector assignment: Virginia administrative
 code. Parent's September 7 publisher probes found the advertised developer services
 at https://law.lis.virginia.gov/developers/ and /xmlapi/ link to operational **/api/**

@@ -400,7 +400,7 @@ class Reader:
         rows = self.db.execute(
             sql + "SELECT p.id,p.key,p.citation,p.heading,p.unit_kind,p.url,c.id AS collection,"
             "c.jurisdiction_id,c.source_status,v.snapshot_date,v.snapshot_basis,v.observed_at,"
-            "v.published_on,v.effective_on,v.amended_on,v.artifact_sha,p.text AS _text,"
+            "v.published_on,v.effective_on,v.amended_on,v.artifact_sha,p.text AS _text,p.metadata AS _metadata,"
             "snippet(provision_search,2,'[',']',' … ',48) AS excerpt "
             "FROM provision_search JOIN provisions p ON p.rowid=provision_search.rowid "
             "JOIN chosen v ON v.id=p.version_id JOIN documents d ON d.id=v.document_id "
@@ -424,6 +424,9 @@ class Reader:
         for row in rows:
             item = dict(row)
             text = item.pop("_text")
+            item["text_quality"] = json.loads(item.pop("_metadata")).get(
+                "text_quality", "publisher_text_projection"
+            )
             line = standalone.search(text)
             match = line or phrase.search(text)
             item["match_kind"] = (
@@ -595,6 +598,25 @@ class Reader:
         # Old parsers duplicated raw image attributes (including base64) in metadata.
         # One paginated descriptor list is sufficient; immutable source markup is untouched.
         media = list(result["metadata"].pop("media", []))
+        # Accepted Georgia page projections predate the shared media descriptor.
+        # Expose their existing source images without rewriting historical versions.
+        if (
+            result["parser"].startswith("ga-department-pdf-pages/")
+            and result["metadata"].get("image_xobjects")
+            and result["metadata"].get("physical_page")
+            and not any(m.get("kind") == "embedded_pdf_page" for m in media)
+        ):
+            page = result["metadata"]["physical_page"]
+            media.append(
+                {
+                    "source_locator": f"#page={page}",
+                    "url": result["artifact_url"],
+                    "alt": f"Original PDF physical page {page}; image text not transcribed",
+                    "kind": "embedded_pdf_page",
+                    "physical_page": page,
+                    "source_sha256": result["artifact_sha"],
+                }
+            )
         legacy_images = result["metadata"].pop("image_links", [])
         result["text_completeness"] = result["metadata"].get(
             "text_quality", "publisher_text_projection"
@@ -626,8 +648,14 @@ class Reader:
         for medium in result["media"]:
             receipt = self.db.execute(
                 "SELECT sha256,id FROM acquisitions WHERE url=? AND status=200 AND sha256 IS NOT NULL AND error IS NULL "
-                "AND (? IS NULL OR observed_at<=?) ORDER BY id DESC LIMIT 1",
-                (medium.get("url", ""), media_cutoff, media_cutoff),
+                "AND (? IS NULL OR observed_at<=?) AND (? IS NULL OR sha256=?) ORDER BY id DESC LIMIT 1",
+                (
+                    medium.get("url", ""),
+                    media_cutoff,
+                    media_cutoff,
+                    medium.get("source_sha256"),
+                    medium.get("source_sha256"),
+                ),
             ).fetchone()
             medium["acquired_receipt"] = dict(receipt) if receipt else None
         full_text = result["text"]

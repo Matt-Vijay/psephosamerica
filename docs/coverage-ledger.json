@@ -408,12 +408,13 @@
         },
         "closed_publisher_inventory": {
           "jurisdiction_ids": [
+            "us-ga",
             "us-la",
             "us-nv",
             "us-sc"
           ],
-          "people": 13470651,
-          "percent_of_us": 3.9413
+          "people": 24773399,
+          "percent_of_us": 7.2482
         },
         "verified_complete_current_layer": {
           "jurisdiction_ids": [],
@@ -501,7 +502,7 @@
     {"jurisdiction_id":"us-ar","family":"regulations","status":"blocked","collection_ids":[],"layer_complete":false,
       "note":"Administrative-code source robots access prevented collection.","evidence":["data/collectors/leads/publish/acceptance-south-ar-20260907-01.json#/completeness_review"]},
     {"jurisdiction_id":"us-ca","family":"statutes","status":"acquired_but_unverified","collection_ids":["us-ca-codes"],"layer_complete":false,
-      "inventory":{"unit":"baseline code/constitution exports","expected":30,"retained":30,"excluded":0},"edition":"Retained Sunday baseline; HTTP Last-Modified 2026-08-31 is not legal effectiveness","fidelity_exclusions":"All baseline members retained, but current-edition closure fails: weekday deltas unacquired and 25 TipIn media pages absent. Native inventory status imported_baseline_missing_updates.","evidence":["data/collectors/leads/publish/acceptance-west-ca-20260907-01.json#/completeness_review","docs/sources.md#california-reuse-correction"]},
+      "inventory":{"unit":"baseline code/constitution exports","expected":30,"retained":30,"excluded":0},"edition":"Retained Sunday baseline; HTTP Last-Modified 2026-08-31 is not legal effectiveness","fidelity_exclusions":"All baseline members retained, but current-edition closure fails: weekday deltas unacquired and 25 section records contain missing TipIn media. This is not a 25-page count. Documented weekday exports omit deletions; no supplied TipIn media export/locator establishes closure. Native inventory status imported_baseline_missing_updates.","evidence":["data/collectors/leads/publish/acceptance-west-ca-20260907-01.json#/completeness_review","docs/sources.md#california-reuse-correction","docs/georgia-edition.md#why-this-family-not-california-or-illinois"]},
     {"jurisdiction_id":"us-ca","family":"regulations","status":"absent","collection_ids":[],"layer_complete":false,
       "evidence":["data/collectors/leads/publish/acceptance-west-ca-20260907-01.json#/completeness_review","docs/sources.md#california-reuse-correction"]},
     {"jurisdiction_id":"us-co","family":"statutes","status":"complete_publisher_edition","collection_ids":["colorado-crs"],"layer_complete":false,
@@ -522,8 +523,8 @@
       "evidence":["docs/florida-edition-verification.json#/edition","docs/florida-edition-verification.json#/historical_preservation"]},
     {"jurisdiction_id":"us-ga","family":"statutes","status":"blocked","collection_ids":[],"layer_complete":false,
       "note":"Statute source access/policy unresolved or denied; no accepted statutory body.","evidence":["data/collectors/leads/publish/acceptance-south-ga-20260907-01.json#/completeness_review"]},
-    {"jurisdiction_id":"us-ga","family":"regulations","status":"partial","collection_ids":["ga-administrative-rules"],"layer_complete":false,
-      "inventory":{"unit":"department PDFs","expected":154,"retained":124,"excluded":30,"fully_indexed":120,"partially_indexed":4},"edition":"Filings through 2026-08-14","fidelity_exclusions":"23 exact page omissions in four retained PDFs; 27 pending and three budget-blocked departments; lifetime collector byte cap reached.","evidence":["data/collectors/leads/publish/acceptance-south-ga-20260907-01.json#/completeness_review"]},
+    {"jurisdiction_id":"us-ga","family":"regulations","status":"complete_publisher_edition","collection_ids":["ga-administrative-rules"],"layer_complete":false,
+      "inventory":{"unit":"department PDFs","expected":154,"retained":154,"excluded":0,"physical_pages":23232,"publisher_text_pages":23140,"unverified_ocr_pages":90,"source_media_only_pages":2},"edition":"All covers: filings through 2026-08-21; original 124 August 14 versions preserved","fidelity_exclusions":"Publisher PDF inventory and all physical pages represented, not complete verified machine-readable text: 90 pages rely on unverified OCR, 2 are explicitly source-media-only diagrams. 522 pages contain detected embedded images. Source scans/columns can be degraded; diagram geometry and table cells are not certified. Later filings, incorporated external standards and operative legal effectiveness remain outside this edition.","evidence":["docs/georgia-edition-verification.json","docs/georgia-media-review.json","docs/georgia-edition.md","data/collectors/leads/publish/acceptance-south-ga-20260907-01.json#/completeness_review"]},
     {"jurisdiction_id":"us-hi","family":"statutes","status":"blocked","collection_ids":[],"layer_complete":false,
       "note":"State lead held unpublished: unresolved HTML robots policy; isolated evidence is not accepted coverage.","evidence":["docs/collection-wave.json#/held_not_published/us-hi"]},
     {"jurisdiction_id":"us-hi","family":"regulations","status":"absent","collection_ids":[],"layer_complete":false,
@@ -705,7 +706,8 @@
     {"collection":"oregon-ors","remaining":"0 listed chapter files","assessment":"Completed the clearest bounded maintained-adapter gap: 92 files, 20090622 bytes. Adds 4273586 residents to closed-edition reach, not complete current-law coverage.","evidence":"docs/oregon-completion-verification.json"},
     {"collection":"wa-rcw","remaining":"2,358 pending plus two failed chapter exports","assessment":"Maintained adapter and exact inventory; large acquisition, not demonstrated cheap.","evidence":"docs/washington-land-use-verification.json#/measurements; data/legal.sqlite3 inventories.collection_id=wa-rcw"},
     {"collection":"ne-revised-statutes","remaining":"40 numbered chapters","assessment":"Bounded worker-adapter opportunity, not maintained-core replay; UCC/appendix still excluded after those chapters.","evidence":"data/collectors/leads/publish/acceptance-midwest-ne-20260907-01.json#/completeness_review"},
-    {"collections":["us-ca-codes","ny-state-laws","il-statutes","ga-administrative-rules"],"assessment":"Larger-state candidates, not population-ranked or proven cheap: CA delta/media closure; NY authoritative denominator missing; IL 67 unexpanded chapters and 10.1-second pacing; GA 30 missing departments, budget and page gaps. No fabricated costs or population benefit."},
+    {"collection":"ga-administrative-rules","remaining":"0 publisher-listed department PDFs","assessment":"Completed one uniform August 21 publisher edition, preserving older evidence; source-media/OCR limitations remain explicit. Adds 11,302,748 residents once to closed regulatory-source inventory reach, not complete current-law coverage.","evidence":"docs/georgia-edition-verification.json"},
+    {"collections":["us-ca-codes","ny-state-laws","il-statutes"],"assessment":"Remaining large-state opportunities are not complete: CA documented PUBINFO cannot establish TipIn/deletion closure; NY authoritative denominator missing; IL 67 unexpanded chapters and 10.1-second pacing. Georgia won the retained-evidence comparison; no CA/IL acquisition launched.","evidence":"docs/georgia-edition.md#why-this-family-not-california-or-illinois"},
     {"collection":"utah-code","remaining":"No missing nonempty title export","assessment":"Future Title 16 is a heading-only source stub: annotation/projection accountability, not a download-completion opportunity.","evidence":"data/collectors/leads/publish/acceptance-west-ut-20260907-01.json#/completeness_review"}
   ]
 }

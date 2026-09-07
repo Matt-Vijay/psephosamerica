@@ -63,6 +63,11 @@ Title 33. The [coverage ledger](docs/coverage-ledger.json) separates complete
 publisher editions, partial scopes and missing layers; counts alone are not
 comprehensive legal coverage.
 
+The [Georgia edition guide](docs/georgia-edition.md) accounts for all publisher-listed
+department PDFs at one filing-through date, with image-only pages and unverified
+OCR distinguished from publisher text. It includes reproducible reading and
+verification commands; it is not a complete-current-law claim.
+
 The [completed collection wave](docs/collection-wave.md) adds reviewed source
 material from 44 states to the Texas baseline: 77 collections and 1,383,595 mixed
 retrieval units in the latest acquired documents. Held/blocked states, partial

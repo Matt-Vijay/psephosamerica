@@ -1,0 +1,38 @@
+{
+  "scope": "Visual review of retained original PDF pages, not certification of machine OCR or table cells.",
+  "other_spot_checks": [
+    {"source_sha256":"9458e5a87be8209b400d483efe1633f3bb1b8b02612482cfa4411bd86948d5de","department":"40","physical_page":842,"finding":"Seed sample-weight tables; OCR visibly confuses fractions and letters. Original table is required, not a blank page or certified OCR table."},
+    {"source_sha256":"c93c25eca75e5d1b1cfc8162669b8cab61c2f824b8226566093031f34f9a4928","department":"120","physical_page":382,"finding":"Insurance beneficial-ownership reporting form with instructions, columns and signature fields; all retained in source image."},
+    {"source_sha256":"a965dd930c8a8d6a84ce6c701cd657d1cf6e8398ed28dfb83eaecce0d4a58e98","department":"160","physical_page":908,"finding":"Athletic interest survey, intramural sports: prose qualifications and response table. This source moved from page876 in the older edition; no old-page arithmetic applied."},
+    {"source_sha256":"82e1b2a6cec9d1e98fa26cd1c4bd4b4585f68c10a647c785513d051db5963db0","department":"560","physical_page":1249,"finding":"Forest-land covenant form: numbered conditions, parcel fields and signature/notarial blocks. Original layout retained."}
+  ],
+  "department_110_review": {
+    "source_sha256": "6497d9a9e9313816c14692934c2b5e94129956c452a3518df7dd2990c7b06c51",
+    "reviewed_physical_pages": 69,
+    "blank_pages": 0,
+    "wholly_unreadable_pages": 0,
+    "primary_categories": {
+      "forms_worksheets": [92,93,94,95,96,97,98,99,100,101,102,103,104,105,106,107,108,530,554,556,557,558,1043,1108],
+      "tables_reference_text": [521,522,523,524,531,851],
+      "diagrams_illustrations": [297,298,299,300,301,311,312,313,314,426,437,459,460,461,462,463,553,856,857,858,859,860,861,1227,1228,1229,1230,1231,1232,1233,1234,1235,1236,1237,1238,1239,1240,1241,1246]
+    },
+    "meaning": "Categories partition pages by primary content; some are mixed. No table-cell, diagram-dimension or OCR accuracy certification.",
+    "source_defects": [
+      "Page 298 source JPEG is 438 x 648 pixels; fine notes and leader labels faint/broken. Page 311 lower drawing similarly degraded.",
+      "Pages 104-108 consolidated-government forms reproduced at particularly small scale.",
+      "Page 1043 carries both Rapid and Detailed safety-assessment labels; 1108 says Detailed. Source inconsistency retained."
+    ]
+  },
+  "media_only_pages": {
+    "6497d9a9e9313816c14692934c2b5e94129956c452a3518df7dd2990c7b06c51:298": {
+      "caption": "Figure J - 2.1",
+      "limitation": "Kick-out flashing detail diagram; the retained source itself has faint low-resolution callouts. Diagram geometry and labels are not transcribed. Consult the original physical page.",
+      "review": "Rendered full physical page from exact retained PDF; diagram and figure label visually confirmed."
+    },
+    "6497d9a9e9313816c14692934c2b5e94129956c452a3518df7dd2990c7b06c51:311": {
+      "caption": "H - 2.0; H - 2.1",
+      "limitation": "Deck connection and kick-out flashing detail drawings. Faint lower callouts and diagram geometry are not transcribed; consult the original physical page.",
+      "review": "Both rendered drawings and printed H-2.0/H-2.1 labels visually confirmed independently."
+    }
+  }
+}

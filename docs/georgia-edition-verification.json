@@ -1,0 +1,317 @@
+{
+  "status": "PASS",
+  "recorded_at": "2026-09-07T20:35:24Z",
+  "edition": "2026-08-21",
+  "scope": "All publisher-listed department PDFs at the same cover filing-through date. Not a certified complete current legal layer.",
+  "counts": {
+    "publisher_text_pages": 23140,
+    "departments": 154,
+    "physical_pages": 23232,
+    "rule_bookmarks": 19709,
+    "raw_pdf_bytes": 221137027,
+    "machine_ocr_unverified_pages": 90,
+    "source_media_only_pages": 2
+  },
+  "missing_departments": [],
+  "unrepresented_physical_pages": 0,
+  "inventory_receipt": {
+    "id": 11407,
+    "sha256": "b08ea3993749bf274b3aa735ee9a2b870b9a9e265912d9f486ac86b70436fa1f"
+  },
+  "all_page_order_native_text_and_bookmark_reconciliation": "PASS",
+  "representative_exact_parser_replay": [
+    {
+      "department": "20",
+      "pages": 90,
+      "status": "PASS",
+      "projection_sha256": "918f157b7281d36d2fa34f95bf9a1e83ca75efa3140872f4bc31d8c76ceba839"
+    },
+    {
+      "department": "110",
+      "pages": 1595,
+      "status": "PASS",
+      "projection_sha256": "b7b99e59796dfbbd69bcabbc81e1fad5f93ef07aee3345b0df116af7a814a086"
+    }
+  ],
+  "machine_ocr_pages": {
+    "40": [
+      842,
+      844,
+      845,
+      846,
+      847
+    ],
+    "110": [
+      92,
+      93,
+      94,
+      95,
+      96,
+      97,
+      98,
+      99,
+      100,
+      101,
+      102,
+      103,
+      104,
+      105,
+      106,
+      107,
+      108,
+      297,
+      299,
+      300,
+      301,
+      312,
+      313,
+      314,
+      426,
+      437,
+      459,
+      460,
+      461,
+      462,
+      463,
+      521,
+      522,
+      523,
+      524,
+      530,
+      531,
+      553,
+      554,
+      556,
+      557,
+      558,
+      851,
+      856,
+      857,
+      858,
+      859,
+      860,
+      861,
+      1043,
+      1108,
+      1227,
+      1228,
+      1229,
+      1230,
+      1231,
+      1232,
+      1233,
+      1234,
+      1235,
+      1236,
+      1237,
+      1238,
+      1239,
+      1240,
+      1241,
+      1246
+    ],
+    "120": [
+      382,
+      486,
+      487,
+      578,
+      579,
+      580,
+      581,
+      582,
+      583,
+      584,
+      585,
+      945,
+      946,
+      1011
+    ],
+    "160": [
+      908
+    ],
+    "560": [
+      1249,
+      1250,
+      1252
+    ]
+  },
+  "media_only_pages": {
+    "110": [
+      298,
+      311
+    ]
+  },
+  "image_page_count": 522,
+  "historical_preservation": {
+    "version_rows_sha256": "0412cd7eb397b77fa2a74a7668750c3a413c6e4dd2bc8f54e75d1fbc44b7b499",
+    "provision_count": 16958,
+    "provision_ids_sha256": "4b0ec8fe0e2eda665d6b58ef8474cc210dd3119302fa7ee2c69413177eb0b8c5",
+    "version_count": 124
+  },
+  "acquisition": {
+    "budget_charge_bytes": 222371568,
+    "exact_receipted_payload_bytes": 222371568,
+    "uncertain_reserved_bytes": 0,
+    "cap_bytes": 536870912,
+    "per_file_cap_bytes": 134217728,
+    "minimum_host_seconds": 2.1,
+    "prior_collector_consumed_bytes": 198207232,
+    "first_acquisition_id": 11407,
+    "last_acquisition_id": 11562,
+    "errors": [
+      {
+        "id": 11438,
+        "status": 200,
+        "error": "Acquisition byte cap exceeded"
+      }
+    ]
+  },
+  "full_local_manifest": {
+    "path": "data/georgia-completion/verified-inventory.json",
+    "sha256": "061ca03644ca1c9d0bce58ffff3a4d6090dfbcfcb0870e94e5b160ee47e331eb"
+  },
+  "limits": [
+    "OCR is unverified navigation, not legal wording or table-cell truth.",
+    "Reviewed image-only diagrams are separately counted as media, not text.",
+    "PDFs preserve table layout, forms, graphics and appendices; text extraction can misorder columns.",
+    "Publisher filing-through dates are not publication/effective dates.",
+    "Fastcase all-rights-reserved notices remain; no public corpus redistribution license asserted.",
+    "Later filings, incorporated external standards, bulletins and statutes are outside this edition."
+  ],
+  "mcp_calls": [
+    {
+      "tool": "legal_coverage",
+      "arguments": {
+        "collection": "ga-administrative-rules"
+      },
+      "seconds": 0.010998,
+      "response_sha256": "725c7610a10f2e3e348158f7b6676651dbe502f9cde410d988909f75f839070d"
+    },
+    {
+      "tool": "legal_search",
+      "arguments": {
+        "collection": "ga-administrative-rules",
+        "query": "Water Well",
+        "limit": 2
+      },
+      "seconds": 0.542076,
+      "response_sha256": "95b24acb9d787f1d90233dd130a357a393ed978db1a886a4e776695745ba8301"
+    },
+    {
+      "tool": "legal_read",
+      "arguments": {
+        "key_or_id": "ga-rules:department-770:page-6",
+        "length": 2500
+      },
+      "seconds": 0.251095,
+      "response_sha256": "d70ad573b0b186377625f5e37b0c4af145900741f211fe8da98e9057897c9ac8"
+    },
+    {
+      "tool": "source_receipt",
+      "arguments": {
+        "acquisition_id": 11437
+      },
+      "seconds": 0.002359,
+      "response_sha256": "a6227b225a6bc5d0b02c3bac38226b8d744627d8f53b0af41fb42b59dbde2050"
+    },
+    {
+      "tool": "legal_search",
+      "arguments": {
+        "collection": "ga-administrative-rules",
+        "query": "Wetlands",
+        "limit": 2
+      },
+      "seconds": 0.127976,
+      "response_sha256": "a121c539537043f93f02e3286c1412f1304f08df675d1c564f2673ae34ab8f12"
+    },
+    {
+      "tool": "legal_read",
+      "arguments": {
+        "key_or_id": "ga-rules:department-391:page-1526",
+        "length": 2500
+      },
+      "seconds": 0.286315,
+      "response_sha256": "dc91c4a3951f6a7fdf60f2dd56a80e665608b06585a483719a934ec4234a43b9"
+    },
+    {
+      "tool": "source_receipt",
+      "arguments": {
+        "acquisition_id": 11409
+      },
+      "seconds": 0.003869,
+      "response_sha256": "2c90988420c9ebcc7b67b296d7a85240d48c5fa693260b603587a7c3fcba19d9"
+    },
+    {
+      "tool": "legal_search",
+      "arguments": {
+        "collection": "ga-administrative-rules",
+        "query": "Manufactured Homes",
+        "limit": 2
+      },
+      "seconds": 0.145759,
+      "response_sha256": "3550cda34d688b3c5a8594cad5d1ac64b4f76e530c7ce1617a1a0ff287923ac5"
+    },
+    {
+      "tool": "legal_read",
+      "arguments": {
+        "key_or_id": "ga-rules:department-120:page-1761",
+        "length": 2500
+      },
+      "seconds": 0.293743,
+      "response_sha256": "bb6744635311eed3722cfefb8142e756c8f1b76202d13e17084abeb55e1bab55"
+    },
+    {
+      "tool": "source_receipt",
+      "arguments": {
+        "acquisition_id": 11468
+      },
+      "seconds": 0.003743,
+      "response_sha256": "83a1929aa21dcec03b5c090beb5761cacc0735ee2c4d2824ffdde7655b140083"
+    },
+    {
+      "tool": "legal_read",
+      "arguments": {
+        "key_or_id": "ga-rules:department-110:page-298",
+        "length": 1600
+      },
+      "seconds": 0.200118,
+      "response_sha256": "201e6432197312206279eadf46dd4541cac7d93542dc95ef6ed0c93f55543b8f"
+    },
+    {
+      "tool": "legal_read",
+      "arguments": {
+        "key_or_id": "ga-rules:department-40:page-842",
+        "length": 1600
+      },
+      "seconds": 0.187556,
+      "response_sha256": "ac6b930da598efa6a31e56ecbe03cbff2fffd2df7c1b251bdcb35d2e0ee112ce"
+    },
+    {
+      "tool": "legal_read",
+      "arguments": {
+        "key_or_id": "48ddb33377bd464108add1f6456fd4e4",
+        "as_of": "2026-08-20"
+      },
+      "seconds": 0.040158,
+      "response_sha256": "2fcf3c26e9a44c7a7722222ed917599bf65735eb0e0c0c0392548ff84f7edc3c"
+    },
+    {
+      "tool": "legal_read",
+      "arguments": {
+        "key_or_id": "48ddb33377bd464108add1f6456fd4e4",
+        "observation_cutoff": "2026-09-07T19:00:00Z"
+      },
+      "seconds": 0.18031,
+      "response_sha256": "2fcf3c26e9a44c7a7722222ed917599bf65735eb0e0c0c0392548ff84f7edc3c"
+    },
+    {
+      "tool": "legal_read",
+      "arguments": {
+        "key_or_id": "ga-rules:department-20:page-1",
+        "as_of": "2026-08-14"
+      },
+      "seconds": 0.041065,
+      "response_sha256": "f4d92e45ef09d277c6094606b1f00ad721bc0692a4c1d1575c1f750e0ed31a3f"
+    }
+  ]
+}
