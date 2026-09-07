@@ -183,11 +183,25 @@ def test_merge_remaps_preserves_indexes_and_is_idempotent(tmp_path):
         == target.object_path(receipt.sha256).stat().st_ino
     )
     assert not target.db.execute("PRAGMA foreign_key_check").fetchall()
+    ledger = tmp_path / "ledger/fixture-1.json"
+    original_receipt = ledger.read_bytes()
     second = importer.publish(
         source.root, target.root, manifest, tmp_path / "ledger", min_free_bytes=0
     )
     assert second["canonical_before"] == second["canonical_after"] == first["canonical_after"]
     assert second["acquisition_id_map"] == first["acquisition_id_map"]
+    assert second["status"] == "revalidated"
+    assert ledger.read_bytes() == original_receipt
+    # Simulate process death after SQLite COMMIT but before final receipt write.
+    prepared = json.loads(original_receipt)
+    prepared["status"] = "prepared"
+    del prepared["published_at"]
+    ledger.write_text(json.dumps(prepared))
+    importer.publish(source.root, target.root, manifest, tmp_path / "ledger", min_free_bytes=0)
+    recovered = json.loads(ledger.read_text())
+    assert recovered["status"] == "published" and recovered["recovered"]
+    assert recovered["canonical_before"] == first["canonical_before"]
+    assert recovered["canonical_after"] == first["canonical_after"]
     source.close()
     target.close()
 

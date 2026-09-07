@@ -16,8 +16,9 @@ data, tests, or compatibility requirements.
 Completed baseline: acquisition, source projections, real corpus, geometry,
 read-only MCP, real-data receipts and fresh-install verification.
 
-Current continuation: literal phrase navigation and source-guided NYC/Portland
-workflows; population-prioritized state collection through isolated regional
-stores. One publication writer rehashes and validates accepted batches before
-merging. Hold access-policy problems and incomplete parses visibly. Do not equate
-PDF pages, statutory sections, inventory links, or reviewed source coverage.
+Completed continuation: literal phrase navigation, source-guided NYC/Portland
+workflows and the bounded regional collection wave. All accepted batches are
+published, the writer is quiescent, and held/blocked stores remain isolated.
+See docs/collection-wave.md for the measured result and limitations. Final retrieval
+review targets bounded metadata, source list hierarchy and exact publisher links;
+it does not restart collection or add a legal applicability engine.

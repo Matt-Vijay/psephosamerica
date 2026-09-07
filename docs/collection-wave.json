@@ -1,0 +1,2203 @@
+{
+  "measured_at": "2026-09-07T01:24:20.047717+00:00",
+  "status": "PASS",
+  "scope": "Finished bounded collection wave, not nationwide legal completeness.",
+  "baseline_commit": "e077e98",
+  "implementation_checkpoint": "539f92c",
+  "published_batch_count": 45,
+  "accepted_new_state_count": 44,
+  "accepted_new_state_ids": [
+    "us-ak",
+    "us-ar",
+    "us-az",
+    "us-ca",
+    "us-co",
+    "us-ct",
+    "us-de",
+    "us-fl",
+    "us-ga",
+    "us-ia",
+    "us-id",
+    "us-il",
+    "us-in",
+    "us-ks",
+    "us-ky",
+    "us-la",
+    "us-ma",
+    "us-md",
+    "us-me",
+    "us-mi",
+    "us-mn",
+    "us-mo",
+    "us-ms",
+    "us-mt",
+    "us-nc",
+    "us-nd",
+    "us-ne",
+    "us-nh",
+    "us-nj",
+    "us-nm",
+    "us-nv",
+    "us-ny",
+    "us-ok",
+    "us-or",
+    "us-pa",
+    "us-ri",
+    "us-sc",
+    "us-sd",
+    "us-ut",
+    "us-va",
+    "us-wa",
+    "us-wi",
+    "us-wv",
+    "us-wy"
+  ],
+  "baseline_state": "us-tx",
+  "held_not_published": {
+    "us-hi": "Unresolved prepatch HTML robots policy; isolated evidence only",
+    "us-al": "Unresolved prepatch HTML robots policy; isolated evidence only"
+  },
+  "blocked_not_published": {
+    "us-oh": "Acquisition blocked; no accepted legal corpus",
+    "us-tn": "Acquisition blocked; no accepted legal corpus",
+    "us-vt": "Lead blocked unaccepted historical transcriptions; no canonical import"
+  },
+  "canonical_counts": {
+    "artifacts": 9560,
+    "acquisitions": 9912,
+    "jurisdictions": 49,
+    "collections": 77,
+    "inventories": 27664,
+    "documents": 17926,
+    "versions": 17929,
+    "provisions": 1385630,
+    "legal_references": 2624501,
+    "features": 32604,
+    "feature_bounds": 32604
+  },
+  "added_counts": {
+    "artifacts": 9273,
+    "acquisitions": 9550,
+    "jurisdictions": 42,
+    "collections": 68,
+    "inventories": 17762,
+    "documents": 8107,
+    "versions": 8107,
+    "provisions": 896342,
+    "legal_references": 1007483,
+    "features": 0,
+    "feature_bounds": 0
+  },
+  "latest_retrieval_units": 1383595,
+  "raw_artifacts": {
+    "count": 9560,
+    "bytes": 4842876143
+  },
+  "sqlite_bytes_at_audit": 13299683328,
+  "collection_units": [
+    {
+      "id": "ak-statutes",
+      "jurisdiction_id": "us-ak",
+      "documents": 45,
+      "versions": 45,
+      "units": 23530,
+      "unit_kinds": [
+        {
+          "unit_kind": "chapter_heading",
+          "count": 942
+        },
+        {
+          "unit_kind": "scope_heading",
+          "count": 1692
+        },
+        {
+          "unit_kind": "section",
+          "count": 20851
+        },
+        {
+          "unit_kind": "title_heading",
+          "count": 45
+        }
+      ],
+      "inventory": [
+        {
+          "status": "acquired",
+          "items": 45
+        },
+        {
+          "status": "empty_title",
+          "items": 2
+        }
+      ]
+    },
+    {
+      "id": "ar-election-laws-constitution",
+      "jurisdiction_id": "us-ar",
+      "documents": 1,
+      "versions": 1,
+      "units": 883,
+      "unit_kinds": [
+        {
+          "unit_kind": "blank_navigation_page",
+          "count": 32
+        },
+        {
+          "unit_kind": "contents_page",
+          "count": 7
+        },
+        {
+          "unit_kind": "index_page",
+          "count": 89
+        },
+        {
+          "unit_kind": "legal_text_and_annotations_page",
+          "count": 751
+        },
+        {
+          "unit_kind": "publisher_notice_page",
+          "count": 4
+        }
+      ],
+      "inventory": [
+        {
+          "status": "indexed",
+          "items": 1
+        }
+      ]
+    },
+    {
+      "id": "az-ars",
+      "jurisdiction_id": "us-az",
+      "documents": 3,
+      "versions": 3,
+      "units": 3,
+      "unit_kinds": [
+        {
+          "unit_kind": "section",
+          "count": 3
+        }
+      ],
+      "inventory": [
+        {
+          "status": "indexed",
+          "items": 3
+        },
+        {
+          "status": "pending",
+          "items": 64
+        }
+      ]
+    },
+    {
+      "id": "colorado-crs",
+      "jurisdiction_id": "us-co",
+      "documents": 48,
+      "versions": 48,
+      "units": 39447,
+      "unit_kinds": [
+        {
+          "unit_kind": "constitutional_section",
+          "count": 384
+        },
+        {
+          "unit_kind": "index_topic",
+          "count": 2488
+        },
+        {
+          "unit_kind": "scope_notes",
+          "count": 1462
+        },
+        {
+          "unit_kind": "section",
+          "count": 35113
+        }
+      ],
+      "inventory": [
+        {
+          "status": "indexed",
+          "items": 48
+        }
+      ]
+    },
+    {
+      "id": "ct-rcsa",
+      "jurisdiction_id": "us-ct",
+      "documents": 124,
+      "versions": 124,
+      "units": 1432,
+      "unit_kinds": [
+        {
+          "unit_kind": "section",
+          "count": 1287
+        },
+        {
+          "unit_kind": "section_range",
+          "count": 21
+        },
+        {
+          "unit_kind": "source_context",
+          "count": 124
+        }
+      ],
+      "inventory": [
+        {
+          "status": "acquired",
+          "items": 134
+        },
+        {
+          "status": "pending",
+          "items": 53
+        }
+      ]
+    },
+    {
+      "id": "dc-code",
+      "jurisdiction_id": "us-dc",
+      "documents": 55,
+      "versions": 55,
+      "units": 24640,
+      "unit_kinds": [
+        {
+          "unit_kind": "section",
+          "count": 24640
+        }
+      ],
+      "inventory": [
+        {
+          "status": "indexed",
+          "items": 55
+        }
+      ]
+    },
+    {
+      "id": "dc-laws",
+      "jurisdiction_id": "us-dc",
+      "documents": 4544,
+      "versions": 4544,
+      "units": 4544,
+      "unit_kinds": [
+        {
+          "unit_kind": "amending_instrument",
+          "count": 1583
+        },
+        {
+          "unit_kind": "law_metadata",
+          "count": 2961
+        }
+      ],
+      "inventory": [
+        {
+          "status": "indexed",
+          "items": 4544
+        }
+      ]
+    },
+    {
+      "id": "de-code",
+      "jurisdiction_id": "us-de",
+      "documents": 32,
+      "versions": 32,
+      "units": 8588,
+      "unit_kinds": [
+        {
+          "unit_kind": "pdf_page",
+          "count": 8588
+        }
+      ],
+      "inventory": [
+        {
+          "status": "ingested",
+          "items": 32
+        }
+      ]
+    },
+    {
+      "id": "ecfr",
+      "jurisdiction_id": "us",
+      "documents": 49,
+      "versions": 52,
+      "units": 245185,
+      "unit_kinds": [
+        {
+          "unit_kind": "appendix",
+          "count": 4096
+        },
+        {
+          "unit_kind": "scope_notes",
+          "count": 13571
+        },
+        {
+          "unit_kind": "section",
+          "count": 227518
+        }
+      ],
+      "inventory": [
+        {
+          "status": "indexed",
+          "items": 52
+        },
+        {
+          "status": "pending",
+          "items": 46
+        },
+        {
+          "status": "reserved",
+          "items": 2
+        }
+      ]
+    },
+    {
+      "id": "florida-constitution",
+      "jurisdiction_id": "us-fl",
+      "documents": 1,
+      "versions": 1,
+      "units": 214,
+      "unit_kinds": [
+        {
+          "unit_kind": "scope_notes",
+          "count": 1
+        },
+        {
+          "unit_kind": "section",
+          "count": 213
+        }
+      ],
+      "inventory": [
+        {
+          "status": "indexed",
+          "items": 1
+        }
+      ]
+    },
+    {
+      "id": "florida-statutes-2026",
+      "jurisdiction_id": "us-fl",
+      "documents": 52,
+      "versions": 52,
+      "units": 1831,
+      "unit_kinds": [
+        {
+          "unit_kind": "scope_notes",
+          "count": 52
+        },
+        {
+          "unit_kind": "section",
+          "count": 1779
+        }
+      ],
+      "inventory": [
+        {
+          "status": "indexed",
+          "items": 59
+        },
+        {
+          "status": "pending",
+          "items": 42
+        }
+      ]
+    },
+    {
+      "id": "ga-administrative-rules",
+      "jurisdiction_id": "us-ga",
+      "documents": 124,
+      "versions": 124,
+      "units": 16958,
+      "unit_kinds": [
+        {
+          "unit_kind": "pdf_page",
+          "count": 16958
+        }
+      ],
+      "inventory": [
+        {
+          "status": "blocked",
+          "items": 3
+        },
+        {
+          "status": "ingested",
+          "items": 120
+        },
+        {
+          "status": "partial",
+          "items": 4
+        },
+        {
+          "status": "pending",
+          "items": 27
+        }
+      ]
+    },
+    {
+      "id": "ia-code",
+      "jurisdiction_id": "us-ia",
+      "documents": 8,
+      "versions": 8,
+      "units": 1579,
+      "unit_kinds": [
+        {
+          "unit_kind": "chapter",
+          "count": 1428
+        },
+        {
+          "unit_kind": "constitution",
+          "count": 1
+        },
+        {
+          "unit_kind": "historical_constitution_with_amendments",
+          "count": 1
+        },
+        {
+          "unit_kind": "historical_foundational_text",
+          "count": 2
+        },
+        {
+          "unit_kind": "legal_reference_tables",
+          "count": 1
+        },
+        {
+          "unit_kind": "reproduced_acts",
+          "count": 3
+        },
+        {
+          "unit_kind": "reproduced_federal_constitution",
+          "count": 1
+        },
+        {
+          "unit_kind": "reproduced_federal_statutes",
+          "count": 1
+        },
+        {
+          "unit_kind": "reserved_chapter_notice",
+          "count": 141
+        }
+      ],
+      "inventory": [
+        {
+          "status": "acquired",
+          "items": 8
+        }
+      ]
+    },
+    {
+      "id": "id-statutes",
+      "jurisdiction_id": "us-id",
+      "documents": 79,
+      "versions": 79,
+      "units": 610,
+      "unit_kinds": [
+        {
+          "unit_kind": "pdf_page",
+          "count": 610
+        }
+      ],
+      "inventory": [
+        {
+          "status": "indexed",
+          "items": 79
+        }
+      ]
+    },
+    {
+      "id": "il-constitution",
+      "jurisdiction_id": "us-il",
+      "documents": 1,
+      "versions": 1,
+      "units": 160,
+      "unit_kinds": [
+        {
+          "unit_kind": "heading",
+          "count": 15
+        },
+        {
+          "unit_kind": "preamble",
+          "count": 1
+        },
+        {
+          "unit_kind": "section",
+          "count": 144
+        }
+      ],
+      "inventory": [
+        {
+          "status": "acquired",
+          "items": 1
+        }
+      ]
+    },
+    {
+      "id": "il-regulations",
+      "jurisdiction_id": "us-il",
+      "documents": 0,
+      "versions": 0,
+      "units": 0,
+      "unit_kinds": [],
+      "inventory": [
+        {
+          "status": "pending",
+          "items": 33
+        }
+      ]
+    },
+    {
+      "id": "il-statutes",
+      "jurisdiction_id": "us-il",
+      "documents": 12,
+      "versions": 12,
+      "units": 1297,
+      "unit_kinds": [
+        {
+          "unit_kind": "heading",
+          "count": 58
+        },
+        {
+          "unit_kind": "section",
+          "count": 1239
+        }
+      ],
+      "inventory": [
+        {
+          "status": "acquired",
+          "items": 12
+        },
+        {
+          "status": "metadata_only",
+          "items": 12
+        },
+        {
+          "status": "pending",
+          "items": 67
+        }
+      ]
+    },
+    {
+      "id": "in-current-code",
+      "jurisdiction_id": "us-in",
+      "documents": 0,
+      "versions": 0,
+      "units": 0,
+      "unit_kinds": [],
+      "inventory": [
+        {
+          "status": "blocked",
+          "items": 2
+        }
+      ]
+    },
+    {
+      "id": "in-current-regulations",
+      "jurisdiction_id": "us-in",
+      "documents": 0,
+      "versions": 0,
+      "units": 0,
+      "unit_kinds": [],
+      "inventory": [
+        {
+          "status": "blocked",
+          "items": 2
+        }
+      ]
+    },
+    {
+      "id": "in-historical-constitutions",
+      "jurisdiction_id": "us-in",
+      "documents": 2,
+      "versions": 2,
+      "units": 61,
+      "unit_kinds": [
+        {
+          "unit_kind": "section",
+          "count": 61
+        }
+      ],
+      "inventory": [
+        {
+          "status": "blocked",
+          "items": 34
+        },
+        {
+          "status": "indexed",
+          "items": 2
+        }
+      ]
+    },
+    {
+      "id": "ks-constitution",
+      "jurisdiction_id": "us-ks",
+      "documents": 242,
+      "versions": 242,
+      "units": 256,
+      "unit_kinds": [
+        {
+          "unit_kind": "historical_source_text",
+          "count": 26
+        },
+        {
+          "unit_kind": "scope_notes",
+          "count": 15
+        },
+        {
+          "unit_kind": "source_legal_text",
+          "count": 177
+        },
+        {
+          "unit_kind": "source_notice",
+          "count": 38
+        }
+      ],
+      "inventory": [
+        {
+          "status": "acquired",
+          "items": 241
+        },
+        {
+          "status": "error",
+          "items": 1
+        }
+      ]
+    },
+    {
+      "id": "ks-session-laws",
+      "jurisdiction_id": "us-ks",
+      "documents": 2,
+      "versions": 2,
+      "units": 2224,
+      "unit_kinds": [
+        {
+          "unit_kind": "pdf_blank_or_image_page",
+          "count": 2
+        },
+        {
+          "unit_kind": "pdf_page",
+          "count": 2222
+        }
+      ],
+      "inventory": [
+        {
+          "status": "acquired",
+          "items": 2
+        }
+      ]
+    },
+    {
+      "id": "ks-statutes",
+      "jurisdiction_id": "us-ks",
+      "documents": 35,
+      "versions": 35,
+      "units": 35,
+      "unit_kinds": [
+        {
+          "unit_kind": "scope_notes",
+          "count": 1
+        },
+        {
+          "unit_kind": "source_legal_text",
+          "count": 26
+        },
+        {
+          "unit_kind": "source_notice",
+          "count": 8
+        }
+      ],
+      "inventory": [
+        {
+          "status": "acquired",
+          "items": 34
+        },
+        {
+          "status": "out_of_scope",
+          "items": 90
+        },
+        {
+          "status": "scope_selected",
+          "items": 1
+        }
+      ]
+    },
+    {
+      "id": "ky-krs",
+      "jurisdiction_id": "us-ky",
+      "documents": 967,
+      "versions": 967,
+      "units": 967,
+      "unit_kinds": [
+        {
+          "unit_kind": "renumbering_notice",
+          "count": 3
+        },
+        {
+          "unit_kind": "repeal_notice",
+          "count": 544
+        },
+        {
+          "unit_kind": "section",
+          "count": 420
+        }
+      ],
+      "inventory": [
+        {
+          "status": "ingested",
+          "items": 987
+        },
+        {
+          "status": "not_utilized",
+          "items": 51
+        },
+        {
+          "status": "pending",
+          "items": 732
+        }
+      ]
+    },
+    {
+      "id": "la-administrative-code",
+      "jurisdiction_id": "us-la",
+      "documents": 154,
+      "versions": 154,
+      "units": 36009,
+      "unit_kinds": [
+        {
+          "unit_kind": "scope_text",
+          "count": 7010
+        },
+        {
+          "unit_kind": "section",
+          "count": 26539
+        },
+        {
+          "unit_kind": "section_heading",
+          "count": 99
+        },
+        {
+          "unit_kind": "source_notes",
+          "count": 2361
+        }
+      ],
+      "inventory": [
+        {
+          "status": "indexed",
+          "items": 154
+        }
+      ]
+    },
+    {
+      "id": "ma-constitution",
+      "jurisdiction_id": "us-ma",
+      "documents": 1,
+      "versions": 1,
+      "units": 243,
+      "unit_kinds": [
+        {
+          "unit_kind": "amendment_article",
+          "count": 121
+        },
+        {
+          "unit_kind": "amendment_subpart",
+          "count": 6
+        },
+        {
+          "unit_kind": "constitutional_article",
+          "count": 98
+        },
+        {
+          "unit_kind": "constitutional_division",
+          "count": 12
+        },
+        {
+          "unit_kind": "historical_ratification_notes",
+          "count": 1
+        },
+        {
+          "unit_kind": "preamble",
+          "count": 1
+        },
+        {
+          "unit_kind": "rejected_amendment_notes",
+          "count": 1
+        },
+        {
+          "unit_kind": "scope_heading",
+          "count": 3
+        }
+      ],
+      "inventory": [
+        {
+          "status": "indexed",
+          "items": 1
+        }
+      ]
+    },
+    {
+      "id": "ma-general-laws",
+      "jurisdiction_id": "us-ma",
+      "documents": 819,
+      "versions": 819,
+      "units": 819,
+      "unit_kinds": [
+        {
+          "unit_kind": "chapter_repeal_notice",
+          "count": 3
+        },
+        {
+          "unit_kind": "legal_status_notice",
+          "count": 1
+        },
+        {
+          "unit_kind": "repealed_section_notice",
+          "count": 67
+        },
+        {
+          "unit_kind": "section",
+          "count": 748
+        }
+      ],
+      "inventory": [
+        {
+          "status": "indexed",
+          "items": 833
+        }
+      ]
+    },
+    {
+      "id": "md-code",
+      "jurisdiction_id": "us-md",
+      "documents": 65,
+      "versions": 65,
+      "units": 33967,
+      "unit_kinds": [
+        {
+          "unit_kind": "page",
+          "count": 33967
+        }
+      ],
+      "inventory": [
+        {
+          "status": "acquired",
+          "items": 65
+        }
+      ]
+    },
+    {
+      "id": "me-statutes",
+      "jurisdiction_id": "us-me",
+      "documents": 64,
+      "versions": 64,
+      "units": 51872,
+      "unit_kinds": [
+        {
+          "unit_kind": "publisher_notice",
+          "count": 64
+        },
+        {
+          "unit_kind": "scope_notes",
+          "count": 5566
+        },
+        {
+          "unit_kind": "section",
+          "count": 46242
+        }
+      ],
+      "inventory": [
+        {
+          "status": "indexed",
+          "items": 64
+        }
+      ]
+    },
+    {
+      "id": "mi-admin",
+      "jurisdiction_id": "us-mi",
+      "documents": 0,
+      "versions": 0,
+      "units": 0,
+      "unit_kinds": [],
+      "inventory": [
+        {
+          "status": "blocked",
+          "items": 1
+        }
+      ]
+    },
+    {
+      "id": "mi-mcl",
+      "jurisdiction_id": "us-mi",
+      "documents": 241,
+      "versions": 241,
+      "units": 50256,
+      "unit_kinds": [
+        {
+          "unit_kind": "scope_notes",
+          "count": 6327
+        },
+        {
+          "unit_kind": "section",
+          "count": 43929
+        }
+      ],
+      "inventory": [
+        {
+          "status": "indexed",
+          "items": 241
+        }
+      ]
+    },
+    {
+      "id": "mn-constitution",
+      "jurisdiction_id": "us-mn",
+      "documents": 1,
+      "versions": 1,
+      "units": 151,
+      "unit_kinds": [
+        {
+          "unit_kind": "scope_notes",
+          "count": 15
+        },
+        {
+          "unit_kind": "section",
+          "count": 136
+        }
+      ],
+      "inventory": [
+        {
+          "status": "indexed",
+          "items": 1
+        }
+      ]
+    },
+    {
+      "id": "mn-rules",
+      "jurisdiction_id": "us-mn",
+      "documents": 7,
+      "versions": 7,
+      "units": 349,
+      "unit_kinds": [
+        {
+          "unit_kind": "scope_notes",
+          "count": 7
+        },
+        {
+          "unit_kind": "section",
+          "count": 342
+        }
+      ],
+      "inventory": [
+        {
+          "status": "indexed",
+          "items": 7
+        },
+        {
+          "status": "pending",
+          "items": 825
+        }
+      ]
+    },
+    {
+      "id": "mn-statutes",
+      "jurisdiction_id": "us-mn",
+      "documents": 42,
+      "versions": 42,
+      "units": 2858,
+      "unit_kinds": [
+        {
+          "unit_kind": "disposition",
+          "count": 1543
+        },
+        {
+          "unit_kind": "scope_notes",
+          "count": 42
+        },
+        {
+          "unit_kind": "section",
+          "count": 1273
+        }
+      ],
+      "inventory": [
+        {
+          "status": "indexed",
+          "items": 53
+        },
+        {
+          "status": "pending",
+          "items": 94
+        }
+      ]
+    },
+    {
+      "id": "mo-proposed-amendments",
+      "jurisdiction_id": "us-mo",
+      "documents": 2,
+      "versions": 2,
+      "units": 10,
+      "unit_kinds": [
+        {
+          "unit_kind": "proposed_amendment_page",
+          "count": 10
+        }
+      ],
+      "inventory": [
+        {
+          "status": "indexed",
+          "items": 2
+        }
+      ]
+    },
+    {
+      "id": "mo-regulations",
+      "jurisdiction_id": "us-mo",
+      "documents": 0,
+      "versions": 0,
+      "units": 0,
+      "unit_kinds": [],
+      "inventory": [
+        {
+          "status": "pending",
+          "items": 1
+        }
+      ]
+    },
+    {
+      "id": "mo-session-laws",
+      "jurisdiction_id": "us-mo",
+      "documents": 8,
+      "versions": 8,
+      "units": 1511,
+      "unit_kinds": [
+        {
+          "unit_kind": "page",
+          "count": 1511
+        }
+      ],
+      "inventory": [
+        {
+          "status": "indexed",
+          "items": 9
+        },
+        {
+          "status": "pending",
+          "items": 16
+        }
+      ]
+    },
+    {
+      "id": "mo-statutes",
+      "jurisdiction_id": "us-mo",
+      "documents": 0,
+      "versions": 0,
+      "units": 0,
+      "unit_kinds": [],
+      "inventory": [
+        {
+          "status": "blocked",
+          "items": 468
+        }
+      ]
+    },
+    {
+      "id": "mo-supplement-appendices",
+      "jurisdiction_id": "us-mo",
+      "documents": 5,
+      "versions": 5,
+      "units": 130,
+      "unit_kinds": [
+        {
+          "unit_kind": "editorial_index",
+          "count": 69
+        },
+        {
+          "unit_kind": "page",
+          "count": 61
+        }
+      ],
+      "inventory": [
+        {
+          "status": "indexed",
+          "items": 4
+        },
+        {
+          "status": "partial",
+          "items": 1
+        },
+        {
+          "status": "pending",
+          "items": 9
+        },
+        {
+          "status": "supporting_index",
+          "items": 1
+        }
+      ]
+    },
+    {
+      "id": "ms-court-rules",
+      "jurisdiction_id": "us-ms",
+      "documents": 24,
+      "versions": 24,
+      "units": 24,
+      "unit_kinds": [
+        {
+          "unit_kind": "rule_volume",
+          "count": 23
+        },
+        {
+          "unit_kind": "rule_volume_with_media_gaps",
+          "count": 1
+        }
+      ],
+      "inventory": [
+        {
+          "status": "ingested",
+          "items": 24
+        }
+      ]
+    },
+    {
+      "id": "mt-constitution",
+      "jurisdiction_id": "us-mt",
+      "documents": 169,
+      "versions": 169,
+      "units": 169,
+      "unit_kinds": [
+        {
+          "unit_kind": "constitution_section",
+          "count": 169
+        }
+      ],
+      "inventory": [
+        {
+          "status": "indexed",
+          "items": 169
+        }
+      ]
+    },
+    {
+      "id": "mt-mca-title1",
+      "jurisdiction_id": "us-mt",
+      "documents": 285,
+      "versions": 285,
+      "units": 285,
+      "unit_kinds": [
+        {
+          "unit_kind": "section",
+          "count": 285
+        }
+      ],
+      "inventory": [
+        {
+          "status": "indexed",
+          "items": 285
+        }
+      ]
+    },
+    {
+      "id": "nd-century-code",
+      "jurisdiction_id": "us-nd",
+      "documents": 219,
+      "versions": 219,
+      "units": 3347,
+      "unit_kinds": [
+        {
+          "unit_kind": "chapter_heading",
+          "count": 194
+        },
+        {
+          "unit_kind": "editorial_notice",
+          "count": 375
+        },
+        {
+          "unit_kind": "section",
+          "count": 2778
+        }
+      ],
+      "inventory": [
+        {
+          "status": "acquired",
+          "items": 217
+        },
+        {
+          "status": "acquired_parser_gap",
+          "items": 2
+        },
+        {
+          "status": "out_of_scope",
+          "items": 2305
+        }
+      ]
+    },
+    {
+      "id": "ne-revised-statutes",
+      "jurisdiction_id": "us-ne",
+      "documents": 50,
+      "versions": 50,
+      "units": 28975,
+      "unit_kinds": [
+        {
+          "unit_kind": "editorial_notice",
+          "count": 9017
+        },
+        {
+          "unit_kind": "scope_notes",
+          "count": 1
+        },
+        {
+          "unit_kind": "section",
+          "count": 19957
+        }
+      ],
+      "inventory": [
+        {
+          "status": "acquired",
+          "items": 50
+        },
+        {
+          "status": "pending",
+          "items": 40
+        }
+      ]
+    },
+    {
+      "id": "nevada-nac",
+      "jurisdiction_id": "us-nv",
+      "documents": 408,
+      "versions": 408,
+      "units": 31031,
+      "unit_kinds": [
+        {
+          "unit_kind": "scope_notes",
+          "count": 408
+        },
+        {
+          "unit_kind": "section",
+          "count": 30623
+        }
+      ],
+      "inventory": [
+        {
+          "status": "indexed",
+          "items": 408
+        }
+      ]
+    },
+    {
+      "id": "nevada-nrs",
+      "jurisdiction_id": "us-nv",
+      "documents": 220,
+      "versions": 220,
+      "units": 10590,
+      "unit_kinds": [
+        {
+          "unit_kind": "scope_notes",
+          "count": 220
+        },
+        {
+          "unit_kind": "section",
+          "count": 10370
+        }
+      ],
+      "inventory": [
+        {
+          "status": "indexed",
+          "items": 220
+        },
+        {
+          "status": "pending",
+          "items": 615
+        }
+      ]
+    },
+    {
+      "id": "nh-rsa",
+      "jurisdiction_id": "us-nh",
+      "documents": 33,
+      "versions": 33,
+      "units": 828,
+      "unit_kinds": [
+        {
+          "unit_kind": "chapter_notice",
+          "count": 8
+        },
+        {
+          "unit_kind": "scope_heading",
+          "count": 136
+        },
+        {
+          "unit_kind": "section",
+          "count": 684
+        }
+      ],
+      "inventory": [
+        {
+          "status": "acquired",
+          "items": 33
+        },
+        {
+          "status": "complete",
+          "items": 3
+        },
+        {
+          "status": "pending",
+          "items": 64
+        }
+      ]
+    },
+    {
+      "id": "nj-constitution",
+      "jurisdiction_id": "us-nj",
+      "documents": 1,
+      "versions": 1,
+      "units": 12,
+      "unit_kinds": [
+        {
+          "unit_kind": "article",
+          "count": 11
+        },
+        {
+          "unit_kind": "preamble",
+          "count": 1
+        }
+      ],
+      "inventory": [
+        {
+          "status": "indexed",
+          "items": 1
+        }
+      ]
+    },
+    {
+      "id": "nj-statutes",
+      "jurisdiction_id": "us-nj",
+      "documents": 71,
+      "versions": 71,
+      "units": 56363,
+      "unit_kinds": [
+        {
+          "unit_kind": "disposition_note",
+          "count": 8
+        },
+        {
+          "unit_kind": "scope_notes",
+          "count": 71
+        },
+        {
+          "unit_kind": "section",
+          "count": 56272
+        },
+        {
+          "unit_kind": "section_heading",
+          "count": 2
+        },
+        {
+          "unit_kind": "source_block",
+          "count": 10
+        }
+      ],
+      "inventory": [
+        {
+          "status": "indexed",
+          "items": 71
+        }
+      ]
+    },
+    {
+      "id": "nm-nmac",
+      "jurisdiction_id": "us-nm",
+      "documents": 223,
+      "versions": 223,
+      "units": 223,
+      "unit_kinds": [
+        {
+          "unit_kind": "part",
+          "count": 189
+        },
+        {
+          "unit_kind": "repeal_notice",
+          "count": 34
+        }
+      ],
+      "inventory": [
+        {
+          "status": "complete",
+          "items": 223
+        }
+      ]
+    },
+    {
+      "id": "north-carolina-administrative-code",
+      "jurisdiction_id": "us-nc",
+      "documents": 0,
+      "versions": 0,
+      "units": 0,
+      "unit_kinds": [],
+      "inventory": [
+        {
+          "status": "blocked",
+          "items": 1
+        }
+      ]
+    },
+    {
+      "id": "north-carolina-constitution",
+      "jurisdiction_id": "us-nc",
+      "documents": 1,
+      "versions": 1,
+      "units": 170,
+      "unit_kinds": [
+        {
+          "unit_kind": "scope_notes",
+          "count": 15
+        },
+        {
+          "unit_kind": "section",
+          "count": 155
+        }
+      ],
+      "inventory": [
+        {
+          "status": "indexed",
+          "items": 1
+        }
+      ]
+    },
+    {
+      "id": "north-carolina-statutes",
+      "jurisdiction_id": "us-nc",
+      "documents": 396,
+      "versions": 396,
+      "units": 44749,
+      "unit_kinds": [
+        {
+          "unit_kind": "scope_notes",
+          "count": 5139
+        },
+        {
+          "unit_kind": "section",
+          "count": 39610
+        }
+      ],
+      "inventory": [
+        {
+          "status": "indexed",
+          "items": 396
+        }
+      ]
+    },
+    {
+      "id": "ny-state-laws",
+      "jurisdiction_id": "us-ny",
+      "documents": 49,
+      "versions": 49,
+      "units": 44664,
+      "unit_kinds": [
+        {
+          "unit_kind": "page",
+          "count": 44664
+        }
+      ],
+      "inventory": [
+        {
+          "status": "failed",
+          "items": 1
+        },
+        {
+          "status": "ingested",
+          "items": 49
+        },
+        {
+          "status": "pending",
+          "items": 32
+        },
+        {
+          "status": "superseded",
+          "items": 8
+        }
+      ]
+    },
+    {
+      "id": "nyc-zoning",
+      "jurisdiction_id": "us-ny-nyc",
+      "documents": 117,
+      "versions": 117,
+      "units": 4068,
+      "unit_kinds": [
+        {
+          "unit_kind": "appendix",
+          "count": 16
+        },
+        {
+          "unit_kind": "section",
+          "count": 3636
+        },
+        {
+          "unit_kind": "section_heading",
+          "count": 416
+        }
+      ],
+      "inventory": [
+        {
+          "status": "indexed",
+          "items": 117
+        }
+      ]
+    },
+    {
+      "id": "nyc-zoning-gis",
+      "jurisdiction_id": "us-ny-nyc",
+      "documents": 1,
+      "versions": 1,
+      "units": 1,
+      "unit_kinds": [
+        {
+          "unit_kind": "dataset_metadata",
+          "count": 1
+        }
+      ],
+      "inventory": [
+        {
+          "status": "indexed",
+          "items": 1
+        }
+      ]
+    },
+    {
+      "id": "ok-senate-scoped-code",
+      "jurisdiction_id": "us-ok",
+      "documents": 6,
+      "versions": 6,
+      "units": 1179,
+      "unit_kinds": [
+        {
+          "unit_kind": "source_page",
+          "count": 1179
+        }
+      ],
+      "inventory": [
+        {
+          "status": "complete_publisher_pdf_text",
+          "items": 6
+        },
+        {
+          "status": "outside_scoped_batch",
+          "items": 121
+        }
+      ]
+    },
+    {
+      "id": "oregon-ors",
+      "jurisdiction_id": "us-or",
+      "documents": 597,
+      "versions": 597,
+      "units": 65234,
+      "unit_kinds": [
+        {
+          "unit_kind": "chapter_front_matter",
+          "count": 597
+        },
+        {
+          "unit_kind": "section",
+          "count": 64637
+        }
+      ],
+      "inventory": [
+        {
+          "status": "failed",
+          "items": 1
+        },
+        {
+          "status": "indexed",
+          "items": 597
+        },
+        {
+          "status": "pending",
+          "items": 91
+        }
+      ]
+    },
+    {
+      "id": "pa-consolidated",
+      "jurisdiction_id": "us-pa",
+      "documents": 52,
+      "versions": 52,
+      "units": 16941,
+      "unit_kinds": [
+        {
+          "unit_kind": "appendix",
+          "count": 49
+        },
+        {
+          "unit_kind": "scope_notes",
+          "count": 2099
+        },
+        {
+          "unit_kind": "section",
+          "count": 14741
+        },
+        {
+          "unit_kind": "table_of_contents",
+          "count": 52
+        }
+      ],
+      "inventory": [
+        {
+          "status": "indexed",
+          "items": 52
+        },
+        {
+          "status": "no_current_sections",
+          "items": 23
+        }
+      ]
+    },
+    {
+      "id": "portland-zoning",
+      "jurisdiction_id": "us-or-portland",
+      "documents": 1,
+      "versions": 1,
+      "units": 1855,
+      "unit_kinds": [
+        {
+          "unit_kind": "pdf_page",
+          "count": 1855
+        }
+      ],
+      "inventory": [
+        {
+          "status": "indexed",
+          "items": 1
+        }
+      ]
+    },
+    {
+      "id": "portland-zoning-gis",
+      "jurisdiction_id": "us-or-portland",
+      "documents": 1,
+      "versions": 1,
+      "units": 1,
+      "unit_kinds": [
+        {
+          "unit_kind": "dataset_metadata",
+          "count": 1
+        }
+      ],
+      "inventory": [
+        {
+          "status": "indexed",
+          "items": 1
+        }
+      ]
+    },
+    {
+      "id": "portland-zoning-guides",
+      "jurisdiction_id": "us-or-portland",
+      "documents": 2,
+      "versions": 2,
+      "units": 2,
+      "unit_kinds": [
+        {
+          "unit_kind": "publisher_guide",
+          "count": 2
+        }
+      ],
+      "inventory": [
+        {
+          "status": "indexed",
+          "items": 2
+        }
+      ]
+    },
+    {
+      "id": "ri-general-laws",
+      "jurisdiction_id": "us-ri",
+      "documents": 378,
+      "versions": 378,
+      "units": 378,
+      "unit_kinds": [
+        {
+          "unit_kind": "section",
+          "count": 351
+        },
+        {
+          "unit_kind": "section_status",
+          "count": 27
+        }
+      ],
+      "inventory": [
+        {
+          "status": "acquired",
+          "items": 417
+        },
+        {
+          "status": "pending",
+          "items": 44
+        }
+      ]
+    },
+    {
+      "id": "sc-code",
+      "jurisdiction_id": "us-sc",
+      "documents": 322,
+      "versions": 322,
+      "units": 7557,
+      "unit_kinds": [
+        {
+          "unit_kind": "chapter",
+          "count": 5
+        },
+        {
+          "unit_kind": "scope_context",
+          "count": 317
+        },
+        {
+          "unit_kind": "section",
+          "count": 7235
+        }
+      ],
+      "inventory": [
+        {
+          "status": "ingested",
+          "items": 322
+        },
+        {
+          "status": "inventoried",
+          "items": 63
+        },
+        {
+          "status": "pending",
+          "items": 986
+        }
+      ]
+    },
+    {
+      "id": "sc-constitution",
+      "jurisdiction_id": "us-sc",
+      "documents": 1,
+      "versions": 1,
+      "units": 99,
+      "unit_kinds": [
+        {
+          "unit_kind": "page",
+          "count": 99
+        }
+      ],
+      "inventory": [
+        {
+          "status": "ingested",
+          "items": 1
+        }
+      ]
+    },
+    {
+      "id": "sc-regulations",
+      "jurisdiction_id": "us-sc",
+      "documents": 125,
+      "versions": 125,
+      "units": 8687,
+      "unit_kinds": [
+        {
+          "unit_kind": "page",
+          "count": 8687
+        }
+      ],
+      "inventory": [
+        {
+          "status": "ingested",
+          "items": 125
+        }
+      ]
+    },
+    {
+      "id": "sd-codified-laws",
+      "jurisdiction_id": "us-sd",
+      "documents": 8,
+      "versions": 8,
+      "units": 6703,
+      "unit_kinds": [
+        {
+          "unit_kind": "chapter_index",
+          "count": 290
+        },
+        {
+          "unit_kind": "editorial_notice",
+          "count": 1184
+        },
+        {
+          "unit_kind": "effective_date_notice",
+          "count": 4
+        },
+        {
+          "unit_kind": "section",
+          "count": 5217
+        },
+        {
+          "unit_kind": "title_index",
+          "count": 8
+        }
+      ],
+      "inventory": [
+        {
+          "status": "acquired",
+          "items": 8
+        },
+        {
+          "status": "pending",
+          "items": 63
+        }
+      ]
+    },
+    {
+      "id": "texas",
+      "jurisdiction_id": "us-tx",
+      "documents": 4993,
+      "versions": 4993,
+      "units": 143484,
+      "unit_kinds": [
+        {
+          "unit_kind": "scope_notes",
+          "count": 4993
+        },
+        {
+          "unit_kind": "section",
+          "count": 138491
+        }
+      ],
+      "inventory": [
+        {
+          "status": "indexed",
+          "items": 5024
+        }
+      ]
+    },
+    {
+      "id": "us-ca-codes",
+      "jurisdiction_id": "us-ca",
+      "documents": 30,
+      "versions": 30,
+      "units": 162431,
+      "unit_kinds": [
+        {
+          "unit_kind": "section",
+          "count": 162431
+        }
+      ],
+      "inventory": [
+        {
+          "status": "imported_baseline_missing_updates",
+          "items": 30
+        }
+      ]
+    },
+    {
+      "id": "uscode",
+      "jurisdiction_id": "us",
+      "documents": 58,
+      "versions": 58,
+      "units": 63475,
+      "unit_kinds": [
+        {
+          "unit_kind": "compiled_act",
+          "count": 5
+        },
+        {
+          "unit_kind": "courtRule",
+          "count": 544
+        },
+        {
+          "unit_kind": "editorial_notice",
+          "count": 1
+        },
+        {
+          "unit_kind": "reorganizationPlan",
+          "count": 107
+        },
+        {
+          "unit_kind": "scope_notes",
+          "count": 2349
+        },
+        {
+          "unit_kind": "section",
+          "count": 60469
+        }
+      ],
+      "inventory": [
+        {
+          "status": "indexed",
+          "items": 58
+        },
+        {
+          "status": "reserved",
+          "items": 1
+        }
+      ]
+    },
+    {
+      "id": "utah-code",
+      "jurisdiction_id": "us-ut",
+      "documents": 96,
+      "versions": 96,
+      "units": 28647,
+      "unit_kinds": [
+        {
+          "unit_kind": "scope_notes",
+          "count": 96
+        },
+        {
+          "unit_kind": "section",
+          "count": 28551
+        }
+      ],
+      "inventory": [
+        {
+          "status": "failed",
+          "items": 1
+        },
+        {
+          "status": "indexed",
+          "items": 96
+        }
+      ]
+    },
+    {
+      "id": "va-code",
+      "jurisdiction_id": "us-va",
+      "documents": 76,
+      "versions": 76,
+      "units": 33702,
+      "unit_kinds": [
+        {
+          "unit_kind": "heading_only",
+          "count": 3
+        },
+        {
+          "unit_kind": "section",
+          "count": 33699
+        }
+      ],
+      "inventory": [
+        {
+          "status": "ingested",
+          "items": 76
+        }
+      ]
+    },
+    {
+      "id": "va-constitution",
+      "jurisdiction_id": "us-va",
+      "documents": 1,
+      "versions": 1,
+      "units": 131,
+      "unit_kinds": [
+        {
+          "unit_kind": "preamble",
+          "count": 1
+        },
+        {
+          "unit_kind": "section",
+          "count": 130
+        }
+      ],
+      "inventory": [
+        {
+          "status": "ingested",
+          "items": 1
+        }
+      ]
+    },
+    {
+      "id": "wa-rcw",
+      "jurisdiction_id": "us-wa",
+      "documents": 424,
+      "versions": 424,
+      "units": 8764,
+      "unit_kinds": [
+        {
+          "unit_kind": "chapter_notes",
+          "count": 422
+        },
+        {
+          "unit_kind": "redistricting_plan",
+          "count": 2
+        },
+        {
+          "unit_kind": "section",
+          "count": 8340
+        }
+      ],
+      "inventory": [
+        {
+          "status": "failed",
+          "items": 2
+        },
+        {
+          "status": "ingested",
+          "items": 424
+        },
+        {
+          "status": "inventoried",
+          "items": 101
+        },
+        {
+          "status": "pending",
+          "items": 2359
+        }
+      ]
+    },
+    {
+      "id": "wi-statutes",
+      "jurisdiction_id": "us-wi",
+      "documents": 470,
+      "versions": 470,
+      "units": 8637,
+      "unit_kinds": [
+        {
+          "unit_kind": "page",
+          "count": 8611
+        },
+        {
+          "unit_kind": "supporting_page",
+          "count": 26
+        }
+      ],
+      "inventory": [
+        {
+          "status": "indexed",
+          "items": 470
+        }
+      ]
+    },
+    {
+      "id": "wv-code",
+      "jurisdiction_id": "us-wv",
+      "documents": 138,
+      "versions": 138,
+      "units": 33915,
+      "unit_kinds": [
+        {
+          "unit_kind": "article_heading",
+          "count": 2368
+        },
+        {
+          "unit_kind": "chapter_heading",
+          "count": 138
+        },
+        {
+          "unit_kind": "publisher_notice",
+          "count": 138
+        },
+        {
+          "unit_kind": "section",
+          "count": 26143
+        },
+        {
+          "unit_kind": "section_heading",
+          "count": 20
+        },
+        {
+          "unit_kind": "section_notice",
+          "count": 5108
+        }
+      ],
+      "inventory": [
+        {
+          "status": "acquired",
+          "items": 138
+        }
+      ]
+    },
+    {
+      "id": "wy-statutes",
+      "jurisdiction_id": "us-wy",
+      "documents": 45,
+      "versions": 45,
+      "units": 13655,
+      "unit_kinds": [
+        {
+          "unit_kind": "pdf_page",
+          "count": 13653
+        },
+        {
+          "unit_kind": "source_page_placeholder",
+          "count": 2
+        }
+      ],
+      "inventory": [
+        {
+          "status": "ingested",
+          "items": 45
+        }
+      ]
+    }
+  ],
+  "audit": {
+    "measured_at": "2026-09-07T01:25:39Z",
+    "status": "PASS",
+    "seconds": 99.029,
+    "artifacts_rehashed": 9560,
+    "artifact_failures": [],
+    "checks": {
+      "sqlite_quick_check": [
+        "ok"
+      ],
+      "foreign_key_violations": [],
+      "duplicate_version_keys": 0,
+      "missing_provision_url_or_text": 0,
+      "invalid_source_versions": 0,
+      "missing_geometry_bounds": 0,
+      "orphan_geometry_bounds": 0
+    },
+    "geometry": {
+      "features": 32604,
+      "invalid": 51,
+      "empty": 0
+    },
+    "undated_versions": 12699,
+    "software": {
+      "psephos-legal": "0.1.0",
+      "httpx": "0.28.1",
+      "lxml": "6.1.3",
+      "mcp": "1.29.1",
+      "pypdf": "6.17.0",
+      "shapely": "2.1.2",
+      "pyogrio": "0.13.0",
+      "pyproj": "3.8.0"
+    }
+  },
+  "publication_checks": {
+    "sqlite_quick_check": [
+      "ok"
+    ],
+    "foreign_key_violations": [],
+    "null_availability": 0,
+    "null_feature_receipts": 0,
+    "canonical_matches_ledger_deltas": true,
+    "acceptance_manifest_hash_failures": [],
+    "unique_state_batch_namespaces": true
+  },
+  "evidence": [
+    {
+      "path": "data/collectors/leads/publish/final-audit.json",
+      "sha256": "c140400af6023f248cbd31ec62cf4e5a378b96f4961e8088dc1d4f1ca21ea68d",
+      "contents": "Complete source manifest, all-object rehash, coverage, clock/quality breakdowns and storage checks."
+    },
+    {
+      "path": "data/collectors/leads/publish/summary.json",
+      "sha256": "dfa3d9ec931982c9af30548beb45f7b023f2a57191e52c35058f3bae7838590a",
+      "contents": "Every accepted batch, frozen acceptance manifest, source logical hash and reconciled deltas."
+    }
+  ],
+  "qualification": "Same-user local research integration only; public redistribution not authorized. Pages, volumes, headings, notices, source blocks and dispositions are not operative-section counts. Unknown legal dates remain unknown. No population coverage or legal completeness asserted.",
+  "reproducibility_caveat": "Collector adapters, helper modules, runtime certificates/classifications and frozen manifests remain at local data/collectors paths, with hashes in each acceptance manifest. Most are not bundled in the portable application wheel. Reproduction requires these preserved local inputs and dependencies; publication did not redownload or execute acquisition adapters.",
+  "writer_status": "quiescent; all regional final accepted manifests consumed; no canonical writes pending",
+  "commands": [
+    ".venv/bin/psephos --data data status",
+    ".venv/bin/psephos --data data audit",
+    ".venv/bin/pytest -q",
+    ".venv/bin/ruff check src scripts tests",
+    ".venv/bin/ruff format --check src scripts tests",
+    ".venv/bin/mypy src/psephos"
+  ],
+  "focused_verification": {
+    "tests_passed": 37,
+    "seconds": 1.24,
+    "ruff_check": "PASS",
+    "ruff_format_files": 27,
+    "strict_mypy_source_files": 16,
+    "diff_check": "PASS"
+  }
+}

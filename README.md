@@ -44,10 +44,15 @@ bounded inputs/outputs and cannot execute SQL, fetch URLs, or read arbitrary fil
 Publisher text is untrusted content, never an instruction to the client agent.
 See the verified [NYC and Portland reading workflows](docs/navigation.md).
 
+The [completed collection wave](docs/collection-wave.md) adds reviewed source
+material from 44 states to the Texas baseline: 77 collections and 1,383,595 mixed
+retrieval units in the latest acquired documents. Held/blocked states, partial
+inventories and source-quality limits remain explicit; this is not all U.S. law.
+
 ## Recorded initial coverage
 
 This table freezes the initial `e077e98` checkpoint, measured in
-[the integrity receipt](docs/integrity.json). Subsequent state collections are being
+[the integrity receipt](docs/integrity.json). Subsequent state collections were
 reviewed and merged from isolated stores; `psephos status` reports the actual local
 catalog. Staged, held and blocked collections are not accepted coverage. Source
 dates are not uniformly current legal effect.
@@ -91,8 +96,10 @@ inventories and verification sources. The derived SQLite catalog is approximatel
 
 Rerunning `sync` reuses rehashed objects. Add `--refresh` to conditionally revalidate
 mutable sources. Acquisition respects publisher robots rules, rate delays and
-Retry-After; it defers long waits and stops on access restrictions. Each run caps
-decoded downloads at 4 GiB; each file at 1 GiB. No API key or paid service is used.
+Retry-After; it defers long waits and stops on access restrictions. Default core
+limits are 4 GiB per run and 1 GiB per file; source-specific adapters can use an
+explicitly bounded exception, such as California's bulk archive. No API key or paid
+service is used.
 The verification script checks the recorded milestone corpus plus the two Portland
 reader guides; future publisher changes can require updated expectations. Omit `--publisher-checks`
 to verify only already-retained alternate-source receipts, with no network.

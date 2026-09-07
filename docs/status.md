@@ -78,8 +78,9 @@ snapshots. All original artifacts/acquisition receipts remain; indexes are rebui
 
 ## Subsequent work
 
-Oregon, Washington, California and regional state collectors now retain isolated
-source stores. Accepted batches alone enter the canonical library; explicit held
-and blocked states remain separate. Whole-source inventory, readable text, mixed PDF
-pages and current legal effect are different claims. No population-coverage
-percentage is asserted without a defined and measured denominator.
+The [completed collection wave](collection-wave.md) published 45 accepted batches
+from isolated source stores and rehashed the entire expanded catalog. The
+[portable receipt](collection-wave.json) freezes that later measurement separately
+from the baseline above. Held and blocked states remain separate. Whole-source
+inventory, readable text, mixed PDF pages and current legal effect are different
+claims. No population-coverage percentage is asserted.

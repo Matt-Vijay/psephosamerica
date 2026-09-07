@@ -18,6 +18,7 @@ import sqlite3
 from datetime import datetime
 from pathlib import Path
 from urllib.parse import urlsplit
+from uuid import uuid4
 
 from psephos.store import SCHEMA, Store, json_text, stable_id, utc_now
 
@@ -306,6 +307,7 @@ def publish(source_root, target_root, manifest, ledger_root, *, min_free_bytes=1
     ledger_root.mkdir(parents=True, exist_ok=True)
     receipt_path = ledger_root / (manifest["batch_id"] + ".json")
     manifest_hash = hashlib.sha256(json_text(manifest).encode()).hexdigest()
+    previous = None
     if receipt_path.exists():
         previous = json.loads(receipt_path.read_text())
         require(
@@ -439,11 +441,29 @@ def publish(source_root, target_root, manifest, ledger_root, *, min_free_bytes=1
                 "fts_versions_sampled": fts_samples,
                 "geometry": "remapped bounds",
             }
-            write_receipt(receipt_path, receipt)  # Crash recovery: prepared + idempotent rerun.
-            db.commit()  # Deferred foreign keys are checked atomically here.
-            receipt["status"] = "published"
-            receipt["published_at"] = utc_now()
-            write_receipt(receipt_path, receipt)
+            unchanged = receipt["canonical_before"] == receipt["canonical_after"]
+            if previous and previous["status"] == "published":
+                require(unchanged, "Previously published batch would change canonical rows")
+            if previous and unchanged and previous["status"] in {"published", "prepared"}:
+                require(
+                    {str(k): v for k, v in mapping.items()} == previous["acquisition_id_map"],
+                    "Previously published receipt mapping changed",
+                )
+                db.commit()
+                # Preserve original deltas even if the process stopped just after COMMIT.
+                if previous["status"] == "prepared":
+                    previous.update(status="published", published_at=utc_now(), recovered=True)
+                    write_receipt(receipt_path, previous)
+                receipt.update(status="revalidated", original_publication=str(receipt_path))
+                write_receipt(
+                    ledger_root / f"{manifest['batch_id']}.revalidated-{uuid4().hex}.json", receipt
+                )
+            else:
+                write_receipt(receipt_path, receipt)  # Prepared receipt supports crash recovery.
+                db.commit()  # Deferred foreign keys are checked atomically here.
+                receipt["status"] = "published"
+                receipt["published_at"] = utc_now()
+                write_receipt(receipt_path, receipt)
         except BaseException:
             db.rollback()
             raise
