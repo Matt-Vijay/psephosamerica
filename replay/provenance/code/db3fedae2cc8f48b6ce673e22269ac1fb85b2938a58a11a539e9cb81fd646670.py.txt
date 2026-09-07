@@ -1,0 +1,130 @@
+"""Persistent, crash-conservative decoded-byte budget for the NC source store."""
+import json, os, shutil, time, fcntl
+from pathlib import Path
+from urllib.parse import urlsplit
+from urllib.robotparser import RobotFileParser
+from psephos.acquire import Acquirer, AcquisitionError, Receipt, SAFE_HEADERS, validate_url, retry_seconds, robots_lines
+from psephos.store import digest, utc_now
+
+CAP = 209715200
+ALLOWED = {'www.ncleg.gov', 'ncleg.gov', 'www.oah.nc.gov', 'oah.nc.gov', 'reports.oah.state.nc.us'}
+class BoundedAcquirer(Acquirer):
+    def __init__(self, store, **kwargs):
+        super().__init__(store, delay=2.1, max_bytes=CAP, **kwargs)
+        self.lock_file = (store.root.parent / 'acquisition.lock').open('a')
+        fcntl.flock(self.lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        self.host_delays = {}
+        self.ledger = store.root.parent / 'byte-ledger.json'
+        if self.ledger.exists():
+            self.state = json.loads(self.ledger.read_text())
+        else:
+            if store.db.execute('SELECT count(*) FROM acquisitions').fetchone()[0]:
+                raise RuntimeError('Existing receipts without byte ledger; refusing budget reset')
+            self.state = {'cap': CAP, 'consumed_decoded_bytes': 0, 'uncertain_reserved_bytes': 0, 'requests': 0}
+            self.save()
+    def close(self):
+        super().close()
+        fcntl.flock(self.lock_file, fcntl.LOCK_UN)
+        self.lock_file.close()
+    def save(self):
+        tmp = self.ledger.with_suffix('.tmp')
+        with tmp.open('w') as f:
+            json.dump(self.state, f, indent=2); f.flush(); os.fsync(f.fileno())
+        os.replace(tmp, self.ledger)
+    def _pause(self, url, delay=None):
+        host=urlsplit(url).netloc
+        return super()._pause(url,max(delay or self.delay,self.host_delays.get(host,0)))
+    def _allowed(self,url):
+        parts=urlsplit(url); origin=f'{parts.scheme}://{parts.netloc}'
+        validate_url(url)
+        if origin not in self.robots:
+            robot_url=origin+'/robots.txt';parser=RobotFileParser(robot_url)
+            try:
+                receipt=self.fetch(robot_url,check_robots=False)
+                parser.parse(robots_lines(self.store.artifact(receipt.sha256)))
+            except AcquisitionError:
+                row=self.store.db.execute('SELECT status FROM acquisitions WHERE url=? ORDER BY id DESC LIMIT 1',(robot_url,)).fetchone()
+                if row and row[0] in (404,410):parser.parse([])
+                else:raise AcquisitionError('Cannot verify robots policy: '+origin) from None
+            self.robots[origin]=parser
+        parser=self.robots[origin]
+        from psephos.acquire import USER_AGENT
+        if not parser.can_fetch(USER_AGENT,url):raise AcquisitionError('Disallowed by robots policy: '+url)
+        delay=parser.crawl_delay(USER_AGENT) or 0
+        rate=parser.request_rate(USER_AGENT)
+        if rate:delay=max(delay,rate.seconds/rate.requests)
+        self.host_delays[parts.netloc]=max(self.delay,delay)
+    def fetch(self, url, *, immutable=False, check_robots=True, max_file_bytes=32*1024**2, accept=None, max_age_seconds=None):
+        validate_url(url)
+        if urlsplit(url).hostname not in ALLOWED:
+            raise AcquisitionError('Host requires coordination: ' + url)
+        cached = self._cached(url)
+        if cached and not self.refresh:
+            return cached
+        if check_robots:
+            self._allowed(url)
+        current = url
+        for attempt in range(5):
+            if shutil.disk_usage(self.store.root).free < 105*1024**3:
+                raise AcquisitionError('Disk guard: approaching 100 GiB')
+            if urlsplit(current).hostname not in ALLOWED:
+                raise AcquisitionError('Redirect host requires coordination: ' + current)
+            self._pause(current)
+            remain = CAP-self.state['consumed_decoded_bytes']-self.state['uncertain_reserved_bytes']
+            reservation = min(max_file_bytes, remain)
+            if reservation <= 0:
+                raise AcquisitionError('Lifetime byte budget exhausted')
+            self.state['uncertain_reserved_bytes'] += reservation
+            self.state['requests'] += 1
+            self.save()
+            observed = utc_now(); status=0; headers={}; received=0; chunks=[]
+            # Identity means received bytes are decoded bytes; reject unexpected encoding without decoding.
+            try:
+                with self.client.stream('GET', current, headers={'Accept-Encoding':'identity', **({'Accept':accept} if accept else {})}) as response:
+                    status=response.status_code
+                    headers={k:v for k,v in response.headers.items() if k in SAFE_HEADERS}
+                    if response.headers.get('content-encoding', 'identity').lower() not in ('identity',''):
+                        raise AcquisitionError('Unexpected Content-Encoding; no decoding attempted')
+                    declared=response.headers.get('content-length')
+                    if declared and int(declared)>reservation:
+                        raise AcquisitionError('Response Content-Length exceeds remaining reservation')
+                    # Read at most the reservation. No extra iterator read after exhausted capacity.
+                    iterator=response.iter_raw(chunk_size=16384)
+                    while received+16384 <= reservation:
+                        try: chunk=next(iterator)
+                        except StopIteration: break
+                        received+=len(chunk); chunks.append(chunk)
+                    else:
+                        raise AcquisitionError('Reservation reached; response incomplete')
+                    if declared and int(declared)!=received:
+                        raise AcquisitionError('Incomplete response')
+                data=b''.join(chunks); sha=digest(data)
+                target=self.store.object_path(sha); target.parent.mkdir(parents=True,exist_ok=True)
+                if target.exists(): self.store.artifact(sha)
+                else: target.write_bytes(data)
+                with self.store.db:
+                    self.store.db.execute('INSERT OR IGNORE INTO artifacts VALUES (?,?)',(sha,received))
+                headers['psephos_request_started_at']=observed
+                headers['psephos_observed_at_basis']='complete response retained'
+                receipt_id=self._record(url,current,utc_now(),status,headers,sha,None if status<400 else 'HTTP error')
+                if status in (301,302,303,307,308):
+                    destination=str(response.url.join(response.headers['location'])); validate_url(destination)
+                    if check_robots: self._allowed(destination)
+                    current=destination
+                    continue
+                if status in (429,500,502,503,504):
+                    wait=retry_seconds(response.headers.get('retry-after',''),2**(attempt+1))
+                    if wait>30: raise AcquisitionError('Retry-After deferred; resume later')
+                    if attempt<4: time.sleep(wait); continue
+                if not 200<=status<300:
+                    raise AcquisitionError(f'HTTP {status}')
+                return Receipt(receipt_id,url,sha,utc_now(),received)
+            except Exception as exc:
+                self._record(url,current,observed,status,headers,None,str(exc))
+                raise AcquisitionError(f'{url}: {exc}') from exc
+            finally:
+                self.state['consumed_decoded_bytes']+=received
+                self.state['uncertain_reserved_bytes']-=reservation
+                self.downloaded+=received
+                self.save()
+        raise AcquisitionError('Too many redirects/retries')

@@ -1,0 +1,213 @@
+"""Official WV collection; isolated Store and persistent 200 MiB decoded-HTTP ledger."""
+from __future__ import annotations
+import contextlib, fcntl, json, os, shutil, time
+from pathlib import Path
+from urllib.parse import urlsplit
+import httpx
+from psephos.acquire import Acquirer, AcquisitionError
+from psephos.store import Store, utc_now
+
+ROOT = Path(__file__).resolve().parent
+CAP = 200 * 1024**2
+HOSTS = {'code.wvlegislature.gov', 'wvlegislature.gov', 'www.wvlegislature.gov', 'apps.sos.wv.gov', 'sos.wv.gov'}
+
+class MeteredClient:
+    def __init__(self, client, root):
+        self.client = client
+        self.path = root / 'http-ledger.json'
+        self.state = json.loads(self.path.read_text()) if self.path.exists() else {'limit_bytes': CAP, 'charged_bytes': 0, 'decoded_bytes': 0, 'requests': [], 'minimum_free_bytes': 105*1024**3}
+        self.client.headers['Accept-Encoding'] = 'identity'
+    def save(self):
+        tmp = self.path.with_suffix('.tmp')
+        tmp.write_text(json.dumps(self.state, indent=2))
+        os.replace(tmp, self.path)
+    @contextlib.contextmanager
+    def stream(self, method, url, **kwargs):
+        if urlsplit(url).hostname not in HOSTS:
+            raise AcquisitionError('Uncoordinated host: '+url)
+        if shutil.disk_usage(ROOT).free < 105*1024**3:
+            raise AcquisitionError('Free disk below 105 GiB')
+        host = urlsplit(url).hostname
+        last = self.state.setdefault('last_request_unix', {}).get(host, 0)
+        pause = 1.1 - (time.time() - last)
+        if pause > 0: time.sleep(pause)
+        self.state['last_request_unix'][host] = time.time()
+        request = {'url': url, 'started_at': utc_now(), 'decoded_bytes': 0, 'status': None}
+        self.state['requests'].append(request)
+        self.save()
+        try:
+            with self.client.stream(method, url, **kwargs) as response:
+                request['status'] = response.status_code
+                chunks = []
+                it = response.iter_bytes(chunk_size=65536)
+                while True:
+                    if self.state['charged_bytes'] + 65536 > CAP:
+                        raise AcquisitionError('Lifetime decoded HTTP budget exhausted')
+                    self.state['charged_bytes'] += 65536
+                    self.save()
+                    try:
+                        chunk = next(it)
+                    except StopIteration:
+                        self.state['charged_bytes'] -= 65536
+                        self.save()
+                        break
+                    self.state['charged_bytes'] -= 65536-len(chunk)
+                    self.state['decoded_bytes'] += len(chunk)
+                    request['decoded_bytes'] += len(chunk)
+                    self.save()
+                    chunks.append(chunk)
+                headers = dict(response.headers)
+                headers.pop('content-encoding', None)
+                headers['content-length'] = str(request['decoded_bytes'])
+                # Shared Acquirer receives already-decoded content. Original headers retained here.
+                request['headers'] = dict(response.headers)
+                request['finished_at'] = utc_now()
+                self.save()
+                decoded = httpx.Response(response.status_code, headers=headers, content=b''.join(chunks), request=response.request)
+                yield decoded
+        except Exception as exc:
+            request['error'] = str(exc)
+            self.save()
+            raise
+    def close(self):
+        self.client.close()
+
+class WVAcquirer(Acquirer):
+    def __init__(self, store, **kwargs):
+        super().__init__(store, max_bytes=CAP, delay=1.1, **kwargs)
+        self.client = MeteredClient(self.client, ROOT)
+
+@contextlib.contextmanager
+def session():
+    with (ROOT/'collector.lock').open('a+') as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        lock.seek(0); lock.truncate(); lock.write(str(os.getpid())); lock.flush()
+        store = Store(ROOT/'store')
+        acquirer = WVAcquirer(store)
+        try:
+            yield store, acquirer
+        finally:
+            acquirer.close(); store.close()
+
+if __name__ == '__main__':
+    import sys
+    with session() as (store, acquirer):
+        for url in sys.argv[1:]:
+            try:
+                receipt = acquirer.fetch(url)
+                print(json.dumps({'url':url, 'receipt':receipt.__dict__, 'path':str(store.object_path(receipt.sha256))}), flush=True)
+            except Exception as exc:
+                print(json.dumps({'url':url,'error':str(exc)}), flush=True)
+
+# The email-view GET is the publisher's complete chapter preview; no form is submitted.
+import re
+from collections import Counter
+from copy import deepcopy
+from lxml import html
+from psephos.parse import readable, markup, media_links, source_links
+from psephos.store import Provision
+
+COLLECTION = 'wv-code'
+BASE = 'https://code.wvlegislature.gov'
+PARSER = 'wv-chapter-preview-2'
+
+def parse_chapter(data, chapter, url):
+    root = html.fromstring(data.decode('utf-8'))
+    containers = root.xpath('//*[@id="email-form"]/div[1]')
+    if len(containers) != 1:
+        raise ValueError('Expected exactly one publisher chapter preview')
+    container = containers[0]
+    units = []
+    seen = Counter()
+    section_count = 0
+    article_headings = {}
+    for node in container:
+        text = readable(node)
+        m = re.match(r'ARTICLE\s+([^ .]+)(?:\.|\s|$)', text.lstrip('\ufeff'))
+        if m: article_headings[m[1]] = text
+    for ordinal, node in enumerate(container):
+        text = readable(node)
+        if not text.strip(): continue
+        heading_pattern = r'^(?:[0-9]?§\s*)?(' + re.escape(chapter) + r'[-–—‑−][^\s.]+)(?:\.|\s|$)'
+        hs = [h for h in list(node)[:4] if re.match(heading_pattern, readable(h).lstrip('\ufeff\x15'))][:1]
+        meta = {'source_child_ordinal': ordinal, 'chapter': chapter, 'tables':len(node.xpath('.//table')), 'media':media_links(node,url), 'source_scope':'publisher complete chapter preview'}
+        if hs:
+            if len(hs)!=1: raise ValueError('Multiple section headings in source container')
+            heading = readable(hs[0])
+            m = re.match(heading_pattern, heading.lstrip('\ufeff\x15'))
+            if not m: raise ValueError('Unrecognized section heading: '+heading)
+            source_native = m[1]
+            native = source_native.translate(str.maketrans({'–':'-','—':'-','‑':'-','−':'-'}))
+            if not native.upper().startswith(chapter.upper()+'-'): raise ValueError('Wrong chapter: '+native)
+            article = native.rsplit('-',1)[0]
+            key = 'wv-code:'+native
+            body_node=deepcopy(node)
+            body_node.remove(list(body_node)[list(node).index(hs[0])])
+            body=readable(body_node).strip()
+            kind='section' if body else 'section_heading'
+            if re.match(r'^\[?(Repealed\b|Omitted\b|Reserved\b)',body,re.I): kind='section_notice'
+            meta.update({'source_identifier':source_native,'normalized_identifier':native,'article':article,'article_heading':article_headings.get(article.split('-',1)[1]),'body_characters':len(body),'hierarchy':[{'kind':'chapter','key':'wv-code:'+chapter},{'kind':'article','key':'wv-code:'+article}]})
+            parent='wv-code:'+article
+            citation='W. Va. Code §'+source_native
+            section_count+=1
+        else:
+            heading=text
+            m=re.match(r'(CHAPTER|ARTICLE)\s+([^ .]+)(?:\.|\s|$)',text.lstrip('\ufeff'))
+            if m:
+                native=chapter if m[1]=='CHAPTER' else chapter+'-'+m[2]
+                key='wv-code:'+native
+                kind=m[1].lower()+'_heading'
+                parent=None if m[1]=='CHAPTER' else 'wv-code:'+chapter
+                citation='W. Va. Code '+m[1].title()+' '+native
+            else:
+                key=f'wv-code:{chapter}/scope/{ordinal}'
+                kind='scope_note'; parent='wv-code:'+chapter;citation='W. Va. Code '+chapter+' scope note'
+        seen[key]+=1
+        if seen[key]>1: key+=f'/occurrence/{seen[key]}'
+        units.append(Provision(key=key,citation=citation,heading=heading,text=text,markup=markup(node),url=(BASE+'/'+meta['normalized_identifier']+'/') if 'source_identifier' in meta else url,parent_key=parent,unit_kind=kind,metadata=meta,references=source_links(node,url)))
+    if not section_count: raise ValueError('No section text in preview')
+    # Explicitly retain publisher currency/copyright notice separate from the legal body.
+    footers=root.xpath('//*[@id="colophon"]')
+    for i,node in enumerate(footers):
+        units.append(Provision(key=f'wv-code:{chapter}/publisher-notice/{i}',citation=f'W. Va. Code chapter {chapter} publisher notice',heading='Publisher copyright and currency notice',text=readable(node),markup=markup(node),url=url,parent_key='wv-code:'+chapter,unit_kind='publisher_notice',references=source_links(node,url)))
+    return units
+
+def report(store, errors=None):
+    ledger=json.loads((ROOT/'http-ledger.json').read_text())
+    receipts=[dict(r) for r in store.db.execute('SELECT a.*,b.bytes FROM acquisitions a LEFT JOIN artifacts b ON a.sha256=b.sha256 ORDER BY a.id')]
+    for r in receipts:
+        r['headers']=json.loads(r['headers'])
+        r['object_path']=str(store.object_path(r['sha256'])) if r['sha256'] else None
+    (ROOT/'receipts.json').write_text(json.dumps(receipts,indent=2))
+    counts={r[0]:r[1] for r in store.db.execute('SELECT unit_kind,count(*) FROM provisions GROUP BY unit_kind')}
+    inventory=[dict(r) for r in store.db.execute('SELECT * FROM inventories ORDER BY rowid')]
+    result={'state':'West Virginia','generated_at':utc_now(),'status':'quiescent','collection':COLLECTION,'paths':{'adapter':str(ROOT/'adapter.py'),'store':str(store.root),'database':str(store.root/'legal.sqlite3'),'ledger':str(ROOT/'http-ledger.json'),'receipts':str(ROOT/'receipts.json'),'report':str(ROOT/'report.json')},'counts':{'documents':store.db.execute('SELECT count(*) FROM documents').fetchone()[0],'versions':store.db.execute('SELECT count(*) FROM versions').fetchone()[0],'provisions':sum(counts.values()),'by_kind':counts,'body_sections':counts.get('section',0),'heading_only':sum(counts.get(k,0) for k in ('section_heading','chapter_heading','article_heading')),'scope_notes':counts.get('scope_note',0),'notices':counts.get('section_notice',0)+counts.get('publisher_notice',0),'metadata_only':0,'references':store.db.execute('SELECT count(*) FROM legal_references').fetchone()[0],'raw_objects':store.db.execute('SELECT count(*) FROM artifacts').fetchone()[0],'retained_bytes':store.db.execute('SELECT coalesce(sum(bytes),0) FROM artifacts').fetchone()[0]},'http':{'lifetime_limit_bytes':CAP,'decoded_bytes':ledger['decoded_bytes'],'charged_bytes':ledger['charged_bytes'],'request_count':len(ledger['requests']),'policy_and_retries_included':True,'minimum_delay_seconds':1.1,'crash_accounting':'64 KiB reserved before decoding each chunk; any interrupted reservation remains charged'},'coverage':{'inventory':inventory,'claim':'Complete retained chapter preview containers for acquired items, not a certification of all current law. Native export ordering retained, including sections appended outside their article; hierarchy uses section identifiers.'},'clocks':{'acquisition':'acquisitions.observed_at: complete body retained','incorporation':None,'publication':None,'legal_effect':None,'snapshot_date':None,'basis':'Publisher says sections updated regularly as legislation takes effect. Site calendar, copyright year, HTTP dates are not publication/incorporation/effect dates; all unresolved legal clocks remain SQL NULL.'},'terms':{'receipt_ids':[1,3,8],'official_publisher_but_unofficial_web_copy':True,'notice':'Legislature terms say online copies are not official versions; consult official printed versions. Code footer copyright retained. No blanket license asserted.','url':'https://www.wvlegislature.gov/termsofuse.cfm'},'hosts':{'used':sorted({urlsplit(r['url']).hostname for r in ledger['requests']}),'additions':['www.wvlegislature.gov (official www host linked by code publisher)']},'gaps':['Administrative rules, constitution, session laws and municipal law not collected in this batch.','Current chapter export is an acquisition-time representation, not an independently dated historical snapshot.','External media referenced with explicit source markers; image wording not transcribed.'],'errors':errors or [],'free_disk_bytes':shutil.disk_usage(ROOT).free}
+    (ROOT/'report.json').write_text(json.dumps(result,indent=2,ensure_ascii=False))
+    return result
+
+def sync_wv(store, acquirer, *, limit=None):
+    """Idempotently ingest official chapter previews into an assigned current-model Store."""
+    store.collection(COLLECTION,('us-wv','West Virginia','state','us'),name='West Virginia Code',authority='West Virginia Legislature',kind='statutes',homepage=BASE+'/',source_status='official publisher; web copy disclaimed as unofficial',access='Public HTTPS, robots-respecting GET chapter previews; no email sent',metadata={'copyright_notice_retained':True,'legal_clocks_unknown':True})
+    index=acquirer.fetch(BASE+'/')
+    root=html.fromstring(store.artifact(index.sha256).decode('utf8'))
+    chapters={n.get('value'):readable(n) for n in root.xpath('//option') if readable(n).startswith('CHAPTER ')}
+    if not chapters: raise ValueError('No native chapter inventory')
+    for chapter,title in chapters.items():
+        row=store.db.execute('SELECT status FROM inventories WHERE collection_id=? AND item=?',(COLLECTION,chapter)).fetchone()
+        if row is None: store.inventory(COLLECTION,chapter,BASE+'/email/'+chapter+'/','pending')
+    errors=[]
+    for ordinal,(chapter,title) in enumerate(chapters.items()):
+        if limit is not None and ordinal>=limit: break
+        if acquirer.client.state['charged_bytes'] >= 180*1024**2: break
+        url=BASE+'/email/'+chapter+'/'
+        try:
+            receipt=acquirer.fetch(url)
+            units=parse_chapter(store.artifact(receipt.sha256),chapter,url)
+            version,count,created=store.ingest(collection=COLLECTION,document='wv-code:chapter-'+chapter,title=title,url=url,acquisition=receipt.id,snapshot_basis='Unknown publisher incorporation/publication/effect date; acquisition clock separate',parser=PARSER,provisions=units,metadata={'chapter':chapter,'inventory_acquisition_id':index.id,'publisher_notice':'Regular updates as legislation takes effect; consult Bill Status for individual acts','native_order_preserved':True})
+            store.inventory(COLLECTION,chapter,url,'acquired')
+            print(json.dumps({'chapter':chapter,'provisions':count,'created':created,'decoded_bytes':acquirer.client.state['decoded_bytes']}),flush=True)
+        except Exception as exc:
+            store.inventory(COLLECTION,chapter,url,'error',str(exc));errors.append({'chapter':chapter,'error':str(exc)})
+            print(json.dumps(errors[-1]),flush=True)
+            if isinstance(exc,AcquisitionError): break
+    return report(store,errors)

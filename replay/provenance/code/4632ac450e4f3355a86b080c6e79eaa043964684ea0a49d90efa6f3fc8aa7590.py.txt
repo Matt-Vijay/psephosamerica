@@ -1,0 +1,363 @@
+"""Isolated Louisiana official collection; no production catalog mutations.
+Run this file with the repository virtualenv. All HTTP uses LifetimeAcquirer.
+"""
+from __future__ import annotations
+import json
+import os
+import hashlib
+import shutil
+from pathlib import Path
+from urllib.parse import urlsplit
+import httpx
+from psephos.acquire import Acquirer, AcquisitionError, Receipt, SAFE_HEADERS, validate_url
+from psephos.store import Store, utc_now
+
+ROOT = Path(__file__).resolve().parent
+CAP = 209715200
+CHUNK = 16384
+INDEX = 'https://www.doa.la.gov/doa/osr/louisiana-administrative-code/'
+
+class LifetimeAcquirer(Acquirer):
+    """Durable decoded-byte accounting, identity transfer, no automatic retries.
+
+    Reserve each read before consuming it. Crashes leave the reservation charged.
+    A non-identity response is refused before reading/decompressing any body.
+    Error and redirect representations are also retained and charged.
+    """
+    def __init__(self, store: Store):
+        super().__init__(store, max_bytes=CAP, delay=1.1)
+        self.ledger_path = ROOT / 'budget.json'
+        if self.ledger_path.exists():
+            self.ledger = json.loads(self.ledger_path.read_text())
+        else:
+            if store.db.execute('SELECT count(*) FROM acquisitions').fetchone()[0]:
+                raise AcquisitionError('Missing lifetime ledger for existing receipts')
+            self.ledger = {'cap_bytes': CAP, 'consumed_http_bytes': 0, 'unresolved_reserved_bytes': 0,
+                'discovery_search_reserve_bytes': 65536,
+                'discovery_note': 'Conservative allowance for one web search response; not counted as acquired legal source bytes.',
+                'requests': 0}
+            self.save()
+        self.client.headers['Accept-Encoding'] = 'identity'
+    def save(self):
+        self.ledger['updated_at'] = utc_now()
+        tmp = self.ledger_path.with_suffix('.tmp')
+        with tmp.open('w') as out:
+            json.dump(self.ledger, out, indent=2)
+            out.flush()
+            os.fsync(out.fileno())
+        os.replace(tmp, self.ledger_path)
+    def fetch(self, url, *, immutable=False, check_robots=True, max_file_bytes=32*1024**2,
+              accept=None, max_age_seconds=None):
+        validate_url(url)
+        host = urlsplit(url).hostname
+        if not (host.endswith('.la.gov') or host == 'la.gov'):
+            raise AcquisitionError(f'Host needs explicit collector review: {host}')
+        cached = self._cached(url)
+        if cached:
+            return cached
+        # Access barriers are durable until a human reviews them. No rerun retries.
+        old = self.store.db.execute('SELECT status,error FROM acquisitions WHERE url=? ORDER BY id DESC LIMIT 1',(url,)).fetchone()
+        if old and old['error']:
+            raise AcquisitionError(f'Prior request failed; review before retry: {url}: {old["error"]}')
+        if check_robots:
+            self._allowed(url)
+        current = url
+        for _ in range(5):
+            if shutil.disk_usage(ROOT).free < 105*1024**3:
+                raise AcquisitionError('Disk safety stop: free space below 105 GiB')
+            self._pause(current)
+            started = utc_now()
+            status = 0
+            headers = {}
+            try:
+                self.ledger['requests'] += 1
+                self.save()
+                with self.client.stream('GET', current, headers={'Accept': accept or '*/*'}) as response:
+                    status = response.status_code
+                    headers = {k:v for k,v in response.headers.items() if k in SAFE_HEADERS}
+                    if response.headers.get('content-encoding','identity').lower() not in ('','identity'):
+                        raise AcquisitionError('Unexpected encoded body; not decoded')
+                    pieces = []
+                    size = 0
+                    it = response.iter_raw(chunk_size=CHUNK)
+                    while True:
+                        charged = self.ledger['consumed_http_bytes'] + self.ledger['unresolved_reserved_bytes'] + self.ledger['discovery_search_reserve_bytes']
+                        if charged + CHUNK > CAP or size + CHUNK > max_file_bytes:
+                            raise AcquisitionError('Lifetime/file byte cap: next read denied')
+                        self.ledger['unresolved_reserved_bytes'] += CHUNK
+                        self.save()
+                        try:
+                            chunk = next(it)
+                        except StopIteration:
+                            self.ledger['unresolved_reserved_bytes'] -= CHUNK
+                            self.save()
+                            break
+                        self.ledger['consumed_http_bytes'] += len(chunk)
+                        self.ledger['unresolved_reserved_bytes'] -= CHUNK
+                        self.save()
+                        size += len(chunk)
+                        pieces.append(chunk)
+                    data = b''.join(pieces)
+                    sha = hashlib.sha256(data).hexdigest()
+                    target = self.store.object_path(sha)
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    if target.exists():
+                        self.store.artifact(sha)
+                    else:
+                        target.write_bytes(data)
+                    with self.store.db:
+                        self.store.db.execute('INSERT OR IGNORE INTO artifacts VALUES (?,?)',(sha,size))
+                    headers['psephos_request_started_at'] = started
+                    headers['psephos_observed_at_basis'] = 'complete response retained'
+                    observed = utc_now()
+                    error = None if 200 <= status < 400 else f'HTTP {status}; no automatic retry; Retry-After {headers.get("retry-after", "unspecified")}'
+                    ident = self._record(url,current,observed,status,headers,sha,error)
+                    if status in (301,302,303,307,308):
+                        if 'retry-after' in headers:
+                            raise AcquisitionError('Redirect Retry-After: deferred for review')
+                        destination = str(response.url.join(response.headers['location']))
+                        validate_url(destination)
+                        if not urlsplit(destination).hostname.endswith('.la.gov'):
+                            raise AcquisitionError('Redirect host requires review')
+                        if check_robots:
+                            self._allowed(destination)
+                        current = destination
+                        continue
+                    if not 200 <= status < 300:
+                        raise AcquisitionError(error)
+                    self.downloaded = self.ledger['consumed_http_bytes']
+                    return Receipt(ident,url,sha,observed,size)
+            except (httpx.HTTPError, OSError, AcquisitionError) as exc:
+                self._record(url,current,utc_now(),status,headers,None,str(exc))
+                raise AcquisitionError(f'{url}: {exc}') from exc
+        raise AcquisitionError('Too many redirects')
+
+import io
+import re
+import zipfile
+from copy import deepcopy
+from collections import Counter
+from urllib.parse import urljoin
+from lxml import etree, html
+from psephos.store import Provision, Reference
+from psephos.parse import xml_root
+
+NS = {'w':'http://schemas.openxmlformats.org/wordprocessingml/2006/main',
+      'r':'http://schemas.openxmlformats.org/officeDocument/2006/relationships'}
+W = '{' + NS['w'] + '}'
+COLLECTION = 'la-administrative-code'
+
+def ooxml_text(node):
+    """All native text runs in source order; tables retain row/cell separators."""
+    out = []
+    def walk(n):
+        tag = etree.QName(n).localname
+        if tag in ('t','delText'):
+            out.append(n.text or '')
+        elif tag == 'tab': out.append('\t')
+        elif tag in ('br','cr'): out.append('\n')
+        elif tag in ('footnoteReference','endnoteReference'):
+            out.append('[' + tag + ' ' + n.get(W+'id','') + ']')
+        elif tag == 'sym': out.append('[Source symbol ' + str(dict(n.attrib)) + ']')
+        elif tag in ('drawing','pict','object'):
+            out.append('[Source embedded media; consult retained DOCX.]')
+            for child in n: walk(child)
+        else:
+            for child in n: walk(child)
+        if tag in ('p','tr'): out.append('\n')
+        elif tag == 'tc': out.append('\t')
+    walk(node)
+    return ''.join(out).strip()
+
+def inventory(data):
+    root = html.fromstring(data)
+    result = {}
+    for row in root.xpath('//tr'):
+        cells = row.xpath('./td')
+        if len(cells) < 2: continue
+        label = ' '.join(cells[0].text_content().split())
+        if not label.startswith('Title '): continue
+        date = ' '.join(cells[1].text_content().split())
+        for href in dict.fromkeys(row.xpath('.//a/@href')):
+            if not href.lower().endswith('.docx'): continue
+            url = urljoin(INDEX,href)
+            if url not in result:
+                result[url] = {'url':url,'item':Path(urlsplit(url).path).stem,
+                               'labels':[], 'publisher_last_amended_labels':[]}
+            result[url]['labels'].append(label)
+            result[url]['publisher_last_amended_labels'].append(date)
+    if not result: raise ValueError('No complete DOCX volumes in official inventory')
+    return list(result.values())
+
+def docx_units(data, item, url):
+    with zipfile.ZipFile(io.BytesIO(data)) as archive:
+        if sum(x.file_size for x in archive.infolist()) > 400*1024**2:
+            raise ValueError('Expanded package exceeds parser safety limit')
+        root = xml_root(archive.read('word/document.xml'))
+        body = root.find('w:body',NS)
+        if body is None: raise ValueError('No DOCX body')
+        rels = {}
+        if 'word/_rels/document.xml.rels' in archive.namelist():
+            for rel in xml_root(archive.read('word/_rels/document.xml.rels')):
+                rels[rel.get('Id')] = dict(rel.attrib)
+        title = str(int(re.match(r'^([0-9]+)', item)[1]))
+        part = chapter = ''
+        section = ''
+        heading = 'Compilation front matter and contents'
+        kind = 'scope_text'
+        nodes = []
+        group = 0
+        occurrences = Counter()
+        def emit():
+            nonlocal group
+            if not nodes: return None
+            wrapper = etree.Element('sourceFragment', member='word/document.xml')
+            for n in nodes: wrapper.append(deepcopy(n))
+            etree.cleanup_namespaces(wrapper)
+            text = ooxml_text(wrapper)
+            if not text: return None
+            group += 1
+            key_base = f'la-lac:{item}:t{title}:p{part}:s{section}' if kind == 'section' else f'la-lac:{item}:scope-{group}'
+            occurrences[key_base] += 1
+            key = key_base + (f':occurrence-{occurrences[key_base]}' if occurrences[key_base] > 1 else '')
+            refs = []
+            for link in wrapper.xpath('.//w:hyperlink',namespaces=NS):
+                rid = link.get('{'+NS['r']+'}id')
+                anchor = link.get(W+'anchor')
+                target = rels.get(rid,{}).get('Target') or ('#'+anchor if anchor else '')
+                if target:
+                    refs.append(Reference(urljoin(url,target),'publisher_link',ooxml_text(link),etree.tostring(link,encoding='unicode')))
+            return Provision(key=key,citation=(f'LAC {title}:{part}.{section}' if kind=='section' and title and part else f'LAC {item}, fragment {group}'),
+                heading=heading,text=text,markup=etree.tostring(wrapper,encoding='unicode'),url=url,
+                parent_key=f'la-lac:{item}:t{title}:p{part}',
+                unit_kind=('section_heading' if kind == 'section' and not any(ooxml_text(n) for n in nodes[1:]) else kind),
+                metadata={'source_member':'word/document.xml','source_group':group,'title':title,'part':part,
+                    'chapter':chapter,'section':section,'source_bookmarks':wrapper.xpath('.//w:bookmarkStart/@w:name',namespaces=NS),
+                    'tables':len(wrapper.xpath('.//w:tbl',namespaces=NS)),
+                    'media_elements':len(wrapper.xpath('.//w:drawing | .//w:pict | .//w:object',namespaces=NS)),
+                    'automatic_numbering_paragraphs':len(wrapper.xpath('.//w:numPr',namespaces=NS)),
+                    'projection_note':'Native OOXML retained. Embedded media/symbols and automatic numbering may require original package; no external media fetched.'},
+                references=tuple(refs))
+        for node in body:
+            text = ooxml_text(node)
+            styles = node.xpath('./w:pPr/w:pStyle/@w:val',namespaces=NS)
+            style = styles[0] if styles else ''
+            is_toc = style.lower().startswith('toc')
+            sec = re.match(r'^§\s*([\w.:-]+)',text) if not is_toc and node.tag == W+'p' else None
+            structural = (not is_toc and (style in ('Title1','Title2','Part','Part1','Chapter','Chapter1','Subchapter','Subpart') or re.match(r'^(?:Title\s+[0-9]+|Part\s+[IVXLCDM]+\.)',text)) and text)
+            if sec or structural:
+                unit = emit()
+                if unit: yield unit
+                nodes = []
+                section = ''
+                kind = 'scope_text'
+                if structural:
+                    heading = text
+                    match = re.match(r'^Title\s+(\d+)',text,re.I)
+                    if match:
+                        if title != match[1]: part = chapter = ''
+                        title = match[1]
+                    match = re.match(r'^Part\s+([IVXLCDM]+)\b',text,re.I)
+                    if match: part = match[1]; chapter = ''
+                    match = re.match(r'^Chapter\s+([\w.-]+)',text,re.I)
+                    if match: chapter = match[1]
+                if sec:
+                    section = sec[1].rstrip('.')
+                    # Heading number ends at the tab; fallback regex must not swallow the first heading word.
+                    section = re.match(r'^§\s*([0-9]+(?:\.[0-9]+)?[A-Za-z]?)',text)[1] if re.match(r'^§\s*[0-9]',text) else section
+                    heading = text
+                    kind = 'section'
+            nodes.append(node)
+        unit = emit()
+        if unit: yield unit
+        # Headers, footers, footnotes and endnotes remain separately retrievable.
+        for member in archive.namelist():
+            if not re.fullmatch(r'word/(?:header\d+|footer\d+|footnotes|endnotes|comments)\.xml',member): continue
+            node = xml_root(archive.read(member))
+            text = ooxml_text(node)
+            if not text: continue
+            yield Provision(key=f'la-lac:{item}:{member}',citation=f'LAC {item}, {member}',heading=member,
+                text=text,markup=etree.tostring(node,encoding='unicode'),url=url,unit_kind='source_notes',
+                metadata={'source_member':member,'context':'Package auxiliary text; page-layout associations preserved in original DOCX.'})
+
+
+def sync_la(s:Store,a:Acquirer,limit:int|None=None,as_of:str|None=None):
+    if as_of: raise ValueError('Current publisher inventory only; month-level incorporation dates are not historical snapshots')
+    if not isinstance(a,LifetimeAcquirer): raise ValueError('Use LifetimeAcquirer to enforce Louisiana lifetime cap')
+    if s.root != (ROOT/'source').resolve(): raise ValueError('Louisiana writes must use its isolated source Store')
+    index = a.fetch(INDEX)
+    items = inventory(s.artifact(index.sha256))
+    (ROOT/'inventory.json').write_text(json.dumps(items,indent=2))
+    policies = [a.fetch('https://www.doa.la.gov/doa/osr/website-disclaimer/'),a.fetch('https://www.doa.la.gov/privacy-policy/')]
+    s.collection(COLLECTION,('us-la','Louisiana','state','us'),name='Louisiana Administrative Code — official complete compilations',
+        authority='Louisiana Division of Administration, Office of State Register',kind='administrative_code',homepage=INDEX,
+        source_status='State-certified compilation; publisher incorporation labels have month precision. No blanket legal-effect date.',
+        access='Public official DOCX; private local research. LAC 1:I.315 limits ancillary material reproduction; no redistribution license asserted.',
+        metadata={'inventory_sha':index.sha256,'policy_receipts':[r.id for r in policies],
+                  'coverage_unit':'Unique complete DOCX compilation URL; shared Title 35/46:XLI counted once',
+                  'clock_note':'Last amended month = latest promulgated portion, not all-rule effect. Exact snapshot date unknown.'})
+    for item in items:
+        prior=s.db.execute('SELECT status FROM inventories WHERE collection_id=? AND item=?',(COLLECTION,item['item'])).fetchone()
+        if not prior: s.inventory(COLLECTION,item['item'],item['url'],'pending')
+    for item in items[:limit]:
+        try:
+            raw = a.fetch(item['url'])
+            _,count,new = s.ingest(collection=COLLECTION,document='la-lac:'+item['item'],
+                title=' / '.join(item['labels']),url=item['url'],acquisition=raw.id,
+                snapshot_date=None,snapshot_basis='Unknown exact edition day; publisher last-amended month retained in metadata; acquisition is not legal currency',
+                parser='la-docx-2',provisions=docx_units(s.artifact(raw.sha256),item['item'],item['url']),
+                metadata={**item,'inventory_sha':index.sha256,'package_fidelity':'Entire original DOCX retained, including styles/numbering/media/relationships',
+                          'legal_effect_on':None,'published_on':None,'incorporation_precision':'month'})
+            s.inventory(COLLECTION,item['item'],item['url'],'indexed')
+            print(json.dumps({'item':item['item'],'units':count,'new':new,'consumed':a.ledger['consumed_http_bytes']}),flush=True)
+        except (ValueError,AcquisitionError,zipfile.BadZipFile,etree.XMLSyntaxError) as exc:
+            s.inventory(COLLECTION,item['item'],item['url'],'failed',str(exc))
+            print(json.dumps({'item':item['item'],'error':str(exc)}),flush=True)
+            if 'cap' in str(exc).lower() or 'disk' in str(exc).lower(): break
+    write_report(s,a)
+
+def write_report(s,a):
+    receipts=[dict(r) for r in s.db.execute('SELECT * FROM acquisitions ORDER BY id')]
+    for r in receipts:
+        r['headers']=json.loads(r['headers'])
+        if r['sha256']: r['object_path']=str(s.object_path(r['sha256']))
+    inventory_rows=[dict(r) for r in s.db.execute('SELECT * FROM inventories ORDER BY item')]
+    counts={table:s.db.execute(f'SELECT count(*) FROM {table}').fetchone()[0] for table in ['collections','documents','versions','provisions','acquisitions','artifacts','legal_references']}
+    counts['unit_kinds']={r[0]:r[1] for r in s.db.execute('SELECT unit_kind,count(*) FROM provisions GROUP BY unit_kind')}
+    counts['retained_artifact_bytes']=s.db.execute('SELECT coalesce(sum(bytes),0) FROM artifacts').fetchone()[0]
+    report={'state':'LA','status':'completed scoped collection','source_store_root':str(s.root),'database':str(s.root/'legal.sqlite3'),
+        'adapter':str(ROOT/'adapter.py'),'helper_files':[str(ROOT/'self_check.py'),str(ROOT/'reindex_draft.py')],'report':str(ROOT/'report.json'),'inventory':str(ROOT/'inventory.json'),
+        'budget_ledger':str(ROOT/'budget.json'),'collection_ids':[COLLECTION],'counts':counts,
+        'consumed_decoded_http_bytes':a.ledger['consumed_http_bytes'],'budget':a.ledger,
+        'hosts':sorted({urlsplit(r['final_url']).hostname for r in receipts}),
+        'coverage':{'scope':'All unique DOCX compilations linked by official LAC inventory at acquisition',
+            'source_inventory_file':str(ROOT/'inventory.json'),
+            'section_units_with_incomplete_title_or_part':s.db.execute("SELECT count(*) FROM provisions WHERE unit_kind='section' AND (json_extract(metadata,'$.title')='' OR json_extract(metadata,'$.part')='')").fetchone()[0],
+            'denominator':len(inventory_rows),'indexed':sum(r['status']=='indexed' for r in inventory_rows),
+            'gaps':[r for r in inventory_rows if r['status']!='indexed'],
+            'excluded_scopes':['Louisiana Revised Statutes and separate statutory codes','Louisiana Constitution','Session laws','Emergency rules and later Louisiana Register changes not yet incorporated','Externally incorporated materials not embedded in the DOCX'],
+            'note':'Compilation-complete acquisition does not assert section-level legal completeness, current legal effect, or consolidated amendments beyond publisher files.'},
+        'terms':{'disclaimer_receipt_ids':[4,5],'copyright_rule':'LAC 1:I.315',
+            'treatment':'Private local research only. Rule text reproduction permitted; ancillary material is subject to written-consent or incidental-private-use conditions. Preserve original notices and do not infer a public redistribution license.'},
+        'clocks':{'acquisition':'Receipt observed_at UTC, complete body retained','incorporation':'Per-inventory last-amended month, latest promulgated portion of compilation',
+            'edition_snapshot_day':None,'publication_day':None,'legal_effect_day':None,'as_of':'Rejected for sync; unknown snapshot_date deliberately NULL'},
+        'fidelity':{'source':'Immutable SHA-256 original DOCX packages preserve all media, styles, numbering, tables, anchors and relationships',
+            'projection':'Native paragraph/table OOXML grouped at section/scope boundaries. All w:t text included. Ancillary package text separately indexed.',
+            'limitations':['Automatic Word numbering is retained in package/markup; computed labels not synthesized','Media and symbols require retained package; marked in text','No external incorporated documents fetched','Source groups may contain non-section legal text and contents; counts are separated','DOCX layout is not a verified PDF facsimile']},
+        'receipts':receipts,'inventory_status':inventory_rows,'free_disk_bytes':shutil.disk_usage(ROOT).free}
+    check=ROOT/'checks.json'
+    if check.exists(): report['focused_checks']=json.loads(check.read_text())
+    (ROOT/'report.json').write_text(json.dumps(report,indent=2))
+
+if __name__ == '__main__':
+    import argparse
+    import fcntl
+    parser=argparse.ArgumentParser(); parser.add_argument('--limit',type=int); args=parser.parse_args()
+    # A second collector process may not reset or race the lifetime ledger.
+    with (ROOT/'run.lock').open('w') as lock:
+        fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
+        s=Store(ROOT/'source'); a=LifetimeAcquirer(s)
+        try: sync_la(s,a,args.limit,None)
+        finally:
+            write_report(s,a)
+            a.close(); s.close()

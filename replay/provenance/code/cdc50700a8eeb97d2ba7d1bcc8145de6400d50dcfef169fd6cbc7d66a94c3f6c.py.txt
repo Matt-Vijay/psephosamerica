@@ -1,0 +1,164 @@
+"""Montana government MCA 2025: complete constitution and complete Title 1.
+
+sync_mt(Store, Acquirer, limit=None, as_of=None). The production runner uses
+transport.MontanaAcquirer for cumulative accounting and exclusive-host enforcement.
+limit bounds legal documents, never represents whole-state completeness.
+"""
+from __future__ import annotations
+import json
+import re
+import shutil
+from collections import deque
+from copy import deepcopy
+from pathlib import Path
+from urllib.parse import urljoin, urlsplit
+from lxml import html, etree
+from psephos.acquire import Acquirer, AcquisitionError
+from psephos.store import Store, Provision, utc_now
+from psephos.parse import readable, markup, source_links, media_links
+
+ROOT = Path(__file__).resolve().parent
+BASE = 'https://mca.legmt.gov/bills/mca/'
+INDEX = BASE+'index.html'
+HELP = BASE+'help.html'
+SCOPES = {'0000':('mt-constitution','Montana Constitution'), '0010':('mt-mca-title1','Montana Code Annotated Title 1 — General Laws and Definitions')}
+PARSER = 'montana-source-section-v1'
+
+def content(data):
+    root = html.fromstring(data)
+    nodes = root.xpath('//div[contains(concat(" ",normalize-space(@class)," ")," mca-content ")]')
+    if len(nodes) != 1:
+        raise ValueError('Expected unique MCA content; reject error, login, or challenge')
+    text = readable(nodes[0])
+    editions = re.findall(r'Montana Code Annotated (\d{4})', text)
+    if editions and editions != ['2025']:
+        raise ValueError('Unexpected MCA edition')
+    if not editions and not (('THE CONSTITUTION OF THE STATE OF MONTANA' in text or 'TITLE 1. GENERAL LAWS AND DEFINITIONS' in text) and 'MCA' in ''.join(root.xpath('//title/text()'))):
+        raise ValueError('Expected scoped MCA inventory with publisher title; editionless TOCs derive edition from linked root')
+    return root, nodes[0]
+
+def parse_section(data: bytes, url: str, title: str, inventory_label: str):
+    root, node = content(data)
+    docs = node.xpath('.//div[contains(concat(" ",normalize-space(@class)," ")," section-doc ")]')
+    if len(docs) != 1 or not docs[0].get('id','').startswith('mca_'):
+        raise ValueError('No unique source-native section; catalog is not legal text')
+    native = docs[0].get('id')
+    expected = url.rsplit('/',1)[1].removesuffix('.html')
+    if native != 'mca_'+expected:
+        raise ValueError('Source identifier / requested filename mismatch')
+    section_body = readable(docs[0])
+    if len(section_body) < 20 and not re.fullmatch(r'1-\d+-\d+\.?\s+(?:reserved|repealed)\.?', section_body, re.I):
+        raise ValueError('Empty/implausible legal body')
+    headings = {cls: ' '.join(node.xpath(f'.//*[contains(concat(" ",normalize-space(@class)," ")," {cls} ")]/text()')).strip() for cls in ['section-title-title','section-chapter-title','section-part-title','section-section-title']}
+    catchlines = docs[0].xpath('.//span[@class="catchline"]')
+    nums = catchlines[0].xpath('./span[@class="citation"]/text()') if catchlines else []
+    if title == '0010':
+        if not nums or not re.fullmatch(r'1-\d+-\d+',nums[0]):
+            raise ValueError('Missing Title 1 statutory citation')
+        range_match = re.match(r'(1-\d+-\d+)\s+through\s+(1-\d+-\d+)', readable(catchlines[0]))
+        citation = 'MCA '+(' through '.join(range_match.groups()) if range_match else nums[0])
+    else:
+        section = re.search(r'Section\s+(\d+)\.', section_body)
+        art = re.match(r'ARTICLE ([IVX]+)\.', headings['section-chapter-title'])
+        if art:
+            citation = 'Mont. Const. Art. '+art.group(1)+((' § '+section.group(1)) if section else '')
+        elif 'PREAMBLE' in headings['section-chapter-title']:
+            citation = 'Mont. Const. Preamble'
+        else:
+            citation = 'Mont. Const. Transition Schedule'+((' § '+section.group(1)) if section else ' — '+inventory_label)
+    wrapper=etree.Element('sourceSection',source_identifier=native)
+    wrapper.append(deepcopy(node))
+    for footer in root.xpath('//footer'):
+        wrapper.append(deepcopy(footer))
+    return Provision(key=SCOPES[title][0]+':'+native,citation=citation,
+        heading=headings['section-section-title'],text=readable(wrapper),markup=markup(wrapper),url=url,
+        parent_key=url.rsplit('/section_',1)[0],
+        unit_kind='constitution_section' if title=='0000' else 'section',
+        metadata={'source_identifier':native,'source_filename':expected+'.html','inventory_label':inventory_label,
+            'hierarchy':headings,'source_edition':'Montana Code Annotated 2025','edition_update_notice':'Updated August 2026',
+            'snapshot_date':None,'effective_on':None,'history_containers':len(node.xpath('.//div[@class="history-doc"]')),
+            'tables':len(node.xpath('.//table')),'media':media_links(node,url),
+            'fidelity':'Entire source content container and footer retained; original response separately hashed; scripts/styles not executed.'},
+        references=source_links(node,url))
+
+def sync_mt(s: Store, a: Acquirer, limit: int | None = None, as_of: str | None = None):
+    if as_of is not None:
+        raise ValueError('Exact snapshot date unknown; as_of acquisition not supported for this live edition')
+    if limit is not None and limit<0: raise ValueError('limit must be nonnegative')
+    a.delay=max(a.delay,1.05)
+    index=a.fetch(INDEX,max_file_bytes=2*1024**2)
+    _,top=content(s.artifact(index.sha256))
+    if 'Updated August 2026' not in readable(top): raise ValueError('Edition update notice changed; requires review')
+    help_receipt=a.fetch(HELP,max_file_bytes=2*1024**2)
+    index_tasks=[]; coverage=[]
+    for title,(cid,name) in SCOPES.items():
+        s.collection(cid,('us-mt','Montana','state','us'),name=name,
+            authority='Montana Legislative Services Division / Montana Legislature',
+            kind='constitution' if title=='0000' else 'statutes',homepage=INDEX,
+            source_status='Official government online research text; publisher says printed version prevails over Internet omissions/errors',
+            access='Public HTTPS; robots honored; publisher disclaimer retained; no blanket redistribution license asserted',
+            metadata={'scoped_title':title,'source_edition':'2025','edition_update_notice':'Updated August 2026',
+                'snapshot_date':None,'effective_on':None,'currency_notice':'Month-level edition update only; no exact day or blanket legal effect implied',
+                'index_receipt_sha256':index.sha256,'help_receipt_sha256':help_receipt.sha256,
+                'help_anomaly':'Help header says 2025 but scope/preface prose refers to 2017; stale prose retained, not used to assign edition currency',
+                'scope':'All source-linked sections in this title, including constitution preamble and transition schedule or Title 1 repeal notices'})
+        index_urls=[urljoin(INDEX,e.get('href')) for e in top.xpath('.//a[@href]') if f'/title_{title}/' in urljoin(INDEX,e.get('href'))]
+        if len(index_urls)!=1: raise ValueError('Missing/ambiguous scoped title from publisher TOC')
+        queue=deque(index_urls);seen=set();leafs={}; toc_rows=[]
+        while queue:
+            url=queue.popleft()
+            if url in seen:continue
+            if not url.startswith(BASE+'title_'+title+'/'):raise ValueError('Cross-title inventory link')
+            seen.add(url);receipt=a.fetch(url,max_file_bytes=2*1024**2)
+            _,toc=content(s.artifact(receipt.sha256))
+            if toc.xpath('.//div[@class="section-doc"]'):raise ValueError('Section mistaken for TOC')
+            child_links=[]
+            for el in toc.xpath('.//a[@href]'):
+                href=urljoin(url,el.get('href'))
+                if not href.startswith(BASE+'title_'+title+'/'): continue
+                label=' '.join(el.text_content().split())
+                if href.endswith('_index.html'):
+                    queue.append(href);child_links.append(href)
+                elif re.search(r'/section_[^/]+/[^/]+\.html$',href):
+                    leafs[href]={'title':title,'collection':cid,'url':href,'label':label,'inventory_sha256':receipt.sha256,'inventory_url':url}
+                    child_links.append(href)
+                else:raise ValueError('Unexpected scoped inventory link: '+href)
+            notices=[' '.join(el.text_content().split()) for el in toc.xpath('.//li[not(.//a)]')]
+            if not child_links and not notices:raise ValueError('Empty inventory without reserved/repeal notices')
+            toc_rows.append({'url':url,'acquisition_id':receipt.id,'sha256':receipt.sha256,'children':child_links,'notices':notices})
+            print(f'TOC {title}: {len(seen)} pages, {len(leafs)} section links',flush=True)
+        coverage.append({'title':title,'collection':cid,'toc_pages':toc_rows,'linked_sections':len(leafs),'sections':list(leafs.values())})
+        index_tasks.extend(leafs.values())
+    (ROOT/'inventory.json').write_text(json.dumps({'created_at':utc_now(),'coverage':coverage},indent=2))
+    for task in index_tasks:
+        old=s.db.execute('SELECT status FROM inventories WHERE collection_id=? AND item=?',(task['collection'],task['url'])).fetchone()
+        if not old or old[0]!='indexed':s.inventory(task['collection'],task['url'],task['url'],'pending')
+    results=[]
+    for task in index_tasks[:limit]:
+        if shutil.disk_usage(ROOT).free < 101*1024**3:raise AcquisitionError('Disk threshold')
+        url=task['url']
+        try:
+            r=a.fetch(url,max_file_bytes=2*1024**2)
+            status=s.db.execute('SELECT status FROM acquisitions WHERE id=?',(r.id,)).fetchone()[0]
+            if status!=200:raise ValueError('Section requires HTTP200')
+            unit=parse_section(s.artifact(r.sha256),url,task['title'],task['label'])
+            version,count,new=s.ingest(collection=task['collection'],document=unit.key,title=unit.citation+' — '+unit.heading,
+                url=url,acquisition=r.id,snapshot_date=None,snapshot_basis='MCA 2025, Updated August 2026 (publisher index); exact snapshot day unknown. Not a legal effective date.',
+                parser=PARSER,provisions=[unit],metadata={'edition':'2025','edition_update_notice':'Updated August 2026','inventory_sha256':task['inventory_sha256'],
+                    'index_sha256':index.sha256,'source_identifier':unit.metadata['source_identifier'],'effective_on':None})
+            s.inventory(task['collection'],url,url,'indexed')
+            results.append({'url':url,'key':unit.key,'citation':unit.citation,'version':version,'units':count,'new':new})
+            print(f'{len(results)}/{len(index_tasks)} {unit.citation} new={new}',flush=True)
+        except (AcquisitionError,ValueError) as exc:
+            s.inventory(task['collection'],url,url,'failed',str(exc));results.append({'url':url,'error':str(exc)})
+            print('FAILED',url,str(exc),flush=True)
+            if isinstance(exc,AcquisitionError):break
+    return {'scope_sections':len(index_tasks),'results':results}
+
+if __name__=='__main__':
+    from transport import MontanaAcquirer
+    s=Store(ROOT/'store');a=MontanaAcquirer(s)
+    try:
+        result=sync_mt(s,a)
+        (ROOT/'collection_result.json').write_text(json.dumps(result,indent=2))
+    finally:a.close();s.close()

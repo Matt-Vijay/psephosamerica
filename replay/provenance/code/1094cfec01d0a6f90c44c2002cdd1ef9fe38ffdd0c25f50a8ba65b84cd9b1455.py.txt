@@ -1,0 +1,48 @@
+import json,sys,shutil,time
+from pathlib import Path
+from urllib.parse import urlsplit
+sys.path.insert(0,str(Path(__file__).resolve().parents[3]/'src'))
+from psephos.acquire import Acquirer,AcquisitionError
+from psephos.store import Store
+from lxml import html
+ROOT=Path(__file__).resolve().parent
+class UtahAcquirer(Acquirer):
+    def __init__(self,s):
+        super().__init__(s,delay=1.1,max_bytes=199*1024**2)
+        self.meter=ROOT/'meter.json'
+        # Restore per-host completion clock across sequential collector invocations.
+        for row in s.db.execute('SELECT final_url,max(observed_at) AS clock FROM acquisitions GROUP BY final_url'):
+            from datetime import datetime,UTC
+            host=urlsplit(row['final_url']).netloc
+            elapsed=(datetime.now(UTC)-datetime.fromisoformat(row['clock'].replace('Z','+00:00'))).total_seconds()
+            self.last_request[host]=max(self.last_request.get(host,0),time.monotonic()-elapsed)
+        self.downloaded=json.loads(self.meter.read_text())['decoded_http_bytes'] if self.meter.exists() else 0
+    def _pause(self,url,delay=None):
+        if urlsplit(url).hostname not in {'le.utah.gov','www.le.utah.gov','rules.utah.gov','adminrules.utah.gov'}:
+            raise AcquisitionError('Host not owned by Utah collector: '+url)
+        if shutil.disk_usage(ROOT).free < 101*1024**3:
+            raise AcquisitionError('Free disk near 100 GiB')
+        if self.downloaded>=self.max_bytes:
+            raise AcquisitionError('Byte cap reached')
+        # Apply the publisher delay to redirects/retries too, not only _allowed.
+        effective=max(delay or self.delay,10.0 if urlsplit(url).hostname in {'le.utah.gov','www.le.utah.gov'} else 1.0)
+        super()._pause(url,effective)
+    def fetch(self,*args,**kwargs):
+        try:
+            return super().fetch(*args,**kwargs)
+        finally:
+            self.meter.write_text(json.dumps({'decoded_http_bytes':self.downloaded,'cap_bytes':200*1024**2,'operational_cap_bytes':self.max_bytes},indent=2)+'\n')
+if __name__=='__main__':
+    s=Store(ROOT/'store');a=UtahAcquirer(s)
+    try:
+        for url in sys.argv[1:]:
+            try:
+                r=a.fetch(url);data=s.artifact(r.sha256)
+                print('RECEIPT',r)
+                if 'html' in data[:500].decode('utf-8','replace').lower() or data[:1]==b'<':
+                    root=html.fromstring(data)
+                    print('TEXT',' '.join(root.text_content().split())[-12000:])
+                    print('LINKS',json.dumps([(e.text_content().strip(),e.get('href')) for e in root.xpath('//a[@href]')]))
+                else: print(data[:20000].decode('utf-8','replace'))
+            except Exception as e: print(type(e).__name__,str(e))
+    finally:a.close();s.close()

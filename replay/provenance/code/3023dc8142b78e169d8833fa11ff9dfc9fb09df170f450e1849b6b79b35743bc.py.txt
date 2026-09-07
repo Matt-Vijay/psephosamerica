@@ -1,0 +1,304 @@
+"""Nevada official NRS/NAC HTML collector; all source clocks kept distinct.
+
+Import sync_nv(Store, Acquirer, limit=None, as_of=None). No historical selection.
+The runner uses NevadaAcquirer for cumulative budget and exclusive-host enforcement.
+"""
+
+from __future__ import annotations
+
+import json
+import re
+import shutil
+from collections import Counter
+from copy import deepcopy
+from pathlib import Path
+from urllib.parse import urljoin, urlsplit
+
+from lxml import etree, html
+
+from psephos.acquire import Acquirer, AcquisitionError
+from psephos.parse import markup, media_links, readable, source_links
+from psephos.store import Provision, Store, utc_now
+
+BASE = Path(__file__).resolve().parent
+HOST = "www.leg.state.nv.us"
+CAP = 200 * 1024**2
+INDEXES = {"NAC": f"https://{HOST}/NAC/Chapters.html", "NRS": f"https://{HOST}/NRS/"}
+PARSER = "nevada-official-html-1"
+
+
+class NevadaAcquirer(Acquirer):
+    """Persist decoded-byte spending after every fetch, including robots/discovery.
+
+    Reserve 5MiB below the hard limit for decoder chunk overshoot. Stop new files
+    at 185MiB; each file bounded by remaining budget and <=60MiB. Only explicitly owned official host is allowed.
+    """
+
+    def __init__(self, store, **kwargs):
+        self.ledger = BASE / "budget.json"
+        self.prior = (
+            json.loads(self.ledger.read_text())["decoded_http_bytes"] if self.ledger.exists() else 0
+        )
+        super().__init__(store, max_bytes=195 * 1024**2 - self.prior, delay=1.1, **kwargs)
+
+    def _allowed(self, url):
+        if urlsplit(url).hostname != HOST:
+            raise AcquisitionError("Unowned host; coordination required: " + url)
+        return super()._allowed(url)
+
+    def fetch(self, url, **kwargs):
+        if urlsplit(url).hostname != HOST:
+            raise AcquisitionError("Unowned host: " + url)
+        if shutil.disk_usage(self.store.root).free < 100 * 1024**3:
+            raise AcquisitionError("Free disk reached 100GiB floor")
+        if self.prior + self.downloaded >= 185 * 1024**2 and not self._cached(url):
+            raise AcquisitionError("Conservative cumulative byte stop reached")
+        kwargs["max_file_bytes"] = min(
+            kwargs.get("max_file_bytes", 60 * 1024**2),
+            60 * 1024**2,
+            self.max_bytes - self.downloaded,
+        )
+        try:
+            return super().fetch(url, **kwargs)
+        finally:
+            self.ledger.write_text(
+                json.dumps(
+                    {
+                        "decoded_http_bytes": self.prior + self.downloaded,
+                        "cap": CAP,
+                        "updated_at": utc_now(),
+                    },
+                    indent=2,
+                )
+            )
+
+
+def chapter_units(data: bytes, code: str, chapter: str, url: str):
+    root = html.fromstring(data)
+    title = " ".join(root.xpath("//title/text()")).strip()
+    if not title.startswith(code + ":") or "CHAPTER" not in title.upper():
+        raise ValueError("Not an official chapter representation: " + title)
+    containers = root.xpath('//body/div[starts-with(@class,"WordSection") or @class="Section1"]')
+    if not containers:
+        raise ValueError("Missing publisher chapter container")
+    # Preserve every body text node in the partition, including TOC, revision,
+    # headings, tables, historical/future parallel text and terminal notices.
+    blocks = [deepcopy(c) for container in containers for c in container]
+    outside = [
+        c
+        for c in root.find("body")
+        if c not in containers and isinstance(c.tag, str) and c.tag not in ("script", "style")
+    ]
+    if any(readable(c).strip() for c in outside):
+        raise ValueError("Unrecognized body content outside chapter containers")
+    pattern = re.compile(r"^" + code + r"(\d+[A-Z]*)Sec(.+)$")
+    groups = []
+    current = etree.Element("div")
+    anchor = "_context"
+    label = ""
+    all_anchors = []
+    for block in blocks:
+        anchors = [v for v in block.xpath(".//a/@name | .//a/@id") if pattern.fullmatch(v)]
+        if len(anchors) > 1:
+            raise ValueError("Multiple section starts inside one block")
+        if anchors:
+            if readable(current):
+                groups.append((anchor, label, current))
+            current = etree.Element("div")
+            anchor = anchors[0]
+            label = readable(block)
+            all_anchors.append(anchor)
+        current.append(block)
+    if readable(current):
+        groups.append((anchor, label, current))
+    if not all_anchors:
+        # Genuine publisher repeal/transfer notices remain visible but are not sections.
+        bodytext = "\n".join(readable(c) for c in containers)
+        if not re.search(
+            r"repeal|reserved|replaced|expired|PRELIMINARY|REVISER’S NOTE|have been\s+codified",
+            bodytext,
+            re.I,
+        ):
+            raise ValueError("No native section anchors / no repeal or reserved notice")
+    totals = Counter(a for a, _, _ in groups)
+    seen = Counter()
+    units = []
+    for anchor, label, node in groups:
+        seen[anchor] += 1
+        match = pattern.fullmatch(anchor)
+        num = (match.group(1).lstrip("0") or "0") + "." + match.group(2) if match else None
+        suffix = f"/_occurrence/{seen[anchor]}" if totals[anchor] > 1 else ""
+        units.append(
+            Provision(
+                key=f"nv:{code.lower()}/"
+                + (anchor if match else f"chapter-{chapter}/{anchor}")
+                + suffix,
+                citation=f"{code} {num}"
+                if match
+                else f"{code} chapter {chapter} — context and notices",
+                heading=label if match else title + " — context and notices",
+                text=readable(node),
+                markup=markup(node),
+                url=url + ("#" + anchor if match else ""),
+                parent_key=f"nv:{code.lower()}/chapter-{chapter}",
+                unit_kind="section" if match else "scope_notes",
+                metadata={
+                    "chapter": chapter,
+                    "source_anchor": anchor if match else None,
+                    "occurrence": seen[anchor],
+                    "duplicate_anchor_count": totals[anchor],
+                    "tables": len(node.xpath(".//table")),
+                    "media": media_links(node, url),
+                    "effective_date_warning": "Parallel effective text retained verbatim; no date inference.",
+                },
+                references=source_links(node, url),
+            )
+        )
+    original = " ".join(" ".join(readable(c) for c in containers).split())
+    projected = " ".join(" ".join(u.text for u in units).split())
+    if original != projected:
+        raise ValueError("Full chapter text partition fidelity mismatch")
+    rev = re.search(r"\[Rev\.[^\]]+\]", original)
+    return (
+        title,
+        units,
+        {
+            "publisher_revision_label": rev.group(0) if rev else None,
+            "edition": re.search(r"--(\d{4})\]", rev.group(0)).group(1)
+            if rev and re.search(r"--(\d{4})\]", rev.group(0))
+            else None,
+            "native_section_occurrences": len(all_anchors),
+            "partition_fidelity": "all normalized publisher body text preserved",
+        },
+    )
+
+
+def inventory(s, a, code):
+    rec = a.fetch(INDEXES[code])
+    root = html.fromstring(s.artifact(rec.sha256))
+    items = {}
+    for link in root.xpath("//a[@href]"):
+        url = urljoin(INDEXES[code], link.get("href"))
+        m = re.fullmatch(r"/" + code + "/" + code + r"-(\d+[A-Z]*)\.html", urlsplit(url).path)
+        if not m or urlsplit(url).hostname != HOST:
+            continue
+        chapter = m.group(1)
+        parent = link.getparent()
+        title_label = None
+        if code == "NRS":
+            ancestor = link.xpath('ancestor::div[contains(@class,"card")]')
+            if ancestor:
+                candidates = ancestor[-1].xpath('.//*[contains(@class,"card-header")]')
+                if candidates:
+                    title_label = readable(candidates[0])
+        row = link.xpath("ancestor::tr")
+        items[chapter] = {
+            "chapter": chapter,
+            "url": url,
+            "inventory_label": readable(row[0]) if row else readable(parent),
+            "title_label": title_label,
+        }
+    if not items:
+        raise ValueError("Empty official inventory")
+    return rec, list(items.values())
+
+
+def sync_nv(s: Store, a: Acquirer, limit: int | None = None, as_of: str | None = None):
+    if as_of:
+        raise ValueError(
+            "Nevada live chapters lack precise publisher snapshot dates; historical acquisition unsupported"
+        )
+    if limit is not None and limit < 0:
+        raise ValueError("limit must be nonnegative")
+    notices = []
+    for url in [f"https://{HOST}/NAC/", f"https://{HOST}/Site/footer/footer-v2.html"]:
+        rec = a.fetch(url)
+        notices.append({"url": url, "sha256": rec.sha256, "receipt_id": rec.id})
+    ordered = []
+    for code in ["NAC", "NRS"]:
+        rec, items = inventory(s, a, code)
+        collection = "nevada-" + code.lower()
+        s.collection(
+            collection,
+            ("us-nv", "Nevada", "state", "us"),
+            name="Nevada Administrative Code" if code == "NAC" else "Nevada Revised Statutes",
+            authority="Nevada Legislative Counsel Bureau",
+            kind="administrative_code" if code == "NAC" else "statutory_code",
+            homepage=INDEXES[code],
+            source_status="Official publisher HTML; live chapter compilations; exact legal currency unknown",
+            access="Public HTTPS, robots permitted. State copyright / all rights reserved notices retained; no blanket redistribution license asserted.",
+            metadata={
+                "inventory_sha256": rec.sha256,
+                "notices": notices,
+                "snapshot_date": None,
+                "coverage_scope": "Indexed official chapter HTML only; excludes unconsolidated instruments and external incorporated material",
+            },
+        )
+        for item in items:
+            exists = s.db.execute(
+                "select status from inventories where collection_id=? and item=?",
+                (collection, item["chapter"]),
+            ).fetchone()
+            if not exists:
+                s.inventory(collection, item["chapter"], item["url"], "pending")
+            ordered.append((code, item, rec.sha256))
+    selected = ordered[:limit] if limit is not None else ordered
+    result = {"attempted": 0, "indexed": 0, "new_versions": 0, "failures": []}
+    for code, item, invsha in selected:
+        collection = "nevada-" + code.lower()
+        ch = item["chapter"]
+        url = item["url"]
+        try:
+            if shutil.disk_usage(s.root).free < 100 * 1024**3:
+                raise AcquisitionError("Free disk floor")
+            rec = a.fetch(url)
+            title, units, meta = chapter_units(s.artifact(rec.sha256), code, ch, url)
+            _, count, new = s.ingest(
+                collection=collection,
+                document=f"nv:{code.lower()}/chapter-{ch}",
+                title=title,
+                url=url,
+                acquisition=rec.id,
+                snapshot_date=None,
+                snapshot_basis="Live undated compilation; embedded revision is a publisher file revision label, not established legal currency/effectiveness",
+                parser=PARSER,
+                provisions=units,
+                metadata={
+                    **meta,
+                    **item,
+                    "inventory_sha256": invsha,
+                    "published_on": None,
+                    "currency_date": None,
+                    "effective_on": None,
+                },
+            )
+            s.inventory(collection, ch, url, "indexed")
+            result["indexed"] += 1
+            result["new_versions"] += int(new)
+            print(f"{code} {ch}: {count} units; new={new}; decoded={a.downloaded}", flush=True)
+        except (AcquisitionError, ValueError) as exc:
+            s.inventory(collection, ch, url, "failed", str(exc))
+            result["failures"].append({"code": code, "chapter": ch, "error": str(exc)})
+            print(f"{code} {ch}: FAILED {exc}", flush=True)
+            if isinstance(exc, AcquisitionError):
+                # Stop on barriers/errors; do not sidestep publisher restrictions.
+                result["stop_reason"] = str(exc)
+                break
+        result["attempted"] += 1
+    return result
+
+
+if __name__ == "__main__":
+    import argparse
+
+    p = argparse.ArgumentParser()
+    p.add_argument("--limit", type=int)
+    args = p.parse_args()
+    s = Store(BASE / "store")
+    a = NevadaAcquirer(s)
+    try:
+        result = sync_nv(s, a, args.limit, None)
+        (BASE / "run.json").write_text(json.dumps(result, indent=2))
+    finally:
+        a.close()
+        s.close()

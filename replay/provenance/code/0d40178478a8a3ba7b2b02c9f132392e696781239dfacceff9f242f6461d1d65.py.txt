@@ -1,0 +1,153 @@
+"""Collector-local, lifetime-budgeted official-host acquisition; no shared edits."""
+import fcntl
+import hashlib
+import json
+import os
+import re
+import shutil
+import time
+import zlib
+from pathlib import Path
+from urllib.parse import urlsplit
+from urllib.robotparser import RobotFileParser
+import httpx
+from psephos.acquire import Acquirer, Receipt, AcquisitionError, USER_AGENT, SAFE_HEADERS, robots_lines, retry_seconds, validate_url
+from psephos.store import utc_now
+
+ROOT = Path(__file__).resolve().parent
+CAP = 209715200
+HOSTS = {'oksenate.gov', 'www.oksenate.gov', 'oklegislature.gov', 'www.oklegislature.gov', 'sos.ok.gov'}
+class OklahomaAcquirer(Acquirer):
+    def __init__(self, store):
+        if not store.root.is_relative_to(ROOT):
+            raise ValueError('Oklahoma Store must remain in collector directory')
+        super().__init__(store, delay=1, max_bytes=CAP)
+        self.lock = (ROOT / 'network.lock').open('a+')
+        fcntl.flock(self.lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        self.ledger_path = ROOT / 'http_ledger.json'
+        self.ledger = json.loads(self.ledger_path.read_text()) if self.ledger_path.exists() else {'cap':CAP,'decoded_bytes':0,'charged_bytes':0,'requests':[],'hosts':{}}
+        self._save()
+        self.client.close()
+        self.client = httpx.Client(timeout=httpx.Timeout(50, connect=20), follow_redirects=False, trust_env=False, headers={'User-Agent':USER_AGENT,'Accept-Encoding':'identity'})
+    def close(self):
+        super().close()
+        self.lock.close()
+    def _save(self):
+        temp = self.ledger_path.with_suffix('.tmp')
+        with temp.open('w') as f:
+            json.dump(self.ledger,f,indent=2)
+            f.flush(); os.fsync(f.fileno())
+        temp.replace(self.ledger_path)
+    def _allowed(self,url):
+        origin = 'https://' + urlsplit(url).netloc
+        if origin not in self.robots:
+            parser = RobotFileParser(origin+'/robots.txt')
+            try:
+                receipt = self.fetch(origin+'/robots.txt', check_robots=False, max_file_bytes=2*1024**2)
+                lines=robots_lines(self.store.artifact(receipt.sha256))
+                parser.parse(lines)
+                parser.raw_lines=lines
+            except AcquisitionError:
+                row=self.store.db.execute('SELECT status FROM acquisitions WHERE url=? ORDER BY id DESC LIMIT 1',(origin+'/robots.txt',)).fetchone()
+                if row and row[0] in (404,410): parser.parse([])
+                else: raise
+            self.robots[origin]=parser
+        parser=self.robots[origin]
+        # Evaluate raw rule paths so a literal query delimiter is not discarded.
+        lines=getattr(parser,'raw_lines',[])
+        groups=[]; agents=[]; rules=[]; begun=False
+        for line in lines+['User-agent: __end__']:
+            line=line.split('#',1)[0].strip()
+            if ':' not in line: continue
+            k,v=(x.strip() for x in line.split(':',1)); k=k.lower()
+            if k=='user-agent':
+                if begun: groups.append((agents,rules));agents=[];rules=[];begun=False
+                agents.append(v.lower())
+            elif k in ('allow','disallow') and agents:
+                begun=True
+                if v: rules.append((v,k=='allow'))
+        specific=[g for g in groups if any(x!='*' and x in USER_AGENT.lower() for x in g[0])]
+        selected=specific or [g for g in groups if '*' in g[0]]
+        part=urlsplit(url); path=part.path+('?' + part.query if part.query else '')
+        matches=[]
+        for _,rules in selected:
+            for pattern,allow in rules:
+                regex='^'+re.escape(pattern).replace(r'\*','.*')
+                if pattern.endswith('$'): regex=regex[:-2]+'$'
+                if re.search(regex,path): matches.append((len(pattern.replace('*','').rstrip('$')),allow))
+        if matches and not max(matches)[1]: raise AcquisitionError('Robots disallows '+url)
+        rate=parser.request_rate(USER_AGENT)
+        return max(1, float(parser.crawl_delay(USER_AGENT) or 0), rate.seconds/rate.requests if rate else 0)
+    def fetch(self,url,*,immutable=False,check_robots=True,max_file_bytes=16*1024**2,**kwargs):
+        validate_url(url)
+        if urlsplit(url).hostname not in HOSTS: raise AcquisitionError('Uncoordinated host '+url)
+        cached=self._cached(url)
+        if cached: return cached
+        prior=self.store.db.execute('SELECT status,error FROM acquisitions WHERE url=? ORDER BY id DESC LIMIT 1',(url,)).fetchone()
+        if prior and prior['status'] in (401,403,404,410,429,451,500,502,503,504):
+            raise AcquisitionError('Prior blocked/deferred response retained; no automatic retry '+url)
+        delay=self._allowed(url) if check_robots else 1
+        host=urlsplit(url).hostname
+        previous=self.ledger['hosts'].get(host,{})
+        if previous.get('barrier'): raise AcquisitionError('Host barrier retained: '+previous['barrier'])
+        wait=max(previous.get('last_request',0)+delay,previous.get('retry_until',0))-time.time()
+        if wait>30: raise AcquisitionError('Publisher wait deferred')
+        if wait>0: time.sleep(wait)
+        if shutil.disk_usage(ROOT).free <105*1024**3: raise AcquisitionError('Free disk below 105 GiB')
+        remaining=CAP-self.ledger['charged_bytes']
+        allowance=min(max_file_bytes,remaining)
+        if allowance<65536: raise AcquisitionError('Lifetime byte budget exhausted')
+        # Reserve the entire response allowance before network IO. Interrupted requests
+        # retain reservation; a rerun can never erase uncertain byte charges.
+        entry={'url':url,'started_at':utc_now(),'reserved':allowance,'decoded_bytes':0,'complete':False}
+        self.ledger['requests'].append(entry)
+        self.ledger['charged_bytes']+=allowance
+        self.ledger['hosts'][host]={**previous,'last_request':time.time()}
+        self._save()
+        data=bytearray(); status=0; headers={}; complete=False
+        try:
+            with self.client.stream('GET',url) as response:
+                status=response.status_code
+                headers={k:v for k,v in response.headers.items() if k in SAFE_HEADERS}
+                encoding=response.headers.get('content-encoding','identity').lower()
+                if encoding not in ('identity','','gzip','deflate'):
+                    raise AcquisitionError('Unsupported encoding; no body decoded')
+                decoder=zlib.decompressobj(31 if encoding=='gzip' else 15) if encoding in ('gzip','deflate') else None
+                length=response.headers.get('content-length')
+                if not decoder and length and int(length)>allowance: raise AcquisitionError('Declared response exceeds reserved budget')
+                raw_size=0
+                for chunk in response.iter_raw(chunk_size=65536):
+                    raw_size+=len(chunk)
+                    if decoder:
+                        chunk=decoder.decompress(chunk,allowance-len(data))
+                    if len(data)+len(chunk)>allowance: raise AcquisitionError('Response exceeds allowance')
+                    data.extend(chunk)
+                    if len(data)>=allowance: raise AcquisitionError('Response allowance reached')
+                if decoder and not decoder.eof: raise AcquisitionError('Incomplete compressed representation')
+                if length and raw_size!=int(length): raise AcquisitionError('Incomplete representation')
+                complete=True
+                retry=headers.get('retry-after')
+                if retry: self.ledger['hosts'][host]['retry_until']=time.time()+retry_seconds(retry,60)
+                if status in (401,403,429,451): self.ledger['hosts'][host]['barrier']=f'HTTP {status}'
+            sha=hashlib.sha256(data).hexdigest()
+            target=self.store.object_path(sha); target.parent.mkdir(parents=True,exist_ok=True)
+            if not target.exists(): target.write_bytes(data)
+            with self.store.db: self.store.db.execute('INSERT OR IGNORE INTO artifacts VALUES (?,?)',(sha,len(data)))
+            headers['psephos_request_started_at']=entry['started_at']
+            receipt_id=self._record(url,url,utc_now(),status,headers,sha,None if 200<=status<400 else f'HTTP {status}')
+            entry['receipt_id']=receipt_id
+            if status in (301,302,303,307,308):
+                dest=str(httpx.URL(url).join(headers['location']))
+                if not check_robots and urlsplit(dest).path!='/robots.txt': raise AcquisitionError('Robots redirected to non-policy endpoint')
+                return self.fetch(dest,check_robots=check_robots,max_file_bytes=max_file_bytes)
+            if not 200<=status<300: raise AcquisitionError(f'HTTP {status}: {url}')
+            return Receipt(receipt_id,url,sha,utc_now(),len(data))
+        except Exception as exc:
+            entry['error']=str(exc)
+            if not entry.get('receipt_id'): self._record(url,url,utc_now(),status,headers,None,str(exc))
+            raise
+        finally:
+            entry.update(decoded_bytes=len(data),complete=complete,status=status)
+            self.ledger['decoded_bytes']+=len(data)
+            if complete: self.ledger['charged_bytes']-=allowance-len(data)
+            self._save()

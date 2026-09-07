@@ -1,0 +1,147 @@
+"""Michigan official full-chapter HTML collector, isolated current Store model.
+Run: .venv/bin/python data/collectors/mi/adapter.py [--limit N]
+No precise publisher snapshot date is inferred from rendered date or currency notice.
+"""
+from __future__ import annotations
+import argparse, hashlib, json, re, shutil, ssl
+from collections import Counter
+from copy import deepcopy
+from pathlib import Path
+from urllib.parse import urljoin, parse_qs, urlsplit
+import httpx
+from lxml import html, etree
+from psephos.acquire import Acquirer, AcquisitionError, USER_AGENT
+from psephos.store import Store, Provision, utc_now
+from psephos.parse import readable, markup, source_links, media_links
+ROOT = Path(__file__).resolve().parent
+BASE = 'https://www.legislature.mi.gov'
+INDEX = BASE + '/Laws/ChapterIndex'
+CA_URL = 'https://cacerts.digicert.com/DigiCertGlobalG2TLSRSASHA2562020CA1-1.crt'
+CAP = 200*1024**2
+PARSER = 'mi-chapter-html-1'
+
+class BudgetAcquirer(Acquirer):
+    def __init__(self, store):
+        self.ledger=ROOT/'budget.json'
+        self.prior=json.loads(self.ledger.read_text())['downloaded_bytes'] if self.ledger.exists() else 0
+        super().__init__(store,max_bytes=CAP-self.prior,delay=1.1)
+        ctx=ssl.create_default_context()
+        # Supplied intermediate chains to the existing DigiCert root. No PARTIAL_CHAIN,
+        # no disabled hostname validation, and no shared trust configuration mutation.
+        intermediate_der=ssl.PEM_cert_to_DER_cert((ROOT/'intermediate.pem').read_text())
+        expected='c8025f9fc65fdfc95b3ca8cc7867b9a587b5277973957917463fc813d0b625a9'
+        if hashlib.sha256(intermediate_der).hexdigest()!=expected or store.artifact(expected)!=intermediate_der:
+            raise ValueError('Intermediate certificate does not match retained issuer receipt')
+        ctx.load_verify_locations(cafile=str(ROOT/'intermediate.pem'))
+        self.client.close()
+        self.client=httpx.Client(verify=ctx,timeout=httpx.Timeout(90,connect=30),follow_redirects=False,trust_env=False,headers={'User-Agent':USER_AGENT,'Accept-Encoding':'gzip, deflate'})
+    def fetch(self,*args,**kwargs):
+        if shutil.disk_usage(ROOT).free < 100*1024**3:
+            raise AcquisitionError('Disk floor: under 100 GiB free')
+        kwargs.setdefault('max_file_bytes',35*1024**2)
+        try: return super().fetch(*args,**kwargs)
+        finally:
+            self.ledger.write_text(json.dumps({'downloaded_bytes':self.prior+self.downloaded,'free_disk_bytes':shutil.disk_usage(ROOT).free},indent=2))
+
+def inventory(data):
+    h=html.fromstring(data); result=[]
+    for a in h.xpath('//a[contains(@href,"objectName=mcl-chap")]'):
+        native=parse_qs(urlsplit(a.get('href')).query)['objectName'][0]
+        row=a.getparent().getparent()
+        result.append({'id':native,'title':' '.join(row.text_content().split()),'catalog_url':urljoin(INDEX,a.get('href')),'url':BASE+'/Home/RenderDoc?objectName='+native})
+    if len(result)<200 or len({x['id'] for x in result})!=len(result):
+        raise ValueError('Unexpected Michigan chapter inventory')
+    return result
+
+def parse_chapter(data, item):
+    h=html.fromstring(data)
+    wrappers=h.xpath('//main/div[@class="chapterWrapper"]')
+    if len(wrappers)!=1 or not h.xpath('//title[contains(text(),"Chapter")]'):
+        raise ValueError('Not a full Michigan chapter export')
+    root=wrappers[0]; units=[]; seen=Counter(); section_count=0
+    def emit(node, hierarchy, path, kind):
+        nonlocal section_count
+        text=readable(node)
+        if not text: return
+        heads=node.xpath('./h1')
+        heading=readable(heads[0]) if heads else item['title']+' — context'
+        if kind=='section':
+            section_count+=1
+            if item['id']=='mcl-chap1':
+                number=re.match(r'§\s*(\S+)',heading)
+                article=next((x['heading'].splitlines()[0] for x in reversed(hierarchy) if x['heading'].startswith('Article ')), 'unknown article')
+                native=article+' § '+(number[1] if number else heading)
+                citation='Mich. Const. 1963, '+native
+            else:
+                native=heading.split(' ',1)[0]
+                citation='MCL '+native
+            key='mi:'+item['id']+'/'+native
+            seen[key]+=1
+            if seen[key]>1: key+='/occurrence/'+str(seen[key])
+        else:
+            native=None; key='mi:'+item['id']+'/_context/'+path
+            citation=item['title']+' — context '+path
+        units.append(Provision(key=key,citation=citation,heading=heading,text=text,markup=markup(node),url=item['url'],parent_key='mi:'+item['id'],unit_kind=kind,metadata={'source_identifier':native,'source_chapter_id':item['id'],'source_path':path,'hierarchy':hierarchy,'tables':len(node.xpath('.//table')),'media':media_links(node,item['url']),'date_warning':'Parallel future-effective versions, exceptions, repeals and history retained; not resolved.'},references=source_links(node,item['url'])))
+    def visit(node,hierarchy,path):
+        cls=node.get('class','')
+        if cls=='sectionWrapper':
+            emit(node,hierarchy,path,'section');return
+        hs=node.xpath('./div[contains(@class,"Heading")]')
+        if hs: hierarchy=hierarchy+[{'source_path':path,'kind':cls,'heading':readable(hs[0])}]
+        chunk=etree.Element('div');chunk.text=node.text; part=0
+        for i,child in enumerate(node):
+            if child.get('class') in {'sectionWrapper','divisionWrapper','statuteWrapper'}:
+                emit(chunk,hierarchy,path+'/context-'+str(part),'scope_notes');part+=1
+                visit(child,hierarchy,path+'/'+str(i))
+                chunk=etree.Element('div');chunk.text=child.tail
+            else: chunk.append(deepcopy(child))
+        emit(chunk,hierarchy,path+'/context-'+str(part),'scope_notes')
+    visit(root,[],'0')
+    # Complete lexical conservation catches discarded enactment/history/context text.
+    squash=lambda t: re.sub(r'\s+','',t)
+    if squash(readable(root))!=squash(''.join(x.text for x in units)):
+        raise ValueError('Full chapter text conservation check failed')
+    if not section_count:
+        # Some wholly repealed chapters have only an official heading/repeal notice.
+        if not re.search(r'repealed|transferred|omitted|rejected by voters',readable(root),re.I):
+            raise ValueError('No sections and no explicit repeal/transfer/omission/voter-rejection notice')
+    notices=re.findall(r'content:\s*"([^"]+)"', '\n'.join(h.xpath('//style/text()')))
+    return units,{'publisher_css_notices':notices,'source_section_count':section_count,'text_conservation':True,'tables':len(root.xpath('.//table')),'source_media':media_links(root,item['url'])}
+
+def sync_mi(store, acquirer, limit=None, as_of=None):
+    if as_of: raise ValueError('Michigan export snapshot date is unknown; as_of sync unsupported')
+    r=acquirer.fetch(INDEX); items=inventory(store.artifact(r.sha256))
+    policies=[]
+    for slug in ['AcceptableUse','Privacy','DMCA']:
+        pr=acquirer.fetch(BASE+'/Home/'+slug);policies.append({'url':pr.url,'sha256':pr.sha256,'acquisition_id':pr.id})
+    store.collection('mi-mcl',('us-mi','Michigan','state','us'),name='Michigan Compiled Laws including 1963 Constitution',authority='Michigan Legislature / Legislative Service Bureau',kind='statutory_code_and_constitution',homepage=INDEX,source_status='Official publisher full-chapter HTML exports; currency notices retained, precise snapshot unknown',access='Public full-chapter exports; acceptable-use/privacy/DMCA policies retained. Robots endpoint returns 404. 1.1 second minimum host delay.',metadata={'inventory_sha256':r.sha256,'inventory_count':len(items),'policies':policies,'scope':'Entire publisher chapter inventory; status records identify any uncollected chapters','snapshot_warning':'Rendered date and PA currency are not exact snapshot/effective dates.'})
+    store.collection('mi-admin',('us-mi','Michigan','state','us'),name='Michigan Administrative Code — restriction recorded, no law indexed',authority='Michigan Office of Administrative Hearings and Rules',kind='administrative_code',homepage='https://ars.apps.lara.state.mi.us/AdminCode/AdminCode',source_status='Not collected: reproduction restriction',access='Official guidance prohibits unauthorized reproduction, sale or other commercial use of form, classification, arrangement and numbering.',metadata={'notice_sha256':'a4d248de29860bee27a6d26dcd28a0cbfbf49d39ffb24014d350e43220e56934','notice_url':'https://www.michigan.gov/lara/bureau-list/moahr/admin-rules/using-the-michigan-administrative-code'})
+    store.inventory('mi-admin','all','https://ars.apps.lara.state.mi.us/AdminCode/AdminCode','blocked','Publisher reproduction restriction; permission not established')
+    for item in items:
+        if not store.db.execute('select 1 from inventories where collection_id=? and item=?',('mi-mcl',item['id'])).fetchone():
+            store.inventory('mi-mcl',item['id'],item['url'],'pending','Not yet acquired')
+    results=[]
+    for item in items[:limit]:
+        if getattr(acquirer,'prior',0)+acquirer.downloaded > CAP-35*1024**2:
+            print('Stopping with 35 MiB budget reserve',flush=True);break
+        try:
+            raw=acquirer.fetch(item['url']); units,meta=parse_chapter(store.artifact(raw.sha256),item)
+            vid,count,new=store.ingest(collection='mi-mcl',document='mi:'+item['id'],title=item['title'],url=item['url'],acquisition=raw.id,snapshot_date=None,snapshot_basis='Undated current compilation; rendered date and public-act currency retained separately',parser=PARSER,provisions=units,metadata={**meta,'inventory_sha256':r.sha256,'catalog_url':item['catalog_url']})
+            store.inventory('mi-mcl',item['id'],item['url'],'indexed')
+            results.append({'id':item['id'],'sha256':raw.sha256,'acquisition':raw.id,'version':vid,'provisions':count,'new':new,**meta})
+            print(item['id'],raw.size,count,'new' if new else 'cached',flush=True)
+        except (ValueError,AcquisitionError) as exc:
+            store.inventory('mi-mcl',item['id'],item['url'],'failed',str(exc));print(item['id'],'FAILED',str(exc),flush=True)
+    return results
+
+def report(store,results):
+    counts={t:store.db.execute('select count(*) from '+t).fetchone()[0] for t in ['artifacts','acquisitions','documents','versions','provisions','legal_references']}
+    return {'state':'MI','generated_at':utc_now(),'store':str(ROOT/'store'),'adapter':str(ROOT/'adapter.py'),'report':str(ROOT/'report.json'),'counts':counts,'raw_artifact_bytes':store.db.execute('select sum(bytes) from artifacts').fetchone()[0],'budget':json.loads((ROOT/'budget.json').read_text()),'inventory':[dict(x) for x in store.db.execute('select * from inventories')],'chapters':results,'acquisitions':[dict(x) for x in store.db.execute('select a.*,b.bytes from acquisitions a left join artifacts b on a.sha256=b.sha256')],'gaps':['Administrative Code not collected: explicit publisher reproduction restriction.','Separately enacted session laws, unincorporated changes, historical compilations and municipal laws outside scope.','Exact snapshot/effective dates unknown; rendered date and PA completeness notice retained without conflation.','Externally referenced media, if present, retained as locators and explicit non-transcription markers; no OCR.'],'tls':{'cause':'Publisher omits intermediate certificate','intermediate_url':CA_URL,'sha256':'c8025f9fc65fdfc95b3ca8cc7867b9a587b5277973957917463fc813d0b625a9','configuration':'ssl.create_default_context() plus local intermediate.pem; existing trusted root chain verified; no PARTIAL_CHAIN or bypass','verification':'openssl verify data/collectors/mi/intermediate.pem: OK'},'checks':{'all_indexed_chapters_text_conservation':all(x['text_conservation'] for x in results)}}
+
+if __name__=='__main__':
+    p=argparse.ArgumentParser();p.add_argument('--limit',type=int);args=p.parse_args()
+    s=Store(ROOT/'store');a=BudgetAcquirer(s)
+    try:
+        results=sync_mi(s,a,args.limit)
+        (ROOT/'report.json').write_text(json.dumps(report(s,results),indent=2))
+    finally:a.close();s.close()

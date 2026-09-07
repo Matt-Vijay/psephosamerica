@@ -1,0 +1,119 @@
+"""Isolated IL collector: whole current Chapter 10 acts and constitution; no core writes."""
+from __future__ import annotations
+import json,re,time,shutil
+from pathlib import Path
+from collections import Counter
+from datetime import datetime,UTC
+from urllib.parse import urljoin,urlsplit,parse_qs
+from lxml import html,etree
+from psephos.store import Store,Provision
+from psephos.acquire import Acquirer,AcquisitionError
+from psephos.parse import readable,markup,source_links,media_links
+ROOT=Path(__file__).parent
+BASE='https://ilga.gov'
+CHAPTERS=BASE+'/Legislation/ILCS/Chapters'
+CH10=BASE+'/Legislation/ILCS/Acts?ChapterID=3&ChapterNumber=10&Chapter=ELECTIONS&MajorTopic=GOVERNMENT'
+CONSTITUTION='https://lrb.ilga.gov/Commission/lrb/conent.htm'
+NOTICE='Government publisher drafting database; publisher says this is not official/authoritative ILCS text. Recent acts may be absent; future-effective changes may already replace effective text.'
+
+def fetch(store,a,url):
+    if urlsplit(url).hostname not in {'ilga.gov','www.ilga.gov','lrb.ilga.gov'}: raise ValueError('Outside exclusive publisher scope')
+    if shutil.disk_usage(ROOT).free<100*1024**3: raise RuntimeError('100 GiB disk floor')
+    receipt=a.fetch(url,max_file_bytes=30*1024**2)
+    return receipt,html.fromstring(store.artifact(receipt.sha256))
+
+def act_units(tree,url,actid):
+    roots=tree.xpath('//*[@id="billtextanchor"]')
+    if len(roots)!=1: raise ValueError('No unique legal text container')
+    root=roots[0]
+    tables=root.xpath('.//table[not(ancestor::table)]')
+    if not tables: raise ValueError('No source unit tables; catalog/empty response')
+    seen=Counter(); units=[]
+    for i,node in enumerate(tables):
+        text=readable(node)
+        if not text.strip(): continue
+        match=re.search(r'\((\d+\s+ILCS\s+[^)]+)\)',text)
+        if not match: raise ValueError(f'Unrecognized legal unit table {i}: {text[:150]}')
+        citation=' '.join(match.group(1).split())
+        seen[citation]+=1
+        source_id=citation
+        key=f'ilcs:{source_id}' + (f'/occurrence/{seen[citation]}' if seen[citation]>1 else '')
+        kind='heading' if 'heading' in citation else 'section'
+        heading=text.splitlines()[1] if len(text.splitlines())>1 else citation
+        units.append(Provision(key=key,citation=citation,heading=heading[:250],text=text,markup=markup(node),url=url,unit_kind=kind,metadata={'source_identifier':source_id,'act_id':actid,'occurrence':seen[citation],'source_table_ordinal':i,'tables':len(node.xpath('.//table')),'media':media_links(node,url)},references=source_links(node,url)))
+    if not any(u.unit_kind=='section' for u in units): raise ValueError('Heading-only act: no legal sections')
+    return units
+
+def constitution_units(tree,url):
+    pres=tree.xpath('//pre')
+    if len(pres)!=1: raise ValueError('Constitution full-text PRE missing')
+    text=pres[0].text_content()
+    starts=list(re.finditer(r'(?m)^[ \t]*(ARTICLE [IVX]+|TRANSITION SCHEDULE)[ \t]*\r?$',text))
+    if len(starts)!=15: raise ValueError(f'Expected 14 articles and transition; found {len(starts)}')
+    fragments=[('preamble',text[:starts[0].start()])]
+    for i,m in enumerate(starts):
+        body=text[m.start():starts[i+1].start() if i+1<len(starts) else len(text)]
+        article=m.group(1)
+        sections=list(re.finditer(r'(?m)^SECTION ([0-9]+(?:\.[0-9]+)?)\. ',body))
+        if not sections: raise ValueError('Empty article')
+        fragments.append((article+'/heading',body[:sections[0].start()]))
+        for j,sec in enumerate(sections): fragments.append((article+'/section/'+sec.group(1),body[sec.start():sections[j+1].start() if j+1<len(sections) else len(body)]))
+    units=[]
+    for key,text in fragments:
+        node=etree.Element('pre');node.text=text
+        units.append(Provision(key='il-constitution:'+key,citation='Illinois Constitution '+key,heading=text.strip().splitlines()[0],text=text.strip(),markup=markup(node),url=url,unit_kind='section' if '/section/' in key else 'preamble' if key=='preamble' else 'heading',metadata={'source_identifier':key,'projection':'Lossless PRE text partition; original HTML retained in artifact'}))
+    return units
+
+def sync_il(store,acquirer,limit=None,as_of=None):
+    if as_of is not None: raise ValueError('No dated current snapshot; historical as_of acquisition unsupported')
+    acquirer.delay=max(acquirer.delay,10.1)
+    for row in store.db.execute('select final_url,observed_at from acquisitions'):
+        host=urlsplit(row['final_url']).netloc
+        elapsed=(datetime.now(UTC)-datetime.fromisoformat(row['observed_at'].replace('Z','+00:00'))).total_seconds()
+        acquirer.last_request[host]=max(acquirer.last_request.get(host,0),time.monotonic()-max(0,elapsed))
+    for cid,name,kind,home in [('il-statutes','Illinois Compiled Statutes — Chapter 10','statutes',CHAPTERS),('il-constitution','Illinois Constitution','constitution',CONSTITUTION),('il-regulations','Illinois Administrative Code — inventory only','regulations',BASE+'/ftp/JCAR/AdminCode/')]:
+        store.collection(cid,('us-il','Illinois','state','us'),name=name,authority='Illinois General Assembly / Legislative Reference Bureau',kind=kind,homepage=home,source_status='government publisher; unofficial compilation' if cid=='il-statutes' else 'government publisher',access='Public HTTPS. Robots retained; 10.1-second minimum. No accounts. Disclaimer and All Rights Reserved notice retained; no blanket reuse license asserted.',metadata={'warning':NOTICE,'snapshot_warning':'Acquisition time is not snapshot/effective date; current exports undated.'})
+    _,chap=fetch(store,acquirer,CHAPTERS)
+    for node in chap.xpath('//a[contains(@href,"/ILCS/Acts?")]'):
+        label=' '.join(node.text_content().split());url=urljoin(BASE,node.get('href'));number=parse_qs(urlsplit(url).query)['ChapterNumber'][0]
+        if number!='10': store.inventory('il-statutes','chapter:'+number,url,'pending','Outside bounded Chapter 10 batch; chapter acts not enumerated')
+    _,root=fetch(store,acquirer,CH10)
+    acts=[(' '.join(n.text_content().split()),urljoin(BASE,n.get('href'))) for n in root.xpath('//a[contains(@href,"/ILCS/Articles?")]')]
+    for label,url in acts:
+        item='act:'+parse_qs(urlsplit(url).query)['ActID'][0]
+        old=store.db.execute('select status from inventories where collection_id=? and item=?',('il-statutes',item)).fetchone()
+        if not old: store.inventory('il-statutes',item,url,'pending','Awaiting whole-act export')
+    r,ct=fetch(store,acquirer,CONSTITUTION);units=constitution_units(ct,CONSTITUTION)
+    store.ingest(collection='il-constitution',document='il-constitution:complete',title='Illinois Constitution including transition schedule',url=CONSTITUTION,acquisition=r.id,snapshot_basis='Unknown current compilation snapshot; December 15 1970 is adoption, not snapshot',parser='il-constitution-pre-v1',provisions=units,metadata={'adopted_on':'1970-12-15','scope':'14 articles, preamble, transition schedule; source text includes removed-section labels and amendment source notes'})
+    store.inventory('il-constitution','constitution',CONSTITUTION,'acquired')
+    _,reg=fetch(store,acquirer,BASE+'/ftp/JCAR/AdminCode/')
+    for n in reg.xpath('//a[@href]'):
+        if re.fullmatch(r'\d{3}',n.text_content().strip()): store.inventory('il-regulations','title:'+n.text_content().strip(),urljoin(BASE,n.get('href')),'pending','Regulations deferred to preserve bounded complete statutory scope')
+    results=[]
+    for label,url in acts[:limit] if limit is not None else acts:
+        actid=parse_qs(urlsplit(url).query)['ActID'][0];item='act:'+actid
+        try:
+            if 'Repealed by' in label:
+                store.inventory('il-statutes',item,url,'metadata_only','Chapter inventory labels act repealed. Repealed-act label is not indexed as law; historical text not acquired.')
+                results.append({'act_id':actid,'title':label,'status':'metadata_only'})
+                continue
+            if actid=='170':
+                _,idx=fetch(store,acquirer,url)
+                full=urljoin(BASE,idx.xpath('//a[contains(.,"View Entire Act")]/@href')[0])
+            else:
+                full=BASE+'/legislation/ILCS/details?ActID='+actid+'&ChapterID=3&ChapAct=FullText'
+            r,t=fetch(store,acquirer,full);units=act_units(t,full,actid)
+            v,n,new=store.ingest(collection='il-statutes',document='ilcs:act:'+actid,title=label,url=full,acquisition=r.id,snapshot_basis='Publisher live drafting database; exact snapshot and legal effective date unknown',parser='ilcs-whole-act-tables-v1',provisions=units,metadata={'source_act_id':actid,'inventory_url':url,'warning':NOTICE})
+            store.inventory('il-statutes',item,full,'acquired');result={'act_id':actid,'title':label,'version':v,'units':n,'new':new,'status':'acquired'}
+            results.append(result);print(json.dumps(result),flush=True)
+        except (AcquisitionError,ValueError) as exc:
+            store.inventory('il-statutes',item,url,'failed',str(exc));print('FAILED',actid,str(exc),flush=True)
+            if isinstance(exc,AcquisitionError): raise
+    return results
+
+if __name__=='__main__':
+    ledger=ROOT/'budget.json'; budget=json.loads(ledger.read_text())
+    store=Store(ROOT/'store');a=Acquirer(store,max_bytes=200*1024**2-budget['decoded_bytes'],delay=10.1)
+    try: sync_il(store,a)
+    finally:
+        budget['decoded_bytes']+=a.downloaded;ledger.write_text(json.dumps(budget,indent=2));a.close();store.close()

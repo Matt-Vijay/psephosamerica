@@ -1,0 +1,219 @@
+"""CT official eRegulations subtitle HTML exports, isolated and resumable.
+
+sync_ct limit counts publisher titles (not sections). Unknown consolidation dates
+remain NULL. CLI uses a durable decoded HTTP byte ledger including discovery.
+"""
+from __future__ import annotations
+import argparse
+from collections import Counter
+from copy import deepcopy
+from datetime import UTC, datetime
+import json
+from pathlib import Path
+import re
+import shutil
+from urllib.parse import quote, urlsplit, unquote
+
+from lxml import etree, html
+from psephos.acquire import Acquirer, AcquisitionError
+from psephos.parse import readable, markup, source_links, media_links
+from psephos.store import Store, Provision, utc_now
+
+BASE = Path(__file__).resolve().parent
+INDEX = 'https://eregulations.ct.gov/eRegsPortal/Browse/RCSA'
+NOTICE = 'https://eregulations.ct.gov/eRegsPortal/Information/GetContent?id=BetaNote'
+CAP = 188743680
+COLLECTION = 'ct-rcsa'
+ALLOWED = {'eregulations.ct.gov', 'portal.ct.gov', 'www.cga.ct.gov', 'cga.ct.gov'}
+PARSER = 'ct-rcsa-subtitle-html-1'
+
+def payload(data):
+    text = data.decode('utf-8-sig')
+    match = re.search(r'var\s+jsonData\s*=\s*', text)
+    if not match:
+        raise ValueError('Publisher inventory JSON missing; not accepted as legal text')
+    return json.JSONDecoder().raw_decode(text[match.end():])[0]
+
+def doc_url(guid):
+    return 'https://eregulations.ct.gov/eRegsPortal/Browse/getDocument?guid=' + quote(guid, safe='')
+
+def read_text(node):
+    """Expose source CSS/HTML list markers while retaining unmodified markup."""
+    copy = deepcopy(node)
+    for lst in copy.xpath('.//ol|.//ul'):
+        for n, item in enumerate(lst.xpath('./li'), start=int(lst.get('start', '1'))):
+            cls = lst.get('class', '')
+            label = str(n)
+            if cls in ('lower-alpha', 'number1'):
+                label = chr(96+n) if 1 <= n <= 26 else str(n)
+            elif cls == 'upper-alpha':
+                label = chr(64+n) if 1 <= n <= 26 else str(n)
+            elif cls in ('lower-roman', 'upper-roman', 'number2'):
+                k=n; label=''
+                for value, symbol in [(1000,'M'),(900,'CM'),(500,'D'),(400,'CD'),(100,'C'),(90,'XC'),(50,'L'),(40,'XL'),(10,'X'),(9,'IX'),(5,'V'),(4,'IV'),(1,'I')]:
+                    while k >= value: label += symbol; k -= value
+                if cls == 'lower-roman': label=label.lower()
+            prefix = ('• ' if lst.tag == 'ul' else f'({label}) ')
+            item.text = prefix + (item.text or '')
+    return readable(copy)
+
+def rcsa_units(data, subject, url):
+    root=html.fromstring(data)
+    for element in root.xpath('//script|//style|//apm_do_not_touch'):
+        element.drop_tree()
+    bodies=root.xpath('//body')
+    if len(bodies) != 1 or 'Regulations of Connecticut State Agencies' not in readable(bodies[0]):
+        raise ValueError('Not a publisher RCSA full-text HTML export')
+    body=bodies[0]
+    # Preserve the complete leading cover, table of contents, and scope headings.
+    # Native anchors identify section body starts, never TOC links.
+    groups=[]; current=etree.Element('div'); anchor='_context'; heading=subject['SubjectMatterTitle']
+    for child in body:
+        anchors=child.xpath('.//a[starts-with(@id,"_")]/@id')
+        if anchors and child.tag.lower() in ('h1','h2','h3','p') and re.match(r'^Sec\.\s',readable(child)):
+            if readable(current): groups.append((anchor,heading,current))
+            anchor=str(anchors[0]); heading=readable(child); current=etree.Element('div')
+        current.append(deepcopy(child))
+    if readable(current): groups.append((anchor,heading,current))
+    actual=[anchor for anchor,_,_ in groups if anchor!='_context']
+    expected={unquote(x)[1:] for x in body.xpath('.//a[starts-with(@href,"#_")]/@href')}
+    if not actual or not expected.issubset(set(actual)):
+        raise ValueError(f'Section fidelity failed: {len(actual)} bodies, missing TOC anchors {sorted(expected-set(actual))[:8]}')
+    totals=Counter(actual); seen=Counter()
+    for anchor,heading,node in groups:
+        seen[anchor]+=1
+        section=anchor.lstrip('_')
+        suffix=f'/_occurrence/{seen[anchor]}' if totals[anchor]>1 else ''
+        key=f"ct-rcsa:{subject['SubjectMatterDisplayTitle']}/" + anchor + suffix
+        kind='source_context' if anchor=='_context' else ('section_range' if '—' in section or '–' in section else 'section')
+        text=read_text(node)
+        if kind!='source_context' and len(text)<=len(heading):
+            raise ValueError(f'No substantive text or status notice in {section}')
+        yield Provision(key=key, citation=(f"R.C.S.A. § {section}" if kind!='source_context' else f"R.C.S.A. subtitle {subject['SubjectMatterDisplayTitle']} — source context"), heading=heading,
+            text=text, markup=markup(node), url=url+('#'+quote(anchor) if anchor!='_context' else ''),
+            parent_key=f"ct-rcsa:subtitle-{subject['SubjectMatterDisplayTitle']}", unit_kind=kind,
+            metadata={'source_anchor':anchor,'agency':subject['Agency'],'title_number':subject['TitleNumber'],
+                      'subtitle':subject['SubjectMatterDisplayTitle'],'publisher_subject_id':subject['GUID'],
+                      'tables':len(node.xpath('.//table')),'media':media_links(node,url),
+                      'date_note':'Effective/amendment/repeal statements retained verbatim; no inferred global effective date.',
+                      'source_css_list_markers_projected':bool(node.xpath('.//ol|.//ul'))},
+            references=source_links(node,url))
+
+def sync_ct(s: Store, a: Acquirer, limit: int | None = None, as_of: str | None = None):
+    if as_of:
+        raise ValueError('CT exports have no verified consolidation snapshot date; historical as_of acquisition unsupported')
+    a.delay=max(a.delay,1.1)
+    index=a.fetch(INDEX); titles=payload(s.artifact(index.sha256))['Titles']
+    notice=a.fetch(NOTICE)
+    policy=a.fetch('https://portal.ct.gov/en/Policies/State-Privacy-Policy')
+    disclaimer=a.fetch('https://portal.ct.gov/policies/disclaimer')
+    s.collection(COLLECTION,('us-ct','Connecticut','state','us'),name='Regulations of Connecticut State Agencies',
+      authority='Connecticut Secretary of the State',kind='administrative_code',homepage=INDEX,
+      source_status='Official electronic RCSA; publisher subtitle HTML compilation exports',
+      access='Public official publisher exports; robots 404 on eregulations; 1.1s minimum delay; CT notices retained. No blanket redistribution license asserted.',
+      metadata={'inventory_sha':index.sha256,'official_version_statement_sha':notice.sha256,'privacy_sha':policy.sha256,'disclaimer_sha':disclaimer.sha256,
+                'official_status_since':'2017-07-01','title_inventory_count':len(titles),
+                'clock_warning':'LastActionDate belongs to navigation inventory, not proven incorporation or effective date. Version snapshot_date remains NULL.',
+                'bulk_warning':'Title 1 full-title export omits current inventory subtitle 1-205; use subtitle GUID exports instead.'})
+    selected=titles[:limit]
+    for title in titles:
+        item='title-'+title['TitleNumber']; url=INDEX+'/Title_'+title['TitleNumber']+'/'
+        if not s.db.execute('select 1 from inventories where collection_id=? and item=?',(COLLECTION,item)).fetchone():
+            s.inventory(COLLECTION,item,url,'pending')
+    for title in selected:
+        number=title['TitleNumber']; title_url=INDEX+'/Title_'+number+'/'
+        if shutil.disk_usage(s.root).free < 100*1024**3:
+            raise AcquisitionError('Stop: free disk near 100 GiB')
+        receipt=a.fetch(title_url); catalog=payload(s.artifact(receipt.sha256))
+        subjects=[dict(subject,TitleNumber=number) for group in catalog.get('SubjectMatters',[]) for subject in group['SubjectMatters']]
+        if not subjects:
+            s.inventory(COLLECTION,'title-'+number,title_url,'empty_publisher_inventory')
+            continue
+        for subject in subjects:
+            item='subtitle-'+subject['SubjectMatterDisplayTitle']
+            guid=subject.get('HTMLGuid')
+            url=doc_url(guid) if guid else title_url
+            if not s.db.execute('select 1 from inventories where collection_id=? and item=?',(COLLECTION,item)).fetchone():
+                s.inventory(COLLECTION,item,url,'pending' if guid else 'missing_html_export')
+        failed=0
+        for subject in subjects:
+            item='subtitle-'+subject['SubjectMatterDisplayTitle']; guid=subject.get('HTMLGuid')
+            if not guid: failed+=1; continue
+            url=doc_url(guid)
+            try:
+                remaining=a.max_bytes-a.downloaded
+                cached=a._cached(url) if not a.refresh else None
+                if cached is None and remaining < 2*1024**2:
+                    raise AcquisitionError('Decoded budget near cap; stop before next export')
+                raw=cached or a.fetch(url,max_file_bytes=min(32*1024**2,remaining-1024**2))
+                units=list(rcsa_units(s.artifact(raw.sha256),subject,url))
+                version,count,new=s.ingest(collection=COLLECTION,document='ct-rcsa:subtitle-'+subject['SubjectMatterDisplayTitle'],
+                    title=subject['SubjectMatterTitle'],url=url,acquisition=raw.id, snapshot_date=None,
+                    snapshot_basis='Unknown publisher consolidation date; acquisition timestamp is not an effective or incorporation date.',
+                    parser=PARSER,provisions=units,metadata={'publisher_subject':subject,'publisher_title':title,'inventory_acquisition_id':receipt.id,
+                        'inventory_sha':receipt.sha256,'inventory_last_action_date_raw':catalog.get('LastActionDate'),
+                        'media_status':'External images represented by markers and locators, not transcribed; raw export retained.'})
+                s.inventory(COLLECTION,item,url,'acquired')
+                print(f'{number}: {item}: {count} units'+(' new' if new else ' cached'),flush=True)
+            except (ValueError,AcquisitionError) as exc:
+                failed+=1; s.inventory(COLLECTION,item,url,'error',str(exc))
+                print(f'{item}: ERROR {exc}',flush=True)
+                if isinstance(exc,AcquisitionError):
+                    s.inventory(COLLECTION,'title-'+number,title_url,'partial',str(exc)); raise
+        s.inventory(COLLECTION,'title-'+number,title_url,'acquired' if not failed else 'partial',f'{failed} subtitle gaps' if failed else None)
+
+class LedgerAcquirer(Acquirer):
+    """One cumulative acquisition budget, persisted after every completed fetch."""
+    def __init__(self,s):
+        self.ledger_path=BASE/'http-budget.json'
+        self.ledger=json.loads(self.ledger_path.read_text()) if self.ledger_path.exists() else {'decoded_bytes':0,'runs':[]}
+        self.prior=self.ledger['decoded_bytes']
+        self._depth=0
+        super().__init__(s,max_bytes=CAP-self.prior,delay=1.1)
+    def _allowed(self,url):
+        if urlsplit(url).hostname not in ALLOWED: raise AcquisitionError('Uncoordinated publisher host: '+url)
+        super()._allowed(url)
+    def fetch(self,url,**kwargs):
+        if urlsplit(url).hostname not in ALLOWED: raise AcquisitionError('Uncoordinated publisher host: '+url)
+        self._depth+=1
+        try: return super().fetch(url,**kwargs)
+        finally:
+            self._depth-=1
+            self.ledger['decoded_bytes']=self.prior+self.downloaded
+            self.ledger['latest_run_decoded_bytes']=self.downloaded
+            self.ledger['updated_at']=utc_now()
+            self.ledger_path.write_text(json.dumps(self.ledger,indent=2)+'\n')
+
+def report(s,error=None):
+    counts={t:s.db.execute('select count(*) from '+t).fetchone()[0] for t in ['collections','documents','versions','provisions','acquisitions','artifacts']}
+    title_inventory=[dict(r) for r in s.db.execute("select * from inventories where item like 'title-%' order by rowid")]
+    subtitle_inventory=[dict(r) for r in s.db.execute("select * from inventories where item like 'subtitle-%' order by rowid")]
+    receipts=[dict(r) for r in s.db.execute('select a.*,b.bytes from acquisitions a left join artifacts b on b.sha256=a.sha256 order by a.id')]
+    for r in receipts:r['headers']=json.loads(r['headers'])
+    (BASE/'receipts.json').write_text(json.dumps(receipts,indent=2)+'\n')
+    result={'state':'CT','status':'bounded_batch' if not error else 'partial','updated_at':utc_now(),'store_path':str(s.root),'database_path':str(s.root/'legal.sqlite3'),
+      'counts':counts,'unit_kinds':dict(s.db.execute('select unit_kind,count(*) from provisions group by unit_kind').fetchall()),
+      'unique_raw_bytes':s.db.execute('select coalesce(sum(bytes),0) from artifacts').fetchone()[0],
+      'newly_decoded_http_bytes':json.loads((BASE/'http-budget.json').read_text())['decoded_bytes'],'hard_http_cap':CAP,
+      'full_text_document_count':counts['documents'],'catalogs_counted_as_full_text':False,
+      'completed_titles':[x['item'] for x in title_inventory if x['status']=='acquired'],
+      'title_inventory':title_inventory,'subtitle_inventory':subtitle_inventory,
+      'gaps':['Connecticut General Statutes not acquired: www.cga.ct.gov and cga.ct.gov supplied leaf certificate without required intermediate, verified HTTPS failed. No TLS bypass used.',
+              'Only titles and subtitles marked acquired are indexed; unvisited title subtitle inventories are not known.',
+              'RCSA is a compilation; pending, emergency and standalone final-approved regulation-making records not separately acquired.',
+              'Full-title Title 1 export retained as probe only: it omits subtitle 1-205 present in current inventory; current subtitle GUID exports used.',
+              'External image bytes not fetched; visible media markers and locators retained. No OCR text counted.'],
+      'clocks':{'snapshot_date':None,'published_on':None,'effective_on':None,'basis':'Inventory LastActionDate retained only as metadata. Section effective/amended/repealed notes kept verbatim; no blanket legal date inferred.'},
+      'access_conditions':'Official state publisher hosts only. Public HTTPS with certificate validation; >=1.1 seconds per host. eregulations robots.txt 404. CT privacy/disclaimer and official-version statement retained. No account, purchase or circumvention. No blanket license asserted.',
+      'receipts_file':str(BASE/'receipts.json'),'byte_ledger':str(BASE/'http-budget.json'),'error':error}
+    (BASE/'report.json').write_text(json.dumps(result,indent=2)+'\n')
+    return result
+
+if __name__=='__main__':
+    parser=argparse.ArgumentParser();parser.add_argument('--limit',type=int);args=parser.parse_args()
+    s=Store(BASE/'store');a=LedgerAcquirer(s);error=None
+    try: sync_ct(s,a,args.limit,None)
+    except Exception as exc: error=str(exc);print('STOP:',error,flush=True)
+    finally:
+        result=report(s,error);print(json.dumps({k:result[k] for k in ['counts','unit_kinds','unique_raw_bytes','newly_decoded_http_bytes','completed_titles','error']},indent=2),flush=True)
+        a.close();s.close()

@@ -1,0 +1,290 @@
+"""Isolated South Carolina official collector; lifetime byte ledger is never reset."""
+from __future__ import annotations
+import contextlib
+import fcntl
+import hashlib
+import json
+import os
+import shutil
+import time
+from pathlib import Path
+from urllib.parse import urlsplit, urljoin
+import httpx
+from lxml import html, etree
+from psephos.acquire import Acquirer, AcquisitionError, Receipt, SAFE_HEADERS, validate_url
+from psephos.store import Store, utc_now, json_text
+
+ROOT = Path(__file__).resolve().parent
+CAP = 209715200
+HOSTS = {'www.scstatehouse.gov', 'scstatehouse.gov'}
+
+class BudgetAcquirer(Acquirer):
+    """Identity-only streaming; charge all bodies, including errors and robots.
+
+    Reserve a file ceiling plus one network chunk before each request. Interrupted
+    requests retain the reservation, so crashes cannot reset lifetime accounting.
+    """
+    def __init__(self, store, **kwargs):
+        super().__init__(store, delay=max(1.1, kwargs.pop('delay', 1.1)), **kwargs)
+        self.ledger_path = ROOT / 'http-budget.json'
+        self.lock_file = (ROOT / 'collector.lock').open('a+')
+        fcntl.flock(self.lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        self.ledger = json.loads(self.ledger_path.read_text()) if self.ledger_path.exists() else {'cap_bytes':CAP, 'consumed_bytes':0, 'reserved_bytes':0, 'requests':[]}
+        if self.ledger['reserved_bytes']:
+            self.ledger['consumed_bytes'] += self.ledger['reserved_bytes']
+            self.ledger['reserved_bytes'] = 0
+            self.ledger['crash_reservations_charged'] = True
+        self.save()
+        self.client.headers['Accept-Encoding'] = 'identity'
+    def save(self):
+        p = self.ledger_path.with_suffix('.tmp')
+        p.write_text(json.dumps(self.ledger, indent=2)+'\n')
+        os.replace(p, self.ledger_path)
+    def close(self):
+        super().close()
+        self.lock_file.close()
+    def fetch(self, url, *, immutable=False, check_robots=True, max_file_bytes=16*1024**2, accept=None, max_age_seconds=None):
+        validate_url(url)
+        if urlsplit(url).hostname not in HOSTS:
+            raise AcquisitionError('Uncoordinated host: '+url)
+        cached = self._cached(url)
+        fresh = not self.refresh
+        if cached and max_age_seconds is not None:
+            from datetime import datetime, UTC
+            age=(datetime.now(UTC)-datetime.fromisoformat(cached.observed_at.replace('Z','+00:00'))).total_seconds()
+            fresh=age < max_age_seconds
+        if cached and (immutable or fresh):
+            return cached
+        if check_robots:
+            self._allowed(url)
+        if shutil.disk_usage(ROOT).free < 105*1024**3:
+            raise AcquisitionError('Free disk near 100 GiB; stopped')
+        reserve = max_file_bytes + 65536
+        if self.ledger['consumed_bytes'] + reserve > CAP:
+            raise AcquisitionError('Insufficient lifetime budget for bounded request')
+        self._pause(url)
+        observed = utc_now()
+        self.ledger['reserved_bytes'] = reserve
+        self.save()
+        data = bytearray(); status = 0; headers = {}; redirect = None
+        try:
+            with self.client.stream('GET', url, headers={'Accept-Encoding':'identity', **({'Accept':accept} if accept else {})}) as response:
+                status = response.status_code
+                headers = {k:v for k,v in response.headers.items() if k in SAFE_HEADERS}
+                if response.headers.get('content-encoding', 'identity').lower() not in ('identity', ''):
+                    raise AcquisitionError('Unexpected compression; stopped before decoding')
+                for chunk in response.iter_raw(chunk_size=65536):
+                    data.extend(chunk)
+                    if len(data) > max_file_bytes:
+                        raise AcquisitionError('Response exceeds reserved file ceiling')
+                if status in (301,302,303,307,308):
+                    redirect = urljoin(url, response.headers['location'])
+                sha = hashlib.sha256(data).hexdigest()
+                path = self.store.object_path(sha)
+                path.parent.mkdir(parents=True, exist_ok=True)
+                if path.exists():
+                    self.store.artifact(sha)
+                else:
+                    path.write_bytes(data)
+                with self.store.db:
+                    self.store.db.execute('INSERT OR IGNORE INTO artifacts VALUES (?,?)', (sha,len(data)))
+                headers['psephos_request_started_at'] = observed
+                rid = self._record(url,url,utc_now(),status,headers,sha,None if 200<=status<400 else 'HTTP error; response retained')
+                if status >= 400:
+                    raise AcquisitionError(f'HTTP {status}; Retry-After={headers.get("retry-after")}; no automatic retry')
+                receipt = Receipt(rid,url,sha,utc_now(),len(data))
+        except Exception as exc:
+            self._record(url,url,utc_now(),status,headers,None,str(exc))
+            raise AcquisitionError(f'{url}: {exc}') from exc
+        finally:
+            self.ledger['consumed_bytes'] += len(data)
+            self.downloaded += len(data)
+            self.ledger['reserved_bytes'] = 0
+            self.ledger['requests'].append({'url':url,'status':status,'decoded_bytes':len(data),'observed_at':utc_now()})
+            self.save()
+        if redirect:
+            if headers.get('retry-after'):
+                raise AcquisitionError('Redirect Retry-After; defer')
+            return self.fetch(redirect, check_robots=check_robots, max_file_bytes=max_file_bytes)
+        return receipt
+
+if __name__ == '__main__':
+    import sys
+    s = Store(ROOT/'source-store')
+    a = BudgetAcquirer(s)
+    try:
+        for url in sys.argv[1:]:
+            r=a.fetch(url)
+            print(json.dumps({'url':url,'receipt':r.id,'bytes':r.size,'sha':r.sha256,'text':s.artifact(r.sha256).decode('utf8','replace')[:45000]}))
+    finally:
+        a.close(); s.close()
+
+import re
+import subprocess
+from copy import deepcopy
+from collections import Counter
+from psephos.store import Provision
+from psephos.parse import readable, markup, source_links, media_links
+
+BASE='https://www.scstatehouse.gov'
+CODE_INDEX=BASE+'/code/statmast.php'
+REG_INDEX=BASE+'/coderegs/statmast.php'
+CONST_INDEX=BASE+'/scconstitution/scconst.php'
+
+def html_content(data):
+    # Honor actual UTF-8 where valid, otherwise publisher's legacy encoding.
+    try: text=data.decode('utf-8')
+    except UnicodeDecodeError: text=data.decode('windows-1252')
+    root=html.fromstring(text)
+    nodes=root.xpath('//*[@id="contentsection"]')
+    if len(nodes)!=1: raise ValueError('Missing unique source content container')
+    return nodes[0]
+
+def code_units(data, url, title_no, chapter_no):
+    c=html_content(data)
+    groups=[]; current=etree.Element('div');current.text=c.text
+    key=f'sc-code:t{title_no}c{chapter_no}:context'; heading=f'Title {title_no}, Chapter {chapter_no} context';kind='scope_context'
+    for child in c:
+        text=' '.join(readable(child).split())
+        m=re.match(r'^SECTION\s+(\d+[A-Z]?-\d+[A-Z]?-\d+(?:\.\d+)?[A-Z]?)\.',text)
+        if m and child.tag in ('span','b','strong'):
+            if readable(current).strip(): groups.append((key,heading,kind,current))
+            current=etree.Element('div'); key='sc-code:'+m.group(1);heading=(child.tail or '').strip();kind='section'
+        current.append(deepcopy(child))
+    if readable(current).strip():groups.append((key,heading,kind,current))
+    if not any(g[2]=='section' for g in groups):
+        # Repeal/transfer-only chapters stay indexed, without manufactured sections.
+        groups=[(f'sc-code:t{title_no}c{chapter_no}:chapter',f'Title {title_no}, Chapter {chapter_no}','chapter',deepcopy(c))]
+    counts=Counter(k for k,_,_,_ in groups);seen=Counter()
+    for key,heading,kind,node in groups:
+        seen[key]+=1
+        suffix=f':occurrence:{seen[key]}' if counts[key]>1 else ''
+        yield Provision(key=key+suffix,citation=('S.C. Code § '+key.split(':')[1]) if kind=='section' else heading,heading=heading,text=readable(node),markup=markup(node),url=url,parent_key=f'sc-code:title:{title_no}:chapter:{chapter_no}',unit_kind=kind,metadata={'title':title_no,'chapter':chapter_no,'source_anchors':node.xpath('.//@id | .//a/@name'),'tables':len(node.xpath('.//table')),'media':media_links(node,url),'context_scope':'Whole source chapter markup retained in immutable receipt; source headings and adjacent notes preserved in source order.','source_snapshot_date':None},references=source_links(node,url))
+
+def pdf_units(s,receipt,url,key,title):
+    path=s.object_path(receipt.sha256)
+    result=subprocess.run(['pdftotext','-layout','-enc','UTF-8',str(path),'-'],capture_output=True,check=True)
+    pages=result.stdout.decode('utf8').split('\f')
+    if not pages[-1].strip():pages.pop()
+    if not pages or sum(len(p.strip()) for p in pages)<100:raise ValueError('No usable PDF legal text; not indexing an OCR stub')
+    for i,text in enumerate(pages,1):
+        if not text.strip():
+            # Do not call blank/image-only pages legal text. Exact page gap in metadata/report.
+            continue
+        yield Provision(key=f'{key}:page:{i}',citation=f'{title}, PDF page {i}',heading=f'{title} — page {i}',text=text.strip(),markup='<pre>'+__import__('html').escape(text)+'</pre>',url=url+f'#page={i}',parent_key=key,unit_kind='page',metadata={'pdf_page':i,'pdf_total_pages':len(pages),'extraction':'pdftotext -layout UTF-8; original PDF authoritative for visual layout','media':'Figures and drawings remain in original PDF; no image OCR or textual reconstruction','page_boundary_continuation':True,'page_character_count':len(text.strip())})
+
+def register(s):
+    for cid,name,kind,home in [('sc-code','South Carolina Code of Laws','statutes',CODE_INDEX),('sc-regulations','South Carolina Code of Regulations','regulations',REG_INDEX),('sc-constitution','South Carolina Constitution','constitution',CONST_INDEX)]:
+        s.collection(cid,('us-sc','South Carolina','state','us'),name=name,authority='South Carolina Legislative Council / General Assembly',kind=kind,homepage=home,source_status='Government-published unannotated text; publisher states online version is not the official print edition',access='Public access; source-specific copying permission for unannotated legal text; general site personal/noncommercial notice retained',metadata={'policy_receipts':[1,2,3,4,6,7],'not_legal_effect_clock':True})
+
+def sync_sc(store: Store, acquirer: Acquirer, limit=None, as_of=None):
+    """Populate an isolated Store. limit caps newly attempted legal documents.
+
+    Historical acquisition is not supported; as_of is rejected rather than silently
+    relabelling live bytes. Uses the fixed lifetime BudgetAcquirer ledger.
+    """
+    if as_of is not None: raise ValueError('Historical editions unsupported; unknown code snapshot cannot satisfy as_of')
+    if not isinstance(acquirer,BudgetAcquirer):raise ValueError('Use BudgetAcquirer to enforce persistent SC lifetime limit')
+    if store.root != (ROOT/'source-store').resolve():raise ValueError('SC collector only writes its isolated source Store')
+    register(store)
+    for u in [BASE+'/policies.php',BASE+'/disclaimer.php',CODE_INDEX,REG_INDEX,CONST_INDEX]:acquirer.fetch(u)
+    title_index=html_content(store.artifact(acquirer.fetch(CODE_INDEX).sha256))
+    titles=[]; chapters=[]
+    for a in title_index.xpath('.//a[@href]'):
+        m=re.fullmatch(r'/code/title(\d+)\.php',a.get('href',''))
+        if m:titles.append((int(m.group(1)),urljoin(BASE,a.get('href'))))
+    for no,u in titles:
+        receipt=acquirer.fetch(u);c=html_content(store.artifact(receipt.sha256));n=0
+        for a in c.xpath('.//a[@href]'):
+            m=re.fullmatch(r'/code/t(\d+)c(\d+[a-z]?)\.php',a.get('href',''),re.I)
+            if m:
+                ch=m.group(2); churl=urljoin(BASE,a.get('href')); row=a.getparent().getparent()
+                label=' '.join(row.xpath('./td[1]')[0].itertext()).strip()
+                chapters.append({'collection':'sc-code','item':f't{no}c{ch}','url':churl,'title':no,'chapter':ch,'label':label});n+=1
+        store.inventory('sc-code',f'title:{no}',u,'inventoried',f'{n} chapter exports listed')
+        print(f'inventory title {no}: {n} chapters',flush=True)
+    regs=[]
+    c=html_content(store.artifact(acquirer.fetch(REG_INDEX).sha256))
+    for a in c.xpath('.//a[@href]'):
+        href=a.get('href','')
+        if href.lower().endswith('.pdf') and '/coderegs/' in href:
+            row=a.getparent().getparent(); label=' '.join(row.xpath('./td[1]')[0].itertext()).strip()
+            regs.append({'collection':'sc-regulations','item':href.rsplit('/',1)[-1][:-4],'url':urljoin(BASE,href).replace(' ','%20'),'label':label})
+    # Chapter 61 is linked as a second-level PDF inventory, not as one PDF.
+    nested_inventory=[]
+    for link in c.xpath('.//a[@href]'):
+        if link.get('href') == '/coderegs/Chapter61.php':
+            nested_url=urljoin(BASE,link.get('href'))
+            nr=acquirer.fetch(nested_url)
+            nc=html_content(store.artifact(nr.sha256))
+            nested_inventory.append({'url':nested_url,'receipt':nr.id})
+            for sub in nc.xpath('.//a[@href]'):
+                href=sub.get('href','')
+                if href.lower().endswith('.pdf') and '/coderegs/' in urljoin(nested_url,href):
+                    suburl=urljoin(nested_url,href).replace(' ','%20')
+                    if any(x['url']==suburl for x in regs):continue
+                    label='South Carolina Code of Regulations — '+' '.join(sub.itertext()).strip()
+                    regs.append({'collection':'sc-regulations','item':href.rsplit('/',1)[-1][:-4],'url':suburl,'label':label or 'Chapter 61 regulation export','parent_inventory':nested_url})
+    # Complete Constitution first; then complete Code titles, then the regulation inventory.
+    constitution={'collection':'sc-constitution','item':'complete','url':BASE+'/scconstitution/SCConstitution.pdf','label':'South Carolina Constitution (complete publisher PDF)'}
+    # Complete, civic/governance-focused statutory volumes before expanding statewide.
+    priority=[7,4,5,6,1,2,3,8,9,10,11,12]
+    selected=[ch for no in priority for ch in chapters if ch['title']==no]
+    remaining=[ch for ch in chapters if ch['title'] not in priority]
+    queue=[constitution]+selected+regs+remaining
+    for item in queue:
+        old=store.db.execute('SELECT status FROM inventories WHERE collection_id=? AND item=?',(item['collection'],item['item'])).fetchone()
+        if not old:store.inventory(item['collection'],item['item'],item['url'],'pending')
+    (ROOT/'inventory.json').write_text(json.dumps({'titles':titles,'code_chapters':chapters,'regulation_exports':regs,'nested_regulation_inventories':nested_inventory,'constitution':constitution},indent=2)+'\n')
+    attempted=0
+    for item in queue:
+        cid=item['collection'];key=item['item'];doc=f'{cid}:{key}'
+        if store.db.execute('SELECT 1 FROM documents WHERE id=?',(doc,)).fetchone():continue
+        if limit is not None and attempted>=limit:break
+        attempted+=1
+        try:
+            receipt=acquirer.fetch(item['url']); data=store.artifact(receipt.sha256)
+            if cid=='sc-code':
+                units=list(code_units(data,item['url'],item['title'],item['chapter']));snapshot=None;basis='Publisher inventory: current through 2025 Session; exact incorporation day unknown';published=None
+            else:
+                units=list(pdf_units(store,receipt,item['url'],doc,item['label']))
+                snapshot='2026-03-27' if cid=='sc-regulations' else '2025-10-14'
+                basis='Publisher inventory current-through State Register Volume 50 Issue 3, March 27 2026; incorporation clock, not every provision effective date' if cid=='sc-regulations' else 'Publisher announcement October 14 2025 of Constitution updated through 2025 Session; publication snapshot, not legal effect'
+                published=None if cid=='sc-regulations' else '2025-10-14'
+            if item.get('parent_inventory'):
+                snapshot=None
+                basis='Nested Chapter 61 export: independent snapshot date unknown; parent regulation inventory claims currency through 2026-03-27, retained as metadata only'
+            meta={'inventory_receipt':acquirer._cached(CODE_INDEX if cid=='sc-code' else REG_INDEX if cid=='sc-regulations' else CONST_INDEX).id,'legal_effect_date':'unknown; source-specific history retained without normalizing to one date','acquisition_clock':receipt.observed_at,'parent_inventory_currency':'2026-03-27' if item.get('parent_inventory') else None,'nested_inventory_url':item.get('parent_inventory')}
+            if cid!='sc-code':
+                total=units[0].metadata['pdf_total_pages']; indexed={p.metadata['pdf_page'] for p in units};meta.update({'pdf_total_pages':total,'pdf_indexed_pages':len(units),'blank_or_no_extracted_text_pages':[n for n in range(1,total+1) if n not in indexed]})
+            v,n,new=store.ingest(collection=cid,document=doc,title=item['label'],url=item['url'],acquisition=receipt.id,snapshot_date=snapshot,snapshot_basis=basis,published_on=published,effective_on=None,parser='sc-native-1',provisions=units,metadata=meta)
+            store.inventory(cid,key,item['url'],'ingested')
+            print(f'indexed {doc}: {n} units; bytes={acquirer.ledger["consumed_bytes"]}',flush=True)
+        except Exception as exc:
+            store.inventory(cid,key,item['url'],'blocked',str(exc)); print(f'BLOCK {doc}: {exc}',flush=True)
+            if isinstance(exc,AcquisitionError):break
+    return write_report(store,acquirer)
+
+def write_report(s,a):
+    inv=json.loads((ROOT/'inventory.json').read_text()) if (ROOT/'inventory.json').exists() else {}
+    collections=[]
+    for cid in ['sc-code','sc-regulations','sc-constitution']:
+        collection={'id':cid,'documents':s.db.execute('SELECT count(*) FROM documents WHERE collection_id=?',(cid,)).fetchone()[0],'units':s.db.execute('SELECT count(*) FROM provisions p JOIN versions v ON v.id=p.version_id JOIN documents d ON d.id=v.document_id WHERE d.collection_id=?',(cid,)).fetchone()[0],'unit_kinds':dict(s.db.execute('SELECT p.unit_kind,count(*) FROM provisions p JOIN versions v ON v.id=p.version_id JOIN documents d ON d.id=v.document_id WHERE d.collection_id=? GROUP BY p.unit_kind',(cid,)).fetchall())}
+        collection['inventory_status']=dict(s.db.execute("SELECT status,count(*) FROM inventories WHERE collection_id=? AND item NOT LIKE 'title:%' GROUP BY status",(cid,)).fetchall())
+        collection['gaps']=[dict(r) for r in s.db.execute("SELECT item,url,status,error FROM inventories WHERE collection_id=? AND status!='ingested' AND item NOT LIKE 'title:%'",(cid,))]
+        collections.append(collection)
+    title_coverage=[]
+    for no,u in inv.get('titles',[]):
+        items=[x for x in inv['code_chapters'] if x['title']==no]
+        done=[x for x in items if s.db.execute('SELECT 1 FROM documents WHERE id=?',('sc-code:'+x['item'],)).fetchone()]
+        title_coverage.append({'title':no,'chapter_denominator':len(items),'indexed_chapters':len(done),'complete':len(done)==len(items)})
+    pdf_gaps=[]
+    for r in s.db.execute("SELECT document_id,metadata FROM versions WHERE document_id NOT LIKE 'sc-code:%'"):
+        m=json.loads(r['metadata'])
+        if m.get('blank_or_no_extracted_text_pages'):pdf_gaps.append({'document':r['document_id'],'pages':m['blank_or_no_extracted_text_pages']})
+    receipts=[dict(r) for r in s.db.execute('SELECT id,url,final_url,observed_at,status,sha256,headers,error FROM acquisitions')]
+    report={'generated_at':utc_now(),'source_store_root':str(s.root),'database_path':str(s.root/'legal.sqlite3'),'adapter_path':str(ROOT/'adapter.py'),'inventory_path':str(ROOT/'inventory.json'),'budget_ledger_path':str(a.ledger_path),'newly_decoded_http_bytes_cumulative':a.ledger['consumed_bytes'],'hard_lifetime_cap_bytes':CAP,'reserved_bytes':a.ledger['reserved_bytes'],'budget_method':'All identity-encoded response bodies including robots, policy, redirects and errors. Persistent exclusive locked ledger; crash reservations conservatively charged. No external network tools used.','hosts_used':sorted({urlsplit(r['url']).hostname for r in receipts}),'additional_government_hosts':[],'commercial_hosts':[],'collections':collections,'title_coverage':title_coverage,'regulation_chapter_denominator':108,'nested_regulation_inventories':inv.get('nested_regulation_inventories',[]),'regulation_export_denominator':len(inv.get('regulation_exports',[])),'code_chapter_denominator':len(inv.get('code_chapters',[])),'constitution_complete_pdf_denominator':1,'receipts':receipts,'receipt_count':len(receipts),'artifact_count':s.db.execute('SELECT count(*) FROM artifacts').fetchone()[0],'artifact_bytes':s.db.execute('SELECT coalesce(sum(bytes),0) FROM artifacts').fetchone()[0],'pdf_page_gaps':pdf_gaps,'scope_gaps':['Session laws, local ordinances, court rules, case law and agency guidance not inventoried.','Code chapters listed as pending are not acquired.','Later acts and State Register issues not consolidated; no claim of current legal effect.','PDF page text is a layout-preserving projection; all source PDF visuals retained; no OCR.'],'terms':{'copying':'Publisher expressly permits copying unannotated code/regulations/constitution text, numbering and included history/notes at reader expense without permission.','site_notice':'General disclaimer states intended personal, not commercial uses. No blanket redistribution license asserted.','official_status':'Official government website, but publisher labels online unannotated texts not official; printed annotated volumes and pertinent acts/joint resolutions are official.','robots':'Disallows /images/, /jpeg/, /gif/, /dashboard/, /sys/ for general user agents. No general crawl delay. Collector uses >=1.1 seconds, and native Acquirer robots delay support. No separately fetched site images.','policy_receipt_ids':[1,2,3,4,6,7]},'clocks':{'code':'Current through 2025 session; snapshot_date NULL, publication NULL, effective NULL.','regulations':'Direct chapter exports: incorporation 2026-03-27 from State Register Vol 50 Issue 3; effective NULL. Nested Chapter61 exports: snapshot NULL; parent inventory currency kept only in metadata because nested page has no independent currency statement.','constitution':'Publisher availability announcement 2025-10-14; publication/snapshot date, updated through 2025 session; effective NULL.','acquisition':'Each receipt observed_at; available_at inherited from source receipt.','as_of':'Adapter rejects historical acquisition; core date queries exclude unknown Code snapshot dates.'},'focused_checks':json.loads((ROOT/'checks.json').read_text()) if (ROOT/'checks.json').exists() else [],'free_disk_bytes':shutil.disk_usage(ROOT).free}
+    report['helper_files']=[str(ROOT/n) for n in ['run.py','self_check.py','checks.json']]
+    report['unit_count_qualification']={'section':'Source-labelled section containers, including repealed sections and their histories; not a count of currently effective laws.','scope_context':'Title/chapter/article headings and intervening source context; excluded from section count.','chapter':'Whole chapter repeal/transfer/editorial notices where no individual SECTION container was published.','page':'Source PDF page with extracted text, potentially mixing substantive law, tables of contents, headings and editorial notes; not a distinct-rule count.'}
+    report['scope_gaps'].append('Externally incorporated standards, cross-referenced laws and linked media are not automatically acquired; PDF drawings remain in original source PDFs.')
+    (ROOT/'report.json').write_text(json.dumps(report,indent=2)+'\n');return report

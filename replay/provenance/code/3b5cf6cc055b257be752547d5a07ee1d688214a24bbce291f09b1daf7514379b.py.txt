@@ -1,0 +1,229 @@
+"""Isolated Nebraska official chapter collector. No shared database mutations.
+Run with the project's .venv/bin/python adapter.py --limit 90.
+The unknown live compilation date is deliberately not a legal as-of date.
+"""
+from __future__ import annotations
+import argparse
+from datetime import datetime, UTC
+from collections import Counter
+from copy import deepcopy
+import fcntl
+import json
+from pathlib import Path
+import re
+import shutil
+import time
+from urllib.parse import urljoin, urlsplit, parse_qs
+from lxml import html
+from psephos.acquire import Acquirer, AcquisitionError
+from psephos.parse import readable, markup, media_links, source_links
+from psephos.store import Store, Provision, utc_now
+
+ROOT = Path(__file__).resolve().parent
+BASE = 'https://nebraskalegislature.gov'
+INDEX = BASE + '/laws/browse-statutes.php'
+COLLECTION = 'ne-revised-statutes'
+CAP = 80 * 1024**2
+PARSER = 'ne-full-chapter/1'
+
+
+def write_json(path, data):
+    temp = path.with_suffix('.tmp')
+    temp.write_text(json.dumps(data, indent=2, ensure_ascii=False) + '\n')
+    temp.replace(path)
+
+
+class NebraskaAcquirer(Acquirer):
+    """Receipt cache plus cumulative decoded accounting, host and disk boundaries."""
+    def __init__(self, store):
+        self.ledger_path = ROOT / 'byte_ledger.json'
+        self.ledger = json.loads(self.ledger_path.read_text()) if self.ledger_path.exists() else {'cap_bytes': CAP, 'decoded_bytes': 0, 'runs': []}
+        super().__init__(store, max_bytes=max(0, CAP-self.ledger['decoded_bytes']-65536), delay=1.1)
+        self.accounted = 0
+        last_path = ROOT / 'last_request.json'
+        last = json.loads(last_path.read_text()).get('unix_time', 0) if last_path.exists() else 0
+        observed = store.db.execute('SELECT max(observed_at) FROM acquisitions').fetchone()[0]
+        if observed:
+            last = max(last, datetime.fromisoformat(observed.replace('Z', '+00:00')).timestamp())
+        self.last_request['nebraskalegislature.gov'] = time.monotonic() - max(0, time.time()-last)
+        self.ledger['runs'].append({'phase': 'sync', 'started_at': utc_now(), 'decoded_bytes': 0})
+
+    def _pause(self, url, delay=None):
+        if urlsplit(url).hostname != 'nebraskalegislature.gov':
+            raise AcquisitionError('Out-of-scope redirect or host')
+        if shutil.disk_usage(ROOT).free < 101 * 1024**3:
+            raise AcquisitionError('Disk free threshold reached')
+        super()._pause(url, delay)
+        write_json(ROOT / 'last_request.json', {'unix_time':time.time(), 'host':'nebraskalegislature.gov'})
+
+    def fetch(self, url, **kwargs):
+        try:
+            return super().fetch(url, **kwargs)
+        finally:
+            delta = self.downloaded-self.accounted
+            self.ledger['decoded_bytes'] += delta
+            self.ledger['runs'][-1]['decoded_bytes'] += delta
+            self.ledger['runs'][-1]['last_accounted_at'] = utc_now()
+            self.accounted = self.downloaded
+            write_json(self.ledger_path, self.ledger)
+
+
+def bounded_fetch(acquirer, url, **kwargs):
+    if isinstance(acquirer, NebraskaAcquirer):
+        return acquirer.fetch(url, **kwargs)
+    ledger_path = ROOT / 'byte_ledger.json'
+    ledger = json.loads(ledger_path.read_text())
+    acquirer.max_bytes = min(acquirer.max_bytes, acquirer.downloaded + max(0, CAP-ledger['decoded_bytes']-65536))
+    before = acquirer.downloaded
+    try:
+        return acquirer.fetch(url, **kwargs)
+    finally:
+        delta = acquirer.downloaded-before
+        if delta:
+            ledger['decoded_bytes'] += delta
+            ledger['runs'].append({'phase':'external_acquirer', 'decoded_bytes':delta, 'observed_at':utc_now()})
+            write_json(ledger_path, ledger)
+
+
+def statutory_media(node, url):
+    result = media_links(node, url)
+    for link in node.xpath('.//a[@href]'):
+        href = link.get('href')
+        if re.search(r'\.(?:png|jpe?g|gif|svg|webp)(?:$|\?)', href, re.I):
+            result.append({'source_locator':href, 'url':urljoin(url,href), 'alt':readable(link), 'status':'linked statutory image; original asset retained separately'})
+    return result
+
+
+def chapter_units(data: bytes, chapter: str, url: str):
+    root = html.fromstring(data)
+    nodes = root.xpath('//div[contains(concat(" ",normalize-space(@class)," ")," printwidth ")][not(ancestor::div[contains(concat(" ",normalize-space(@class)," ")," printwidth ")])]')
+    if not nodes:
+        raise ValueError('No complete section containers')
+    ids = []
+    for node in nodes:
+        heads = node.xpath('./strong[1]')
+        if not heads:
+            raise ValueError('Missing publisher section heading')
+        head = ' '.join(readable(heads[0]).split())
+        match = re.match(r'([0-9]+-[0-9][0-9,.]*?)\s*\.\s+(.*)', head)
+        if not match or not match[1].startswith(chapter+'-'):
+            raise ValueError(f'Unrecognized source identifier: {head[:160]}')
+        ids.append((node, match[1], match[2]))
+    counts = Counter(number for _, number, _ in ids)
+    seen = Counter()
+    for node, number, heading in ids:
+        seen[number] += 1
+        suffix = f'/_occurrence/{seen[number]}' if counts[number] > 1 else ''
+        notice = bool(re.match(r'^(Repealed|Transferred|Renumbered|Omitted|Reserved|Unconstitutional)\b', heading, re.I)) and not node.xpath('./p')
+        yield Provision(
+            key=f'ne:statute:{number}{suffix}', citation=f'Neb. Rev. Stat. § {number}',
+            heading=heading, text=readable(node), markup=markup(node),
+            url=BASE+'/laws/statutes.php?statute='+number, parent_key=f'ne:chapter:{chapter}',
+            unit_kind='editorial_notice' if notice else 'section',
+            metadata={'source_identifier': number, 'chapter': chapter,
+                      'duplicate_identifier_count': counts[number], 'occurrence': seen[number],
+                      'tables': len(node.xpath('.//table')), 'media': statutory_media(node, url),
+                      'date_semantics': 'Dates in headings, text and source credits retained verbatim; no inferred effective or snapshot day.',
+                      'content_role': 'supporting_notice' if notice else 'actual_legal_text'},
+            references=source_links(node, url))
+    # Preserve any content outside section containers as context, not substantive law.
+    outside = deepcopy(root)
+    for node in outside.xpath('//div[contains(concat(" ",normalize-space(@class)," ")," printwidth ")]|//head|//script|//style'):
+        if node.getparent() is not None:
+            node.drop_tree()
+    if readable(outside).strip():
+        yield Provision(key=f'ne:chapter:{chapter}/_context', citation=f'Nebraska Chapter {chapter} context', heading='Publisher chapter context', text=readable(outside), markup=markup(outside), url=url, unit_kind='scope_notes', metadata={'media':statutory_media(outside,url),'context_order':'Collected outside-section text; original placement remains in full raw chapter receipt'}, references=source_links(outside,url))
+
+
+def report(store, stop_reason, checks=None):
+    db = store.db
+    inventories = [dict(r) for r in db.execute('SELECT * FROM inventories WHERE collection_id=? ORDER BY CAST(item AS INTEGER)', (COLLECTION,))]
+    counts = dict(db.execute('SELECT unit_kind,count(*) FROM provisions GROUP BY unit_kind').fetchall())
+    receipts = [dict(r) for r in db.execute('SELECT a.id,a.url,a.final_url,a.observed_at,a.status,a.sha256,b.bytes,a.error FROM acquisitions a LEFT JOIN artifacts b ON a.sha256=b.sha256 ORDER BY a.id')]
+    total = len(inventories); completed = sum(i['status']=='acquired' for i in inventories)
+    result = {'state':'NE','status':'acquisition_stopped','stopped_at':utc_now(),'stop_reason':stop_reason,
+      'collection': COLLECTION, 'coverage': {'chapter_exports_acquired': completed, 'chapter_export_denominator':total,
+      'denominator_basis':INDEX, 'actual_legal_text_units':counts.get('section',0), 'supporting_notice_units':sum(v for k,v in counts.items() if k!='section'), 'catalog_units_counted_as_law':0,
+      'missing_chapters':[i['item'] for i in inventories if i['status']!='acquired'],
+      'scope_gaps':['Uniform Commercial Code, Constitution, Revised Statutes Appendix, administrative rules, session laws and historical volumes not acquired by this chapter-only batch.', 'Chapter coverage is full publisher export coverage; no independent section inventory reconciliation except focused checks.', 'Chapter-wide compilation currency and legal effective dates are unknown; all version date fields remain null. Section-specific effective dates explicitly stated by the publisher remain verbatim in each section text and markup.']},
+      'retained_statutory_media':[asset for row in db.execute('SELECT metadata FROM versions') for asset in json.loads(row[0]).get('media_assets',[])],
+      'unit_kinds':counts, 'documents':db.execute('SELECT count(*) FROM documents').fetchone()[0],
+      'versions':db.execute('SELECT count(*) FROM versions').fetchone()[0],
+      'publisher_policy':{'robots':'User-agent: *; Crawl-delay: 3','access':'Public official full chapter HTML exports; no account or purchase.', 'disclaimer': 'Publisher provides no warranty and directs users to printed official publications to confirm content.', 'copyright_notice':'Copyright © Nebraska Legislature, all rights reserved.', 'delay_implementation':'Core robots delay 3 seconds plus ordinary 1.1-second pause.'},
+      'byte_ledger':json.loads((ROOT/'byte_ledger.json').read_text()),'receipts':receipts,'inventories':inventories,
+      'clock_semantics':{'snapshot_date':None,'snapshot_basis':'Live chapter export; exact compilation/currency day not stated','effective_on':None,'published_on':None,'acquisition_clock':'Per-receipt observed_at; not legal effectiveness'},
+      'free_disk_bytes':shutil.disk_usage(ROOT).free,'checks':checks or {}}
+    write_json(ROOT/'report.json', result)
+    return result
+
+
+def sync_ne(store: Store, acquirer: Acquirer, limit=None, as_of=None):
+    """Ingest up to limit chapter exports; never treat unknown snapshots as dated law."""
+    if as_of is not None:
+        raise ValueError('Nebraska live chapter exports have no known snapshot day; as_of is unsupported, and no acquisition was attempted.')
+    if limit is not None and (not isinstance(limit,int) or limit < 0):
+        raise ValueError('limit must be a nonnegative integer or None')
+    acquirer.delay = max(acquirer.delay, 1.0)
+    store.collection(COLLECTION, ('us-ne','Nebraska','state','us'), name='Nebraska Revised Statutes', authority='Nebraska Unicameral Legislature / Revisor of Statutes', kind='statutes', homepage=INDEX, source_status='official publisher; live compilation with unknown exact snapshot day', access='Public full chapter exports; robots crawl-delay 3 seconds; publisher disclaimer retained', metadata={'snapshot_date':None})
+    for url in [BASE+'/contact/disclaimer.php', BASE+'/contact/privacy.php', BASE+'/laws/laws.php']:
+        bounded_fetch(acquirer,url)
+    receipt = bounded_fetch(acquirer,INDEX)
+    root = html.fromstring(store.artifact(receipt.sha256))
+    entries = []
+    for link in root.xpath('//a[contains(@href,"/laws/display-chapters.php?chapter=")]'):
+        url = urljoin(INDEX, link.get('href')); chapter = parse_qs(urlsplit(url).query)['chapter'][0]
+        entries.append((chapter,url))
+        old = store.db.execute('SELECT status FROM inventories WHERE collection_id=? AND item=?',(COLLECTION,chapter)).fetchone()
+        if not old:
+            store.inventory(COLLECTION,chapter,url,'pending')
+    if len({n for n,_ in entries}) != len(entries):
+        raise ValueError('Duplicate chapter inventory')
+    started=time.monotonic(); done=0; stop='inventory_exhausted'
+    for chapter,url in entries:
+        if limit is not None and done >= limit:
+            stop='limit_reached'; break
+        if time.monotonic()-started > 510:
+            stop='bounded_runtime_reached'; break
+        if acquirer.max_bytes-acquirer.downloaded < 10*1024**2:
+            stop='byte_reserve_reached'; break
+        try:
+            r = bounded_fetch(acquirer,url, max_file_bytes=10*1024**2)
+            units = list(chapter_units(store.artifact(r.sha256),chapter,url))
+            # Media locators remain explicit and byte source retained; acquire same-host assets if present.
+            assets=[]
+            for media in sorted({m['url'] for p in units for m in p.metadata.get('media',[]) if m['url']}):
+                if urlsplit(media).hostname != 'nebraskalegislature.gov':
+                    assets.append({'url':media,'status':'not_acquired_out_of_scope'}); continue
+                mr=bounded_fetch(acquirer,media,max_file_bytes=2*1024**2)
+                assets.append({'url':media,'sha256':mr.sha256,'acquisition_id':mr.id,'status':'retained'})
+            version,n,new=store.ingest(collection=COLLECTION,document=f'ne:chapter:{chapter}',title=f'Nebraska Revised Statutes Chapter {chapter}',url=url,acquisition=r.id,snapshot_date=None,snapshot_basis='Live full chapter export; publisher compilation day unknown; observation is not legal effect',parser=PARSER,provisions=units,metadata={'chapter':chapter,'inventory_sha256':receipt.sha256,'media_assets':assets,'full_export':True})
+            # Enrich cached derived metadata when linked media was discovered outside section containers.
+            with store.db:
+                old_metadata=json.loads(store.db.execute('SELECT metadata FROM versions WHERE id=?',(version,)).fetchone()[0])
+                old_metadata['media_assets']=assets
+                store.db.execute('UPDATE versions SET metadata=? WHERE id=?',(json.dumps(old_metadata),version))
+                for unit in units:
+                    store.db.execute('UPDATE provisions SET metadata=? WHERE version_id=? AND key=?',(json.dumps(unit.metadata),version,unit.key))
+                    pid=store.db.execute('SELECT id FROM provisions WHERE version_id=? AND key=?',(version,unit.key)).fetchone()[0]
+                    for ref in unit.references:
+                        store.db.execute('INSERT OR IGNORE INTO legal_references VALUES (?,?,?,?,?)',(pid,ref.target,ref.relation,ref.label,ref.evidence))
+            store.inventory(COLLECTION,chapter,url,'acquired'); done+=1
+            print(json.dumps({'chapter':chapter,'units':n,'new':new,'bytes':r.size,'decoded':acquirer.downloaded}),flush=True)
+        except (AcquisitionError,ValueError) as error:
+            store.inventory(COLLECTION,chapter,url,'error',str(error)); stop=str(error); break
+    return report(store,stop)
+
+
+def main():
+    parser=argparse.ArgumentParser(); parser.add_argument('--limit',type=int,default=90);args=parser.parse_args()
+    with (ROOT/'collector.lock').open('a') as lock:
+        fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
+        store=Store(ROOT/'store'); acquirer=NebraskaAcquirer(store)
+        try:
+            result=sync_ne(store,acquirer,limit=args.limit)
+            print(json.dumps(result['coverage']),flush=True)
+        finally:
+            acquirer.close();store.close()
+
+if __name__=='__main__':
+    main()

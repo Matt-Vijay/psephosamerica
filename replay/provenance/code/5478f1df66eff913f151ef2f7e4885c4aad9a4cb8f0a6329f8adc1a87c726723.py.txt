@@ -1,0 +1,138 @@
+"""Wisconsin official complete chapter PDF collector; isolated current Store model."""
+from __future__ import annotations
+import argparse, html as html_std, json, re, shutil, subprocess
+from pathlib import Path
+from datetime import datetime
+from urllib.parse import urljoin
+from lxml import html
+from pypdf import PdfReader
+from psephos.acquire import Acquirer, AcquisitionError
+from psephos.store import Store, Provision, Reference
+
+BASE=Path(__file__).resolve().parent
+ORIGIN='https://docs.legis.wisconsin.gov'
+INDEX=ORIGIN+'/statutes/prefaces/toc'
+BUDGET=200*1024**2
+
+def extract(path):
+    raw=subprocess.run(['pdftotext','-enc','UTF-8',str(path),'-'],capture_output=True,check=True).stdout.decode('utf-8')
+    layout=subprocess.run(['pdftotext','-layout','-enc','UTF-8',str(path),'-'],capture_output=True,check=True).stdout.decode('utf-8')
+    return raw.split('\f')[:-1],layout.split('\f')[:-1]
+
+def page_disposition(text, artifact_sha=None, page=None):
+    reviewed_path=BASE/'supporting_pages.json'
+    reviewed=json.loads(reviewed_path.read_text())['pages'] if reviewed_path.exists() else []
+    supporting=next((r for r in reviewed if r['artifact_sha']==artifact_sha and r['page']==page),None)
+    return {
+        'classification':'supporting_chapter_analysis' if supporting else 'mixed_or_unclassified_source_pdf_page',
+        'supporting_evidence':supporting['evidence'] if supporting else None,
+        'source_native_section':False,
+        'legal_text_presence':'no operative section body; chapter analysis/TOC and publisher notices' if supporting else 'not separately classified at page level',
+        'supporting_material_policy':'Whole chapter PDF pages may mix operative text with chapter analysis/TOC, annotations, history, headers and publication notices. Confirmed chapter-analysis pages are explicitly supporting. Others remain mixed or unclassified; do not treat this page count as a legal section count.',
+        'observed_markers':{
+            'chapter_heading':bool(re.search(r'CHAPTER\s+\d+',text)),
+            'publication_notice':'Published and certified under s. 35.18' in text,
+            'history_label':'History:' in text,
+            'explicit_contents_label':'TABLE OF CONTENTS' in text or 'CHAPTER ANALYSIS' in text,
+        },
+        'marker_warning':'Markers identify visible labels, not a complete content classification; absence does not establish absence of supporting material.'
+    }
+
+def pdf_units(path, chapter, title, url):
+    reader=PdfReader(path)
+    texts,layouts=extract(path)
+    if len(texts)!=len(reader.pages) or len(layouts)!=len(texts):
+        raise ValueError('PDF physical page count disagrees with extraction')
+    if not texts or any(len(t.strip())<80 for t in texts):
+        raise ValueError('Empty/OCR-only page: do not index incomplete chapter')
+    # Complete PDF page units avoid invented section boundaries across two-column pages.
+    for i,(page,text,layout) in enumerate(zip(reader.pages,texts,layouts),1):
+        refs=[];annotations=[]
+        for ref in page.get('/Annots',[]):
+            ann=ref.get_object();action=ann.get('/A')
+            if action:
+                action=action.get_object(); uri=action.get('/URI')
+                if uri:
+                    target=urljoin(url,str(uri));evidence=json.dumps({'page':i,'rect':str(ann.get('/Rect')),'uri':str(uri)},sort_keys=True)
+                    refs.append(Reference(target,'publisher_pdf_link',str(uri),evidence))
+            annotations.append({'subtype':str(ann.get('/Subtype')),'rect':str(ann.get('/Rect')),'action':str(action),'destination':str(ann.get('/Dest'))})
+        resources=page.get('/Resources'); resources=resources.get_object() if resources else {}
+        xobjects=resources.get('/XObject'); xobjects=xobjects.get_object() if xobjects else {}
+        images=[str(name) for name,obj in xobjects.items() if obj.get_object().get('/Subtype')=='/Image']
+        disposition=page_disposition(text,path.name,i)
+        media='\n[Source page includes image objects; consult retained PDF for original graphics.]' if images else ''
+        yield Provision(key=f'wi:statutes/{chapter}/page/{i}',citation=f'Wis. Stat. ch. {chapter}, PDF p. {i}',
+            heading=f'{title} — page {i}',text=text.strip()+media,
+            markup='<pre data-source="publisher-pdf-layout">'+html_std.escape(layout)+'</pre>',
+            url=url+f'#page={i}',parent_key=f'wi:statutes/{chapter}',unit_kind='supporting_page' if disposition['classification']=='supporting_chapter_analysis' else 'page',
+            metadata={'physical_page':i,'chapter':chapter,'source_identifier':chapter,'page_count':len(texts),
+              'legal_supporting_disposition':disposition,'text_quality':disposition['classification'],
+              'extraction':'Poppler pdftotext reading order; layout projection in markup; original PDF authoritative for visual fidelity',
+              'annotations':annotations,'image_objects':images,'source_pdf':url,
+              'limitations':'Page may continue a section; no inferred provision effective date. Tables retain layout projection; graphics remain in PDF.'},
+            references=tuple(refs))
+
+def sync_wi(store,acquirer,limit=None,as_of=None):
+    if as_of: raise ValueError('This adapter acquires current publisher PDFs only; use stored snapshot dates for retrospective retrieval')
+    index=acquirer.fetch(INDEX,max_file_bytes=2*1024**2)
+    root=html.fromstring(store.artifact(index.sha256).decode('utf-8'))
+    notice=' '.join(root.text_content().split())
+    notice=notice[notice.index('Updated 2023-24 Wisconsin Statutes'):notice.index('TABLE OF CONTENTS')]
+    chapters=[]
+    for link in root.xpath('//a[contains(@href,"ch.%20") and contains(@href,".pdf")]'):
+        match=re.fullmatch(r'/document/statutes/ch\.%20(\d+[A-Za-z]?)\.pdf',link.get('href'))
+        if not match: raise ValueError('Unexpected chapter inventory URL')
+        chapter=match[1]
+        title_nodes=root.xpath('//a[@href=$href]',href=link.get('href')[:-4])
+        title=' '.join(title_nodes[0].text_content().split()) if title_nodes else f'Wisconsin Statutes Chapter {chapter}'
+        # Canonical PDF route is evidenced by publisher redirect of chapter 1.
+        url=ORIGIN+f'/statutes/statutes/{chapter}.pdf'
+        chapters.append({'chapter':chapter,'title':title,'url':url,'inventory_url':urljoin(INDEX,link.get('href'))})
+    assert len(chapters)>400 and len({x['chapter'] for x in chapters})==len(chapters)
+    store.collection('wi-statutes',('us-wi','Wisconsin','state','us'),name='Wisconsin Statutes and Annotations — complete chapter PDFs',authority='Wisconsin Legislative Reference Bureau',kind='statutory_code',homepage=INDEX,
+      source_status='Official certified updated compilation; PDF page retrieval units',
+      access='Public publisher PDF downloads; robots.txt retained and respected. No blanket license asserted. Publisher notices retained.',
+      metadata={'inventory_artifact':index.sha256,'inventory_count':len(chapters),'publisher_notice':notice,'edition':'2023-24 updated',
+      'date_warning':'Publisher publication/incorporation date is not blanket legal effect. Future effective notes retained. PDF metadata dates are not effective dates.',
+      'scope':'All chapters in official current table of contents; other prefaces, historical volumes, constitutions and regulations outside this collection.'})
+    for item in chapters:
+        prev=store.db.execute('select status from inventories where collection_id=? and item=?',('wi-statutes',item['chapter'])).fetchone()
+        if not prev: store.inventory('wi-statutes',item['chapter'],item['inventory_url'],'pending')
+    for n,item in enumerate(chapters[:limit],1):
+        chapter=item['chapter']
+        if shutil.disk_usage(BASE).free<100*1024**3: raise RuntimeError('Free disk below 100 GiB')
+        if acquirer.max_bytes-acquirer.downloaded<8*1024**2:
+            print('STOP: less than 8 MiB budget reserve',flush=True);break
+        try:
+            # Reuse exploration receipt of chapter 1 instead of downloading the same representation.
+            source_url=item['inventory_url'] if chapter=='1' and acquirer._cached(item['inventory_url']) else item['url']
+            receipt=acquirer.fetch(source_url,max_file_bytes=8*1024**2)
+            data=store.artifact(receipt.sha256)
+            if not data.startswith(b'%PDF-'):raise ValueError('200 response is not PDF')
+            path=store.object_path(receipt.sha256)
+            texts,_=extract(path)
+            first=texts[0]
+            if not re.search(r'CHAPTER\s+'+re.escape(chapter)+r'\b',first):raise ValueError('PDF chapter identity not verified')
+            match=re.search(r'Published\s+([A-Z][a-z]+\s+\d{1,2},\s+\d{4})',first)
+            pub=datetime.strptime(match[1],'%B %d, %Y').date().isoformat() if match else None
+            version,count,new=store.ingest(collection='wi-statutes',document=f'wi:statutes/{chapter}',title=item['title'],url=item['url'],acquisition=receipt.id,
+              snapshot_date=pub,published_on=pub,snapshot_basis='Date explicitly labeled Published on this chapter PDF; compilation snapshot, not blanket effective date' if pub else 'Exact publisher snapshot unknown',parser='wi-chapter-pdf-1',
+              provisions=pdf_units(path,chapter,item['title'],item['url']),metadata={'inventory_artifact':index.sha256,'publisher_notice':notice,'inventory_url':item['inventory_url'],'source_chapter':chapter,'edition':'2023-24 updated','publication_date_basis':'PDF first-page Published label'})
+            store.inventory('wi-statutes',chapter,item['inventory_url'],'indexed')
+            print(json.dumps({'n':n,'chapter':chapter,'pages':count,'new':new,'bytes':receipt.size,'downloaded_run':acquirer.downloaded}),flush=True)
+        except (AcquisitionError,ValueError,subprocess.CalledProcessError) as exc:
+            store.inventory('wi-statutes',chapter,item['inventory_url'],'failed',str(exc));print('FAILED '+chapter+' '+str(exc),flush=True)
+            if isinstance(exc,AcquisitionError):break
+    return chapters
+
+def main():
+    parser=argparse.ArgumentParser();parser.add_argument('--limit',type=int);args=parser.parse_args()
+    budget_path=BASE/'budget.json';used=json.loads(budget_path.read_text())['downloaded_bytes'] if budget_path.exists() else 0
+    store=Store(BASE/'store');acquirer=Acquirer(store,max_bytes=BUDGET-used,delay=1.1)
+    try:
+        inventory=sync_wi(store,acquirer,limit=args.limit)
+        (BASE/'chapter_inventory.json').write_text(json.dumps(inventory,indent=2))
+    finally:
+        budget_path.write_text(json.dumps({'downloaded_bytes':used+acquirer.downloaded,'budget_bytes':BUDGET}))
+        acquirer.close();store.close()
+if __name__=='__main__':main()

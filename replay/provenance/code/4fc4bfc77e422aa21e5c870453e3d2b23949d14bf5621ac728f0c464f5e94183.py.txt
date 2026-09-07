@@ -1,0 +1,121 @@
+"""Kentucky LRC local-research collector. Scoped complete KRS Titles I and X.
+No commercial license is asserted. Cached receipts are rehashed by Acquirer.
+"""
+from __future__ import annotations
+import argparse, html as stdhtml, io, json, re, shutil, subprocess
+from pathlib import Path
+from urllib.parse import urljoin, urlsplit, parse_qs
+from lxml import html
+from pypdf import PdfReader
+from psephos.acquire import Acquirer, AcquisitionError
+from psephos.store import Store, Provision, Reference, utc_now
+
+ROOT=Path(__file__).resolve().parent
+INDEX='https://apps.legislature.ky.gov/law/statutes/'
+HOME='https://legislature.ky.gov/Law/Statutes/Pages/default.aspx'
+POLICIES=[HOME,'https://legislature.ky.gov/policies-security/Pages/default.aspx','https://legislature.ky.gov/policies-security/Pages/Disclaimers.aspx','https://legislature.ky.gov/Law/Statutes/Pages/KRSEDS.aspx']
+COLLECTION='ky-krs'
+SELECTED={'I','X'}
+ACCESS='Local research only. Publisher notice: Under KRS 61.874, it is unlawful to use any records available on this site for a commercial purpose without agreement with the Legislative Research Commission. Copyright/proprietary interests retained; no commercial or redistribution license inferred.'
+
+def clean(n): return ' '.join(n.text_content().split())
+
+def index_items(data):
+ root=html.fromstring(data); title=''; result=[]
+ for n in root.iter():
+  if n.tag=='span' and n.get('id')=='title': title=clean(n)
+  if n.tag=='a' and n.get('class') in ('chapter','subchapter'):
+   label=clean(n); link=n.get('href'); result.append({'title':title,'title_number':title.split()[1], 'label':label,'url':urljoin(INDEX,link) if link else None,'item':f'{title}: {label}'})
+ assert len(result)>500 and all(x['title'] for x in result)
+ return result
+
+def fetch(a,url):
+ if urlsplit(url).hostname not in ('legislature.ky.gov','apps.legislature.ky.gov'): raise AcquisitionError('Unowned publisher host')
+ if urlsplit(url).hostname=='legislature.ky.gov' and (a.refresh or a._cached(url) is None): raise AcquisitionError('Primary host robots contains markup wrappers; retained policy/catalog review only until usable policy verified')
+ if shutil.disk_usage(a.store.root).free <100*1024**3: raise AcquisitionError('100 GiB disk floor')
+ return a.fetch(url,max_file_bytes=12*1024**2)
+
+def source_role(text):
+ first=text.splitlines()[0].strip()
+ if re.match(r'^\S+\s+Repealed,',first) and 'Catchline at repeal:' in text and re.search(r'History\s*:',text):
+  return 'repeal_notice', {'source_role':'repeal_history_notice','contains_substantive_section_text':False,'source_role_basis':first,'source_role_warning':'Publisher repeal status, catchline and history only; former operative section wording is not supplied.'}
+ if re.fullmatch(r'\S+\s+Renumbered as KRS [0-9A-Za-z.]+\.',text.strip()):
+  return 'renumbering_notice', {'source_role':'renumbering_notice','contains_substantive_section_text':False,'source_role_basis':first,'source_role_warning':'Publisher renumbering pointer only; no substantive section wording.'}
+ return 'section', {'source_role':'substantive_section_text','contains_substantive_section_text':True,'source_role_basis':'Section wording beyond publisher catchline/status/history; no determination of current legal effectiveness.','source_role_warning':'Source role only: operative/historical/parallel effective status is not resolved.'}
+
+def pdf_unit(s,r,chapter,label,url):
+ data=s.artifact(r.sha256)
+ if not data.startswith(b'%PDF-'): raise ValueError('Expected PDF law text; refusing HTML/catalog/barrier')
+ text=subprocess.run(['pdftotext','-layout',str(s.object_path(r.sha256)),'-'],check=True,capture_output=True).stdout.decode('utf-8')
+ reader=PdfReader(io.BytesIO(data)); pages=text.split('\f')
+ if pages and not pages[-1].strip(): pages.pop()
+ if len(pages)!=len(reader.pages) or len(text.strip())<20 or any(not p.strip() for p in pages): raise ValueError('Empty/OCR-only page or page-count mismatch')
+ number=re.match(r'\.?[0-9A-Za-z.-]+',label).group(0)
+ expected=chapter+number if number.startswith('.') else number
+ if not re.match(r'\s*'+re.escape(expected)+r'\b',text): raise ValueError(f'PDF citation mismatch: {expected}; {text[:100]}')
+ sourceid=parse_qs(urlsplit(url).query)['id'][0];refs=[]; media=[]
+ for i,page in enumerate(reader.pages,1):
+  resources=page.get('/Resources',{});resources=resources.get_object() if hasattr(resources,'get_object') else resources
+  objects=resources.get('/XObject',{})
+  objects=objects.get_object() if hasattr(objects,'get_object') else objects
+  for name,obj in objects.items():
+   obj=obj.get_object()
+   if obj.get('/Subtype') in ('/Image','/Form'): media.append({'page':i,'object':str(name),'type':str(obj.get('/Subtype')),'status':'retained in original PDF; not transcribed'})
+  for annotation in page.get('/Annots',[]):
+   ann=annotation.get_object();action=ann.get('/A',{});target=action.get('/URI') if hasattr(action,'get') else None
+   if target: refs.append(Reference(str(target),'publisher_pdf_link',str(ann.get('/Contents','')),json.dumps({'page':i,'URI':str(target)})))
+ projection='\n\n'.join(p.rstrip() for p in pages).strip()
+ if media: projection+='\n\n[Source media retained in original PDF; figures not transcribed: '+json.dumps(media)+']'
+ metadata={'source_identifier':sourceid,'source_number':expected,'chapter':chapter,'pages':len(pages),'source_media':media,'source_catchline':label,'projection':'pdftotext -layout; original PDF is fidelity authority','effective_date_notice':re.findall(r'^Effective:\s*(.+)$',text,re.M),'dates_warning':'Effective notices retained verbatim; no inference of whole-document legal effect or publisher snapshot.'}
+ kind,role_metadata=source_role(projection)
+ metadata.update(role_metadata)
+ return Provision(unit_kind=kind,key='ky-krs:source-'+sourceid,citation='KRS '+expected,heading=label,text=projection,markup='<pre>'+stdhtml.escape(projection)+'</pre>',url=url,parent_key='ky-krs:chapter-'+chapter,metadata=metadata,references=tuple(refs))
+
+def sync_ky(store,acquirer,limit=None,as_of=None):
+ if as_of is not None: raise ValueError('No historical snapshot endpoint verified; as_of acquisition unsupported')
+ if limit is not None and limit<0: raise ValueError('limit must be nonnegative')
+ acquirer.delay=max(1.1,acquirer.delay)
+ receipts=[fetch(acquirer,u) for u in POLICIES]
+ r=fetch(acquirer,INDEX);data=store.artifact(r.sha256);items=index_items(data)
+ t=clean(html.fromstring(data)); currency=re.search(r'Includes enactments through the [0-9]+ Regular Session',t).group(0)
+ updated=re.search(r'The KRS database was last updated on [0-9/]+',t).group(0)
+ store.collection(COLLECTION,('us-ky','Kentucky','state','us'),name='Kentucky Revised Statutes — Titles I and X',authority='Kentucky Legislative Research Commission',kind='statutes',homepage=HOME,source_status='official publisher; unofficial online statutory text',access=ACCESS,metadata={'currency_notice':currency,'database_update_notice':updated,'snapshot_warning':'Database update date is not a coherent source snapshot or blanket effective date; snapshot_date remains unknown.','limitation':'Complete selected title inventories only; remaining KRS, constitution, regulations and session laws pending. Printed certified editions not acquired.','source_role_warning':'Indexed source documents include substantive section texts and non-law repeal/history or renumbering notices. Consult unit_kind and source_role metadata; document count is not substantive-law-section count.','robots_limitation':'legislature.ky.gov robots has markup wrappers and fails current strict parser; no new network there. Statute host apps.legislature.ky.gov robots is HTTP 404. Retained policy/catalog bytes predate strict parser fix.','selected_titles':sorted(SELECTED),'inventory_artifact':r.sha256,'notice_artifacts':[x.sha256 for x in receipts]})
+ for item in items:
+  previous=store.db.execute('select status from inventories where collection_id=? and item=?',(COLLECTION,item['item'])).fetchone()
+  if not previous: store.inventory(COLLECTION,item['item'],item['url'] or INDEX,'pending' if item['url'] else 'not_utilized','Outside selected title batch' if item['title_number'] not in SELECTED else None)
+ (ROOT/'inventory.json').write_text(json.dumps(items,indent=2))
+ acquired=0;chapters=[]
+ for item in items:
+  if item['title_number'] not in SELECTED or not item['url']: continue
+  cr=fetch(acquirer,item['url']); h=html.fromstring(store.artifact(cr.sha256)); chapter=re.search(r'CHAPTER (\d+[A-Z]?)\b',item['label']).group(1)
+  links=[(clean(a),urljoin(INDEX,a.get('href'))) for a in h.xpath('//a[@href]') if re.search(r'^statute\.aspx\?id=\d+$',a.get('href'),re.I)]
+  if not links: raise ValueError('No statute inventory: '+item['url'])
+  for label,u in links:
+   sid='statute:'+parse_qs(urlsplit(u).query)['id'][0]
+   if not store.db.execute('select 1 from inventories where collection_id=? and item=?',(COLLECTION,sid)).fetchone(): store.inventory(COLLECTION,sid,u,'pending')
+  done=0
+  for label,u in links:
+   if limit is not None and acquired>=limit: break
+   sid='statute:'+parse_qs(urlsplit(u).query)['id'][0]
+   try:
+    pr=fetch(acquirer,u);unit=pdf_unit(store,pr,chapter,label,u)
+    version,count,new=store.ingest(collection=COLLECTION,document='ky-krs:'+sid,title=unit.citation+' '+label,url=u,acquisition=pr.id,snapshot_date=None,snapshot_basis='Unknown; chapter database update and session incorporation are not exact snapshot dates',parser='ky-pdf-layout-1',provisions=[unit],metadata={'chapter_inventory_acquisition':cr.id,'title':item['title'],'currency_notice':currency,'database_update_notice':updated,'source_identifier':sid,'access_notice':ACCESS,'source_role':unit.metadata['source_role'],'contains_substantive_section_text':unit.metadata['contains_substantive_section_text']})
+    store.inventory(COLLECTION,sid,u,'ingested');acquired+=1;done+=1
+    print(json.dumps({'citation':unit.citation,'source_id':sid,'new':new,'bytes':pr.size,'pages':unit.metadata['pages']}),flush=True)
+   except Exception as e:
+    store.inventory(COLLECTION,sid,u,'failed',str(e));raise
+  complete=all(store.db.execute('select status from inventories where collection_id=? and item=?',(COLLECTION,'statute:'+parse_qs(urlsplit(u).query)['id'][0])).fetchone()[0]=='ingested' for _,u in links)
+  store.inventory(COLLECTION,item['item'],item['url'],'ingested' if complete else 'pending',None if complete else 'limit reached')
+  chapters.append({'title':item['title'],'chapter':chapter,'expected':len(links),'ingested_this_sync':done,'inventory_acquisition':cr.id})
+  if limit is not None and acquired>=limit: break
+ return {'chapters':chapters,'processed_documents':acquired}
+
+def main():
+ parser=argparse.ArgumentParser();parser.add_argument('--limit',type=int);args=parser.parse_args()
+ ledger=ROOT/'budget.json';used=json.loads(ledger.read_text())['downloaded_bytes'] if ledger.exists() else 0
+ s=Store(ROOT/'store');a=Acquirer(s,max_bytes=200*1024**2-used,delay=1.1)
+ try:
+  summary=sync_ky(s,a,args.limit);(ROOT/'sync-summary.json').write_text(json.dumps(summary,indent=2))
+ finally:
+  ledger.write_text(json.dumps({'downloaded_bytes':used+a.downloaded}));a.close();s.close()
+if __name__=='__main__': main()

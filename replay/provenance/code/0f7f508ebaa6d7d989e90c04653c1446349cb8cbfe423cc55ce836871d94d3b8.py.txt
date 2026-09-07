@@ -1,0 +1,261 @@
+"""Isolated Arizona official publisher collector; no shared data mutations."""
+
+import json
+import shutil
+import time
+from datetime import datetime
+from pathlib import Path
+from urllib.parse import urlsplit
+
+from psephos.acquire import Acquirer, AcquisitionError
+from psephos.store import Store
+
+ROOT = Path(__file__).resolve().parent
+CAP = 200 * 1024**2
+HOSTS = {"www.azleg.gov", "azleg.gov", "azsos.gov", "apps.azsos.gov"}
+
+
+class ArizonaAcquirer(Acquirer):
+    """Persistent decoded-byte meter and exclusive official-host boundary."""
+
+    def __init__(self, store):
+        self.meter_path = ROOT / "meter.json"
+        prior = json.loads(self.meter_path.read_text()) if self.meter_path.exists() else {}
+        super().__init__(store, max_bytes=190 * 1024**2, delay=1.05)
+        self.downloaded = prior.get("decoded_http_bytes", 0)
+
+    def _pause(self, url, delay=None):
+        if urlsplit(url).hostname not in HOSTS:
+            raise AcquisitionError("Unowned host; coordination required: " + url)
+        if shutil.disk_usage(ROOT).free < 105 * 1024**3:
+            raise AcquisitionError("Free disk is approaching 100 GiB")
+        if self.downloaded >= self.max_bytes:
+            raise AcquisitionError("Conservative decoded byte budget reached")
+        host = urlsplit(url).netloc
+        policy_delay = 120.0 if host in {"www.azleg.gov", "azleg.gov"} else 1.05
+        spacing = max(policy_delay, delay or self.delay)
+        row = self.store.db.execute(
+            "SELECT max(observed_at) FROM acquisitions WHERE final_url LIKE ?",
+            ("https://" + host + "/%",),
+        ).fetchone()
+        latest = (
+            datetime.fromisoformat(row[0].replace("Z", "+00:00")).timestamp()
+            if row and row[0]
+            else 0
+        )
+        wait = max(
+            latest + spacing - time.time(),
+            self.last_request.get(host, 0) + spacing - time.monotonic(),
+        )
+        while wait > 0:
+            time.sleep(min(wait, 30))
+            wait -= min(wait, 30)
+        if delay is None:
+            self.last_request[host] = time.monotonic()
+
+    def fetch(self, url, **kwargs):
+        if urlsplit(url).hostname not in HOSTS:
+            raise AcquisitionError("Unowned host; coordination required: " + url)
+        robots_url = "https://" + urlsplit(url).netloc + "/robots.txt"
+        barrier = self.store.db.execute(
+            "SELECT status FROM acquisitions WHERE url=? ORDER BY id DESC LIMIT 1", (robots_url,)
+        ).fetchone()
+        if barrier and barrier[0] in (401, 403):
+            raise AcquisitionError("Prior robots access barrier; publisher deferred: " + robots_url)
+        kwargs.setdefault("max_file_bytes", 48 * 1024**2)
+        try:
+            return super().fetch(url, **kwargs)
+        finally:
+            self.meter_path.write_text(
+                json.dumps(
+                    {
+                        "decoded_http_bytes": self.downloaded,
+                        "cap_bytes": CAP,
+                        "operating_cap_bytes": self.max_bytes,
+                    },
+                    indent=2,
+                )
+            )
+
+
+if __name__ == "__main__":
+    import sys
+
+    store = Store(ROOT / "store")
+    acq = ArizonaAcquirer(store)
+    try:
+        for url in sys.argv[1:]:
+            try:
+                receipt = acq.fetch(url)
+                data = store.artifact(receipt.sha256)
+                print(
+                    json.dumps(
+                        {
+                            "url": url,
+                            "id": receipt.id,
+                            "sha": receipt.sha256,
+                            "bytes": len(data),
+                            "path": str(store.object_path(receipt.sha256)),
+                        }
+                    )
+                )
+                if not data.startswith(b"%PDF"):
+                    from lxml import html
+
+                    doc = html.fromstring(data)
+                    print("TEXT:", doc.text_content()[:6000])
+                    print(
+                        "LINKS:",
+                        json.dumps(
+                            [
+                                (a.text_content().strip(), a.get("href"))
+                                for a in doc.xpath("//a[@href]")
+                            ]
+                        ),
+                    )
+            except Exception as exc:
+                print("ERROR", url, str(exc))
+    finally:
+        acq.close()
+        store.close()
+
+# Deliberately bounded current-wave scope. The inventory is retained separately.
+SELECTED = (
+    ("1-401", "Common problem resolution", "4", "1"),
+    ("1-402", "Reports on common problem resolution", "4", "1"),
+    ("1-215", "Definitions", "2", "2"),
+)
+INDEX = "https://www.azleg.gov/arsDetail?title=1"
+PARSER = "azleg-html-section-1"
+
+
+def section_url(number):
+    return "https://www.azleg.gov/ars/1/" + number.split("-")[1].zfill(5) + ".htm"
+
+
+def section_units(data, number, heading, chapter, article):
+    """One complete native HTML section, preserving all subparagraphs and markup."""
+    from lxml import html
+
+    from psephos.parse import markup, media_links, readable, source_links
+    from psephos.store import Provision
+
+    node = html.fromstring(data)
+    bodies = node.xpath("//body")
+    body = bodies[0] if bodies else node
+    for element in body.xpath(".//script|.//style"):
+        element.drop_tree()
+    text = readable(body)
+    if number not in text[:500] or heading.lower() not in text[:500].lower():
+        raise ValueError("Unexpected publisher section heading; possible HTTP200 error body")
+    if any(term in text.lower() for term in ["access denied", "verify you are human", "captcha"]):
+        raise ValueError("Access barrier body")
+    if len(text) < len(heading) + len(number) + 50:
+        raise ValueError("Insufficient substantive section text")
+    url = section_url(number)
+    yield Provision(
+        key="az-ars:" + number,
+        citation="A.R.S. § " + number,
+        heading=heading,
+        text=text,
+        markup=markup(body),
+        url=url,
+        parent_key="az-ars:title-1/chapter-" + chapter + "/article-" + article,
+        unit_kind="section",
+        references=source_links(body, url),
+        metadata={
+            "source_number": number,
+            "title": "1",
+            "chapter": chapter,
+            "article": article,
+            "source_encoding": node.getroottree().docinfo.encoding,
+            "tables": len(body.xpath(".//table")),
+            "media": media_links(body, url),
+            "native_anchors": body.xpath(".//*[@id]/@id|.//a[@name]/@name"),
+            "fidelity": "Complete source section container with all paragraphs, exceptions, definitions, and original markup. External media, if present, explicitly flagged by standard parser.",
+        },
+    )
+
+
+def sync_az(s: Store, a: Acquirer, limit=None, as_of=None):
+    """Acquire 1-401, 1-402 (complete Ch.4) plus 1-215; limit bounds sections.
+
+    Use ArizonaAcquirer for live acquisition: it enforces 120s legislature delay,
+    persistent meter, disk guard and official-host ownership. For integration,
+    Acquirer is accepted when every required URL is already cached; its stock
+    behavior safely defers a new request requiring >30 seconds.
+    """
+    from urllib.parse import parse_qs, urlparse
+
+    from lxml import html
+
+    if as_of is not None:
+        raise ValueError(
+            "Arizona live edition has no established exact snapshot date; historical acquisition unsupported"
+        )
+    if limit is not None and (not isinstance(limit, int) or limit < 0):
+        raise ValueError("limit must be a nonnegative integer or None")
+    s.collection(
+        "az-ars",
+        ("us-az", "Arizona", "state", "us"),
+        name="Arizona Revised Statutes — bounded legislature online compilation",
+        authority="Arizona State Legislature",
+        kind="statutes",
+        homepage="https://www.azleg.gov/arstitle/",
+        source_status="Official legislature publisher; online drafting compilation; publisher names Thomson Reuters as official published ARS.",
+        access="Public HTTPS; robots Crawl-delay 120 seconds. Publisher all-rights-reserved notice retained; no redistribution license asserted.",
+        metadata={
+            "scope": "Title 1 Chapter 4 complete, plus section 1-215; other sections pending",
+            "source_currency_label": "57th Legislature, 1st Regular Session (from retained index)",
+            "effective_version_convention": "Publisher index says January 1 of year following most recent session; not a section-level effective date",
+            "source_snapshot_date": None,
+        },
+    )
+    listing = a.fetch(INDEX)
+    page = html.fromstring(s.artifact(listing.sha256))
+    inventory = {}
+    for link in page.xpath("//a[@href]"):
+        number = link.text_content().strip()
+        if number.startswith("1-"):
+            targets = parse_qs(urlparse(link.get("href")).query).get("docName", [])
+            if len(targets) == 1 and targets[0] == section_url(number):
+                inventory[number] = targets[0]
+    if not inventory or not all(item[0] in inventory for item in SELECTED):
+        raise ValueError("Source inventory missing selected sections")
+    for number, url in inventory.items():
+        exists = s.db.execute(
+            "SELECT 1 FROM documents WHERE id=?", ("az-ars:" + number,)
+        ).fetchone()
+        s.inventory("az-ars", number, url, "indexed" if exists else "pending")
+    selected = SELECTED if limit is None else SELECTED[:limit]
+    result = []
+    for number, heading, chapter, article in selected:
+        url = inventory[number]
+        try:
+            raw = a.fetch(url)
+            units = list(section_units(s.artifact(raw.sha256), number, heading, chapter, article))
+            version, count, new = s.ingest(
+                collection="az-ars",
+                document="az-ars:" + number,
+                title="A.R.S. § " + number + " — " + heading,
+                url=url,
+                acquisition=raw.id,
+                snapshot_date=None,
+                snapshot_basis="Exact source edition date unknown. Session currency retained from publisher index; acquisition time not substituted.",
+                parser=PARSER,
+                provisions=units,
+                metadata={
+                    "inventory_artifact": listing.sha256,
+                    "inventory_receipt": listing.id,
+                    "source_currency_label": "57th Legislature, 1st Regular Session",
+                    "current_through_date": None,
+                    "source_publication_date": None,
+                    "legal_effective_date": None,
+                },
+            )
+            s.inventory("az-ars", number, url, "indexed")
+            result.append({"section": number, "version": version, "provisions": count, "new": new})
+        except (AcquisitionError, ValueError) as exc:
+            s.inventory("az-ars", number, url, "failed", str(exc))
+            raise
+    return result

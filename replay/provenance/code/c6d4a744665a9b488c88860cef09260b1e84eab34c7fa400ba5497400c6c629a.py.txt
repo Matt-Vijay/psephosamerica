@@ -1,0 +1,217 @@
+"""Isolated official Mississippi acquisition; lifetime budget survives reruns/crashes."""
+from __future__ import annotations
+import json, os, time, shutil, hashlib, argparse, fcntl
+from pathlib import Path
+from urllib.parse import urlsplit, urljoin
+from urllib.robotparser import RobotFileParser
+from psephos.store import Store, Provision, Reference, utc_now
+from psephos.acquire import Acquirer, Receipt, AcquisitionError, USER_AGENT, robots_lines, retry_seconds
+
+ROOT = Path(__file__).resolve().parent
+CAP = 209715200
+HOSTS = {'legislature.ms.gov','www.legislature.ms.gov','sos.ms.gov','www.sos.ms.gov','mdek12.org','www.mdek12.org','courts.ms.gov','www.courts.ms.gov'}
+
+def save(path, value):
+    tmp = path.with_suffix(path.suffix+'.tmp')
+    with tmp.open('w') as f:
+        json.dump(value, f, indent=2); f.flush(); os.fsync(f.fileno())
+    os.replace(tmp,path)
+
+class MSAcquirer(Acquirer):
+    def __init__(self, store):
+        if store.root != ROOT: raise ValueError('Source Store must be isolated at '+str(ROOT))
+        self.lock = (ROOT/'collector.lock').open('a+')
+        fcntl.flock(self.lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        super().__init__(store, max_bytes=CAP, delay=1.1)
+        self.client.headers['Accept-Encoding']='identity'
+        self.ledger_path = ROOT/'ledger.json'
+        if not self.ledger_path.exists() and store.db.execute('SELECT count(*) FROM acquisitions').fetchone()[0]:
+            raise AcquisitionError('Missing lifetime ledger for existing Store; cannot reset budget')
+        self.ledger = json.loads(self.ledger_path.read_text()) if self.ledger_path.exists() else {'cap':CAP,'charged_bytes':0,'measured_bytes':0,'requests':[], 'hosts':{}}
+        save(self.ledger_path,self.ledger)
+    def close(self):
+        super().close(); self.lock.close()
+    def _allowed(self,url):
+        p=urlsplit(url); origin=f'{p.scheme}://{p.netloc}'
+        if origin not in self.robots:
+            r=self.fetch(origin+'/robots.txt',check_robots=False)
+            row=self.store.db.execute('SELECT status FROM acquisitions WHERE id=?',(r.id,)).fetchone()
+            parser=RobotFileParser(origin+'/robots.txt')
+            if row[0] in (404,410): parser.parse([])
+            elif row[0]==200: parser.parse(robots_lines(self.store.artifact(r.sha256)))
+            else: raise AcquisitionError('Unverifiable robots '+origin)
+            self.robots[origin]=parser
+        parser=self.robots[origin]
+        if not parser.can_fetch(USER_AGENT,url): raise AcquisitionError('robots disallowed '+url)
+        interval=max(1.1, float(parser.crawl_delay(USER_AGENT) or 0))
+        rr=parser.request_rate(USER_AGENT)
+        if rr: interval=max(interval,rr.seconds/rr.requests)
+        self.ledger['hosts'].setdefault(p.netloc,{})['interval']=interval
+    def fetch(self,url,*,immutable=True,check_robots=True,max_file_bytes=16*1024*1024,**kwargs):
+        cached=self._cached(url)
+        if cached: return cached
+        # Reuse retained policy and error bodies too. No implicit retries.
+        old=self.store.db.execute('SELECT a.*,b.bytes FROM acquisitions a JOIN artifacts b ON a.sha256=b.sha256 WHERE a.url=? ORDER BY a.id DESC LIMIT 1',(url,)).fetchone()
+        if old and old['status'] in (404,410) and not check_robots:
+            return Receipt(old['id'],url,old['sha256'],old['observed_at'],old['bytes'])
+        if old and old['status'] >= 400:
+            raise AcquisitionError('Retained terminal HTTP barrier '+str(old['status'])+' '+url)
+        current=url
+        for redirect in range(6):
+            p=urlsplit(current)
+            if p.scheme!='https' or p.hostname not in HOSTS or p.username: raise AcquisitionError('Uncoordinated host or non-HTTPS: '+current)
+            if shutil.disk_usage(ROOT).free < 105*1024**3: raise AcquisitionError('Disk floor 105 GiB')
+            if check_robots: self._allowed(current)
+            host=self.ledger['hosts'].setdefault(p.netloc,{})
+            wait=max(host.get('last',0)+host.get('interval',1.1),host.get('retry_until',0))-time.time()
+            if wait>30: raise AcquisitionError('Publisher deferred until '+str(time.time()+wait))
+            if wait>0: time.sleep(wait)
+            host['last']=time.time(); save(self.ledger_path,self.ledger)
+            started=utc_now(); req={'url':current,'started_at':started,'decoded_bytes':0,'status':0}
+            self.ledger['requests'].append(req); save(self.ledger_path,self.ledger)
+            try:
+                with self.client.stream('GET',current) as response:
+                    req['status']=response.status_code
+                    headers=dict(response.headers)
+                    if headers.get('retry-after'):
+                        host['retry_until']=time.time()+retry_seconds(headers['retry-after'],60)
+                    if headers.get('content-encoding','identity').lower() not in ('identity',''):
+                        raise AcquisitionError('Encoded response declined to ensure strict decoded-byte bound')
+                    chunks=[]; size=0
+                    iterator=response.iter_raw(chunk_size=65536)
+                    while True:
+                        reserve=min(65536,CAP-self.ledger['charged_bytes'],max_file_bytes-size)
+                        if reserve<65536: raise AcquisitionError('Conservative lifetime/file byte stop')
+                        self.ledger['charged_bytes']+=reserve; save(self.ledger_path,self.ledger)
+                        try: chunk=next(iterator)
+                        except StopIteration:
+                            self.ledger['charged_bytes']-=reserve; save(self.ledger_path,self.ledger); break
+                        self.ledger['charged_bytes']-=reserve-len(chunk)
+                        self.ledger['measured_bytes']+=len(chunk); req['decoded_bytes']+=len(chunk)
+                        size+=len(chunk); chunks.append(chunk); save(self.ledger_path,self.ledger)
+                    data=b''.join(chunks); sha=hashlib.sha256(data).hexdigest()
+                    path=self.store.object_path(sha); path.parent.mkdir(exist_ok=True,parents=True)
+                    if not path.exists(): path.write_bytes(data)
+                    with self.store.db: self.store.db.execute('INSERT OR IGNORE INTO artifacts VALUES (?,?)',(sha,size))
+                    headers['psephos_request_started_at']=started
+                    observed=utc_now(); status=response.status_code
+                    rid=self._record(url,current,observed,status,headers,sha,None if status<400 else 'HTTP '+str(status))
+                    req.update(receipt_id=rid,sha256=sha,completed_at=observed); save(self.ledger_path,self.ledger)
+                    if status in (301,302,303,307,308):
+                        current=urljoin(current,headers['location']); continue
+                    if status>=400 and not (not check_robots and status in (404,410)):
+                        raise AcquisitionError('HTTP '+str(status)+' '+current)
+                    return Receipt(rid,url,sha,observed,size)
+            except Exception as exc:
+                req['error']=str(exc); save(self.ledger_path,self.ledger)
+                if 'receipt_id' not in req: self._record(url,current,utc_now(),req['status'],{},None,str(exc))
+                raise AcquisitionError(str(exc)) from exc
+        raise AcquisitionError('Redirect limit')
+
+
+COLLECTION = 'ms-court-rules'
+INDEX = 'https://courts.ms.gov/research/rules/rules.php'
+
+def sync_ms(store: Store, acquirer: Acquirer, limit: int | None = None, as_of: str | None = None):
+    """Index complete publisher PDF volumes. as_of is unsupported, never fabricated."""
+    import subprocess, re, io, html as html_std
+    from lxml import html
+    from pypdf import PdfReader
+    if not isinstance(acquirer, MSAcquirer):
+        raise ValueError('Use MSAcquirer for mandatory persistent budget and host controls')
+    if as_of is not None: raise ValueError('Historical as_of unsupported by this live inventory')
+    if limit is not None and limit < 0: raise ValueError('limit must be nonnegative')
+    store.collection(COLLECTION, ('us-ms','Mississippi','state','us'),
+        name='Mississippi statewide court rule volumes', authority='Mississippi Judiciary',
+        kind='court_rules', homepage=INDEX, source_status='official publisher; scoped volumes',
+        access='public HTTPS; robots and privacy policy retained; no account',
+        metadata={'scope':'24 statewide volumes linked with bodyruleslink in retained inventory; not local rules or all Mississippi law'})
+    inventory=acquirer.fetch(INDEX)
+    policy=acquirer.fetch('https://courts.ms.gov/privacy_policy.php')
+    tree=html.fromstring(store.artifact(inventory.sha256))
+    links=tree.xpath('//a[contains(concat(" ",normalize-space(@class)," ")," bodyruleslink ")]')
+    items=[]
+    for a in links:
+        title=' '.join(a.text_content().split()); url=urljoin(INDEX,a.get('href'))
+        item='ms-court-rules:'+hashlib.sha256(url.encode()).hexdigest()[:16]
+        existing=store.db.execute('SELECT status FROM inventories WHERE collection_id=? AND item=?',(COLLECTION,item)).fetchone()
+        if not existing: store.inventory(COLLECTION,item,url,'pending')
+        items.append((item,title,url))
+    results=[]
+    for item,title,url in items[:limit] if limit is not None else items:
+        try:
+            receipt=acquirer.fetch(url)
+            raw=store.artifact(receipt.sha256)
+            if not raw.startswith(b'%PDF-'): raise ValueError('Publisher object is not PDF')
+            reader=PdfReader(io.BytesIO(raw))
+            proc=subprocess.run(['pdftotext','-layout','-enc','UTF-8',str(store.object_path(receipt.sha256)),'-'],capture_output=True,check=True)
+            pages=proc.stdout.decode('utf-8').split('\f')
+            if pages and not pages[-1].strip(): pages.pop()
+            if len(pages)!=len(reader.pages): raise ValueError('PDF page extraction count mismatch')
+            review_path=ROOT/'checks/sparse_review.json'
+            reviews=json.loads(review_path.read_text()) if review_path.exists() else {}
+            review=reviews.get(receipt.sha256,{})
+            sparse_review=review.get('pages',{})
+            sparse_pages=[i for i,page in enumerate(pages,1) if len(re.sub(r'\s','',page))<30]
+            for i in sparse_pages:
+                item_review=sparse_review.get(str(i),{})
+                if item_review.get('expected_layout_text_sha256') != hashlib.sha256(pages[i-1].encode()).hexdigest():
+                    raise ValueError('Unreviewed sparse PDF page '+str(i)+'; volume not counted')
+            text='\n\n'.join(f'[PDF page {i}]\n'+page+('\n[Collector note: '+sparse_review[str(i)]['collector_note']+']\n' if str(i) in sparse_review else '') for i,page in enumerate(pages,1))
+            if len(text)<400 or not re.search(r'\b(shall|must|may)\b',text,re.I): raise ValueError('No substantive legal text')
+            dests={str(k):reader.get_destination_page_number(v)+1 for k,v in reader.named_destinations.items()}
+            refs=[]; annotations=[]; images=[]
+            for i,page in enumerate(reader.pages,1):
+                resources=page.get('/Resources',{})
+                if hasattr(resources,'get_object'): resources=resources.get_object()
+                xobjs=resources.get('/XObject',{})
+                if hasattr(xobjs,'get_object'): xobjs=xobjs.get_object()
+                image_names=[str(k) for k,v in xobjs.items() if v.get_object().get('/Subtype')=='/Image']
+                if image_names: images.append({'pdf_page':i,'image_objects':image_names,'status':'preserved in native PDF; text extraction may not transcribe image'})
+                for ann in page.get('/Annots',[]):
+                    obj=ann.get_object(); action=obj.get('/A',{})
+                    if hasattr(action,'get_object'): action=action.get_object()
+                    target=action.get('/URI')
+                    annotations.append({'pdf_page':i,'native_annotation':str(obj)})
+                    if target: refs.append(Reference(str(target),'publisher_pdf_link',f'PDF page {i}',str(obj)))
+            metadata={'representation':'complete PDF volume; layout text projection', 'pdf_pages':len(pages),
+                'page_labels':list(reader.page_labels),'native_named_destinations':dests,
+                'pdf_annotations':annotations,'media':images,'inventory_receipt':inventory.id,
+                'sparse_page_review':sparse_review,'text_gaps':review.get('text_gaps',[]),
+                'edition_or_incorporation_label':title+' | '+url.rsplit('/',1)[-1],
+                'edition_or_incorporation_date':None,'publication_date':None,'legal_effect_date':None,
+                'clock_note':'Filename/index dates retained as publisher labels only; no blanket legal effect or publication date inferred. Rule-specific history retained in text.',
+                'full_legal_text_scope':('complete PDF volume with extracted wording and form media gaps; excluded from full-legal-text count' if images else 'whole rule volume including notes, forms, tables, citations and front matter; not a rule count'),
+                'full_legal_text_eligible':not bool(images),
+                'representation_gaps':[{'pdf_page':m['pdf_page'],'kind':'form_checkbox_graphics','detail':'Blank checkbox graphics are not represented in layout text; source form and labels remain in native PDF','native_pdf_preserved':True} for m in images],
+                'pdf_metadata':{str(k):str(v) for k,v in (reader.metadata or {}).items()}}
+            # Source markup keeps the exact unannotated page text; notes are separate metadata.
+            markup='<pdfVolume source="'+html_std.escape(url,quote=True)+'">'+''.join('<page number="'+str(i)+'"><pre>'+html_std.escape(page)+'</pre></page>' for i,page in enumerate(pages,1))+'</pdfVolume>'
+            provision=Provision(key=item,citation=title,heading=title,text=text,markup=markup,url=url+'#page=1',unit_kind=('rule_volume_with_media_gaps' if images else 'rule_volume'),metadata=metadata,references=tuple(refs))
+            version,count,created=store.ingest(collection=COLLECTION,document=item,title=title,url=url,
+                acquisition=receipt.id,snapshot_date=None,snapshot_basis='Live publisher PDF acquired; edition/publication/legal-effect dates not normalized',
+                parser='ms-pdf-volume-layout-1'+('-reviewed-sparse' if sparse_review else ''),provisions=[provision],metadata=metadata,
+                published_on=None,effective_on=None,amended_on=None)
+            store.inventory(COLLECTION,item,url,'ingested')
+            result={'document':item,'title':title,'url':url,'receipt':receipt.id,'sha256':receipt.sha256,
+                'object_path':str(store.object_path(receipt.sha256)),'pages':len(pages),'version':version,'created':created,
+                'media_pages':images,'text_characters':len(text)}
+            results.append(result); print(json.dumps(result),flush=True)
+        except Exception as exc:
+            store.inventory(COLLECTION,item,url,'blocked_or_review',str(exc))
+            results.append({'document':item,'url':url,'error':str(exc)})
+            print(json.dumps(results[-1]),flush=True)
+    save(ROOT/'batch.json',{'inventory_receipt':inventory.id,'policy_receipt':policy.id,'inventory_count':len(items),'results':results})
+    return results
+
+if __name__=='__main__':
+    ap=argparse.ArgumentParser(); ap.add_argument('urls',nargs='*'); ap.add_argument('--sync',action='store_true'); ap.add_argument('--limit',type=int); args=ap.parse_args()
+    store=Store(ROOT); acq=MSAcquirer(store)
+    try:
+        if args.sync: sync_ms(store,acq,args.limit,None)
+        else:
+            for url in args.urls:
+                try:
+                    r=acq.fetch(url); print(json.dumps({'url':url,'receipt':r.id,'sha256':r.sha256,'bytes':r.size,'path':str(store.object_path(r.sha256))}),flush=True)
+                except Exception as e: print(json.dumps({'url':url,'error':str(e)}),flush=True)
+    finally: acq.close(); store.close()

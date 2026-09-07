@@ -1,0 +1,213 @@
+"""Pennsylvania official legislature collector; isolated and cumulatively byte bounded."""
+from __future__ import annotations
+import json
+import shutil
+from pathlib import Path
+from psephos.acquire import Acquirer, AcquisitionError
+from psephos.store import Store, utc_now
+
+BASE = Path(__file__).resolve().parent
+CAP = 188743680
+
+class BudgetAcquirer(Acquirer):
+    """Durable decoded-byte ledger. No HTTP outside this acquirer is used."""
+    def __init__(self, store: Store):
+        if not store.root.is_relative_to(BASE):
+            raise ValueError('PA collector writes must remain inside collector root')
+        self.ledger_path = BASE / 'http-budget.json'
+        self.ledger = json.loads(self.ledger_path.read_text()) if self.ledger_path.exists() else {'cap_bytes': CAP, 'newly_decoded_bytes': 0, 'other_http_bytes': 0, 'runs': []}
+        self.depth = 0
+        super().__init__(store, max_bytes=max(0, CAP-self.ledger['newly_decoded_bytes']-1048576), delay=1.1)
+    def _allowed(self, url):
+        if urlsplit(url).hostname not in {'www.legis.state.pa.us','www.palegis.us'}:
+            raise AcquisitionError('Uncoordinated publisher host: '+url)
+        return super()._allowed(url)
+    def fetch(self, url, **kwargs):
+        if urlsplit(url).hostname not in {'www.legis.state.pa.us','www.palegis.us'}:
+            raise AcquisitionError('Uncoordinated publisher host: '+url)
+        if shutil.disk_usage(BASE).free < 105 * 1024**3:
+            raise AcquisitionError('Free disk near 100 GiB; deferred')
+        if self.max_bytes-self.downloaded <= 0:
+            raise AcquisitionError('Cumulative HTTP budget exhausted')
+        outer = self.depth == 0
+        before = self.downloaded
+        self.depth += 1
+        try:
+            return super().fetch(url, **kwargs)
+        finally:
+            self.depth -= 1
+            if outer:
+                delta = self.downloaded-before
+                self.ledger['newly_decoded_bytes'] += delta
+                self.ledger['runs'].append({'at': utc_now(), 'url': url, 'decoded_bytes': delta})
+                self.ledger_path.write_text(json.dumps(self.ledger, indent=2)+'\n')
+
+from collections import Counter
+from copy import deepcopy
+import re
+from urllib.parse import urljoin, urlsplit, parse_qs
+from lxml import etree, html
+from psephos.parse import readable, markup, source_links, media_links
+from psephos.store import Provision
+
+INDEX = 'https://www.legis.state.pa.us/cfdocs/legis/LI/Public/cons_index.cfm'
+HOME = 'https://www.palegis.us/statutes/consolidated'
+NOTICE = 'https://www.palegis.us/legal'
+COLLECTION = 'pa-consolidated'
+
+
+def visible(node):
+    node = deepcopy(node)
+    for item in node.xpath('.//div[@class="Comment"]|.//script|.//style'):
+        item.drop_tree() if hasattr(item, 'drop_tree') else item.getparent().remove(item)
+    return readable(node)
+
+
+def pa_units(data: bytes, title: str, url: str):
+    root = html.fromstring(data)
+    bodies = root.xpath('//div[@class="BodyContainer"]')
+    if len(bodies) != 1:
+        raise ValueError('Not a complete PA legal export: expected BodyContainer')
+    body = bodies[0]
+    groups = []
+    node = etree.Element('div')
+    key = '_preamble'
+    for child in body:
+        marker = (child.text or '').strip() if child.get('class') == 'Comment' else ''
+        # v markers introduce history/annotation attached to the immediately preceding unit.
+        if marker and not marker.endswith('v'):
+            if visible(node): groups.append((key, node))
+            key, node = marker, etree.Element('div')
+        node.append(deepcopy(child))
+    if visible(node): groups.append((key, node))
+    totals = Counter(k for k, _ in groups)
+    seen = Counter()
+    hierarchy = ''
+    for key, node in groups:
+        text = visible(node)
+        if not text: continue
+        seen[key] += 1
+        kind = 'section' if key.endswith('s') else 'table_of_contents' if key.endswith('cc') else 'appendix' if key.endswith('ax') else 'scope_notes'
+        lines = text.splitlines()
+        heading = lines[0]
+        if kind == 'scope_notes':
+            # Constitutional article identity is taken from visible publisher headings.
+            m = re.search(r'ARTICLE\s+([IVXLCDM]+\S*)', text)
+            if m: hierarchy = 'Article ' + m.group(1).rstrip('.')
+            if title == '00':
+                if key == '00c551h': hierarchy = 'Schedule to Article V'
+                elif key == '00c2101h': hierarchy = 'Schedule No. 1'
+                elif key == '00c2201h': hierarchy = 'Schedule No. 2'
+        if kind == 'section':
+            m = re.match(r'§\s*([\w.\-]+)', heading)
+            number = m.group(1).rstrip('.') if m else key
+            citation = f'{int(title)} Pa.C.S. § {number}' if title != '00' else f'Pa. Const. {hierarchy} § {number}'
+        else:
+            citation = f'Pa. Const. {heading}' if title == '00' else f'{int(title)} Pa.C.S. — {heading}'
+        suffix = f'/_occurrence/{seen[key]}' if totals[key]>1 else ''
+        yield Provision(key=f'pa:consolidated/{title}/{key}'+suffix, citation=citation,
+            heading=heading, text=text, markup=markup(node), url=url,
+            parent_key=f'pa:consolidated/{title}', unit_kind=kind,
+            metadata={'source_identifier':key,'title_number':title,'source_heading_context':hierarchy,
+                      'duplicate_identifier_count':totals[key], 'occurrence':seen[key],
+                      'tables':len(node.xpath('.//table')), 'media':media_links(node,url),
+                      'history_policy':'History v markers remain with preceding section or scope; future-effective variants are retained without resolution.'},
+            references=source_links(node,url))
+
+
+def inventory(s, a):
+    r = a.fetch(INDEX)
+    root = html.fromstring(s.artifact(r.sha256))
+    rows = {}
+    for link in root.xpath('//a[contains(@href,"view-statute?")]'):
+        query = parse_qs(urlsplit(link.get('href')).query)
+        if query.get('txtType') != ['HTM'] or 'ttl' not in query: continue
+        title = query['ttl'][0].zfill(2)
+        name = ' '.join(link.text_content().split())
+        if name == 'HTML': continue
+        rows[title] = {'title':title,'name':name,'view_url':urljoin(HOME,link.get('href')),
+            'url':f'https://www.palegis.us/statutes/consolidated/view-statute?47&iFrame=true&txtType=HTM&ttl={int(title)}'}
+    if len(rows)<50: raise ValueError('Official title inventory unexpectedly incomplete')
+    return r, list(rows.values())
+
+
+def write_report(s, a=None):
+    ledger = json.loads((BASE/'http-budget.json').read_text())
+    counts = {t:s.db.execute(f'SELECT count(*) FROM {t}').fetchone()[0] for t in ['collections','documents','versions','provisions','acquisitions','artifacts']}
+    units = dict(s.db.execute('select unit_kind,count(*) from provisions group by unit_kind').fetchall())
+    items = [dict(r) for r in s.db.execute('select * from inventories order by item')]
+    receipts = [dict(r) for r in s.db.execute('select a.*,b.bytes from acquisitions a left join artifacts b on b.sha256=a.sha256 order by a.id')]
+    (BASE/'receipts.json').write_text(json.dumps(receipts,indent=2)+'\n')
+    report = {'state':'PA','store_path':str(s.root),'database_path':str(s.root/'legal.sqlite3'),
+      'adapter_path':str(BASE/'adapter.py'),'generated_at':utc_now(),'counts':counts,'unit_kinds':units,
+      'source_section_units':units.get('section',0),'section_units_with_repealed_heading':s.db.execute("select count(*) from provisions where unit_kind='section' and heading like '%Repealed%'").fetchone()[0],'catalog_units_not_counted_as_full_text':units.get('table_of_contents',0),
+      'unique_raw_bytes':s.db.execute('select coalesce(sum(bytes),0) from artifacts').fetchone()[0],
+      'newly_decoded_http_bytes':ledger['newly_decoded_bytes'],'hard_cumulative_byte_cap':CAP,
+      'execution_python':str(BASE.parents[2]/'.venv/bin/python'),'dependency_paths':[str(BASE.parents[2]/'src/psephos/store.py'),str(BASE.parents[2]/'src/psephos/acquire.py'),str(BASE.parents[2]/'src/psephos/parse.py')],
+      'checks':json.loads((BASE/'checks.json').read_text()) if (BASE/'checks.json').exists() else None,
+      'inventory_count':len(items),'inventory_status_counts':dict(Counter(i['status'] for i in items)),
+      'tables_retained':sum(json.loads(r[0])['tables'] for r in s.db.execute('select metadata from provisions')),
+      'research_use':'Local research acquisition only; no blanket redistribution rights or license claimed.',
+      'other_http_bytes':0,'http_accounting':'Probe requests used >=1.1 seconds with robots Crawl-delay 5 honored on legacy host; main harvest >=5.1 seconds for both hosts. All HTTP used BudgetAcquirer. Includes robots, inventory, notices, probes, and repeated representations. Non-success bodies not decoded by Acquirer.',
+      'inventories':items,'receipt_manifest':str(BASE/'receipts.json'),
+      'coverage':'Complete publisher HTML exports for indexed titles; section text, definitions, exceptions, tables and amendment/history notes retained. TOCs are separately labeled and not full law units.',
+      'gaps':['Unconsolidated statutes/session laws not acquired. PA consolidation is incomplete; this is not all Pennsylvania statutory law.',
+              'Regulations not acquired in this bounded batch. No shared/vendor domains requested.',
+              'Titles 46 and 59 contain repeal/reservation material retained as raw receipts but not indexed; 21 other titles state consolidation not implemented and are receipts only.',
+              'External media are identified in text/metadata; image wording not transcribed. No claims of historical completeness or current legal effect.'],
+      'dates':{'snapshot_date':None,'effective_date':None,'incorporation_date':None,
+               'basis':'HTML revised metadata retained verbatim per version, not promoted to legal incorporation or effect. Acquisition available_at is distinct; as_of acquisition is rejected.'},
+      'access':{'hosts':['www.legis.state.pa.us','www.palegis.us'],'minimum_delay_seconds':1.1, 'main_harvest_delay_seconds':5.1,
+                'robots':'Retained and honored; legacy publisher Crawl-delay 5.',
+                'notice_url':NOTICE,'conditions':'Publisher information service AS IS; does not replace official versions; no accuracy, timeliness or completeness warranty. DMCA notice retained; no blanket redistribution license asserted.'}}
+    (BASE/'report.json').write_text(json.dumps(report,indent=2)+'\n')
+    return report
+
+
+def sync_pa(s: Store, a: Acquirer, limit: int | None = None, as_of: str | None = None):
+    if as_of: raise ValueError('PA exports lack verified snapshot dates; historical acquisition is unsupported')
+    if not isinstance(a, BudgetAcquirer):
+        raise ValueError('Use adapter.BudgetAcquirer(store) for the mandatory cumulative HTTP ledger')
+    a.delay = max(a.delay,5.1)
+    index, titles = inventory(s,a)
+    notice = a.fetch(NOTICE)
+    s.collection(COLLECTION,('us-pa','Pennsylvania','state','us'),name='Pennsylvania Consolidated Statutes and Constitution',
+        authority='Pennsylvania General Assembly / Legislative Reference Bureau',kind='statutory_code_and_constitution',homepage=HOME,
+        source_status='Official government publisher website; informational rendering, no warranty; state consolidation incomplete',
+        access='Public whole-title HTML exports; robots and legal notices retained; no blanket data license asserted',
+        metadata={'inventory_sha256':index.sha256,'notice_sha256':notice.sha256,'snapshot_date':None,'scope':'Consolidated statutes and constitution only'})
+    for item in titles:
+        if not s.db.execute('select 1 from inventories where collection_id=? and item=?',(COLLECTION,item['title'])).fetchone():
+            s.inventory(COLLECTION,item['title'],item['url'],'pending')
+    try:
+        for item in titles[:limit]:
+            title,url=item['title'],item['url']
+            try:
+                # Reuse already retained legacy representations for titles 00 and 01.
+                legacy=f'https://www.legis.state.pa.us/WU01/LI/LI/CT/HTM/{title}/{title}.HTM'
+                raw=a._cached(legacy) or a.fetch(url,max_file_bytes=min(40*1024**2,a.max_bytes-a.downloaded))
+                data=s.artifact(raw.sha256)
+                root=html.fromstring(data)
+                units=list(pa_units(data,title,raw.url))
+                legal=[u for u in units if u.unit_kind=='section']
+                if not legal:
+                    whole=' '.join(u.text for u in units)
+                    if re.search(r'not (?:yet )?enacted|has not been implemented|reserved|repealed',whole,re.I):
+                        s.inventory(COLLECTION,title,raw.url,'no_current_sections',whole[:2000])
+                        print(f'{title}: no current sections; raw retained',flush=True)
+                        continue
+                    raise ValueError('No substantive section markers: requires manual classification')
+                revised=root.xpath('//meta[@name="revised"]/@content')
+                _,count,new=s.ingest(collection=COLLECTION,document=f'pa:consolidated/{title}',title=item['name'],url=raw.url,
+                    acquisition=raw.id,snapshot_date=None,snapshot_basis='Undated legal snapshot; HTML revised metadata is file revision only',
+                    parser='pa-html-2',provisions=units,metadata={'publisher_html_revised':revised,'inventory_sha256':index.sha256,
+                    'publisher_view_url':item['view_url'],'complete_title_export':True,'section_count':len(legal)})
+                s.inventory(COLLECTION,title,raw.url,'indexed')
+                print(f'{title}: {count} units / {len(legal)} sections; new={new}; HTTP total={a.ledger["newly_decoded_bytes"]}',flush=True)
+            except (ValueError,AcquisitionError) as exc:
+                s.inventory(COLLECTION,title,url,'failed',str(exc))
+                print(f'{title}: FAILED {exc}',flush=True)
+                if 'byte cap' in str(exc).lower() or 'budget' in str(exc).lower():break
+            write_report(s,a)
+    finally:
+        write_report(s,a)

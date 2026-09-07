@@ -1,0 +1,200 @@
+"""Official Virginia CSV exports, using source-local Store and lifetime-budget Acquirer.
+
+Run with the repository Python: adapter.py [--limit N]. Unknown edition dates cannot
+answer historical as_of requests. No shared catalog or source modules are modified.
+"""
+from __future__ import annotations
+import argparse
+from collections import Counter
+import csv
+import fcntl
+import io
+import json
+from pathlib import Path
+import re
+from urllib.parse import urljoin
+from lxml import html
+from psephos.acquire import Acquirer, AcquisitionError
+from psephos.store import Store, Provision, utc_now
+from psephos.parse import readable, source_links, media_links
+from budget import BudgetAcquirer, CAP
+
+BASE = 'https://law.lis.virginia.gov'
+ROOT = Path(__file__).resolve().parent
+PARSER = 'virginia-official-csv-1'
+NOTICE = '© Copyright Commonwealth of Virginia. All rights reserved. Site developed by the Division of Legislative Automated Systems (DLAS).'
+
+def rows(data):
+    csv.field_size_limit(16 * 1024**2)
+    result = list(csv.DictReader(io.StringIO(data.decode('utf-8-sig'), newline='')))
+    if not result or any(None in row or any(v is None for v in row.values()) for row in result):
+        raise ValueError('Malformed/empty CSV or field alignment failure')
+    return result
+
+def parse_csv(data, kind, source_url):
+    records = rows(data)
+    seen = Counter()
+    for ordinal, row in enumerate(records, 1):
+        if kind == 'code':
+            section = row['Section']
+            key = 'va-code:section:' + section
+            citation = 'Va. Code § ' + section
+            heading = row['Title']
+            body = row['Body']
+            url = BASE + '/vacode/' + section + '/'
+            fields = [x for x in row if x != 'Body']
+            hierarchy = [{'kind': k, 'number': row.get(k+'Num'), 'heading': row.get(k+'Name')}
+                         for k in ['Title','SubTitle','Part','Chapter','Article','SubPart'] if row.get(k+'Num')]
+            parent = 'va-code:' + '/'.join(x['kind'].lower()+x['number'] for x in hierarchy)
+        elif kind == 'constitution':
+            section = row['SectionName'].strip()
+            key = 'va-constitution:article:' + row['ArticleId'] + ':' + (section or 'preamble')
+            citation = 'Va. Const. ' + row['Article'] + ' ' + (section or row['ArticleName'])
+            heading = row['SectionTitle'] or row['ArticleName']
+            body = row['SectionText']
+            # Native preamble ID 0 belongs to Article I; the retained official
+            # Constitution inventory verifies /constitution/article1/.
+            article_link = '1' if row['ArticleId']=='0' and row['Article']=='Article I.' else row['ArticleId']
+            url = BASE + '/constitution/article' + article_link + '/'
+            fields = [x for x in row if x != 'SectionText']
+            hierarchy = [{'kind':'article','number':row['ArticleId'],'heading':row['ArticleName']}]
+            parent = 'va-constitution:article:'+row['ArticleId']
+        else:
+            raise ValueError(kind)
+        seen[key] += 1
+        occurrence = seen[key]
+        if occurrence > 1:
+            key += '/occurrence/' + str(occurrence)
+        node = html.fragment_fromstring(body or '<p></p>', create_parent='div')
+        # Publisher HTML includes Office-prefixed o:p/w:* tags without namespace
+        # bindings. Normalize only the text projection; original Body is untouched.
+        for element in node.iter():
+            if isinstance(element.tag,str) and ':' in element.tag:
+                element.tag = element.tag.rsplit(':',1)[1]
+        text = readable(node)
+        yield Provision(key=key, citation=citation.strip(), heading=heading,
+            text=heading + ('\n'+text if text else ''), markup=body, url=url, parent_key=parent,
+            unit_kind=('section' if section else 'preamble') if text else 'heading_only',
+            metadata={'source_row':ordinal, 'source_fields':{k:row[k] for k in fields},
+                'source_export_url':source_url, 'hierarchy':hierarchy,
+                'occurrence':occurrence, 'body_empty':not bool(text),
+                'tables':len(node.xpath('.//table')), 'media':media_links(node,BASE),
+                'clock_note':'LastUpdate, if present, is an undetermined publisher record-update clock; not legal effect or edition.',
+                'publisher_notice':NOTICE}, references=source_links(node,BASE))
+
+def sync_va(store: Store, acquirer: Acquirer, limit=None, as_of=None):
+    if store.root != ROOT / 'source':
+        raise ValueError('Virginia collector is restricted to its own source Store')
+    if not isinstance(acquirer, BudgetAcquirer):
+        raise ValueError('Use BudgetAcquirer to enforce the non-resetting lifetime cap')
+    if as_of is not None:
+        raise ValueError('No established publisher edition date; historical as_of is unsupported')
+    if limit is not None and limit < 0:
+        raise ValueError('limit must be nonnegative')
+    for kind, name in [('code','Code of Virginia'),('constitution','Constitution of Virginia')]:
+        store.collection('va-'+kind, ('us-va','Virginia','state','us'), name=name,
+            authority='Virginia General Assembly / Division of Legislative Automated Systems',
+            kind='statutes' if kind=='code' else 'constitution', homepage=BASE+('/vacode/' if kind=='code' else '/constitution/'),
+            source_status='official publisher CSV export', access='public official bulk CSV',
+            metadata={'notice':NOTICE,'snapshot_date':None,'legal_effect':None,
+                      'edition_note':'No exact incorporation/edition date established; HTTP and acquisition clocks are distinct.'})
+    receipt = acquirer.fetch(BASE+'/law-library')
+    root = html.fromstring(store.artifact(receipt.sha256))
+    items = []
+    for element in root.xpath('//a[@href]'):
+        href = element.get('href')
+        if re.fullmatch(r'/CSV/CoVTitle_[^/]+\.csv',href):
+            kind='code'; item=href.split('CoVTitle_')[1][:-4]
+        elif href == '/CSV/Constitution.csv':
+            kind='constitution'; item='complete'
+        else:
+            continue
+        items.append((kind,item,urljoin(BASE,href),element.getparent().getparent().text_content().strip()))
+    if len(items) < 70 or len(set(x[2] for x in items)) != len(items):
+        raise ValueError('Unexpected official export inventory')
+    for kind,item,url,title in items:
+        existing=store.db.execute('SELECT status FROM inventories WHERE collection_id=? AND item=?',('va-'+kind,item)).fetchone()
+        if not existing:
+            store.inventory('va-'+kind,item,url,'pending','Not yet acquired in this bounded collection')
+    done=0
+    for kind,item,url,title in items:
+        if limit is not None and done >= limit:
+            break
+        try:
+            r=acquirer.fetch(url)
+            units=list(parse_csv(store.artifact(r.sha256),kind,url))
+            version,count,created=store.ingest(collection='va-'+kind,document='va-'+kind+':'+item,
+                title=title.replace('PDFCSV','').strip(),url=url,acquisition=r.id,
+                snapshot_basis='Unknown publisher edition/incorporation date; HTTP Last-Modified is an export resource clock only.',
+                parser=PARSER,provisions=units,
+                metadata={'inventory_acquisition_id':receipt.id,'source_export_rows':len(units),
+                    'publisher_notice':NOTICE,'snapshot_date':None,
+                    'publication_date':None,'legal_effective_date':None})
+            # Finalize source-local draft projection labels/reading links without
+            # touching immutable source bytes or multiplying acquired versions.
+            with store.db:
+                store.db.executemany('UPDATE provisions SET url=?,unit_kind=? WHERE version_id=? AND key=? AND (url<>? OR unit_kind<>?)',
+                    [(u.url,u.unit_kind,version,u.key,u.url,u.unit_kind) for u in units])
+            store.inventory('va-'+kind,item,url,'ingested')
+            print(json.dumps({'item':item,'kind':kind,'provisions':count,'created':created,'bytes':r.size}),flush=True)
+            done+=1
+        except (AcquisitionError,ValueError) as exc:
+            store.inventory('va-'+kind,item,url,'blocked',str(exc))
+            print(json.dumps({'blocked':url,'error':str(exc)}),flush=True)
+            if isinstance(exc,AcquisitionError):
+                break
+    return write_report(store)
+
+def write_report(store, checks=None):
+    inventories=[dict(r) for r in store.db.execute('SELECT * FROM inventories ORDER BY collection_id,item')]
+    counts={table:store.db.execute('SELECT count(*) FROM '+table).fetchone()[0]
+            for table in ['collections','documents','versions','provisions','legal_references','acquisitions','artifacts']}
+    counts['heading_only_placeholders']=store.db.execute("SELECT count(*) FROM provisions WHERE json_extract(metadata,'$.body_empty')=1").fetchone()[0]
+    counts['units_with_body_text']=counts['provisions']-counts['heading_only_placeholders']
+    counts['body_text_with_notice_heading']=store.db.execute("SELECT count(*) FROM provisions WHERE json_extract(metadata,'$.body_empty')=0 AND (lower(heading) LIKE 'repealed%' OR lower(heading) LIKE 'expired%' OR lower(heading) LIKE 'reserved%')").fetchone()[0]
+    counts['body_text_without_notice_heading']=counts['units_with_body_text']-counts['body_text_with_notice_heading']
+    receipts=[dict(r) for r in store.db.execute('SELECT a.*,b.bytes FROM acquisitions a LEFT JOIN artifacts b ON b.sha256=a.sha256 ORDER BY a.id')]
+    for r in receipts:
+        r['headers']=json.loads(r['headers'])
+        r['object_path']=str(store.object_path(r['sha256'])) if r['sha256'] else None
+    coverage={kind:{'inventory_exports':sum(x['collection_id']=='va-'+kind for x in inventories),
+                    'indexed_exports':sum(x['collection_id']=='va-'+kind and x['status']=='ingested' for x in inventories),
+                    'provisions':store.db.execute('SELECT count(*) FROM provisions p JOIN versions v ON v.id=p.version_id JOIN documents d ON d.id=v.document_id WHERE d.collection_id=?',('va-'+kind,)).fetchone()[0]}
+              for kind in ['code','constitution']}
+    report={'generated_at':utc_now(),'source_store_root':str(store.root),'database':str(store.root/'legal.sqlite3'),
+        'adapter':str(ROOT/'adapter.py'),'helper_files':[str(ROOT/'budget.py'),str(ROOT/'checks.py')],
+        'collection_ids':['va-code','va-constitution'],'counts':counts,'coverage':coverage,
+        'budget':json.loads((ROOT/'budget.json').read_text()), 'budget_ledger':str(ROOT/'budget.json'),
+        'inventory':inventories,'receipts':receipts,
+        'hosts_contacted':sorted({urljoin(r['final_url'],'/').split('/')[2] for r in receipts}),
+        'redirects':[{'url':r['url'],'final_url':r['final_url'],'status':r['status'],'location':r['headers'].get('location')} for r in receipts if r['status'] in [301,302,303,307,308]],
+        'clocks':{'acquisition':'Receipt observed_at is completed acquisition UTC; HTTP clocks retained independently.',
+            'edition_incorporation':None,'publication':None,'legal_effect':None,
+            'source_update_notes':'Homepage says Code updated July 1 after prior session; Administrative Code daily; Constitution annually. This does not identify a particular export edition date.',
+            'csv_LastUpdate':'Retained verbatim per row; meaning not established; never used as effective_on or snapshot_date.',
+            'as_of':'Explicitly refused because edition dates are unknown.'},
+        'terms':{'notice':NOTICE,'basis':'Publisher explicitly provides CSV downloads and JSON/XML developer services for alternative layouts. No blanket redistribution license inferred.',
+            'robots':'law.lis.virginia.gov/robots.txt redirects to trailing-slash 404: no published robots rules. lis.virginia.gov/robots.txt retained.',
+            'privacy':'Official privacy route retained but is a JavaScript application shell; substantive privacy text not extracted.',
+            'delay_seconds':1.1,'restrictions':'No accounts, payments, barriers or shared commercial hosts used.'},
+        'gaps':['Administrative Code: 0 of 24 title inventories collected as legal text; no regulations coverage claimed.',
+            'Charters, authorities, compacts, uncodified acts, session laws and local ordinances not collected.',
+            'Coverage is of listed official CSV exports, not a certification of all law currently in force or export publisher completeness.',
+            'Linked instruments and external media are not downloaded; markup and media locators retained with visible text markers.',
+            'Repealed ranges and future-effective alternatives follow publisher CSV rows; legal effect is not adjudicated.'],
+        'heading_only_placeholders':[dict(r) for r in store.db.execute("SELECT key,citation,heading,url FROM provisions WHERE json_extract(metadata,'$.body_empty')=1")],
+        'count_interpretation':'Nonempty source body: legal text or publisher status/history notice. Notice-heading subtotal identifies headings starting Repealed, Expired or Reserved; this is a literal heading classification, not legal-effect analysis. Heading-only placeholders are excluded from all body-text counts.',
+        'focused_checks': checks or []}
+    (ROOT/'report.json').write_text(json.dumps(report,indent=2,ensure_ascii=False))
+    return report
+
+if __name__ == '__main__':
+    parser=argparse.ArgumentParser(); parser.add_argument('--limit',type=int); parser.add_argument('--as-of')
+    args=parser.parse_args()
+    with (ROOT/'sync.lock').open('a') as lock:
+        fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
+        s=Store(ROOT/'source'); a=BudgetAcquirer(s)
+        try:
+            sync_va(s,a,args.limit,args.as_of)
+        finally:
+            write_report(s); a.close();s.close()

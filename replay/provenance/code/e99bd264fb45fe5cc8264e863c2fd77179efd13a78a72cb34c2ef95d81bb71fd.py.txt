@@ -1,0 +1,103 @@
+"""Indiana bounded historical fallback; cached source bytes only after policy review.
+
+Current IGA code is inaccessible (SPA shell), API robots 403, IAC TLS unavailable.
+IN.gov terms restrict bots and redistribution. No further network calls are made
+by this adapter. Its personal local index contains two already-retained articles.
+"""
+from __future__ import annotations
+import json,re,shutil
+from pathlib import Path
+from copy import deepcopy
+from urllib.parse import urljoin
+from lxml import etree,html
+from psephos.acquire import Acquirer
+from psephos.store import Store,Provision,utc_now
+from psephos.parse import readable,markup,source_links,media_links
+
+ROOT=Path(__file__).resolve().parent
+BASE='https://www.in.gov/history/about-indiana-history-and-trivia/explore-indiana-history-by-topic/indiana-documents-leading-to-statehood/'
+POLICY='https://www.in.gov/core/terms_of_use.html'
+PARSER='in-ihb-historical-1'
+COLL='in-historical-constitutions'
+SOURCES={
+ '1816':BASE+'constitution-of-1816/article-i/',
+ '1851':BASE+'constitution-of-1851/article-1-bill-of-rights/',
+}
+NOTICE='Copyright © 2026 State of Indiana - All rights reserved.'
+LIMITATION='Historical original text, not current Indiana law; publisher transcription snapshot and precise legal effective dates unknown.'
+
+def cached(store,url):
+ row=store.db.execute('SELECT a.*,b.bytes FROM acquisitions a JOIN artifacts b ON a.sha256=b.sha256 WHERE url=? AND status BETWEEN 200 AND 299 ORDER BY a.id DESC LIMIT 1',(url,)).fetchone()
+ if row is None: raise ValueError('Not retained; acquisition stopped under publisher access/terms constraints: '+url)
+ store.artifact(row['sha256'])
+ return row
+
+def content(data):
+ root=html.fromstring(data)
+ nodes=root.xpath('//main/article[@aria-label="IN.gov Content"]')
+ if len(nodes)!=1: raise ValueError('Expected unique IHB content article; shell/catalog not accepted')
+ node=deepcopy(nodes[0]); headings=node.xpath('./section/h1[@class="info-heading"]')
+ if len(headings)!=1: raise ValueError('Missing source heading')
+ heading=readable(headings[0])
+ for n in node.xpath('./section[@class="info-internal-banner"]'):node.remove(n)
+ if node.xpath('.//script'):raise ValueError('Script in legal container')
+ return heading,node
+
+def units(data,year,url):
+ heading,node=content(data)
+ if not heading.startswith('Article '):raise ValueError('Only article law bodies accepted')
+ chunks=[]; current=None; number=None
+ for child in node:
+  if not isinstance(child.tag,str): continue
+  m=re.match(r'^(?:Section|Sect\.)\s+(\d+)(?:st|nd|rd|th)?\.',readable(child))
+  if m:
+   if current is not None:chunks.append((number,current))
+   number=m[1];current=etree.Element('div',source_section=number)
+  if current is None:
+   if readable(child):raise ValueError('Unclassified article preface')
+  else:current.append(deepcopy(child))
+ if current is not None:chunks.append((number,current))
+ expected=24 if year=='1816' else 37
+ if [n for n,_ in chunks]!=[str(n) for n in range(1,expected+1)]:raise ValueError('Unexpected native article section sequence')
+ assert readable(node)=='\n'.join(readable(c) for _,c in chunks)
+ for n,c in chunks:
+  yield Provision(key=f'in:constitution-{year}/article-1/section-{n}',citation=f'Ind. Const. ({year} original) art. I, § {n}',heading=f'{heading} — Section {n}',text=readable(c),markup=markup(c),url=url,parent_key=f'in:constitution-{year}/article-1',unit_kind='section',metadata={'source_identifier':f'{year} Article I Section {n}','source_section_number':n,'edition_year':year,'legal_status':'historical_original_not_current','limitation':LIMITATION,'tables':len(c.xpath('.//table')),'media':media_links(c,url)},references=source_links(c,url))
+
+def sync_in(store,acquirer,limit=None,as_of=None):
+ if as_of:raise ValueError('Unknown publisher snapshot dates; no historical as-of selection implemented')
+ if shutil.disk_usage(store.root).free<=100*1024**3:raise ValueError('Free disk below 100 GiB floor')
+ policy=cached(store,POLICY)
+ store.collection(COLL,('us-in','Indiana','state','us'),name='Indiana historical constitutions — original Article I, 1816 and 1851',authority='Indiana Historical Bureau (official state publisher transcription)',kind='historical_constitution',homepage=BASE,source_status=LIMITATION,access='Already-retained public HTML; further collection stopped after terms review. Personal local retrieval only; no redistribution license asserted.',metadata={'terms_url':POLICY,'terms_artifact':policy['sha256'],'copyright_notice':NOTICE,'robots_url':'https://www.in.gov/robots.txt','scope':'Complete original Article I only in each of two constitutions; remaining articles not collected.'})
+ for year in SOURCES:
+  inventory_url=BASE+f'constitution-of-{year}/'
+  inv=cached(store,inventory_url)
+  h=html.fromstring(store.artifact(inv['sha256']))
+  for a in h.xpath('//main/article//a[@href]'):
+   url=urljoin(inventory_url,a.get('href')).rstrip('/')+'/'
+   if not url.startswith(inventory_url) or url==inventory_url:continue
+   item=f'{year}/'+url.rstrip('/').split('/')[-1]
+   status='retained_pending_index' if url==SOURCES[year] else 'blocked'
+   reason=None if status!='blocked' else 'Further portal acquisition stopped after terms review; full constitution not collected.'
+   store.inventory(COLL,item,url,status,reason)
+ for year,url in list(SOURCES.items())[:limit]:
+  r=cached(store,url);heading,_=content(store.artifact(r['sha256']))
+  store.ingest(collection=COLL,document=f'in:constitution-{year}/article-1',title=f'Indiana Constitution {year} original — {heading}',url=url,acquisition=r['id'],snapshot_date=None,snapshot_basis='Publisher transcription exact snapshot date unknown; year identifies historical source edition only',parser=PARSER,provisions=units(store.artifact(r['sha256']),year,url),metadata={'edition_year':year,'legal_status':'historical_original_not_current','limitation':LIMITATION,'source_heading':heading,'terms_artifact':policy['sha256'],'copyright_notice':NOTICE,'full_source_html_retained':True})
+  store.inventory(COLL,f'{year}/'+url.rstrip('/').split('/')[-1],url,'indexed')
+ store.collection('in-current-code',('us-in','Indiana','state','us'),name='Indiana Code — acquisition blocked',authority='Indiana General Assembly',kind='statutory_code',homepage='https://iga.in.gov/',source_status='No law text acquired',access='SPA shell at code and asset routes; API robots 403; no bypass attempted')
+ store.inventory('in-current-code','current-code','https://iga.in.gov/legislative/laws/current/ic/','blocked','Identical application shell at law routes and referenced JS; no law content')
+ store.inventory('in-current-code','api','https://api.iga.in.gov/robots.txt','blocked','403 robots policy; no API content requested')
+ store.collection('in-current-regulations',('us-in','Indiana','state','us'),name='Indiana Administrative Code — acquisition blocked',authority='Indiana General Assembly',kind='administrative_code',homepage='https://iac.iga.in.gov/iac/',source_status='No law text acquired',access='Legacy HTTPS connection reset; new register host returns SPA shell including referenced JS')
+ store.inventory('in-current-regulations','legacy-iac','https://iac.iga.in.gov/iac/','blocked','robots HTTPS connection reset; insecure HTTP redirect not followed')
+ store.inventory('in-current-regulations','register','https://iar.iga.in.gov/','blocked','Application shell only, including referenced JS; no law content')
+
+def report(store,checks):
+ counts={t:store.db.execute(f'SELECT count(*) FROM {t}').fetchone()[0] for t in ['artifacts','acquisitions','documents','versions','provisions','legal_references']}
+ rows=[dict(r) for r in store.db.execute('SELECT * FROM acquisitions ORDER BY id')]
+ out={'jurisdiction':'IN','status':'partial_historical_articles_only_current_code_blocked','generated_at':utc_now(),'paths':{'store':str(store.root),'adapter':str(ROOT/'adapter.py'),'report':str(ROOT/'report.json'),'checks':str(ROOT/'checks.py'),'budget':str(ROOT/'budget.json')},'counts':counts,'decoded_http_bytes':json.loads((ROOT/'budget.json').read_text())['decoded_bytes'],'http_budget_bytes':200*1024**2,'unique_artifact_bytes':store.db.execute('SELECT sum(bytes) FROM artifacts').fetchone()[0],'minimum_host_delay_seconds':1.1,'coverage':['Complete 1816 original Constitution Article I: 24 sections','Complete 1851 original Constitution Article I: 37 sections'],'gaps':['No current Indiana statutes or regulations acquired','Neither historical constitution complete beyond Article I','Constitutional signatures, schedules and supporting documents uncollected','IGA and IAR robots returned application HTML, not a usable explicit robots policy; retained as evidence, not indexed','IN.gov terms contain restrictive bot and reuse language; no further acquisition after terms review'],'dates':{'snapshot_date':None,'effective_on':None,'published_on':None,'edition_years':['1816','1851'],'basis':LIMITATION},'access':{'terms_url':POLICY,'restriction':'Personal use retrieval license; no resale or redistribution; prohibited-behavior clause includes bots. Further HTTP collection stopped.','copyright_notice':NOTICE,'robots':store.artifact(cached(store,'https://www.in.gov/robots.txt')['sha256']).decode()},'checks':checks,'inventories':[dict(r) for r in store.db.execute('SELECT * FROM inventories ORDER BY collection_id,item')],'versions':[dict(r) for r in store.db.execute('SELECT * FROM versions ORDER BY document_id')],'artifacts':[dict(r) for r in store.db.execute('SELECT * FROM artifacts ORDER BY sha256')],'acquisitions':rows}
+ (ROOT/'report.json').write_text(json.dumps(out,indent=2,ensure_ascii=False)+'\n')
+ return out
+
+if __name__=='__main__':
+ s=Store(ROOT/'store')
+ try:sync_in(s,None);print(json.dumps(report(s,{})['counts']))
+ finally:s.close()

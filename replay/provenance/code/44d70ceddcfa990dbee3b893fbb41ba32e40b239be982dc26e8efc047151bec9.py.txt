@@ -1,0 +1,67 @@
+"""Lifetime decoded-byte ledger; reserve before each HTTP response, fail closed on crashes."""
+import json
+import os
+import shutil
+from contextlib import contextmanager
+from urllib.parse import urlsplit
+from psephos.acquire import Acquirer, AcquisitionError
+
+CAP = 209715200
+RESERVATION = 16 * 1024**2
+ALLOWED = {'law.lis.virginia.gov', 'lis.virginia.gov'}
+
+class BudgetAcquirer(Acquirer):
+    def __init__(self, store):
+        self.ledger_path = store.root.parent / 'budget.json'
+        if self.ledger_path.exists():
+            self.ledger = json.loads(self.ledger_path.read_text())
+        else:
+            if store.db.execute('SELECT count(*) FROM acquisitions').fetchone()[0]:
+                raise AcquisitionError('Existing receipts without lifetime ledger; refuse reset')
+            self.ledger = {'cap': CAP, 'consumed_decoded_bytes': 0, 'reserved_bytes': 0, 'responses': 0}
+            self.save()
+        if self.ledger['reserved_bytes']:
+            raise AcquisitionError('Unresolved interrupted HTTP reservation; manual accounting required')
+        super().__init__(store, delay=1.1, max_bytes=CAP-self.ledger['consumed_decoded_bytes'])
+        self.transport_client = self.client
+        self.client = self
+
+    def save(self):
+        temporary = self.ledger_path.with_suffix('.tmp')
+        with temporary.open('w') as out:
+            json.dump(self.ledger, out, indent=2)
+            out.flush()
+            os.fsync(out.fileno())
+        os.replace(temporary, self.ledger_path)
+
+    @contextmanager
+    def stream(self, method, url, **kwargs):
+        if urlsplit(url).hostname not in ALLOWED:
+            raise AcquisitionError('Uncoordinated host: '+url)
+        if shutil.disk_usage(self.store.root).free < 105 * 1024**3:
+            raise AcquisitionError('Disk free approaching 100 GiB')
+        if self.ledger['consumed_decoded_bytes'] + RESERVATION > CAP:
+            raise AcquisitionError('Lifetime byte budget cannot reserve another response')
+        self.ledger['reserved_bytes'] = RESERVATION
+        self.save()
+        consumed = 0
+        try:
+            with self.transport_client.stream(method, url, **kwargs) as response:
+                original_iter = response.iter_bytes
+                def counted_iter(*args, **kwargs):
+                    nonlocal consumed
+                    for chunk in original_iter(chunk_size=65536):
+                        consumed += len(chunk)
+                        if consumed > RESERVATION - 1024**2:
+                            raise AcquisitionError('Per-response safety cap reached')
+                        yield chunk
+                response.iter_bytes = counted_iter
+                yield response
+        finally:
+            self.ledger['consumed_decoded_bytes'] += consumed
+            self.ledger['reserved_bytes'] = 0
+            self.ledger['responses'] += 1
+            self.save()
+
+    def close(self):
+        self.transport_client.close()

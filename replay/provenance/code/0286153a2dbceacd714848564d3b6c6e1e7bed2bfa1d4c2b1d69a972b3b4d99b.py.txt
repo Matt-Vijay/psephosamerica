@@ -1,0 +1,171 @@
+"""Official New Jersey acquisition, confined to this collector's isolated store."""
+from pathlib import Path
+import json
+import shutil
+from urllib.parse import urlsplit
+from psephos.acquire import Acquirer, AcquisitionError
+from psephos.store import Store, utc_now
+
+ROOT = Path(__file__).resolve().parent
+CAP = 188743680
+class BudgetAcquirer(Acquirer):
+    def __init__(self, store):
+        self.ledger_path = ROOT / 'http-budget.json'
+        self.ledger = json.loads(self.ledger_path.read_text()) if self.ledger_path.exists() else {'cap_bytes':CAP,'newly_decoded_bytes':0,'events':[]}
+        super().__init__(store,max_bytes=CAP-self.ledger['newly_decoded_bytes']-1048576,delay=1.1)
+        self.depth=0
+    @staticmethod
+    def official(url):
+        host=urlsplit(url).hostname or ''
+        if not (host=='njleg.gov' or host.endswith('.njleg.gov') or host=='nj.gov' or host.endswith('.nj.gov') or host=='state.nj.us' or host.endswith('.state.nj.us')):
+            raise AcquisitionError('Out-of-scope host: '+host)
+    def _allowed(self,url):
+        self.official(url)
+        return super()._allowed(url)
+    def fetch(self,url,**kwargs):
+        self.official(url)
+        if shutil.disk_usage(ROOT).free < 100*1024**3:
+            raise AcquisitionError('Free disk below 100 GiB threshold')
+        if self.max_bytes-self.downloaded < 1048576:
+            raise AcquisitionError('Budget reserve reached')
+        start=self.downloaded
+        outer=self.depth==0
+        self.depth+=1
+        try:
+            kwargs['max_file_bytes']=min(kwargs.get('max_file_bytes',32*1024**2),self.max_bytes-self.downloaded)
+            return super().fetch(url,**kwargs)
+        finally:
+            self.depth-=1
+            if outer:
+                delta=self.downloaded-start
+                self.ledger['newly_decoded_bytes']+=delta
+                self.ledger['events'].append({'at':utc_now(),'url':url,'newly_decoded_bytes':delta})
+                tmp=self.ledger_path.with_suffix('.tmp')
+                tmp.write_text(json.dumps(self.ledger,indent=2))
+                tmp.replace(self.ledger_path)
+
+if __name__=='__main__':
+    import sys
+    from lxml import html
+    s=Store(ROOT/'store'); a=BudgetAcquirer(s)
+    try:
+        for url in sys.argv[1:]:
+            try:
+                r=a.fetch(url)
+                data=s.artifact(r.sha256)
+                print(json.dumps({'url':url,'id':r.id,'sha':r.sha256,'bytes':r.size}))
+                if not data.startswith(b'%PDF'):
+                    tree=html.fromstring(data)
+                    print(tree.text_content()[:14000])
+                    print(json.dumps([(x.text_content().strip(),x.get('href')) for x in tree.xpath('//a[@href]')],ensure_ascii=False))
+            except Exception as e: print(type(e).__name__,str(e))
+    finally: a.close();s.close()
+
+# The actual sync uses publisher RTF headnote styles to locate boundaries in the
+# companion plain text. No section-body reflow, date inference or OCR is used.
+import re
+import zipfile
+import hashlib
+from collections import Counter
+from psephos.store import Provision
+
+BASE='https://pub.njleg.gov/statutes/'
+INVENTORY='https://www.njleg.state.nj.us/api/downloads/|statutes/pub.njleg.gov/Statutes'
+DISCLAIMER='https://www.njleg.state.nj.us/disclaimer'
+
+def rtf_headnote_text(raw):
+    raw=raw.replace('\r','').replace('\n','')
+    raw=re.sub(r"\\'([a-fA-F0-9]{2})",lambda m:bytes.fromhex(m[1]).decode('cp1252'),raw)
+    raw=raw.replace('\\line ','\r\n').replace('\\tab ','\t')
+    raw=re.sub(r'\\[a-zA-Z]+-?\d* ?', '', raw)
+    return raw.replace('{','').replace('}','').strip()
+
+def statute_structure(txt,rtf):
+    """Use explicit RTF s3 (Headnotes); fail if any nonblank headnote cannot map."""
+    heads=[];cursor=0;blank=0
+    for raw in re.findall(r'\\s3 (.*?)\\par',rtf,re.S):
+        heading=rtf_headnote_text(raw)
+        if not heading:
+            blank+=1;continue
+        at=txt.find(heading,cursor)
+        if at<0:raise ValueError('RTF headnote absent from companion TXT: '+repr(heading))
+        heads.append((at,heading));cursor=at+len(heading)
+    if len(heads)<10000:raise ValueError('Statute export lacks expected substantive headnotes')
+    titles=list(re.finditer(r'^(?:TITLE\s+(\d+[A-Z]?)\s+([^\r\n]+)|APPENDIX ([A-Z])\s+([^\r\n]+))',txt,re.M))
+    volumes=[{'key':'preface','title':'Statute export preface','start':0,'end':titles[0].start(),'kind':'publisher_preface'}]
+    for i,m in enumerate(titles):
+        key=m[1] or 'App.'+m[3]
+        volumes.append({'key':key,'title':m[0].strip(),'start':m.start(),'end':titles[i+1].start() if i+1<len(titles) else len(txt),'kind':'statutory_title' if m[1] else 'statutory_appendix'})
+    return volumes,heads,blank
+
+def statute_units(txt,volume,heads):
+    doc='nj-statutes:'+volume['key']
+    relevant=[(at,h) for at,h in heads if volume['start']<=at<volume['end']]
+    points=[(volume['start'],volume['title'],None)]
+    for at,h in relevant:
+        token=h.split()[0].rstrip('.,')
+        if re.match(r'^52:9H [0-9]+\b',h):token=' '.join(h.split()[:2])
+        points.append((at,h,token))
+    counts=Counter(x[2] for x in points if x[2]);seen=Counter()
+    for i,(start,heading,token) in enumerate(points):
+        end=points[i+1][0] if i+1<len(points) else volume['end']
+        if start==end:continue
+        text=txt[start:end]
+        if not text.strip():raise ValueError('Unexpected whitespace-only source span')
+        kind='section' if token and re.fullmatch(r'(?:\d+[A-Z]?|App\.A):[\w.():-]+',token) else 'source_block' if token else 'scope_notes'
+        if token and text.strip()==heading.strip():
+            kind='disposition_note' if re.search(r'reallocat|relocat|repeal',text,re.I) else 'section_heading'
+        seen[token]+=1
+        key='nj-statutes:'+token if token else doc+'/_intro'
+        if token and counts[token]>1:key+='/occurrence-'+str(seen[token])
+        yield Provision(key=key,citation='N.J. Stat. § '+token if token else volume['title'],heading=heading,text=text,markup='',url=BASE+'STATUTES-TEXT.zip',parent_key=doc,unit_kind=kind,metadata={'source_member':'STATUTES.TXT','source_start_byte':start,'source_end_byte':end,'encoding':'windows-1252','boundary_basis':'publisher RTF Headnotes style s3, exact sequential mapping to TXT','source_identifier':token,'duplicate_identifier_count':counts[token] if token else 0,'source_rtf_member':'STATUTES.RTF','warning':'Plain-text projection; companion original RTF retained. Source identifier typos are not silently corrected. Legal effectiveness is not inferred.'})
+
+def sync_nj(s: Store,a: Acquirer,limit=None,as_of=None):
+    if as_of:raise ValueError('NJ bulk sync has no historical endpoint or exact incorporation date; as_of is unsupported')
+    if a.delay<1:a.delay=1.0
+    # The standalone runner supplies BudgetAcquirer; generic callers must supply
+    # their own remaining cumulative budget, never a fresh unbounded Acquirer.
+    if a.max_bytes>CAP:raise ValueError('Acquirer max_bytes must fit NJ cumulative cap')
+    inv=a.fetch(INVENTORY);listing=json.loads(s.artifact(inv.sha256));notice=a.fetch(DISCLAIMER);readme=a.fetch(BASE+'_READ_ME.txt')
+    s.collection('nj-statutes',('us-nj','New Jersey','state','us'),name='New Jersey General and Permanent Statutes',authority='New Jersey Legislature, Office of Legislative Services',kind='statutes',homepage='https://www.njleg.state.nj.us/downloads',source_status='Official state publisher bulk text; unannotated; exact incorporation date unknown',access='Public download; robots respected; publisher disclaimer and read-me retained; no blanket redistribution license inferred',metadata={'inventory_artifact':inv.sha256,'disclaimer_artifact':notice.sha256,'readme_artifact':readme.sha256,'warning':'ZIP modification dates do not establish legal currency or effective dates. Catalog/LCTOC is not substantive statute text.'})
+    raw=a.fetch(BASE+'STATUTES-TEXT.zip',max_file_bytes=90*1024**2)
+    z=zipfile.ZipFile(s.object_path(raw.sha256));txtbytes=z.read('STATUTES.TXT');rtfbytes=z.read('STATUTES.RTF');txt=txtbytes.decode('cp1252');rtf=rtfbytes.decode('cp1252')
+    volumes,heads,blank=statute_structure(txt,rtf)
+    currency=txt.splitlines()[1]
+    manifest={'statutes_currency':currency,'statutes_txt_sha256':hashlib.sha256(txtbytes).hexdigest(),'statutes_rtf_sha256':hashlib.sha256(rtfbytes).hexdigest(),'txt_bytes':len(txtbytes),'rtf_bytes':len(rtfbytes),'rtf_headnotes':len(heads),'blank_rtf_headnotes':blank,'volumes':volumes,'publisher_inventory':listing,'no_image_objects_in_rtf':rtf.count('\\pict')==0,'rtf_table_objects':rtf.count('\\trowd')}
+    for v in volumes:
+        existing=s.db.execute('SELECT 1 FROM documents WHERE id=?',('nj-statutes:'+v['key'],)).fetchone()
+        if not existing:s.inventory('nj-statutes',v['key'],BASE+'STATUTES-TEXT.zip','pending')
+    for v in volumes[:limit]:
+        vid,count,new=s.ingest(collection='nj-statutes',document='nj-statutes:'+v['key'],title=v['title'],url=BASE+'STATUTES-TEXT.zip',acquisition=raw.id,member='STATUTES.TXT',snapshot_date=None,snapshot_basis='Unknown exact publisher incorporation date; verbatim session-level currency in metadata, not inferred from ZIP/HTTP timestamp',parser='nj-rtf-headnotes-1',provisions=statute_units(txt,v,heads),metadata={'currency_notice':currency,'source_start_byte':v['start'],'source_end_byte':v['end'],'source_txt_sha256':manifest['statutes_txt_sha256'],'source_rtf_sha256':manifest['statutes_rtf_sha256'],'source_volume_kind':v['kind'],'inventory_artifact':inv.sha256,'publisher_file_modified':next(x['DateModified'] for x in listing if x['FileName']=='STATUTES-TEXT.zip')})
+        s.inventory('nj-statutes',v['key'],BASE+'STATUTES-TEXT.zip','indexed')
+        print(json.dumps({'volume':v['key'],'provisions':count,'new':new}),flush=True)
+    con=a.fetch(BASE+'NJCONST-TEXT.zip');cz=zipfile.ZipFile(s.object_path(con.sha256));ct=cz.read('NJCONST.TXT').decode('cp1252')
+    articles=list(re.finditer(r'^[\t ]*ARTICLE ([IVX]+)[\t ]*\r?$',ct,re.M))
+    if len(articles)!=11:raise ValueError('Constitution expected 11 source articles')
+    units=[];starts=[(0,'preamble')]+[(m.start(),m[1]) for m in articles]
+    for i,(start,name) in enumerate(starts):
+        end=starts[i+1][0] if i+1<len(starts) else len(ct)
+        units.append(Provision(key='nj-constitution:'+name,citation='N.J. Const. '+('preamble' if name=='preamble' else 'art. '+name),heading='New Jersey Constitution '+name,text=ct[start:end],markup='',url=BASE+'NJCONST-TEXT.zip',unit_kind='preamble' if name=='preamble' else 'article',metadata={'source_member':'NJCONST.TXT','source_start_byte':start,'source_end_byte':end,'encoding':'windows-1252','warning':'Article-level units retain all sections, paragraphs, amendment/effective-date annotations; companion RTF preserved.'}))
+    s.collection('nj-constitution',('us-nj','New Jersey','state','us'),name='New Jersey Constitution 1947',authority='New Jersey Legislature, Office of Legislative Services',kind='constitution',homepage='https://www.njleg.state.nj.us/constitution',source_status='Official state publisher bulk text',access='Public publisher download; disclaimer retained',metadata={'currency_notice':ct.splitlines()[1],'currency_month':'2021-11','disclaimer_artifact':notice.sha256})
+    s.ingest(collection='nj-constitution',document='nj-constitution:1947',title='New Jersey Constitution 1947',url=BASE+'NJCONST-TEXT.zip',acquisition=con.id,member='NJCONST.TXT',snapshot_date=None,snapshot_basis='Publisher says updated through amendments adopted November 2021; day unknown, adoption not blanket effectiveness',parser='nj-constitution-articles-1',provisions=units,metadata={'currency_notice':ct.splitlines()[1],'currency_month':'2021-11','publisher_file_modified':next(x['DateModified'] for x in listing if x['FileName']=='NJCONST-TEXT.zip')})
+    s.inventory('nj-constitution','1947',BASE+'NJCONST-TEXT.zip','indexed')
+    toc=a.fetch(BASE+'LCTOC-TEXT.zip');tz=zipfile.ZipFile(s.object_path(toc.sha256));tt=tz.read('LCTOC.TXT').decode('cp1252')
+    manifest['lctoc_currency']=next(x for x in tt.splitlines() if x.strip());manifest['lctoc_counted_as_full_text']=False
+    (ROOT/'manifest.json').write_text(json.dumps(manifest,indent=2))
+    write_report(s)
+
+def write_report(s):
+    manifest=json.loads((ROOT/'manifest.json').read_text()) if (ROOT/'manifest.json').exists() else {}
+    receipts=[dict(r) for r in s.db.execute('SELECT * FROM acquisitions ORDER BY id')]
+    for r in receipts:r['headers']=json.loads(r['headers'])
+    (ROOT/'receipts.json').write_text(json.dumps(receipts,indent=2))
+    report={'state':'NJ','store_path':str(s.root),'database_path':str(s.root/'legal.sqlite3'),'adapter_path':str(ROOT/'adapter.py'),'counts':{name:s.db.execute('SELECT count(*) FROM '+name).fetchone()[0] for name in ['collections','documents','versions','provisions','artifacts','acquisitions']},'unit_kinds':dict(s.db.execute('SELECT unit_kind,count(*) FROM provisions GROUP BY unit_kind')),'unique_raw_bytes':s.db.execute('SELECT coalesce(sum(bytes),0) FROM artifacts').fetchone()[0],'newly_decoded_http_bytes':json.loads((ROOT/'http-budget.json').read_text())['newly_decoded_bytes'],'hard_cap_bytes':CAP,'http_accounting':'Every network request used BudgetAcquirer. Acquirer counts decoded success streams, including robots, JavaScript, inventories and probes. Redirect/error bodies are not consumed or decoded. No web search/browser requests. ZIP member decompression is local and excluded from HTTP count.','receipts_path':str(ROOT/'receipts.json'),'objects':'store/objects/<sha256-prefix>/<sha256>','currency':{k:manifest.get(k) for k in ['statutes_currency','lctoc_currency']},'coverage':'Entire retained STATUTES.TXT export: publisher preface, 69 numbered titles and Appendix A; complete Constitution bulk text (11 articles plus preamble). RTF companions retained in immutable ZIPs. LCTOC retained as supporting metadata only.','gaps':['No claim of all currently operative NJ law: statute header only through P.L.2025 c.405 / J.R.22; LCTOC separately says P.L.2026 c.30 / JR1. No amendments synthesized.','Administrative regulations not acquired; OAL directs public code to out-of-scope LexisNexis. DEP attempted inventory paths returned 404 or a non-substantive 200 response, retained only as probe.','Folio archives not downloaded; TXT and RTF variants were preferred. Statutory source typos and wording retained.','Exact incorporation/publication/effectiveness dates unknown; snapshot_date is NULL. Date-filtered retrieval excludes unknown-date snapshots.'],'access_conditions':'Local research use only; no blanket rights license. Official NJ publisher hosts only, at least 1.1 seconds between requests per host within a run, robots checked; no accounts or shared vendor requests. Legislature disclaimer warns unannotated law may be inoperable and effective dates usually absent. NJ general conditions permit copying/distribution unless particular restrictions apply; no blanket license asserted. Source disclaimers/read-me retained.','free_disk_bytes':shutil.disk_usage(ROOT).free,'completed_at':utc_now()}
+    report['collection_counts']=[dict(r) for r in s.db.execute('SELECT c.id, count(DISTINCT d.id) AS documents, count(DISTINCT v.id) AS versions, count(p.id) AS provisions FROM collections c LEFT JOIN documents d ON d.collection_id=c.id LEFT JOIN versions v ON v.document_id=d.id LEFT JOIN provisions p ON p.version_id=v.id GROUP BY c.id')]
+    report['source_archives']=[dict(r) for r in s.db.execute("SELECT a.url,a.id AS acquisition_id,a.sha256,b.bytes,a.observed_at FROM acquisitions a JOIN artifacts b ON b.sha256=a.sha256 WHERE a.url LIKE '%-TEXT.zip'")]
+    report['dependencies']={'repository':'/Users/matthew/Documents/ChatGPT/coding projs/psephosamerica','baseline':'e077e981d1e7f9914e17f73407b557973ee0ef15','python':'/Users/matthew/Documents/ChatGPT/coding projs/psephosamerica/.venv/bin/python','existing_modules':['psephos.store','psephos.acquire','psephos.retrieve','httpx','lxml'],'new_installs':False}
+    report['gaps'].append('Ten anomalous RTF headnote blocks remain source_block units. Two section headings (18A:62-55 and 36:2-261) have source bodies in the following source_block because publisher RTF styling crosses body/heading boundaries. Eight relocation/repeal notices are disposition_note units, not substantive sections. All original text remains searchable and reconstructs exactly.')
+    report['scope_complete']=s.db.execute('SELECT count(*) FROM documents').fetchone()[0]==72
+    if (ROOT/'checks.json').exists():report['checks']=json.loads((ROOT/'checks.json').read_text())
+    (ROOT/'report.json').write_text(json.dumps(report,indent=2))
+    return report

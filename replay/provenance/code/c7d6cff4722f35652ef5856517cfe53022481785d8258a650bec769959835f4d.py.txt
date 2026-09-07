@@ -1,0 +1,217 @@
+"""Official Maine title DOCX exports. No core or production-store writes.
+Run with repository .venv/bin/python adapter.py [--limit N].
+"""
+from __future__ import annotations
+import argparse
+from collections import Counter
+from copy import deepcopy
+from datetime import datetime
+import io
+import hashlib
+import json
+from pathlib import Path
+import re
+import shutil
+from urllib.parse import urljoin, urlsplit
+from zipfile import ZipFile
+from lxml import etree, html
+from psephos.acquire import Acquirer, AcquisitionError
+from psephos.store import Store, Provision, Reference, utc_now
+
+BASE = Path(__file__).resolve().parent
+INDEX = 'https://legislature.maine.gov/statutes/'
+CAP = 188743680
+W = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'
+NS = {'w': W}
+PARSER = 'me-docx-1'
+
+class BudgetAcquirer(Acquirer):
+    """Durable cumulative decoded HTTP ledger, including policy fetches and probes."""
+    def __init__(self, store):
+        self.ledger = BASE / 'budget.json'
+        self.prior = json.loads(self.ledger.read_text())['newly_decoded_bytes'] if self.ledger.exists() else 0
+        # A full MiB reserve covers a decoder chunk before the core's cap check.
+        super().__init__(store, max_bytes=max(0, CAP-self.prior-1048576), delay=1.1)
+    def fetch(self, url, **kwargs):
+        if urlsplit(url).hostname != 'legislature.maine.gov':
+            raise AcquisitionError('Outside exclusive official publisher host')
+        if shutil.disk_usage(BASE).free < 100*1024**3:
+            raise AcquisitionError('Free disk below 100 GiB')
+        try:
+            return super().fetch(url, **kwargs)
+        finally:
+            self.ledger.write_text(json.dumps({'newly_decoded_bytes':self.prior+self.downloaded,
+                'hard_cap':CAP,'accounting':'decoded response chunks; no HTTP outside Acquirer',
+                'updated_at':utc_now()},indent=2))
+    def _allowed(self, url):
+        if urlsplit(url).hostname != 'legislature.maine.gov':
+            raise AcquisitionError('Redirect outside exclusive official publisher host')
+        return super()._allowed(url)
+
+def xml(data):
+    parser = etree.XMLParser(resolve_entities=False, no_network=True, load_dtd=False)
+    root = etree.fromstring(data, parser)
+    if root.getroottree().docinfo.doctype:
+        raise ValueError('Unexpected XML doctype')
+    return root
+
+def word_text(node):
+    parts=[]
+    def walk(n):
+        tag=etree.QName(n).localname
+        if tag in {'drawing','pict','object'}:
+            parts.append('[Source media retained in DOCX; figure not transcribed.]')
+        if tag in {'footnoteReference','endnoteReference'}:
+            parts.append(f'[{tag} {n.get("{"+W+"}id")}; see source notes]')
+        if tag in {'t','delText'} and n.text:
+            parts.append(n.text)
+        elif tag in {'tab','br','cr'}:
+            parts.append('\t' if tag=='tab' else '\n')
+        elif tag == 'noBreakHyphen': parts.append('\u2011')
+        elif tag == 'softHyphen': parts.append('\u00ad')
+        for c in n: walk(c)
+        if tag in {'p','tr'}: parts.append('\n')
+        if tag == 'tc': parts.append('\t')
+    walk(node)
+    return '\n'.join(re.sub(r'[^\S\n\t]+',' ',line).strip() for line in ''.join(parts).splitlines() if line.strip())
+
+def parse_docx(data, title, url):
+    if not data.startswith(b'PK'):
+        raise ValueError('Expected actual DOCX ZIP, not HTML/error response')
+    with ZipFile(io.BytesIO(data)) as z:
+        if sum(i.file_size for i in z.infolist()) > 250*1024**2:
+            raise ValueError('Expanded title exceeds bounded parser size')
+        root=xml(z.read('word/document.xml'))
+        body=root.find('w:body',NS)
+        if body is None: raise ValueError('Missing Word body')
+        rels={}
+        if 'word/_rels/document.xml.rels' in z.namelist():
+            rels={r.get('Id'):r.get('Target') for r in xml(z.read('word/_rels/document.xml.rels'))}
+        texts=[word_text(n) for n in body]
+        if not any(t.startswith('TITLE '+title) for t in texts[:5]):
+            raise ValueError('Title semantic identity mismatch')
+        notice_start=next((i for i,t in enumerate(texts) if t.startswith('The State of Maine claims a copyright')),None)
+        if notice_start is None: raise ValueError('Publisher disclaimer missing')
+        notice='\n'.join(texts[notice_start:])
+        match=re.search(r'current through ([A-Z][a-z]+ \d{1,2}, \d{4})',notice)
+        incorporation=datetime.strptime(match[1],'%B %d, %Y').date().isoformat() if match else None
+        # Retain extraction strings as publisher generation metadata, never legal effect.
+        supplemental={}
+        for name in z.namelist():
+            if re.match(r'word/(header|footer).*\.xml$',name):
+                supplemental[name]=word_text(xml(z.read(name)))
+        meta={'publisher_incorporation_date':incorporation,'publisher_notice':notice,
+              'headers_footers':supplemental,
+              'media_members':[n for n in z.namelist() if '/media/' in n or n.startswith('media/')],
+              'automatic_numbering_nodes':len(root.xpath('//w:numPr',namespaces=NS)),
+              'source_member':'word/document.xml',
+              'clocks_note':'Snapshot uses explicit title incorporation date; legal effective dates unresolved; source package timestamps not treated as edition dates.'}
+        groups=[]; current=[]; key='_context/1'; heading='Title '+title+' — scope context'; kind='scope_notes'; scope=1
+        def flush():
+            nonlocal current
+            if current:
+                wrapper=etree.Element('source_fragment')
+                for n in current: wrapper.append(deepcopy(n))
+                if word_text(wrapper): groups.append((key,heading,kind,wrapper))
+                current=[]
+        for i,(node,t) in enumerate(zip(body,texts)):
+            section=re.match(r'^§\s*([^\s.]+)\.\s*(.*)',t)
+            is_heading=bool(node.xpath('./w:pPr/w:ind[@w:hanging]',namespaces=NS))
+            if i==notice_start:
+                flush();key='_publisher_notice';heading='Publisher copyright, currency and disclaimer';kind='publisher_notice'
+            elif section and is_heading and i<notice_start:
+                flush();key=section[1];heading=section[2];kind='section'
+            elif i<notice_start and kind=='section' and re.match(r'^(TITLE|CHAPTER|SUBCHAPTER|PART|SUBPART|ARTICLE)\s+\S',t) and node.xpath('./w:pPr/w:jc[@w:val="center"]',namespaces=NS):
+                flush();scope+=1;key=f'_context/{scope}';heading=t;kind='scope_notes'
+            current.append(node)
+        flush()
+        for name in ['word/footnotes.xml','word/endnotes.xml']:
+            if name in z.namelist():
+                notes=xml(z.read(name))
+                if word_text(notes): groups.append(('_'+Path(name).stem,Path(name).stem,'source_notes',notes))
+        seen=Counter(); totals=Counter(k for k,_,_,_ in groups)
+        units=[]
+        for key,heading,kind,node in groups:
+            seen[key]+=1
+            suffix=f'/_occurrence/{seen[key]}' if totals[key]>1 else ''
+            refs=[]
+            for link in node.xpath('.//w:hyperlink',namespaces=NS):
+                target=rels.get(link.get('{http://schemas.openxmlformats.org/officeDocument/2006/relationships}id'))
+                if target: refs.append(Reference(urljoin(url,target),'publisher_link',word_text(link),etree.tostring(link,encoding='unicode')))
+            units.append(Provision(key=f'me:{title}/{key}{suffix}',citation=f'{title} M.R.S. § {key}' if kind=='section' else f'{title} M.R.S. — {heading}',
+                heading=heading,text=word_text(node),markup=etree.tostring(node,encoding='unicode'),url=url,
+                parent_key=f'me:title/{title}',unit_kind=kind,metadata={'title_number':title,'source_section':key if kind=='section' else None,
+                'occurrence':seen[key],'duplicate_identifier_count':totals[key],'tables':len(node.xpath('.//w:tbl',namespaces=NS)),
+                'source_member':'word/document.xml','media_notice':'Embedded originals retained in raw DOCX; figures not transcribed.'},references=tuple(refs)))
+        if not any(u.unit_kind=='section' for u in units): raise ValueError('No statute sections recognized')
+        return units,meta
+
+def sync_me(s:Store,a:Acquirer,limit:int|None=None,as_of:str|None=None):
+    if as_of: raise ValueError('Historical acquisition unavailable; retained snapshot dates support read-side as_of only')
+    a.delay=max(a.delay,1.1)
+    index=a.fetch(INDEX,max_file_bytes=2*1024**2)
+    page=html.fromstring(s.artifact(index.sha256))
+    links=page.xpath('//ul[@class="title_list"]//a[@href]')
+    if not links: raise ValueError('No official title inventory')
+    inventory_notice=' '.join(page.xpath('//div[@class="status"][1]//text()')).strip()
+    s.collection('me-statutes',('us-me','Maine','state','us'),name='Maine Revised Statutes',authority='Maine Legislature, Office of the Revisor of Statutes',
+        kind='statutory_code',homepage=INDEX,source_status='Official publisher compilation; not Secretary of State certified text',
+        access='Public official title DOCX downloads; robots permits statutes. Publisher claims copyright and requires retained disclaimer on republication; requests publication copy. No blanket redistribution license asserted.',
+        metadata={'inventory_artifact':index.sha256,'inventory_notice':inventory_notice,'date_warning':'Inventory currency may lag title export; each version retains its own explicit incorporation notice.'})
+    entries=[]
+    for link in links:
+        m=re.match(r'TITLE ([\dA-Z-]+):',link.text_content())
+        if not m: raise ValueError('Unrecognized title identifier')
+        entry=(m[1],link.text_content(),urljoin(INDEX,link.get('href')));entries.append(entry)
+        existing=s.db.execute('select status from inventories where collection_id=? and item=?',('me-statutes',m[1])).fetchone()
+        if not existing: s.inventory('me-statutes',m[1],entry[2],'pending')
+    for number,name,toc_url in entries[:limit]:
+        try:
+            toc=a.fetch(toc_url,max_file_bytes=2*1024**2)
+            tocroot=html.fromstring(s.artifact(toc.sha256))
+            paths=tocroot.xpath('//a[contains(@href,".docx")]/@href')
+            if len(paths)!=1: raise ValueError('Expected one whole-title DOCX link')
+            url=urljoin(toc_url,paths[0])
+            raw=a.fetch(url,max_file_bytes=30*1024**2)
+            units,meta=parse_docx(s.artifact(raw.sha256),number,url)
+            meta.update({'inventory_artifact':index.sha256,'title_inventory_artifact':toc.sha256,'inventory_currency_notice':inventory_notice})
+            version,count,new=s.ingest(collection='me-statutes',document='me:title/'+number,title=name,url=url,acquisition=raw.id,
+                member='word/document.xml',snapshot_date=meta['publisher_incorporation_date'],
+                snapshot_basis='Explicit current-through date in this title export publisher disclaimer; incorporation, not blanket legal effectiveness',
+                parser=PARSER,provisions=units,metadata=meta)
+            s.inventory('me-statutes',number,url,'indexed')
+            print(json.dumps({'title':number,'provisions':count,'new':new,'date':meta['publisher_incorporation_date'],'downloaded':a.downloaded}),flush=True)
+            write_report(s)
+        except (ValueError,AcquisitionError) as exc:
+            s.inventory('me-statutes',number,toc_url,'failed',str(exc));write_report(s)
+            raise
+
+def write_report(s):
+    counts={table:s.db.execute(f'SELECT count(*) FROM {table}').fetchone()[0] for table in ['collections','documents','versions','provisions','acquisitions','artifacts']}
+    rows=[dict(r) for r in s.db.execute('select a.*,b.bytes from acquisitions a left join artifacts b on b.sha256=a.sha256 order by a.id')]
+    (BASE/'receipts.json').write_text(json.dumps(rows,indent=2))
+    report={'state':'ME','store_path':str(s.root),'database_path':str(s.root/'legal.sqlite3'),'generated_at':utc_now(),'counts':counts,
+        'unit_kinds':dict(s.db.execute('select unit_kind,count(*) from provisions group by unit_kind')),
+        'unique_raw_bytes':s.db.execute('select coalesce(sum(bytes),0) from artifacts').fetchone()[0],
+        'budget':json.loads((BASE/'budget.json').read_text()),
+        'inventories':[dict(r) for r in s.db.execute('select * from inventories order by item')],
+        'dates':[dict(r) for r in s.db.execute('select snapshot_date,count(*) as versions from versions group by snapshot_date')],
+        'coverage':'Whole official Maine Revised Statutes title DOCX exports listed as indexed; includes repealed provisions, scope context, section history and publisher notices.',
+        'gaps':['Regulations, constitution and session laws not acquired in this bounded statutes batch.','No consolidation of amendments after each title publisher current-through date.','Embedded figures are retained in raw DOCX and marked in searchable text; not transcribed.','No historical editions acquired.'],
+        'conditions':'Official publisher statutes downloads permitted by retained robots. State claims copyright; required republication disclaimer retained verbatim per title and in notice units. Publisher requests copy of resulting publication. Local research store; no external publication or contact performed.',
+        'receipts_path':str(BASE/'receipts.json'),'adapter_path':str(BASE/'adapter.py'),
+        'completion_status':'complete_scoped_statutes_batch' if not s.db.execute("select 1 from inventories where status!='indexed' limit 1").fetchone() else 'partial',
+        'dependency_paths':{'python':str(BASE.parents[2]/'.venv/bin/python'),'core':str(BASE.parents[2]/'src/psephos'),'third_party':['lxml','httpx']},
+        'checks':json.loads((BASE/'checks.json').read_text()) if (BASE/'checks.json').exists() else {'status':'pending'},
+        'receipt_manifest_sha256':hashlib.sha256((BASE/'receipts.json').read_bytes()).hexdigest(),
+        'adapter_sha256':hashlib.sha256((BASE/'adapter.py').read_bytes()).hexdigest()}
+
+    (BASE/'report.json').write_text(json.dumps(report,indent=2))
+    notices=s.db.execute("select text from provisions where unit_kind='publisher_notice' order by rowid limit 1").fetchone()
+    if notices: (BASE/'PUBLISHER_NOTICE.txt').write_text(notices[0])
+
+if __name__=='__main__':
+    parser=argparse.ArgumentParser();parser.add_argument('--limit',type=int);args=parser.parse_args()
+    s=Store(BASE/'store');a=BudgetAcquirer(s)
+    try: sync_me(s,a,args.limit,None)
+    finally: write_report(s);a.close();s.close()

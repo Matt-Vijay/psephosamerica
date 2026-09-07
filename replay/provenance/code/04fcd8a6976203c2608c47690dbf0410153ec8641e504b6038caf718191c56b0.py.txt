@@ -1,0 +1,179 @@
+"""Bounded Minnesota official-publisher corpus; run from repository Python environment.
+Scope: complete publisher parts 1–16E, Constitution, OAH agency rules inventory.
+HTML is publisher text; retained PDF companions are publisher-designated official records.
+No claim of cryptographic PDF authentication is made. Live pages are undated snapshots.
+"""
+from __future__ import annotations
+import json,re,shutil,sys
+from copy import deepcopy
+from collections import Counter
+from pathlib import Path
+from urllib.parse import urljoin,urlsplit
+from lxml import html,etree
+from psephos.store import Store,Provision,utc_now
+from psephos.acquire import Acquirer,AcquisitionError
+from psephos.parse import readable,markup,source_links,media_links
+
+ROOT=Path(__file__).resolve().parent
+HOST='https://www.revisor.mn.gov'
+PARSER='mn-publisher-html-1'
+CAP=200*1024**2
+
+def fetch(s,a,url):
+    if shutil.disk_usage(ROOT).free < 100*1024**3:
+        raise AcquisitionError('Free space below 100 GiB stop threshold')
+    if urlsplit(url).hostname != 'www.revisor.mn.gov':
+        raise AcquisitionError('URL outside assigned host')
+    return a.fetch(url,max_file_bytes=min(25*1024**2,max(1,a.max_bytes-a.downloaded-65536)))
+
+def page(s,r):
+    p=html.fromstring(s.artifact(r.sha256))
+    if not p.xpath('//main'):
+        raise ValueError('Expected publisher main element; possible access page')
+    return p
+
+def partition(container,classes):
+    """Preserve all non-catalog children, sibling history, notes, and tails."""
+    groups=[];key='_context';kind='scope_notes';node=etree.Element('div')
+    node.text=container.text
+    for child in container:
+        if child.get('id')=='chapter_analysis' or child.tag=='table' and container.get('class')=='constitution':
+            if child.tail:
+                tail=etree.SubElement(node,'p');tail.text=child.tail
+            continue
+        if child.get('class') in classes:
+            if readable(node): groups.append((key,kind,node))
+            key=child.get('id','').strip();kind='disposition' if child.get('class') in {'sr','sr_by_subd'} else 'section'
+            if not key:raise ValueError('Missing native section identifier')
+            node=etree.Element('div')
+        node.append(deepcopy(child))
+    if readable(node):groups.append((key,kind,node))
+    return groups
+
+def chapter_units(data,chapter,category,url):
+    p=html.fromstring(data);xt=p.xpath('//*[@id="xtend"]')
+    if len(xt)!=1:raise ValueError('No unique legal text container')
+    heads=xt[0].xpath('.//h2[@class="chapter_title" or @class="chapter_no"]')
+    if len(heads)!=1 or not re.search(r'CHAPTER\s+'+re.escape(chapter)+r'[.,\s]',readable(heads[0])):
+        raise ValueError('Chapter identity mismatch')
+    container=heads[0].getparent()
+    groups=partition(container,{'section','sr','sr_by_subd'} if category=='statutes' else {'part'})
+    legal=[g for g in groups if g[0]!='_context']
+    expected=set(container.xpath('.//*[@id="chapter_analysis"]//a[starts-with(@href,"#")]/@href'))
+    actual={'#'+g[0] for g in legal}
+    if expected != actual:
+        raise ValueError(f'Section inventory mismatch: missing={expected-actual}; extra={actual-expected}')
+    if not legal:
+        raise ValueError('No source-native legal sections; chapter catalog is not law')
+    totals=Counter(g[0] for g in groups); seen=Counter()
+    for key,kind,node in groups:
+        seen[key]+=1
+        suffix=f'/occurrence/{seen[key]}' if totals[key]>1 else ''
+        native=key.split('.',1)[-1] if key!='_context' else chapter+' context'
+        heading=node.xpath('./div/h1 | ./h1 | ./h2')
+        yield Provision(key=f'mn:{category}/{chapter}/{key}'+suffix,citation=(f'Minn. Stat. § {native}' if category=='statutes' else f'Minn. R. {native}') if key!='_context' else f'Minnesota {category} chapter {chapter} — context',heading=readable(heading[0]) if heading else readable(node).splitlines()[0],text=readable(node),markup=markup(node),url=url+'#'+key if key!='_context' else url,parent_key=f'mn:{category}/{chapter}',unit_kind=kind,metadata={'native_id':key,'native_id_occurrences':totals[key],'occurrence':seen[key],'chapter':chapter,'tables':len(node.xpath('.//table')),'media':media_links(node,url),'date_warning':'History, amendment and future-effect notes preserved; no blanket effective date inferred.'},references=source_links(node,url))
+
+def constitution_units(data,url):
+    p=html.fromstring(data);xt=p.xpath('//*[@id="xtend" and @class="constitution"]')
+    if len(xt)!=1:raise ValueError('Constitution text missing')
+    articles=xt[0].xpath('./div[@class="article"]')
+    if [x.get('id') for x in articles]!=[f'article_{i}' for i in range(1,15)]:raise ValueError('Constitution article inventory mismatch')
+    context=deepcopy(xt[0])
+    for x in context.xpath('./div[@class="article"] | ./table'): context.remove(x)
+    yield Provision(key='mn:constitution/preamble',citation='Minn. Const. Preamble',heading='Constitution preamble and publication context',text=readable(context),markup=markup(context),url=url,unit_kind='scope_notes',references=source_links(context,url))
+    for art in articles:
+        number=art.get('id').split('_')[-1]
+        for key,kind,node in partition(art,{'section'}):
+            yield Provision(key=f'mn:constitution/{art.get("id")}/{key}',citation=f'Minn. Const. art. {number}, § {key.split("_")[-1]}' if key!='_context' else f'Minn. Const. art. {number} — heading',heading=readable(node).splitlines()[0],text=readable(node),markup=markup(node),url=url+'#'+(key if key!='_context' else art.get('id')),parent_key='mn:constitution/'+art.get('id'),unit_kind=kind,metadata={'native_id':key,'article':number},references=source_links(node,url))
+
+def init_collection(s,cid,name,kind,url,metadata):
+    if 'coverage_warning' in metadata: metadata['warning']=metadata['coverage_warning']
+    if cid=='mn-rules':
+        metadata['fair_use_notice']='The rules information on this website is intended for personal, not commercial, use. The Office of the Revisor of Statutes does not authorize further dissemination of this material for sale or any commercial purpose.'
+        metadata['notice_url']=HOST+'/rules/info/'
+    if cid=='mn-constitution':
+        metadata['currency_notice']='Live publisher compilation: adopted October 13, 1857; generally revised November 5, 1974. These are historical labels, not current snapshot dates. Per-section amendment notes retained; exact snapshot and legal effective dates unknown.'
+    s.collection(cid,('us-mn','Minnesota','state','us'),name=name,authority='Minnesota Office of the Revisor of Statutes',kind=kind,homepage=url,source_status='Official publisher HTML text; authenticated publisher PDFs designated official records. Live HTML edition/snapshot date is not a legal effective date.',access='Public full chapter/constitution HTML and linked PDF downloads; robots permits selected paths. No explicit blanket reuse license asserted. No accounts or authentication bypass. PDF cryptographic authentication not performed.' + (' Rules fair-use notice: personal, not commercial, use; further dissemination for sale or commercial purpose is not authorized by publisher.' if cid=='mn-rules' else ''),metadata=metadata)
+
+def ingest_chapter(s,a,cat,chapter,url,scope):
+    r=fetch(s,a,url);p=page(s,r)
+    units=list(chapter_units(s.artifact(r.sha256),chapter,cat,url))
+    pdfs=[urljoin(url,x.get('href')) for x in p.xpath('//main//a[@href]') if x.text_content().strip()=='PDF']
+    companion=None
+    if pdfs:
+        pr=fetch(s,a,pdfs[0]);data=s.artifact(pr.sha256)
+        if not data.startswith(b'%PDF-'):raise ValueError('PDF link did not deliver PDF')
+        companion={'url':pdfs[0],'acquisition_id':pr.id,'sha256':pr.sha256,'bytes':pr.size,'status':'retained; signature not verified'}
+    title=' '.join(p.xpath('//h2[@class="chapter_title" or @class="chapter_no"]/text()'))
+    metadata={'scope':scope,'edition_label': '2025 Minnesota Statutes' if cat=='statutes' else None,'snapshot_date_note':'No precise snapshot date established; PDF URL timestamps not interpreted as effectiveness.','pdf_companion':companion,'source_section_count':sum(u.unit_kind!='scope_notes' for u in units)}
+    result=s.ingest(collection='mn-'+cat,document=f'mn:{cat}/{chapter}',title=title,url=url,acquisition=r.id,snapshot_date=None,snapshot_basis='Exact publisher snapshot date unknown; acquisition clock is separate from edition and legal effect.',parser=PARSER,provisions=units,metadata=metadata)
+    s.inventory('mn-'+cat,'chapter:'+chapter,url,'indexed')
+    print(json.dumps({'chapter':chapter,'category':cat,'provisions':result[1],'new':result[2],'downloaded_this_run':a.downloaded}),flush=True)
+
+def sync_mn(store,acquirer,limit=None,as_of=None):
+    if as_of:raise ValueError('MN adapter has no verified exact snapshot dates; as_of acquisition unsupported')
+    if limit is not None and limit<0:raise ValueError('limit must be nonnegative')
+    s,a=store,acquirer
+    index=fetch(s,a,HOST+'/statutes/');info=fetch(s,a,HOST+'/statutes/info');ri=fetch(s,a,HOST+'/rules/numerical/');rinfo=fetch(s,a,HOST+'/rules/info/')
+    root=page(s,index)
+    if '2025 Minnesota Statutes' not in readable(root.xpath('//main')[0]):raise ValueError('Publisher edition changed; review needed')
+    rows=root.xpath('//*[@id="toc_table"]/tbody/tr')
+    parts=[]
+    for row in rows:
+        links=row.xpath('.//a[@href]');cells=row.xpath('./td')
+        if links and len(cells)==2:parts.append({'name':readable(cells[1]),'range':readable(cells[0]),'url':urljoin(HOST,links[0].get('href'))})
+    selected=parts[:11]
+    if selected[-1]['name']!='ADMINISTRATION AND FINANCE':raise ValueError('Publisher part order changed')
+    init_collection(s,'mn-statutes','Minnesota Statutes — government parts 1–16E','statutory_code',HOST+'/statutes/',{'inventory_sha256':index.sha256,'about_sha256':info.sha256,'selected_parts':selected,'edition_label':'2025','coverage_warning':'Only 11 complete publisher parts through 16E selected; other parts pending. Session laws and later changes not acquired.'})
+    init_collection(s,'mn-rules','Minnesota Rules — Office of Administrative Hearings','administrative_rules',HOST+'/rules/',{'inventory_sha256':ri.sha256,'about_sha256':rinfo.sha256,'coverage_warning':'Only Office of Administrative Hearings agency inventory selected; incorporated external documents not acquired.'})
+    init_collection(s,'mn-constitution','Minnesota Constitution','constitution',HOST+'/constitution/',{})
+    for part in parts:s.inventory('mn-statutes','part:'+part['name'],part['url'],'pending')
+    rulesroot=page(s,ri)
+    for link in rulesroot.xpath('//*[@id="rule_main_table_numerical"]//a[@href]'):
+        href=urljoin(HOST,link.get('href'))
+        if re.fullmatch(r'/rules/\d+/',urlsplit(href).path):s.inventory('mn-rules','chapter:'+link.text_content().strip(),href+'full','pending')
+    chapter_count=0
+    for part in selected:
+        pr=fetch(s,a,part['url']);pp=page(s,pr)
+        chapters=[]
+        for link in pp.xpath('//*[@id="chapters_table"]//a[@href]'):
+            chapter=link.text_content().strip();url=urljoin(HOST,link.get('href'))+'/full'
+            if re.fullmatch(r'\d+[A-Z]?',chapter):chapters.append((chapter,url))
+        if not chapters:raise ValueError('Empty part inventory')
+        for chapter,url in chapters:s.inventory('mn-statutes','chapter:'+chapter,url,'pending')
+        complete=True
+        for chapter,url in chapters:
+            if limit is not None and chapter_count>=limit:complete=False;continue
+            try:ingest_chapter(s,a,'statutes',chapter,url,part)
+            except (AcquisitionError,ValueError) as exc:
+                s.inventory('mn-statutes','chapter:'+chapter,url,'failed',str(exc));complete=False;print('FAILED',chapter,str(exc),flush=True)
+                if isinstance(exc,AcquisitionError):raise
+            chapter_count+=1
+        s.inventory('mn-statutes','part:'+part['name'],part['url'],'indexed' if complete else 'partial')
+    url=HOST+'/constitution/';r=fetch(s,a,url);p=page(s,r);units=list(constitution_units(s.artifact(r.sha256),url))
+    pdfurl=urljoin(url,p.xpath('//main//a[normalize-space(.)="PDF"]/@href')[0]);pdf=fetch(s,a,pdfurl)
+    if not s.artifact(pdf.sha256).startswith(b'%PDF-'):raise ValueError('Constitution PDF invalid')
+    s.ingest(collection='mn-constitution',document='mn:constitution',title='Constitution of the State of Minnesota',url=url,acquisition=r.id,snapshot_basis='Exact snapshot date unknown; adopted/revised notes retained separately.',parser=PARSER,provisions=units,metadata={'pdf_companion':{'url':pdfurl,'sha256':pdf.sha256,'acquisition_id':pdf.id},'article_count':14})
+    s.inventory('mn-constitution','constitution',url,'indexed')
+    agencyurl=HOST+'/rules/agency/104';ar=fetch(s,a,agencyurl);agency=page(s,ar)
+    chapters=[]
+    for link in agency.xpath('//main//a[@href]'):
+        href=urljoin(HOST,link.get('href'))
+        if re.fullmatch(r'/rules/\d+/',urlsplit(href).path):chapters.append((link.text_content().strip(),href+'full'))
+    for chapter,url in dict(chapters).items():
+        if limit is not None and chapter_count>=limit:continue
+        try:ingest_chapter(s,a,'rules',chapter,url,{'agency':'Office of Administrative Hearings','inventory_sha256':ar.sha256})
+        except (AcquisitionError,ValueError) as exc:
+            s.inventory('mn-rules','chapter:'+chapter,url,'failed',str(exc));print('FAILED RULE',chapter,str(exc),flush=True)
+            if isinstance(exc,AcquisitionError):raise
+        chapter_count+=1
+    return {'selected_statute_parts':selected,'selected_rule_chapters':list(dict(chapters))}
+
+if __name__=='__main__':
+    s=Store(ROOT/'store');bf=ROOT/'budget.json';used=json.loads(bf.read_text())['decoded_bytes'] if bf.exists() else 0
+    a=Acquirer(s,max_bytes=CAP-used,delay=1.1)
+    try:
+        result=sync_mn(s,a)
+        (ROOT/'scope.json').write_text(json.dumps(result,indent=2))
+    finally:
+        bf.write_text(json.dumps({'decoded_bytes':used+a.downloaded,'cap_bytes':CAP},indent=2));a.close();s.close()

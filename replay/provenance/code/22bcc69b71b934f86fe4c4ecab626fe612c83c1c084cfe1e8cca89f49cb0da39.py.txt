@@ -1,0 +1,483 @@
+"""Bounded official-publisher Massachusetts collector; no historical-effect inference.
+
+Run from repository: .venv/bin/python data/collectors/ma-northeast/adapter.py
+Only public malegislature.gov HTML. No API after its observed 403; no media requests.
+limit caps chapters (constitution always included); default scope is Titles I and VIII.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import re
+import shutil
+from copy import deepcopy
+from pathlib import Path
+from urllib.parse import unquote, urljoin, urlsplit
+
+from lxml import etree, html
+
+from psephos.acquire import Acquirer, AcquisitionError
+from psephos.parse import markup, media_links, readable, source_links
+from psephos.store import Provision, Store, utc_now
+
+ROOT = Path(__file__).resolve().parent
+HOST = "https://malegislature.gov"
+INDEX = HOST + "/Laws/GeneralLaws"
+CONSTITUTION = HOST + "/Laws/Constitution"
+CAP = 188743680
+PARSER = "ma-official-html-1"
+TITLES = [("I", "1"), ("VIII", "8")]
+
+
+def tree(data):
+    root = html.fromstring(data, parser=html.HTMLParser(encoding="utf-8"))
+    # Publisher ch.55B s.5 contains an empty <se;10> tag. Keep its spelling
+    # in the projection and immutable bytes, but use a valid text-reader tag.
+    for node in root.iter():
+        if isinstance(node.tag, str):
+            try:
+                etree.QName(node)
+            except ValueError:
+                node.set("data-publisher-invalid-tag", node.tag)
+                node.tag = "span"
+    return root
+
+
+def section_units(data: bytes, url: str):
+    root = tree(data)
+    headings = root.xpath('//main//h2[@id="skipTo"]')
+    match = re.fullmatch(
+        r"/Laws/GeneralLaws/Part([^/]+)/Title([^/]+)/Chapter([^/]+)/Section([^/]+)",
+        urlsplit(url).path,
+    )
+    if len(headings) != 1 or not match:
+        raise ValueError("Not a supported General Laws section page")
+    part, title, chapter, section = (unquote(v) for v in match.groups())
+    section = section.replace("~", "/")
+    heading = headings[0]
+    if not re.match(r"Section\s+" + re.escape(section) + r"\s*:", readable(heading), re.I):
+        raise ValueError("Section URL/title mismatch")
+    wrapper = etree.Element("div")
+    wrapper.append(deepcopy(heading))
+    for sibling in heading.itersiblings():
+        if isinstance(sibling.tag, str) and sibling.tag not in {"script", "style"}:
+            wrapper.append(deepcopy(sibling))
+    text = readable(wrapper)
+    body = "\n".join(readable(c) for c in list(wrapper)[1:]).strip()
+    repeal_notice = not body and bool(re.search(r"\bRepealed\b", readable(heading), re.I))
+    status_notice = not body and bool(
+        re.search(
+            r"\b(?:Repealed|Amended by|Transferred|Reserved|Omitted)\b", readable(heading), re.I
+        )
+    )
+    if not status_notice and (
+        not body
+        or not re.search(r"\bSection\s+" + re.escape(section) + r"(?:\.|\s|\[)", body, re.I)
+    ):
+        raise ValueError("Missing section legal body; catalog or error page rejected")
+    yield Provision(
+        key=f"ma:gl/{chapter}/{section}",
+        citation=f"Mass. Gen. Laws ch. {chapter}, § {section}",
+        heading=readable(heading),
+        text=text,
+        markup=markup(wrapper),
+        url=url,
+        parent_key=f"ma:gl/chapter-{chapter}",
+        unit_kind="repealed_section_notice"
+        if repeal_notice
+        else "legal_status_notice"
+        if status_notice
+        else "section",
+        metadata={
+            "part": part,
+            "title": title,
+            "chapter": chapter,
+            "section": section,
+            "full_section_body": not status_notice,
+            "source_identifier": urlsplit(url).path,
+            "tables": len(wrapper.xpath(".//table")),
+            "invalid_source_tags": wrapper.xpath(
+                ".//*[@data-publisher-invalid-tag]/@data-publisher-invalid-tag"
+            ),
+            "media": media_links(wrapper, url),
+            "date_warning": "Parallel text, repeals and amendment notes retained; no legal-effect synthesis.",
+        },
+        references=source_links(wrapper, url),
+    )
+
+
+def chapter_notice_units(data: bytes, url: str):
+    doc = tree(data)
+    found = doc.xpath('//ul[@class="generalLawsList"]//li[@class="repealed"]')
+    heading = doc.xpath('//h2[@id="skipTo"]')
+    if (
+        len(found) != 1
+        or len(heading) != 1
+        or not re.search(r"\bRepealed\b", readable(found[0]), re.I)
+    ):
+        raise ValueError("Empty chapter lacks explicit publisher repeal notice")
+    node = etree.Element("div")
+    node.append(deepcopy(heading[0]))
+    node.append(deepcopy(found[0]))
+    chapter = url.rsplit("Chapter", 1)[1]
+    yield Provision(
+        key=f"ma:gl/chapter-{chapter}/_status",
+        citation=f"Mass. Gen. Laws ch. {chapter} — repeal notice",
+        heading=readable(heading[0]),
+        text=readable(node),
+        markup=markup(node),
+        url=url,
+        parent_key=f"ma:gl/chapter-{chapter}",
+        unit_kind="chapter_repeal_notice",
+        metadata={"full_section_body": False, "chapter": chapter},
+        references=source_links(node, url),
+    )
+
+
+def constitution_units(data: bytes):
+    root = tree(data)
+    found = root.xpath('//main//div[@class="col-md-8"][h2[@id="preamble"]]')
+    if len(found) != 1 or "amendmentArticleCXXI" not in {x.get("id") for x in found[0]}:
+        raise ValueError("Missing complete constitutional content / amendment CXXI")
+    groups = []
+    current = etree.Element("div")
+    anchor = "_context"
+    heading = "Constitution"
+    kind = "scope_notes"
+    for child in found[0]:
+        if child.tag in {"h2", "h3", "h4"} and child.get("id"):
+            if readable(current):
+                groups.append((anchor, heading, kind, current))
+            anchor = child.get("id")
+            heading = readable(child)
+            current = etree.Element("div")
+            kind = (
+                "rejected_amendment_notes"
+                if anchor == "rejected"
+                else "historical_ratification_notes"
+                if anchor == "note"
+                else "preamble"
+                if anchor == "preamble"
+                else "amendment_article"
+                if re.fullmatch(r"amendmentArticle[IVXLCDM]+", anchor)
+                else "amendment_subpart"
+                if anchor.startswith("amendmentArticle")
+                else "constitutional_article"
+                if re.search(r"article[IVXLCDM]+$", anchor, re.I)
+                else "constitutional_division"
+                if child.tag == "h3"
+                else "scope_heading"
+            )
+        current.append(deepcopy(child))
+    if readable(current):
+        groups.append((anchor, heading, kind, current))
+    for anchor, heading, kind, node in groups:
+        yield Provision(
+            key="ma:constitution/" + anchor,
+            citation="Mass. Const. " + anchor,
+            heading=heading,
+            text=readable(node),
+            markup=markup(node),
+            url=CONSTITUTION + "#" + anchor,
+            parent_key="ma:constitution",
+            unit_kind=kind,
+            metadata={
+                "source_anchor": anchor,
+                "tables": len(node.xpath(".//table")),
+                "media": media_links(node, CONSTITUTION),
+                "includes_publisher_historical_notes": True,
+                "legal_effect_status": "Source text includes annulled/superseded provisions; not a claim of current operative law",
+            },
+            references=source_links(node, CONSTITUTION),
+        )
+
+
+class BudgetAcquirer(Acquirer):
+    """Persist decoded byte accounting after each call, including nested robots calls."""
+
+    def __init__(self, store):
+        self.ledger_path = ROOT / "budget.json"
+        self.ledger = (
+            json.loads(self.ledger_path.read_text())
+            if self.ledger_path.exists()
+            else {"cap": CAP, "newly_decoded_bytes": 0, "runs": []}
+        )
+        self.accounted = 0
+        # Safety reserve below the hard cap protects against the base streaming chunk boundary.
+        remaining = CAP - self.ledger["newly_decoded_bytes"] - 1024**2
+        super().__init__(store, max_bytes=max(0, remaining), delay=1.1)
+
+    def _allowed(self, url):
+        if urlsplit(url).hostname != "malegislature.gov":
+            raise AcquisitionError("Host outside MA collector scope")
+        super()._allowed(url)
+
+    def fetch(self, url, **kwargs):
+        if urlsplit(url).hostname != "malegislature.gov":
+            raise AcquisitionError("Host outside MA collector scope")
+        if shutil.disk_usage(ROOT).free < 105 * 1024**3:
+            raise AcquisitionError("Disk safety floor reached")
+        if self.max_bytes - self.downloaded < 1024**2:
+            raise AcquisitionError("Cumulative budget safety floor reached")
+        kwargs["max_file_bytes"] = min(
+            kwargs.get("max_file_bytes", 8 * 1024**2), self.max_bytes - self.downloaded
+        )
+        try:
+            return super().fetch(url, **kwargs)
+        finally:
+            delta = self.downloaded - self.accounted
+            self.ledger["newly_decoded_bytes"] += delta
+            self.accounted = self.downloaded
+            self.ledger["last_checkpoint"] = utc_now()
+            self.ledger_path.write_text(json.dumps(self.ledger, indent=2) + "\n")
+
+
+def sync_ma(s: Store, a: Acquirer, limit: int | None = None, as_of: str | None = None):
+    if as_of:
+        raise ValueError(
+            "No precisely dated publisher snapshot; historical as_of acquisition unsupported"
+        )
+    a.delay = max(1.0, a.delay)
+    notice = a.fetch(HOST + "/StateHouse/TermsAndConditions")
+    privacy = a.fetch(HOST + "/StateHouse/Privacy")
+    index = a.fetch(INDEX)
+    page = tree(s.artifact(index.sha256))
+    notices = [
+        readable(x)
+        for x in page.xpath('//main//*[strong[contains(text(),"May 31, 2026")]]')
+        if "May 31, 2026" in readable(x) or "NOT the official" in readable(x)
+    ]
+    if not notices:
+        raise ValueError("Publisher currency/status notice changed; review needed")
+    meta = {
+        "inventory_artifact": index.sha256,
+        "terms_artifact": notice.sha256,
+        "privacy_artifact": privacy.sha256,
+        "publisher_notices": notices,
+        "incorporation_cutoff_label": "amendments passed before May 31, 2026",
+        "currency_notice": notices,
+        "incorporation_cutoff_exclusive": "2026-05-31",
+        "snapshot_date": None,
+        "effective_date": None,
+        "date_warning": "Incorporation cutoff is not edition, snapshot, acquisition or legal effective date.",
+        "scope": "General Laws Part I Titles I and VIII; all other titles pending outside first batch",
+    }
+    access = "Public official-publisher HTML; robots allows all. Terms retained: copyrighted site materials limited to fair use; no photograph/video downloads; no blanket redistribution license asserted."
+    for cid, name, kind in [
+        (
+            "ma-general-laws",
+            "Massachusetts General Laws — selected complete titles",
+            "statutory_code",
+        ),
+        ("ma-constitution", "Massachusetts Constitution", "constitution"),
+    ]:
+        s.collection(
+            cid,
+            ("us-ma", "Massachusetts", "state", "us"),
+            name=name,
+            authority="General Court of the Commonwealth of Massachusetts",
+            kind=kind,
+            homepage=INDEX if cid == "ma-general-laws" else CONSTITUTION,
+            source_status="Official government publisher; General Laws web compilation expressly unofficial"
+            if cid == "ma-general-laws"
+            else "Official government publisher constitutional text with historical and rejected-amendment notes",
+            access=access,
+            metadata=meta
+            if cid == "ma-general-laws"
+            else {
+                "terms_artifact": notice.sha256,
+                "privacy_artifact": privacy.sha256,
+                "snapshot_date": None,
+                "latest_numbered_amendment_observed": "CXXI; no inferred currency date",
+            },
+        )
+    r = a.fetch(CONSTITUTION)
+    s.ingest(
+        collection="ma-constitution",
+        document="ma:constitution",
+        title="Constitution of the Commonwealth of Massachusetts",
+        url=CONSTITUTION,
+        acquisition=r.id,
+        snapshot_basis="Undated live publisher page; historical ratification notes do not date the snapshot",
+        parser=PARSER,
+        provisions=constitution_units(s.artifact(r.sha256)),
+        metadata={"terms_artifact": notice.sha256},
+    )
+    s.inventory("ma-constitution", "constitution", CONSTITUTION, "indexed")
+    chapters = []
+    for code, title_id in TITLES:
+        url = INDEX + f"/GetChaptersForTitle?partId=1&titleId={title_id}&code={code}"
+        r = a.fetch(url)
+        doc = tree(s.artifact(r.sha256))
+        links = doc.xpath('//a[contains(@href,"/Chapter")]')
+        if not links:
+            raise ValueError("Empty official title inventory")
+        for link in links:
+            chapter_url = urljoin(HOST, link.get("href"))
+            chapter = chapter_url.rsplit("Chapter", 1)[1]
+            chapters.append((chapter, readable(link), chapter_url, r.sha256, code))
+            old = s.db.execute(
+                "select status from inventories where collection_id=? and item=?",
+                ("ma-general-laws", "chapter-" + chapter),
+            ).fetchone()
+            if not old:
+                s.inventory("ma-general-laws", "chapter-" + chapter, chapter_url, "pending")
+    (ROOT / "scope_inventory.json").write_text(json.dumps(chapters, indent=2) + "\n")
+    for chapter, title, url, title_sha, _title_code in chapters[:limit]:
+        r = a.fetch(url)
+        doc = tree(s.artifact(r.sha256))
+        links = doc.xpath('//ul[@class="generalLawsList"]//a[contains(@href,"/Section")]')
+        urls = list(dict.fromkeys(urljoin(HOST, x.get("href")) for x in links))
+        if not urls:
+            units = list(chapter_notice_units(s.artifact(r.sha256), url))
+            s.ingest(
+                collection="ma-general-laws",
+                document=units[0].key,
+                title=title,
+                url=url,
+                acquisition=r.id,
+                snapshot_basis="Undated publisher chapter repeal notice; no operative chapter text",
+                parser=PARSER,
+                provisions=units,
+                metadata=meta,
+            )
+            s.inventory("ma-general-laws", "chapter-" + chapter, url, "indexed")
+            print(f"Completed chapter {chapter}: chapter repeal notice, no sections", flush=True)
+            write_report(s, "running")
+            continue
+        for section_url in urls:
+            item = section_url.rsplit("/Chapter", 1)[1]
+            old = s.db.execute(
+                "select status from inventories where collection_id=? and item=?",
+                ("ma-general-laws", item),
+            ).fetchone()
+            if not old:
+                s.inventory("ma-general-laws", item, section_url, "pending")
+        for section_url in urls:
+            item = section_url.rsplit("/Chapter", 1)[1]
+            try:
+                raw = a.fetch(section_url)
+                provisions = list(section_units(s.artifact(raw.sha256), section_url))
+                s.ingest(
+                    collection="ma-general-laws",
+                    document=provisions[0].key,
+                    title=provisions[0].heading,
+                    url=section_url,
+                    acquisition=raw.id,
+                    snapshot_basis="Unknown snapshot date. Publisher says amendments passed before May 31, 2026 incorporated; not an effective date.",
+                    parser=PARSER,
+                    provisions=provisions,
+                    metadata={
+                        **meta,
+                        "chapter_inventory_artifact": r.sha256,
+                        "title_inventory_artifact": title_sha,
+                        "chapter_title": title,
+                    },
+                )
+                s.inventory("ma-general-laws", item, section_url, "indexed")
+            except (ValueError, AcquisitionError) as exc:
+                s.inventory("ma-general-laws", item, section_url, "failed", str(exc))
+                write_report(s, "interrupted")
+                raise
+        s.inventory("ma-general-laws", "chapter-" + chapter, url, "indexed")
+        print(f"Completed chapter {chapter}: {len(urls)} sections", flush=True)
+        write_report(s, "running")
+    write_report(s, "complete_scoped_batch")
+
+
+def write_report(s, status):
+    counts = {
+        t: s.db.execute("select count(*) from " + t).fetchone()[0]
+        for t in ["collections", "documents", "versions", "provisions", "artifacts", "acquisitions"]
+    }
+    receipts = [
+        dict(r)
+        for r in s.db.execute(
+            "select a.*,b.bytes from acquisitions a left join artifacts b on a.sha256=b.sha256 order by a.id"
+        )
+    ]
+    (ROOT / "receipts.json").write_text(json.dumps(receipts, indent=2) + "\n")
+    budget = json.loads((ROOT / "budget.json").read_text())
+    inv = [dict(r) for r in s.db.execute("select * from inventories order by collection_id,item")]
+    report = {
+        "status": status,
+        "updated_at": utc_now(),
+        "store_path": str(s.root),
+        "adapter": str(ROOT / "adapter.py"),
+        "counts": counts,
+        "counts_by_collection": [
+            dict(r)
+            for r in s.db.execute(
+                "select c.id,count(distinct d.id) documents,count(distinct v.id) versions,count(p.id) provisions from collections c left join documents d on d.collection_id=c.id left join versions v on v.document_id=d.id left join provisions p on p.version_id=v.id group by c.id"
+            )
+        ],
+        "full_text_section_count": s.db.execute(
+            "select count(*) from provisions where unit_kind='section'"
+        ).fetchone()[0],
+        "repeal_notice_count": s.db.execute(
+            "select count(*) from provisions where unit_kind='repealed_section_notice'"
+        ).fetchone()[0],
+        "constitution_unit_interpretation": "Publisher structural units; constitutional and amendment articles include historical/annulled/superseded wording. Not all current law. Rejected proposals and ratification notes have separate kinds. Article XLVIII subparts are not extra amendment articles.",
+        "unit_kinds": [
+            dict(r)
+            for r in s.db.execute(
+                "select unit_kind,count(*) count from provisions group by unit_kind"
+            )
+        ],
+        "unique_raw_bytes": s.db.execute("select coalesce(sum(bytes),0) from artifacts").fetchone()[
+            0
+        ],
+        "newly_decoded_http_bytes": budget["newly_decoded_bytes"],
+        "hard_cap_bytes": CAP,
+        "http_accounting": "All HTTP through Acquirer. Decoded successful representations include probes, robots, terms, privacy and inventories. Redirect/403 bodies were not read/decoded. No web search or external HTTP used.",
+        "receipts_file": str(ROOT / "receipts.json"),
+        "inventory": inv,
+        "coverage": "Complete publisher Constitution page including historical and rejected-amendment notes; General Laws completion is chapter inventory indexed status below.",
+        "gaps": [
+            "All General Laws titles except Part I Titles I and VIII outside first batch",
+            "Regulations and session laws not acquired",
+            "No precise snapshot/edition date or synthesized effective law",
+            "Source media linked/marked, not downloaded or transcribed",
+        ],
+        "access_conditions": "malegislature.gov only; robots.txt allows all; minimum 1.1 seconds per host. API root 403: abandoned API route without evasion. Public HTML proceeds. Terms retain site copyright/fair-use and image/video restrictions; no blanket redistribution license.",
+        "clocks": {
+            "general_laws_incorporation_exclusive_cutoff": "2026-05-31",
+            "snapshot_date": None,
+            "effective_on": None,
+            "constitution_snapshot_date": None,
+            "acquisition": "Per-receipt UTC observed_at; does not date legal effect",
+        },
+        "dependencies": {
+            "python": str(ROOT.parents[2] / ".venv/bin/python"),
+            "repository": str(ROOT.parents[2]),
+            "baseline": "e077e981d1e7f9914e17f73407b557973ee0ef15",
+            "extra_packages_installed": [],
+        },
+        "policy_review": {
+            "robots_sha256": "4d7d7b87c0e85e9089c43d50160a21cd3d0b6fd3de11116e2133b75d6143c2ad",
+            "robots_exact_text": "User-agent: *\r\nDisallow: \r\n",
+            "review": "Retained policy rechecked after shared robots parser fix; plain two-directive file, no BOM/HTML/ambiguous combined lines. Continued same permitted host.",
+        },
+        "validation": {
+            "sqlite_integrity": s.db.execute("pragma integrity_check").fetchone()[0],
+            "foreign_key_violations": len(s.db.execute("pragma foreign_key_check").fetchall()),
+        },
+    }
+    (ROOT / "report.json").write_text(json.dumps(report, indent=2) + "\n")
+
+
+if __name__ == "__main__":
+    p = argparse.ArgumentParser()
+    p.add_argument("--limit", type=int)
+    args = p.parse_args()
+    s = Store(ROOT / "store")
+    a = BudgetAcquirer(s)
+    try:
+        sync_ma(s, a, args.limit, None)
+    except Exception as exc:
+        write_report(s, "interrupted: " + str(exc))
+        raise
+    finally:
+        a.close()
+        s.close()

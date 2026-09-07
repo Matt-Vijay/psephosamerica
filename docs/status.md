@@ -91,3 +91,9 @@ wheel/MCP check. Reindexing adds 117 parser projections while preserving all old
 source bytes and normalized legal content; it adds no legal snapshots or latest
 source units. The [California reuse correction](sources.md#california-reuse-correction)
 is an annotation addendum, not a rewrite of frozen acquisition/publication evidence.
+
+The [accepted-source replay checkpoint](../replay/README.md) preserves the reviewed
+code for all 45 published batches and exercises exact offline reconstruction for
+Florida, New Jersey and Mississippi. Its [receipt](../replay/verification.json)
+is separate from the prior campaign; no new collection or whole-corpus audit was
+performed. The other 42 batches remain provenance-only in that replay surface.

@@ -1,0 +1,145 @@
+"""NCGA HTML chapter and constitution exports, retaining every source body block.
+
+Run using this repository's interpreter. All state is local to this collector.
+Unknown publisher snapshot/effect dates remain NULL; as_of requests are rejected.
+"""
+from __future__ import annotations
+import argparse, json, re
+from collections import Counter
+from copy import deepcopy
+from pathlib import Path
+from urllib.parse import urljoin
+from lxml import etree, html
+from psephos.acquire import Acquirer, AcquisitionError
+from psephos.parse import readable as core_readable, markup, source_links as core_source_links, media_links as core_media_links
+from psephos.store import Store, Provision, utc_now
+from bounded import BoundedAcquirer
+
+BASE = Path(__file__).resolve().parent
+HOME = 'https://www.ncleg.gov'
+INDEX = HOME+'/Laws/GeneralStatutesTOC'
+COLLECTION = 'north-carolina-statutes'
+CONSTITUTION = 'north-carolina-constitution'
+PARSER = 'ncga-complete-html-1'
+
+def readable_node(node):
+    # Word HTML uses literal colon tags (o:p) which are not etree QNames.
+    # Normalize only in the reading projection; source markup stays untouched.
+    if any(isinstance(n.tag,str) and ':' in n.tag and not n.tag.startswith('{') for n in node.iter()):
+        node=deepcopy(node)
+        for n in node.iter():
+            if isinstance(n.tag,str) and ':' in n.tag and not n.tag.startswith('{'):
+                n.tag=n.tag.split(':',1)[1]
+    return node
+
+def readable(node):
+    return core_readable(readable_node(node))
+
+def source_links(node,url):
+    return core_source_links(readable_node(node),url)
+
+def media_links(node,url):
+    return core_media_links(readable_node(node),url)
+
+def normalize(s):
+    return ' '.join(s.split())
+
+def body_container(data):
+    root=html.fromstring(data)
+    body=root.find('body')
+    if body is None: raise ValueError('Missing source body')
+    if len(body)==1 and body[0].tag=='div' and body[0].get('class','').startswith('WordSection'):
+        body=body[0]
+    return body
+
+def nc_units(data: bytes, chapter: str, url: str, constitution=False):
+    body=body_container(data)
+    groups=[]; node=etree.Element('div'); key='_context-1'; kind='scope_notes'; heading='Preamble and source context'; article=''; context=1
+    def flush():
+        if readable(node): groups.append((key,kind,heading,article,node))
+    for child in body:
+        text=normalize(readable(child))
+        sec=re.match(r'^§\s*('+re.escape(chapter)+r'-[\w.\-]+)',text) if not constitution else re.match(r'^(?:Section|Sec\.)\s+(\d+[A-Za-z]?)\.',text)
+        scope=re.match(r'^(?:ARTICLE|Article|SUBCHAPTER|Subchapter|PART|Part)\s+([\w.\-]+)',text)
+        if sec:
+            flush(); node=etree.Element('div'); key=(article+'/' if constitution else '')+sec[1].rstrip('.'); kind='section'; heading=text
+        elif scope and (len(text)<240):
+            flush(); node=etree.Element('div'); context+=1; key=f'_context-{context}';kind='scope_notes';heading=text
+            if re.match(r'^ARTICLE\s+[IVXLCDM]+$',text) and constitution: article=text.split()[1]
+        node.append(deepcopy(child))
+    flush()
+    if not groups: raise ValueError('Empty legal export')
+    # A complete-body token comparison is enforced on every acquired export.
+    projected=' '.join(readable(n) for _,_,_,_,n in groups)
+    if normalize(projected)!=normalize(readable(body)):
+        raise ValueError('Source body differs from ordered provision projection')
+    totals=Counter(k for k,_,_,_,_ in groups);seen=Counter()
+    for key,kind,heading,article,node in groups:
+        seen[key]+=1; suffix=f'/_occurrence/{seen[key]}' if totals[key]>1 else ''
+        prefix='nc:constitution/' if constitution else f'nc:chapter-{chapter}/'
+        citation=(f'N.C. Const. art. {article}, § {key.split("/")[-1]}' if constitution else f'N.C. Gen. Stat. § {key}') if kind=='section' else (f'N.C. Constitution — {heading}' if constitution else f'N.C. Gen. Stat. Chapter {chapter} — {heading}')
+        yield Provision(key=prefix+key+suffix,citation=citation,heading=heading,text=readable(node),markup=markup(node),url=url,parent_key=prefix.rstrip('/'),unit_kind=kind,metadata={'chapter':None if constitution else chapter,'article':article or None,'source_anchor_names':node.xpath('.//a/@name'),'source_element_ids':node.xpath('.//*[@id]/@id'),'source_scope_heading':heading if kind=='scope_notes' else None,'duplicate_identifier_count':totals[key],'occurrence':seen[key],'tables':len(node.xpath('.//table')),'media':media_links(node,url),'fidelity':'All source body blocks retained in order; normalized complete-body equality enforced. Full original HTML and styles in receipt.','clock_warning':'History and future-effective text retained verbatim, not resolved.'},references=source_links(node,url))
+
+def inventory(s,a):
+    r=a.fetch(INDEX); root=html.fromstring(s.artifact(r.sha256)); result={}
+    for link in root.xpath('//a[contains(@href,"/Statutes/HTML/ByChapter/Chapter_")]'):
+        url=urljoin(INDEX,link.get('href')); match=re.search(r'Chapter_([^/]+)\.html$',url)
+        if not match: continue
+        chapter=match[1]
+        row=link.getparent().getparent()
+        names=[normalize(x.text_content()) for x in row.xpath('.//a[contains(@href,"GeneralStatuteSections")]')]
+        result[chapter]={'chapter':chapter,'url':url,'title':names[-1] if names else 'Chapter '+chapter}
+    if not result: raise ValueError('No chapter inventory')
+    return r,list(result.values())
+
+def write_report(s,a,items=None):
+    counts={table:s.db.execute(f'SELECT count(*) FROM {table}').fetchone()[0] for table in ['artifacts','acquisitions','documents','versions','provisions','legal_references']}
+    kind_counts=[dict(r) for r in s.db.execute('SELECT d.collection_id,p.unit_kind,count(*) AS count FROM provisions p JOIN versions v ON v.id=p.version_id JOIN documents d ON d.id=v.document_id GROUP BY d.collection_id,p.unit_kind')]
+    coverage=[dict(r) for r in s.db.execute('SELECT collection_id,status,count(*) as count FROM inventories GROUP BY collection_id,status')]
+    receipts=[dict(r) for r in s.db.execute('SELECT a.id,a.url,a.final_url,a.observed_at,a.status,a.sha256,b.bytes,a.headers,a.error FROM acquisitions a LEFT JOIN artifacts b ON b.sha256=a.sha256 ORDER BY a.id')]
+    for r in receipts:
+        r['headers']=json.loads(r['headers']);r['object_path']=str(s.object_path(r['sha256'])) if r['sha256'] else None
+    per_document=[dict(r) for r in s.db.execute('SELECT d.id,d.title,d.url,v.acquisition_id,v.artifact_sha,count(p.id) AS provisions FROM documents d JOIN versions v ON v.document_id=d.id JOIN provisions p ON p.version_id=v.id GROUP BY v.id ORDER BY d.id')]
+    gaps=[dict(r) for r in s.db.execute("SELECT * FROM inventories WHERE status!='indexed'")]
+    report={'generated_at':utc_now(),'source_store_root':str(s.root),'database':str(s.root/'legal.sqlite3'),'adapter':str(BASE/'adapter.py'),'helper_files':[str(BASE/'bounded.py'),str(BASE/'probe.py'),str(BASE/'self_check.py'),str(BASE/'README.md')],'collection_ids':[COLLECTION,CONSTITUTION,'north-carolina-administrative-code'],'budget':a.state,'counts':counts,'unit_kind_counts':kind_counts,'count_qualification':'Provisions are source text units, not distinct rules or all sections. section units use a recognized single-section heading; scope_notes retain chapter/article titles, introductions, and grouped repeal/transfer ranges. Combined section ranges remain intact and are not counted as individual sections. Inventories, access notices, TOCs and blocked stubs are receipts/metadata only, not indexed provisions.','raw_artifact_bytes':s.db.execute('SELECT sum(bytes) FROM artifacts').fetchone()[0],'coverage':coverage,'denominators':{'statute_chapters':len(items) if items else s.db.execute('SELECT count(*) FROM inventories WHERE collection_id=?',(COLLECTION,)).fetchone()[0],'constitution_complete_exports':1,'administrative_code':None},'gaps':gaps,'unincorporated_modifications_manifest':str(BASE/'unincorporated-modifications.json'),'source_limitations':['Complete coverage means the publisher-listed chapter HTML exports only. Session laws, uncodified/local acts and later amendments are not consolidated.','Publisher caveat says some editor notes require print or subscription Lexis; those missing notes are not obtained.','External image wording is not transcribed; media locators and original source markup retained.','OAH reports host robots.txt timed out; no regulation text acquired; no denominator claimed.'],'clocks':{'acquisition':'Receipt observed_at is completed retention time; separate request_started_at header.','incorporation':'The General Statutes include changes through S.L. 2026-30.','edition_snapshot_date':None,'publication_date':None,'legal_effect_date':None,'treatment':'No blanket legal effect inferred from session currency, HTTP last-modified, or Word Created/LastSaved. Undated snapshots excluded from as_of; adapter rejects as_of.'},'terms':{'publisher':'North Carolina General Assembly government publisher; website explicitly says Not Official and as-is.','copyright':'Disclaimer warns photographs/graphics may be copyright protected; no blanket redistribution license asserted.','policies':['https://www.ncleg.gov/robots.txt','https://www.ncleg.gov/Disclaimer','https://www.ncleg.gov/Privacy','https://www.ncleg.gov/Laws/GeneralStatutes#caveats'],'crawl_delay_seconds':2.1,'probing_note':'Initial discovery used >=1.1s Acquirer default. The robots file has a UTF-8 BOM and its 2s Crawl-delay was missed by base RobotFileParser; discovered on direct policy inspection and raised to 2.1s before batch collection.'},'hosts_contacted':sorted({urljoin(r['final_url'],'/').split('/')[2] for r in receipts}),'new_government_hosts':[],'robots_policy_review':{'www.ncleg.gov':'Retained plaintext, UTF-8 BOM; explicit crawl delay 2 seconds. Batch delay 2.1 seconds.','www.oah.nc.gov':'Retained plaintext Drupal robots policy; no markup policy issue.','reports.oah.state.nc.us':'Timeout; failed closed, no legal-text request.','html_or_malformed_policy_hosts_contacted':[]},'per_document':per_document,'receipts':receipts,'checks':json.loads((BASE/'checks.json').read_text()) if (BASE/'checks.json').exists() else {'status':'pending'}}
+    tmp=BASE/'report.tmp';tmp.write_text(json.dumps(report,indent=2));tmp.replace(BASE/'report.json')
+
+def sync_nc(s:Store,a:Acquirer,limit:int|None=None,as_of:str|None=None):
+    if as_of: raise ValueError('NCGA live exports lack precise snapshot dates; historical as_of is unsupported')
+    if not isinstance(a,BoundedAcquirer): raise ValueError('Use local BoundedAcquirer to preserve lifetime cap')
+    if s.root!=BASE/'source': raise ValueError('Only the assigned separate source Store is writable')
+    notice=a.fetch(HOME+'/Laws/GeneralStatutes');disclaimer=a.fetch(HOME+'/Disclaimer');a.fetch(HOME+'/Privacy');mods=a.fetch(HOME+'/Laws/Modifications/Current')
+    mods_root=html.fromstring(s.artifact(mods.sha256))
+    mod_rows=[]
+    for row in mods_root.xpath('//table[@id="law-mod-report"]//tr[td]'):
+        mod_rows.append({'cells':[normalize(td.text_content()) for td in row.xpath('./td')],'links':[{'label':normalize(x.text_content()),'url':urljoin(HOME,x.get('href'))} for x in row.xpath('.//a[@href]')]})
+    (BASE/'unincorporated-modifications.json').write_text(json.dumps({'acquisition_id':mods.id,'artifact_sha':mods.sha256,'url':mods.url,'columns':[normalize(x.text_content()) for x in mods_root.xpath('//table[@id="law-mod-report"]//th')],'row_count':len(mod_rows),'qualification':'Publisher notice inventory only, includes bill statuses such as vetoed. Not enacted-law text and no automatic legal-effect resolution.','rows':mod_rows},indent=2))
+    inv,items=inventory(s,a)
+    for cid,name,kind in [(COLLECTION,'North Carolina General Statutes','statutory_code'),(CONSTITUTION,'North Carolina Constitution','constitution'),('north-carolina-administrative-code','North Carolina Administrative Code','regulations')]:
+        s.collection(cid,('us-nc','North Carolina','state','us'),name=name,authority='North Carolina General Assembly' if cid!='north-carolina-administrative-code' else 'North Carolina Office of Administrative Hearings',kind=kind,homepage=INDEX if cid==COLLECTION else HOME+'/Laws/Constitution' if cid==CONSTITUTION else 'https://reports.oah.state.nc.us/ncac.asp',source_status='Government publisher; website states not official' if cid!='north-carolina-administrative-code' else 'Blocked: robots policy unavailable',access='Public HTML exports; receipts and policy notices retained' if cid!='north-carolina-administrative-code' else 'No text acquired: HTTPS robots policy unavailable',metadata=({'inventory_receipt':inv.id if cid==COLLECTION else a._cached(HOME+'/Laws/Constitution').id,'caveats_receipt':notice.id,'disclaimer_receipt':disclaimer.id,'unincorporated_modifications_receipt':mods.id if cid==COLLECTION else None,'currency':'Statutes include changes through S.L. 2026-30' if cid==COLLECTION else None,'snapshot_date':None} if cid!='north-carolina-administrative-code' else {'block':'HTTPS robots.txt timed out; policy not verifiable','inventory_denominator':None,'text_acquired':False}))
+    for item in items:
+        old=s.db.execute('SELECT status FROM inventories WHERE collection_id=? AND item=?',(COLLECTION,item['chapter'])).fetchone()
+        if not old:s.inventory(COLLECTION,item['chapter'],item['url'],'pending')
+    s.inventory('north-carolina-administrative-code','publisher_inventory','https://reports.oah.state.nc.us/ncac.asp','blocked','HTTPS robots.txt timed out; no policy verification, no legal text request')
+    constitutional_url=HOME+'/EnactedLegislation/Constitution/NCConstitution.html'
+    batch=[{'chapter':'constitution','title':'North Carolina Constitution','url':constitutional_url}]+items[:limit]
+    try:
+        for i,item in enumerate(batch):
+            cid=CONSTITUTION if item['chapter']=='constitution' else COLLECTION
+            doc='nc:constitution' if cid==CONSTITUTION else 'nc:chapter-'+item['chapter']
+            try:
+                r=a.fetch(item['url']);units=list(nc_units(s.artifact(r.sha256),item['chapter'],item['url'],cid==CONSTITUTION))
+                s.ingest(collection=cid,document=doc,title=item['title'],url=item['url'],acquisition=r.id,snapshot_basis='Undated live publisher export; session incorporation currency is not a snapshot/effect date',parser=PARSER,provisions=units,metadata={'inventory_acquisition':inv.id,'publisher_caveats_acquisition':notice.id,'disclaimer_acquisition':disclaimer.id,'complete_source_body_retained':True,'currency_notice':'Statutes include changes through S.L. 2026-30' if cid==COLLECTION else None})
+                s.inventory(cid,item['chapter'],item['url'],'indexed')
+                print(f'{i+1}/{len(batch)} {doc}: {len(units)} units; lifetime {a.state["consumed_decoded_bytes"]}',flush=True)
+            except (AcquisitionError,ValueError) as exc:
+                s.inventory(cid,item['chapter'],item['url'],'blocked',str(exc)); print(f'BLOCKED {doc}: {exc}',flush=True)
+                if 'budget' in str(exc).lower() or 'reservation' in str(exc).lower() or 'disk' in str(exc).lower():break
+            if i%10==0:write_report(s,a,items)
+    finally:write_report(s,a,items)
+
+if __name__=='__main__':
+    p=argparse.ArgumentParser();p.add_argument('--limit',type=int);p.add_argument('--as-of');args=p.parse_args()
+    s=Store(BASE/'source');a=BoundedAcquirer(s)
+    try:sync_nc(s,a,args.limit,args.as_of)
+    finally:a.close();s.close()

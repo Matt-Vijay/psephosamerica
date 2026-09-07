@@ -1,0 +1,180 @@
+"""Isolated North Dakota publisher collection. All network bytes have durable receipts."""
+from __future__ import annotations
+import json, hashlib, time, shutil, re, subprocess, html as escape_html
+from pathlib import Path
+from urllib.parse import urlsplit, urljoin
+from lxml import html
+from pypdf import PdfReader
+from psephos.acquire import Acquirer, AcquisitionError, Receipt, SAFE_HEADERS, validate_url, USER_AGENT
+from psephos.store import Store, Provision, utc_now
+
+ROOT = Path(__file__).resolve().parent
+CAP = 80 * 1024**2
+HOME = 'https://ndlegis.gov/general-information/north-dakota-century-code'
+ALLOWED = {'ndlegis.gov','www.ndlegis.gov','legis.nd.gov','www.legis.nd.gov'}
+
+class NDAcquirer(Acquirer):
+    """Persistent decoded byte budget, including policies, redirects and errors; no retries."""
+    def __init__(self, store, **kwargs):
+        super().__init__(store, max_bytes=CAP, delay=1.0, **kwargs)
+        self.ledger_path = ROOT / 'byte-ledger.json'
+        self.ledger = json.loads(self.ledger_path.read_text()) if self.ledger_path.exists() else {'cap_bytes':CAP,'decoded_http_bytes':0,'responses':[]}
+    def _save(self):
+        tmp = self.ledger_path.with_suffix('.tmp')
+        tmp.write_text(json.dumps(self.ledger, indent=2))
+        tmp.replace(self.ledger_path)
+    def fetch(self, url, *, immutable=False, check_robots=True, max_file_bytes=CAP, accept=None, max_age_seconds=None):
+        validate_url(url)
+        if urlsplit(url).hostname not in ALLOWED: raise AcquisitionError('Host outside ND assignment: '+url)
+        cached = self._cached(url)
+        if cached: return cached
+        if self.ledger['decoded_http_bytes'] >= CAP - 16384: raise AcquisitionError('Cumulative byte budget exhausted')
+        if shutil.disk_usage(ROOT).free < 105 * 1024**3: raise AcquisitionError('Free space stop threshold')
+        if check_robots: self._allowed(url)
+        origin = 'https://' + urlsplit(url).netloc
+        policy = self.robots.get(origin)
+        pause = max(1.0, float(policy.crawl_delay(USER_AGENT) or 0)) if policy else 1.0
+        rate = policy.request_rate(USER_AGENT) if policy else None
+        if rate: pause = max(pause, rate.seconds / rate.requests)
+        self._pause(url, pause)
+        started = utc_now()
+        entry = {'url':url,'started_at':started,'decoded_bytes':0,'status':0,'sha256':None}
+        self.ledger['responses'].append(entry)
+        self._save()
+        body = bytearray()
+        headers = {}
+        try:
+            with self.client.stream('GET', url, headers={'Accept':accept} if accept else {}) as response:
+                entry['status'] = response.status_code
+                headers = {k:v for k,v in response.headers.items() if k in SAFE_HEADERS}
+                for chunk in response.iter_bytes(chunk_size=16384):
+                    self.ledger['decoded_http_bytes'] += len(chunk)
+                    self.downloaded += len(chunk)
+                    entry['decoded_bytes'] += len(chunk)
+                    self._save()
+                    if self.ledger['decoded_http_bytes'] > CAP - 16384 or entry['decoded_bytes'] > max_file_bytes:
+                        raise AcquisitionError('Cumulative decoded byte cap exceeded')
+                    body.extend(chunk)
+                if not response.headers.get('content-encoding') and response.headers.get('content-length') and len(body) != int(response.headers['content-length']):
+                    raise AcquisitionError('Incomplete HTTP representation')
+            sha = hashlib.sha256(body).hexdigest()
+            target = self.store.object_path(sha)
+            target.parent.mkdir(parents=True, exist_ok=True)
+            if target.exists(): self.store.artifact(sha)
+            else: target.write_bytes(body)
+            with self.store.db: self.store.db.execute('INSERT OR IGNORE INTO artifacts VALUES (?,?)',(sha,len(body)))
+            entry.update(sha256=sha, completed_at=utc_now())
+            headers['psephos_request_started_at'] = started
+            headers['psephos_observed_at_basis'] = 'complete decoded response retained'
+            status = entry['status']
+            error = None if 200 <= status < 400 else 'HTTP access/error stop; no automatic retry'
+            rid = self._record(url,url,entry['completed_at'],status,headers,sha,error)
+            entry['acquisition_id'] = rid
+            self._save()
+            if status in (301,302,303,307,308):
+                if 'retry-after' in headers: raise AcquisitionError('Redirect Retry-After; deferred')
+                destination = urljoin(url,headers['location'])
+                if destination == url: raise AcquisitionError('Redirect loop')
+                return self.fetch(destination, check_robots=check_robots, max_file_bytes=max_file_bytes)
+            if not 200 <= status < 300: raise AcquisitionError(f'HTTP {status}; stopped: {url}')
+            return Receipt(rid,url,sha,entry['completed_at'],len(body))
+        except Exception as exc:
+            entry['error'] = str(exc)
+            self._save()
+            raise
+
+COLLECTION = 'nd-century-code'
+SCOPE = {'1','2','3','5','9','11','16.1','40','58'}
+PARSER = 'nd-chapter-pdf-layout-v2'
+
+def inventory_from(data):
+    page = html.fromstring(data)
+    result = []
+    for detail in page.xpath('//details[summary/h2]'):
+        title_label = ' '.join(detail.xpath('./summary/h2')[0].text_content().split())
+        title = re.match(r'Title ([\d.]+) - ',title_label)[1]
+        urls = {}
+        for link in detail.xpath('.//a[@href]'):
+            url = urljoin(HOME,link.get('href')).split('#')[0]
+            if not re.fullmatch(r'https://ndlegis.gov/cencode/t[\d-]+(?:c[\d-]+)?\.pdf',url): continue
+            item = urls.setdefault(url, {'url':url,'title_number':title,'title':title_label,'sections':[],'chapter_label':None})
+            if '#' in link.get('href'):
+                number = link.text_content().strip()
+                if number not in item['sections']: item['sections'].append(number)
+            else: item['chapter_label'] = ' '.join(link.text_content().split())
+        result.extend(urls.values())
+    if len(result) < 1000: raise ValueError('Publisher chapter inventory changed')
+    return result
+
+def pdf_units(path, item):
+    """Keep all chapter text, separate prefatory headings and repeal notices.
+    Layout text is a projection; original PDF retains tables, typography and media.
+    """
+    output = subprocess.run(['pdftotext','-layout','-enc','UTF-8',str(path),'-'],capture_output=True,check=True).stdout.decode()
+    pages = output.split('\f')
+    # Only publisher page-number furniture is removed from retrieval projection.
+    cleaned = re.sub(r'(?m)^\s*Page No\. \d+\s*$', '',output).replace('\f','\n')
+    pattern = r'(?m)^[ \t]*(\d+(?:\.\d+)?-\d+(?:\.\d+)?-\d+(?:\.\d+)?)\. +([^\n]+)'
+    native_destinations={str(x).lstrip('/') for x in PdfReader(path).named_destinations}
+    chapter_ids={re.sub(r'^0+(?=\d)', '', n.rsplit('-',1)[0]) for n in item['sections']}
+    chapter_ids.update(re.sub(r'^0+(?=\d)', '', n) for n in re.findall(r'CHAPTER +([\d.-]+)',cleaned))
+    matches = [m for m in re.finditer(pattern,cleaned) if re.sub(r'^0+(?=\d)', '', m[1].rsplit('-',1)[0]) in chapter_ids]
+    stem = Path(urlsplit(item['url']).path).stem
+    units=[]
+    prefix=cleaned[:matches[0].start()] if matches else cleaned
+    if prefix.strip():
+        notice = bool(re.search(r'\b(Repealed|Reserved|Omitted|Superseded)\b',prefix,re.I))
+        units.append(Provision(key=f'ndcc:{stem}/_preamble',citation='N.D.C.C. '+(item['chapter_label'] or stem)+' preamble',heading=item['chapter_label'] or stem,text=prefix.strip(),markup='<pre>'+escape_html.escape(prefix)+'</pre>',url=item['url'],unit_kind='editorial_notice' if notice else 'chapter_heading',metadata={'source_pdf':item['url'],'counts_as_law':False}))
+    seen={}
+    for i, m in enumerate(matches):
+        number=m[1]; seen[number]=seen.get(number,0)+1
+        text=cleaned[m.start():matches[i+1].start() if i+1<len(matches) else len(cleaned)].strip()
+        lines=text.splitlines()
+        caption=[m[2].strip()]
+        body_start=1
+        while body_start < len(lines) and lines[body_start] and not lines[body_start][0].isspace() and not re.match(r'^(Repealed|Reserved|Omitted|Superseded|Transferred)\b',lines[body_start],re.I):
+            caption.append(lines[body_start].strip()); body_start+=1
+        body='\n'.join(lines[body_start:]).strip()
+        heading=' '.join(caption)
+        destination=number.replace('.','p')
+        section_url=item['url']+'#nameddest='+destination if destination in native_destinations else item['url']
+        notice=bool(re.match(r'^(Repealed|Reserved|Omitted|Superseded|Transferred)\b',body,re.I)) and len(body)<700
+        key='ndcc:'+number+(f'/_occurrence/{seen[number]}' if seen[number]>1 else '')
+        units.append(Provision(key=key,citation='N.D.C.C. § '+number,heading=heading,text=text,markup='<pre>'+escape_html.escape(text)+'</pre>',url=section_url,parent_key='ndcc:'+stem,unit_kind='editorial_notice' if notice else 'section',metadata={'source_identifier':number,'native_pdf_destination_verified':destination in native_destinations,'source_chapter_pdf':item['url'],'title_number':item['title_number'],'occurrence':seen[number],'effective_on':None,'fidelity':'pdftotext -layout projection; original PDF authoritative for tables and media','counts_as_law':not notice}))
+    if not units: raise ValueError('Empty PDF extraction')
+    expected=set(item['sections']); actual=set(seen)
+    return units, {'pages':len(pages)-(not pages[-1].strip()),'publisher_section_identifiers':len(expected),'parsed_distinct_section_identifiers':len(actual),'missing_index_identifiers':sorted(expected-actual),'additional_pdf_identifiers':sorted(actual-expected),'duplicate_identifiers':{k:v for k,v in seen.items() if v>1},'layout_text_characters':len(output)}
+
+def sync_nd(s: Store, a: Acquirer, limit=None, as_of=None):
+    if as_of is not None: raise ValueError('ND sync is current publisher files only; unknown snapshot dates cannot satisfy as_of')
+    if not isinstance(a,NDAcquirer): raise TypeError('Use NDAcquirer for cumulative byte/policy accounting')
+    index=a.fetch(HOME+'/index.html')
+    items=inventory_from(s.artifact(index.sha256))
+    s.collection(COLLECTION,('us-nd','North Dakota','state','us'),name='North Dakota Century Code',authority='North Dakota Legislative Branch',kind='statutes',homepage=HOME+'/index.html',source_status='Publisher identifies online Century Code as official; bounded chapter coverage',access='Public chapter PDFs; retained robots, disclaimer and privacy notices',metadata={'inventory_sha256':index.sha256,'publisher_update_notice_date':'2025-07-01','publisher_update_notice':'All statutory changes approved by the 69th Legislative Assembly reflected regardless of earlier or later effective date; later effective/expiration dates in captions.','snapshot_date':None,'snapshot_basis':'Live chapter files; index update notice is not an exact file snapshot date','scope_titles':sorted(SCOPE),'total_chapter_exports':len(items)})
+    for item in items:
+        previous=s.db.execute('SELECT status FROM inventories WHERE collection_id=? AND item=?',(COLLECTION,item['url'])).fetchone()
+        if not previous: s.inventory(COLLECTION,item['url'],item['url'],'pending' if item['title_number'] in SCOPE else 'out_of_scope')
+    selected=[x for x in items if x['title_number'] in SCOPE]
+    checks_path=ROOT/'parser-results.json'
+    checks=json.loads(checks_path.read_text()) if checks_path.exists() else {}
+    processed=0
+    for item in selected:
+        if limit is not None and processed>=limit: break
+        if shutil.disk_usage(ROOT).free < 105*1024**3: break
+        if a.ledger['decoded_http_bytes'] >= 70*1024**2: break
+        try:
+            receipt=a.fetch(item['url'])
+            if not s.artifact(receipt.sha256).startswith(b'%PDF'): raise ValueError('Expected publisher PDF')
+            units,result=pdf_units(s.object_path(receipt.sha256),item)
+            checks[item['url']]=result
+            version,count,added=s.ingest(collection=COLLECTION,document='ndcc:'+Path(urlsplit(item['url']).path).stem,title=item['chapter_label'] or item['title']+' / '+Path(urlsplit(item['url']).path).stem,url=item['url'],acquisition=receipt.id,snapshot_basis='Unknown exact publisher snapshot; index notice dated 2025-07-01 is only a incorporation notice',parser=PARSER,provisions=units,metadata={**result,'publisher_update_notice_date':'2025-07-01','source_title':item['title'],'source_chapter_label':item['chapter_label'],'original_pdf_preserves_media':True,'snapshot_date':None})
+            s.inventory(COLLECTION,item['url'],item['url'],'acquired' if not result['missing_index_identifiers'] else 'acquired_parser_gap')
+            processed+=1
+            print(json.dumps({'chapter':item['url'],'units':count,'added':added,'bytes':a.ledger['decoded_http_bytes'],'missing':result['missing_index_identifiers']}),flush=True)
+            checks_path.write_text(json.dumps(checks,indent=2))
+        except Exception as exc:
+            s.inventory(COLLECTION,item['url'],item['url'],'error',str(exc))
+            print('STOP '+str(exc),flush=True)
+            break
+    (ROOT/'inventory.json').write_text(json.dumps(items,indent=2))
+    return {'processed':processed,'scope_chapters':len(selected),'all_chapters':len(items)}

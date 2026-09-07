@@ -1,0 +1,378 @@
+"""Georgia official source collector. All mutable state is confined to this directory."""
+from __future__ import annotations
+
+import json
+import os
+import shutil
+import re
+import subprocess
+import html as html_std
+import fcntl
+from datetime import datetime
+from pathlib import Path
+from urllib.parse import urlsplit, urljoin, quote
+
+from lxml import html
+from pypdf import PdfReader
+
+from psephos.acquire import Acquirer, AcquisitionError
+from psephos.store import Store, Provision, Reference, utc_now
+
+ROOT = Path(__file__).resolve().parent
+CAP = 209715200
+
+
+class GeorgiaAcquirer(Acquirer):
+    """Persistent lifetime decoded-byte counter; no reset on subsequent runs."""
+
+    def __init__(self, store: Store):
+        self._lock = (ROOT / 'budget.lock').open('a')
+        fcntl.flock(self._lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        self.ledger = ROOT / 'budget.json'
+        self._total = json.loads(self.ledger.read_text())['consumed_bytes'] if self.ledger.exists() else 0
+        self._initializing = True
+        super().__init__(store, max_bytes=CAP - 2 * 1024**2, delay=1.1)
+        self._initializing = False
+        self.client.headers['Accept-Encoding'] = 'identity'
+        self.client.event_hooks['response'] = [self._guard_response]
+        self._persist()
+
+    def close(self):
+        super().close()
+        fcntl.flock(self._lock, fcntl.LOCK_UN)
+        self._lock.close()
+
+    def _guard_response(self, response):
+        # Never invoke a decompressor: raw bytes equal decoded HTTP bytes. This
+        # makes a 64 KiB lookahead sufficient to prevent chunk-level cap overflow.
+        if response.headers.get('content-encoding', 'identity').lower() not in ('', 'identity'):
+            raise AcquisitionError('Unexpected content encoding; stopped before decoding')
+        length = response.headers.get('content-length', '')
+        if length.isdigit() and int(length) > 20 * 1024**2:
+            raise AcquisitionError('Declared file exceeds 20 MiB scoped file cap; body unread')
+        def bounded_bytes(*args, **kwargs):
+            iterator = response.iter_raw(chunk_size=65536)
+            while True:
+                if self.downloaded + 65536 > CAP:
+                    raise AcquisitionError('Hard lifetime cap: stopped before next chunk')
+                try:
+                    chunk = next(iterator)
+                except StopIteration:
+                    return
+                yield chunk
+        response.iter_bytes = bounded_bytes
+
+    def _allowed(self, url):
+        host = urlsplit(url).hostname or ''
+        if not (host.endswith('.ga.gov') or host == 'ga.gov' or host.endswith('.georgia.gov') or host == 'georgia.gov'):
+            raise AcquisitionError(f'Uncoordinated redirect host blocked: {host}')
+        # urllib.robotparser does not implement wildcard matching. Enforce the
+        # publisher's observed rule-detail wildcard as well as the core parser.
+        if urlsplit(url).hostname == 'rules.sos.ga.gov' and re.match(r'^/gac/.*-\..*', urlsplit(url).path):
+            raise AcquisitionError('Disallowed by publisher robots wildcard /gac/*-.*')
+        super()._allowed(url)
+
+    @property
+    def downloaded(self):
+        return self._total
+
+    @downloaded.setter
+    def downloaded(self, value):
+        if getattr(self, '_initializing', False):
+            return
+        self._total = value
+        self._persist()
+
+    def _persist(self):
+        temp = self.ledger.with_suffix('.tmp')
+        with temp.open('w') as stream:
+            json.dump({'hard_cap_bytes': CAP, 'consumed_bytes': self._total,
+                'basis': 'Every newly decoded response chunk consumed by Acquirer, including robots and retried downloads; cache reads excluded. HTTP error/redirect bodies are not read or decoded.'}, stream, indent=2)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temp, self.ledger)
+
+    def fetch(self, url, **kwargs):
+        host = urlsplit(url).hostname or ''
+        if not (host.endswith('.ga.gov') or host == 'ga.gov' or host.endswith('.georgia.gov') or host == 'georgia.gov'):
+            raise AcquisitionError(f'Uncoordinated host blocked: {host}')
+        if shutil.disk_usage(ROOT).free < 105 * 1024**3:
+            raise AcquisitionError('Disk safety stop: less than 105 GiB free')
+        kwargs.setdefault('max_file_bytes', 20 * 1024**2)
+        if not self._cached(url) and CAP - self.downloaded < kwargs['max_file_bytes'] + 2 * 1024**2:
+            raise AcquisitionError('Lifetime budget reserve exhausted')
+        return super().fetch(url, **kwargs)
+
+
+COLLECTION = 'ga-administrative-rules'
+INDEX = 'https://rules.sos.ga.gov/Download_pdf.aspx'
+PARSER = 'ga-department-pdf-pages/1'
+
+
+def inventory(data):
+    root = html.fromstring(data)
+    result = []
+    for a in root.xpath('//a[@href]'):
+        title = a.text_content().strip()
+        match = re.match(r'Department (\d+)\.', title)
+        if match:
+            result.append({'department': match[1], 'title': title,
+                'url': quote(urljoin(INDEX, a.get('href')), safe=':/?=&%')})
+    if not result or len({x['department'] for x in result}) != len(result):
+        raise ValueError('Missing or duplicate department inventory')
+    return result
+
+
+def pdf_projection(path: Path, item: dict):
+    """Whole PDF page projection, with source-native outlines and link anchors."""
+    reader = PdfReader(path)
+    output = subprocess.run(['pdftotext', '-layout', str(path), '-'], check=True,
+        capture_output=True).stdout.decode('utf-8')
+    pages = output.split('\f')
+    if not pages[-1].strip():
+        pages.pop()
+    if len(pages) != len(reader.pages):
+        raise ValueError('Extracted physical page count differs from PDF page tree')
+    missing_pages = [number for number,text in enumerate(pages,1) if not text.strip()]
+    if sum(len(t.strip()) for t in pages) < 200:
+        raise ValueError('Insufficient real legal text')
+    outlines = []
+    def walk(items, parents=()):
+        previous = None
+        for node in items:
+            if isinstance(node, list):
+                walk(node, parents + ((previous,) if previous else ()))
+            else:
+                previous = str(node.title)
+                outlines.append({'title': previous, 'parents': list(parents),
+                    'page': reader.get_destination_page_number(node) + 1,
+                    'left': str(node.get('/Left', '')), 'top': str(node.get('/Top', ''))})
+    walk(reader.outline)
+    first = ' '.join(pages[0].split())
+    current = re.search(r'Current through Rules and Regulations filed through (\w+ \d{1,2}, \d{4})', first)
+    snapshot = datetime.strptime(current[1], '%B %d, %Y').date().isoformat() if current else None
+    units = []
+    image_pages = []
+    for number, (text, page) in enumerate(zip(pages, reader.pages), 1):
+        if not text.strip():
+            # The complete original PDF remains available, but a blank/OCR stub
+            # must never be counted as indexed legal text.
+            continue
+        page_url = item['url'] + f'#page={number}'
+        refs, annotations = [], []
+        for ref in page.get('/Annots', []):
+            annotation = ref.get_object()
+            action = annotation.get('/A')
+            entry = {'subtype': str(annotation.get('/Subtype', '')), 'rect': str(annotation.get('/Rect', ''))}
+            if action:
+                action = action.get_object()
+                uri = str(action.get('/URI', ''))
+                entry['action'] = {str(k):str(v) for k,v in action.items()}
+                if uri:
+                    refs.append(Reference(uri, 'publisher_pdf_link', uri, json.dumps(entry)))
+            if '/Dest' in annotation:
+                entry['destination'] = str(annotation['/Dest'])
+            annotations.append(entry)
+        resources = page.get('/Resources', {}).get_object()
+        xobjects = resources.get('/XObject', {})
+        if hasattr(xobjects, 'get_object'):
+            xobjects = xobjects.get_object()
+        images = [str(name) for name, obj in xobjects.items() if obj.get_object().get('/Subtype') == '/Image']
+        if images:
+            image_pages.append(number)
+        page_outlines = [o for o in outlines if o['page'] == number]
+        meta = {'physical_page': number, 'page_count': len(pages),
+            'publisher_outlines': page_outlines, 'pdf_annotations': annotations,
+            'image_xobjects': images, 'media_treatment': 'Original PDF retains all media, vector graphics and tables; layout text is not a visual transcription.',
+            'rule_identifiers_in_text': sorted(set(re.findall(r'\b\d+(?:-\d+)+-\.\d+\b', text))),
+            'source_text_characters': len(text), 'projection': 'pdftotext -layout; full physical page; no summary or OCR'}
+        marker = '\n[Source media: embedded PDF image objects retained in original PDF; not transcribed.]' if images else ''
+        units.append(Provision(key=f"ga-rules:department-{item['department']}:page-{number}",
+            citation=f"Ga. Comp. R. & Regs., Department {item['department']}, PDF page {number}",
+            heading=' | '.join(o['title'] for o in page_outlines) or f"{item['title']} — page {number}",
+            text=text + marker, markup=f'<pre data-pdf-page="{number}">{html_std.escape(text)}</pre>',
+            url=page_url, parent_key=f"ga-rules:department-{item['department']}", unit_kind='pdf_page',
+            metadata=meta, references=tuple(refs)))
+    metadata = {'publisher_current_through': snapshot, 'publisher_current_through_statement': current[0] if current else None,
+        'page_count': len(pages), 'indexed_page_count':len(units), 'unextractable_or_blank_pages':missing_pages,
+        'publisher_outlines': outlines, 'rule_outline_count': sum(o['title'].startswith('Rule ') for o in outlines),
+        'pdf_metadata': {str(k):str(v) for k,v in (reader.metadata or {}).items()},
+        'image_pages': image_pages, 'text_characters': sum(len(t) for t in pages),
+        'clock_treatment': 'PDF first-page filing-through statement is incorporation snapshot. PDF creation/modification metadata and HTTP timestamps are not publication or legal effect. Rule-level histories remain in full text; no consolidated effective date inferred.',
+        'fidelity': 'All physical pages retained, including cover, TOC, administrative histories, definitions, exceptions, appendices and notices. Bookmarks preserve source hierarchy. PDF bytes preserve native graphics, table layout, fonts and anchors. Text projection may imperfectly order tables; image text is not OCRed.'}
+    return units, snapshot, metadata
+
+
+def sync_ga(store: Store, acquirer: Acquirer, limit: int | None = None, as_of: str | None = None):
+    if store.root != (ROOT / 'source_store').resolve() or acquirer.store.root != store.root:
+        raise ValueError('This isolated collector only writes its own source_store')
+    if not isinstance(acquirer, GeorgiaAcquirer):
+        raise ValueError('Use GeorgiaAcquirer for persistent lifetime accounting')
+    if as_of is not None:
+        raise ValueError('Historical acquisition is unsupported; use Store as_of retrieval for known snapshot dates')
+    if limit is not None and limit < 0:
+        raise ValueError('limit must be nonnegative')
+    store.collection(COLLECTION, ('us-ga', 'Georgia', 'state', 'us'),
+        name='Georgia administrative rules — official department PDF exports', authority='Georgia Secretary of State; designated publisher Fastcase',
+        kind='regulations', homepage=INDEX, source_status='official publisher-hosted compilation; uncertified',
+        access='Public government-hosted department PDF downloads; no account or paid XML feed',
+        metadata={'coverage_unit':'complete department PDF; physical-page text projection',
+            'warning':'Incomplete statewide coverage. PDF pages are not distinct rules; some retained volumes have explicit image-only/blank page gaps in version metadata and report.json. Source PDFs must be consulted for images and table fidelity.',
+            'terms':'Copyright © 2026 Fastcase, Inc — All rights reserved. No blanket redistribution license asserted. Paid XML feeds not accessed.',
+            'robots':'2 second crawl-delay; blocked rule-detail wildcard and search endpoints not fetched'})
+    receipt = acquirer.fetch(INDEX)
+    items = inventory(store.artifact(receipt.sha256))
+    for item in items:
+        if not store.db.execute('SELECT 1 FROM inventories WHERE collection_id=? AND item=?', (COLLECTION,item['department'])).fetchone():
+            store.inventory(COLLECTION,item['department'],item['url'],'pending')
+    count = 0
+    for item in items:
+        if limit is not None and count >= limit:
+            break
+        prior = store.db.execute('SELECT status FROM inventories WHERE collection_id=? AND item=?', (COLLECTION,item['department'])).fetchone()
+        if prior and prior['status'] == 'blocked':
+            # Preserve barriers and avoid automatically consuming the lifetime
+            # budget again for known blocked or unparseable source volumes.
+            continue
+        doc = 'ga-rules:department-' + item['department']
+        existing = store.db.execute('SELECT id FROM versions WHERE document_id=?', (doc,)).fetchone()
+        if existing and not acquirer.refresh:
+            continue
+        count += 1
+        try:
+            pdf_receipt = acquirer.fetch(item['url'])
+            path = store.object_path(pdf_receipt.sha256)
+            if not path.read_bytes()[:5] == b'%PDF-':
+                raise ValueError('Expected PDF; retained response is not legal PDF text')
+            units, snapshot, metadata = pdf_projection(path,item)
+            metadata['inventory_acquisition_id'] = receipt.id
+            version, unit_count, added = store.ingest(collection=COLLECTION, document=doc,
+                title=item['title'], url=item['url'], acquisition=pdf_receipt.id,
+                snapshot_date=snapshot, snapshot_basis='Publisher filing-through date printed on PDF cover; not legal-effect date' if snapshot else 'Publisher snapshot date unknown',
+                parser=PARSER, provisions=units, metadata=metadata)
+            gaps = metadata['unextractable_or_blank_pages']
+            store.inventory(COLLECTION,item['department'],item['url'],'partial' if gaps else 'ingested',
+                f'Complete PDF retained; unextractable/blank physical pages excluded from text index: {gaps}' if gaps else None)
+            print(json.dumps({'department':item['department'],'pages':unit_count,'version':version,'new':added,'consumed_bytes':acquirer.downloaded}),flush=True)
+        except Exception as exc:
+            store.inventory(COLLECTION,item['department'],item['url'],'blocked',str(exc))
+            print(json.dumps({'department':item['department'],'error':str(exc),'consumed_bytes':acquirer.downloaded}),flush=True)
+            if 'budget' in str(exc).lower() or 'disk safety' in str(exc).lower():
+                break
+        finally:
+            write_report(store)
+    return write_report(store)
+
+
+def reparse_retained(store):
+    """Offline only: salvage real text from retained PDFs with explicit page gaps."""
+    for row in store.db.execute("SELECT * FROM inventories WHERE collection_id=? AND status='blocked'",(COLLECTION,)).fetchall():
+        receipt=store.db.execute('SELECT * FROM acquisitions WHERE url=? AND status=200 AND sha256 IS NOT NULL ORDER BY id DESC LIMIT 1',(row['url'],)).fetchone()
+        if not receipt:
+            continue
+        path=store.object_path(receipt['sha256'])
+        if not path.read_bytes().startswith(b'%PDF-'):
+            continue
+        index_receipt=store.db.execute('SELECT * FROM acquisitions WHERE url=? AND sha256 IS NOT NULL ORDER BY id DESC LIMIT 1',(INDEX,)).fetchone()
+        item=next(x for x in inventory(store.artifact(index_receipt['sha256'])) if x['department']==row['item'])
+        units,snapshot,metadata=pdf_projection(path,item)
+        metadata['inventory_acquisition_id']=index_receipt['id']
+        store.ingest(collection=COLLECTION,document='ga-rules:department-'+row['item'],title=item['title'],url=item['url'],
+            acquisition=receipt['id'],snapshot_date=snapshot,snapshot_basis='Publisher filing-through date printed on PDF cover; not legal-effect date',
+            parser=PARSER,provisions=units,metadata=metadata)
+        gaps=metadata['unextractable_or_blank_pages']
+        store.inventory(COLLECTION,row['item'],row['url'],'partial' if gaps else 'ingested',
+            f'Complete PDF retained; unextractable/blank physical pages excluded from text index: {gaps}' if gaps else None)
+        print(json.dumps({'department':row['item'],'indexed_pages':len(units),'physical_page_gaps':gaps}),flush=True)
+    return write_report(store)
+
+
+def write_report(store):
+    rows = [dict(r) for r in store.db.execute('SELECT * FROM inventories WHERE collection_id=? ORDER BY CAST(item AS INTEGER)', (COLLECTION,))]
+    receipts = [dict(r) for r in store.db.execute('SELECT a.*, b.bytes FROM acquisitions a LEFT JOIN artifacts b ON b.sha256=a.sha256 ORDER BY a.id')]
+    for row in receipts:
+        row['headers'] = json.loads(row['headers'])
+        row['object_path'] = str(store.object_path(row['sha256'])) if row['sha256'] else None
+    documents = []
+    front_matter_pages=0
+    rule_range_pages=0
+    unclassified_pages=0
+    for r in store.db.execute('SELECT d.id,d.title,v.id version_id,v.acquisition_id,v.snapshot_date,v.published_on,v.effective_on,v.metadata FROM documents d JOIN versions v ON v.document_id=d.id ORDER BY d.id'):
+        x = dict(r); m=json.loads(x.pop('metadata')); x.update({k:m[k] for k in ('page_count','rule_outline_count','text_characters','image_pages')})
+        x['indexed_page_count']=m.get('indexed_page_count',m['page_count'])
+        x['unextractable_or_blank_pages']=m.get('unextractable_or_blank_pages',[])
+        first_rule=min((o['page'] for o in m['publisher_outlines'] if o['title'].startswith('Rule ')),default=None)
+        page_numbers=set(range(1,m['page_count']+1))-set(x['unextractable_or_blank_pages'])
+        if first_rule is None:
+            unclassified_pages+=len(page_numbers)
+        else:
+            front_matter_pages+=sum(p<first_rule for p in page_numbers)
+            rule_range_pages+=sum(p>=first_rule for p in page_numbers)
+        documents.append(x)
+    report = {'generated_at':utc_now(),'state':'GA','collection_ids':[COLLECTION],
+        'source_store_root':str(store.root),'database_path':str(store.root/'legal.sqlite3'),
+        'adapter_path':str(ROOT/'adapter.py'),'budget_path':str(ROOT/'budget.json'),
+        'helper_files':[str(ROOT/'self_check.py'),str(ROOT/'README.md')],
+        'budget':json.loads((ROOT/'budget.json').read_text()),
+        'counts':{table:store.db.execute(f'SELECT count(*) FROM {table}').fetchone()[0] for table in ('collections','documents','versions','provisions','legal_references','acquisitions','artifacts')},
+        'unit_accounting':{'unit_kind_counts':[dict(x) for x in store.db.execute('SELECT unit_kind,count(*) count FROM provisions GROUP BY unit_kind')],
+            'independently_segmented_rule_sections':0,'metadata_only_provisions':0,'ocr_placeholder_provisions':0,
+            'rule_outline_entries':sum(d['rule_outline_count'] for d in documents),
+            'indexed_pages_before_first_rule_bookmark':front_matter_pages,
+            'indexed_pages_from_first_rule_bookmark_onward':rule_range_pages,
+            'indexed_pages_in_volumes_without_rule_bookmarks':unclassified_pages,
+            'qualification':'PDF pages are not distinct rules. The first group preserves cover, TOC and administrative histories; the second preserves actual rule text together with headings, citations, histories, notices and possible trailing matter. Page ranges are bookmark-based, not semantic classification. Rule bookmark count is navigation metadata, never a count of independently indexed rules. Pure heading, TOC and publisher notices are not separately presented as legal sections.'},
+        'retained_distinct_artifact_bytes':store.db.execute('SELECT coalesce(sum(bytes),0) FROM artifacts').fetchone()[0],
+        'coverage':{'department_denominator':len(rows),'department_pdfs_indexed':sum(r['status'] in ('ingested','partial') for r in rows),
+            'department_pdfs_with_every_page_indexed':sum(r['status']=='ingested' for r in rows),
+            'department_pdfs_with_exact_page_gaps':sum(r['status']=='partial' for r in rows),
+            'scope':f'{len(rows)} numbered department entries in official PDF download inventory; the Departments navigation anchor is not an inventory item; monthly bulletins and Georgia statutory code excluded',
+            'complete_state_law':False,'items':rows,'gaps':[r for r in rows if r['status']!='ingested']},
+        'documents':documents,'receipts':receipts,
+        'hosts':sorted({urlsplit(r['final_url']).hostname for r in receipts}),
+        'affected_policy_hosts':{'www.legis.ga.gov':'Discovery robots endpoint returned HTML SPA shell, not usable robots policy. Only root/robots retained under earlier shared Acquirer behavior; no legal text or further requests. Now blocked for any further acquisition unless independently verified usable policy.',
+            'sos.ga.gov':'robots endpoint returned 403; no further acquisition',
+            'rules.sos.ga.gov':'Normal retained plaintext robots policy, receipt 1; all acquired legal PDFs came from this host'},
+        'terms':{'homepage_receipt':2,'download_inventory_receipt':6,'robots_receipt':1,
+            'notice':'Copyright © 2026 Fastcase, Inc — All rights reserved. Designated publisher offers paid XML source/update feeds; only public official-host PDF exports collected.',
+            'redistribution':'No blanket permission claimed; original notices retained. Local research source Store only.',
+            'policy':'Crawl-delay 2 seconds plus Acquirer delay 1.1 seconds; no individual rule-detail/search/loadthedata requests; no accounts or purchases.'},
+        'clock_treatment':{'acquisition':'receipt observed_at, independent from legal clocks',
+            'edition_incorporation':'Each PDF cover filing-through statement; parsed snapshot_date if present',
+            'publication':'Unknown; PDF creation date and Last-Modified not treated as publication',
+            'legal_effect':'Version effective_on unknown; historical filed/effective/amendment/repeal language retained on source pages, no inference of a single legal effect clock',
+            'as_of':'sync rejects requested historical dates; standard retrieval excludes unknown snapshots for as_of'},
+        'limitations':['PDF physical pages are retrieval units, not source-native rule counts. Native outline hierarchy and references retained in metadata.',
+            'Media and vector graphics retained in PDF; images not OCRed. Page text/table reading order is a projection.',
+            'Individual rule web pages barred by publisher robots wildcard; official downloadable department PDFs used.',
+            'sos.ga.gov robots returned 403; no body accessed. General Assembly root and robots returned SPA shell; no statutory text collected.',
+            'Monthly bulletins are not included or merged with compilation. Future-effective language is not resolved.'],
+        'free_disk_bytes':shutil.disk_usage(ROOT).free}
+    checks = ROOT/'checks.json'
+    if checks.exists(): report['focused_checks']=json.loads(checks.read_text())
+    diagnostics=ROOT/'blocked_diagnostics.json'
+    if diagnostics.exists(): report['initial_parser_failure_diagnostics']=json.loads(diagnostics.read_text())
+    temp=ROOT/'report.tmp'; temp.write_text(json.dumps(report,ensure_ascii=False,indent=2)); os.replace(temp,ROOT/'report.json')
+    return report
+
+
+if __name__ == '__main__':
+    import sys
+    store = Store(ROOT / 'source_store')
+    acquirer = GeorgiaAcquirer(store)
+    try:
+        if not sys.argv[1:] or sys.argv[1] == 'sync':
+            result = sync_ga(store, acquirer, int(sys.argv[2]) if len(sys.argv)>2 else None)
+            print(json.dumps({'counts':result['counts'],'budget':result['budget']}))
+            sys.exit(0)
+        for url in sys.argv[1:]:
+            try:
+                receipt = acquirer.fetch(url)
+                print(json.dumps({'url':url, 'receipt':receipt.__dict__}), flush=True)
+                data = store.artifact(receipt.sha256)
+                print(data[:14000].decode('utf-8', 'replace'), flush=True)
+            except Exception as exc:
+                print(type(exc).__name__, str(exc), flush=True)
+    finally:
+        acquirer.close()
+        store.close()

@@ -1,0 +1,309 @@
+"""Isolated New Mexico SRCA collector; no shared-core or production-store writes.
+
+All retrieval is through Acquirer. Public RealFile widgets are the publisher's
+current inventory, not inferred numeric ranges. Full source parts are retained
+as indivisible units so definitions, exceptions and history remain in context.
+"""
+from __future__ import annotations
+
+import json
+import re
+import shutil
+import subprocess
+import io
+from html import escape
+from copy import deepcopy
+from pathlib import Path
+from urllib.parse import urlsplit, urlencode
+
+from lxml import html
+
+from psephos.acquire import Acquirer, AcquisitionError
+from psephos.parse import readable, markup, source_links, media_links
+from psephos.store import Store, Provision
+
+ROOT = Path(__file__).resolve().parent
+HOME = 'https://www.srca.nm.gov/nmac-home/'
+TITLE_URL = HOME + 'nmac-titles/title-20-environmental-protection/'
+CAP = 200 * 1024**2
+RF = 'https://prod-rf-lambda.rtssaas.com/'
+ACCOUNT = 'd89c47bd0d70402dba89b03a22bda6d1'
+WIDGET = 'f5401a4d-a189-44e5-bb2a-ccf8ea83a876'
+FOLDER = '7a39589f-7716-402d-93f3-4df5213d2f1e'
+OWNED_HOSTS = ['www.srca.nm.gov','srca.nm.gov','prod-rf-lambda.rtssaas.com',
+    'realfiled89c47bd0d70402dba89b03a22bda6d1.s3.us-west-2.amazonaws.com']
+
+
+class NMCollectorAcquirer(Acquirer):
+    """Persistent decoded-byte meter, disk floor and explicit host ownership."""
+    def __init__(self, store: Store, *, allowed_hosts=None, refresh=False):
+        self.meter_path = ROOT / 'meter.json'
+        previous = json.loads(self.meter_path.read_text()) if self.meter_path.exists() else {}
+        self.allowed_hosts = set(allowed_hosts or OWNED_HOSTS)
+        super().__init__(store, refresh=refresh, max_bytes=CAP-1024**2, delay=1.05)
+        self.downloaded = previous.get('decoded_bytes', 0)
+
+    def _pause(self, url, delay=None):
+        if urlsplit(url).hostname not in self.allowed_hosts:
+            raise AcquisitionError('Host ownership not granted: ' + str(urlsplit(url).hostname))
+        if shutil.disk_usage(ROOT).free < 105 * 1024**3:
+            raise AcquisitionError('Disk free space approaching 100 GiB; stopped')
+        if self.downloaded >= self.max_bytes - 8 * 1024**2:
+            raise AcquisitionError('Conservative decoded-byte budget stop')
+        return super()._pause(url, delay)
+
+    def _allowed(self,url):
+        parts=urlsplit(url)
+        robots_url=f'{parts.scheme}://{parts.netloc}/robots.txt'
+        row=self.store.db.execute('SELECT status FROM acquisitions WHERE url=? ORDER BY id DESC LIMIT 1',(robots_url,)).fetchone()
+        if row and row[0] in (401,403):
+            raise AcquisitionError('Deferred publisher robots barrier: '+robots_url)
+        return super()._allowed(url)
+
+    def fetch(self, url, **kwargs):
+        kwargs['max_file_bytes'] = min(kwargs.get('max_file_bytes', 8*1024**2), 8*1024**2)
+        try:
+            return super().fetch(url, **kwargs)
+        finally:
+            self.meter_path.write_text(json.dumps({
+                'decoded_bytes': self.downloaded,
+                'cap_bytes': CAP,
+                'basis': 'Acquirer newly decoded response chunks; includes discovery and robots; rehashed cache hits add zero',
+            }, indent=2) + '\n')
+
+
+def parse_part(data: bytes, url: str, expected_part: str | None = None):
+    """Parse a complete official HTML part without fragmenting its context."""
+    html_parser = html.HTMLParser()
+    root = html.fromstring(data, parser=html_parser)
+    encoding_note = None
+    if any(e.level_name == 'FATAL' and 'encoding' in e.message.lower() for e in html_parser.error_log):
+        declared = re.search(br'charset\s*=\s*["\']?([\w-]+)', data[:5000],re.I)
+        if not declared:
+            raise ValueError('Invalid source encoding without declared charset')
+        charset = declared.group(1).decode('ascii')
+        decoded = data.decode(charset,errors='replace')
+        encoding_note = {'source_declared_charset':charset,'undefined_source_bytes_replaced':decoded.count('\ufffd'),
+            'note':'Original bytes retained; explicit declared-charset decoding avoids libxml truncation on undefined bytes in Word metadata.'}
+        root = html.fromstring(decoded)
+    body = root.find('body')
+    if body is None:
+        raise ValueError('Missing HTML body')
+    source_markup = markup(body)
+    body = deepcopy(body)
+    for element in body.iter():
+        if isinstance(element.tag, str) and ':' in element.tag:
+            element.tag = element.tag.rsplit(':', 1)[-1]
+    for element in body.xpath('.//script|.//style'):
+        element.drop_tree()
+    text = readable(body)
+    semantic_text = ' '.join(text.upper().split())
+    notice = re.search(r'HISTORY OF\s+(\d+\.\d+\.\d+)\s+NMAC',semantic_text)
+    if notice and re.search(r'THIS PART WAS REPEALED',semantic_text):
+        part=notice.group(1)
+        if expected_part and part != expected_part:
+            raise ValueError('Wrong part in repeal notice')
+        if not re.search(r'TITLE\s+\d+.*CHAPTER\s+\d+.*PART\s+\d+',semantic_text):
+            raise ValueError('Missing native title/chapter/part in repeal notice')
+        return Provision(key='nmac:'+part,citation=part+' NMAC',heading=part+' — publisher repeal notice',
+            text=text,markup=source_markup,url=url,unit_kind='repeal_notice',
+            metadata={'native_part':part,'status':'repealed','full_current_rule_text':False,
+                      'fidelity':'Complete publisher repeal/history notice; not the repealed rule text'},
+            references=source_links(body,url))
+    if len(text) < 400 or not all(x in semantic_text for x in ['ISSUING AGENCY', 'SCOPE', 'AUTHORITY']):
+        raise ValueError('Not full legal rule text (catalog, error, or stub)')
+    match = re.search(r'\b(\d+\.\d+\.\d+)\.1\s+ISSUING\s+AGENCY', text, re.I)
+    if not match:
+        raise ValueError('No native NMAC part identifier')
+    part = match.group(1)
+    if expected_part and part != expected_part:
+        raise ValueError(f'Wrong part: {part}, expected {expected_part}')
+    sections = list(dict.fromkeys(re.findall(r'(?m)^(' + re.escape(part) + r'\.\d+)\s+[A-Z]', text)))
+    heading = re.search(r'(?s)\bPART\s+\d+\s+(.+?)(?=\n\s*' + re.escape(part) + r'\.1\b)', text)
+    effective = re.search(re.escape(part)+r'\.5\s+EFFECTIVE\s+DATE[:.]\s*(.*?)(?=\n\[|\n'+re.escape(part)+r'\.)', text, re.S|re.I)
+    return Provision(
+        key='nmac:'+part, citation=part+' NMAC',
+        heading=' '.join(heading.group(1).split()) if heading else part+' NMAC',
+        text=text, markup=source_markup, url=url, unit_kind='part',
+        metadata={
+            'native_part': part, 'native_section_identifiers': sections,
+            'encoding_note':encoding_note,
+            'detected_section_identifier_count': len(sections),
+            'section_identifier_note': 'Candidate identifiers for navigation; line wrapping may include references. Parts, not these identifiers, are the indexed units.',
+            'tables': len(body.xpath('.//table')),
+            'native_anchors': body.xpath('.//@id|.//a/@name'),
+            'media': media_links(body,url),
+            'effective_date_statement': effective.group(1).strip() if effective else None,
+            'effective_on': None,
+            'clock_note': 'Part original effective date is not blanket effectiveness of all amendments; source statement retained verbatim.',
+            'fidelity': 'Full HTML body retained; external media locators visibly marked; original artifact retains head/styles/notices.',
+        }, references=source_links(body,url),
+    )
+
+
+def parse_pdf_part(data: bytes, url: str, expected_part: str):
+    from pypdf import PdfReader
+    if not data.startswith(b'%PDF-'):
+        raise ValueError('Fallback is not a PDF')
+    pdf=PdfReader(io.BytesIO(data))
+    if pdf.is_encrypted:
+        raise ValueError('Encrypted fallback PDF')
+    result=subprocess.run(['pdftotext','-layout','-enc','UTF-8','-','-'],input=data,capture_output=True,check=True)
+    text=result.stdout.decode('utf-8')
+    pages=text.split('\f')
+    if not pages[-1].strip():pages.pop()
+    if len(pages)!=len(pdf.pages):
+        raise ValueError('PDF page extraction count mismatch')
+    if not all(x in ' '.join(text.upper().split()) for x in ['ISSUING AGENCY','SCOPE','STATUTORY AUTHORITY']):
+        raise ValueError('PDF is not full rule text')
+    if not re.search(re.escape(expected_part)+r'\.1\s+ISSUING\s+AGENCY',text):
+        raise ValueError('Wrong fallback PDF part')
+    return Provision(key='nmac:'+expected_part,citation=expected_part+' NMAC',
+        heading=expected_part+' NMAC — official complete PDF',text=text,
+        markup='<pre data-source-format="pdf-layout-text">'+escape(text)+'</pre>',url=url,
+        unit_kind='part',metadata={'native_part':expected_part,'source_format':'pdf','pages':len(pdf.pages),
+          'extraction':'Poppler pdftotext -layout, every PDF page retained in sequence; no OCR',
+          'page_text_lengths':[len(p.strip()) for p in pages],
+          'fidelity':'Full original PDF retains tables/figures; layout text is a searchable projection',
+          'effective_on':None,'primary_html_barrier':'S3 robots403; independently listed official PDF served successfully by RealFile'})
+
+
+def sync_nm(store: Store, acquirer: Acquirer, limit: int | None = None, as_of: str | None = None):
+    """Import the reviewed publisher inventory, with complete parts as native units.
+
+    limit bounds part documents (None imports the whole retained inventory).
+    Historical reconstruction is not offered. A manifest, if present, supplies
+    publisher-inventoried current part URLs; its receipt provenance is retained.
+    """
+    if as_of is not None:
+        raise ValueError('NM source does not provide historical snapshots; as_of is unsupported')
+    if limit is not None and limit < 0:
+        raise ValueError('limit must be nonnegative')
+    store.collection('nm-nmac', ('us-nm','New Mexico','state','us'),
+        name='New Mexico Administrative Code — acquired parts',
+        authority='New Mexico State Records Center and Archives, Administrative Law Division',
+        kind='regulation', homepage=HOME, source_status='official publisher; scoped acquisition',
+        access='Public HTTPS; robots allows. No blanket redistribution license asserted. Filed rule prevails over compiled text.',
+        metadata={'scope': 'See inventory/report; not statewide complete', 'accuracy_statement': HOME+'accuracy-statement/'})
+    clock_receipt = acquirer.fetch(HOME)
+    clock_root = html.fromstring(store.artifact(clock_receipt.sha256))
+    for element in clock_root.xpath('//script|//style'):
+        element.drop_tree()
+    clock_text = ' '.join(clock_root.text_content().split())
+    clock_match = re.search(r'([A-Z][a-z]+ \d{1,2}, \d{4}) including all new rules, amendments, and repeals with effective date on or before ([A-Z][a-z]+ \d{1,2}, \d{4})', clock_text)
+    clocks = {'publisher_update':None,'publisher_effective_through':None,
+              'clock_receipt_id':clock_receipt.id,'snapshot_date':None,'effective_on':None}
+    if clock_match:
+        from datetime import datetime
+        clocks.update(publisher_update=datetime.strptime(clock_match[1],'%B %d, %Y').date().isoformat(),
+                      publisher_effective_through=datetime.strptime(clock_match[2],'%B %d, %Y').date().isoformat(),
+                      source_clock_statement=clock_match[0])
+    manifest_path = ROOT/'manifest.json'
+    entries = json.loads(manifest_path.read_text())['parts'] if manifest_path.exists() else []
+    entries = [{'part':'1.24.10','url':'https://www.srca.nm.gov/parts/title01/01.024.0010.html',
+                'source':'Official linking guidance example; not verified against current widget'}] + entries
+    entries = list({e['url']: e for e in entries}.values())
+    result = {'clocks':clocks,'selected':0,'new_versions':0,'parts':0,'errors':[]}
+    for e in entries:
+        store.inventory('nm-nmac',e['part'],e['url'],'pending')
+    for e in entries[:limit] if limit is not None else entries:
+        result['selected'] += 1
+        source_url=e.get('fallback_pdf_url') or e['url']
+        try:
+            # A previously observed redirect is publisher evidence of an additional
+            # host, not authorization to contact it. Defer it without re-requesting.
+            if isinstance(acquirer, NMCollectorAcquirer):
+                redirects=store.db.execute('SELECT headers FROM acquisitions WHERE url=? AND status IN (301,302,303,307,308)',(source_url,)).fetchall()
+                for redirect in redirects:
+                    destination=json.loads(redirect[0]).get('location','')
+                    host=urlsplit(destination).hostname
+                    if host and host not in acquirer.allowed_hosts:
+                        raise AcquisitionError('Host ownership not granted: '+host)
+                    if host:
+                        blocked=store.db.execute('SELECT status FROM acquisitions WHERE url=? ORDER BY id DESC LIMIT 1',('https://'+host+'/robots.txt',)).fetchone()
+                        if blocked and blocked[0] in (401,403):
+                            raise AcquisitionError('Deferred publisher robots barrier: '+host)
+            receipt = acquirer.fetch(source_url)
+            status = store.db.execute('SELECT status FROM acquisitions WHERE id=?',(receipt.id,)).fetchone()[0]
+            if status != 200:
+                raise ValueError('Rule representation requires HTTP 200')
+            unit = (parse_pdf_part if e.get('fallback_pdf_url') else parse_part)(store.artifact(receipt.sha256),source_url,e['part'])
+            version,count,created = store.ingest(collection='nm-nmac',document='nmac:'+e['part'],
+                title=unit.heading,url=source_url,acquisition=receipt.id,
+                snapshot_date=None,snapshot_basis='Live mutable part; global update statement is not an individually verified snapshot date',
+                parser='nm-srca-full-pdf-part-1' if e.get('fallback_pdf_url') else 'nm-srca-full-html-part-1',provisions=[unit],
+                metadata={'source_inventory':e,'publisher_clocks':clocks,
+                          'edition':'Publisher live PDF; collection-wide update evidence retained separately' if e.get('fallback_pdf_url') else 'Publisher live HTML; collection-wide update evidence retained separately'},
+                effective_on=None,published_on=None,amended_on=None)
+            result['new_versions'] += int(created)
+            result['parts'] += count
+            store.inventory('nm-nmac',e['part'],source_url,'complete')
+        except (AcquisitionError,ValueError) as exc:
+            store.inventory('nm-nmac',e['part'],e['url'],'error',str(exc))
+            result['errors'].append({'part':e['part'],'error':str(exc)})
+            if isinstance(exc,AcquisitionError) and not any(x in str(exc) for x in ['Host ownership not granted:','Deferred publisher robots barrier:']):
+                break
+    return result
+
+
+def discover_title20(store: Store, acquirer: Acquirer):
+    """Only the explicit anonymous SRCA Title20 widget, using its linked folders."""
+    def folder_data(folder):
+        url = RF+'GetWidgetFiles?'+urlencode({'widgetId':WIDGET,'folderId':folder,
+            'rootFolderId':FOLDER,'accountGUID':ACCOUNT})
+        receipt = acquirer.fetch(url)
+        response = json.loads(store.artifact(receipt.sha256))
+        if response.get('status') != 'ok' or response.get('message'):
+            raise ValueError('Public widget response not successful')
+        return response['data'], receipt
+    existing_manifest=json.loads((ROOT/'manifest.json').read_text()) if (ROOT/'manifest.json').exists() else {}
+    reviewed_fallbacks={e['part']:e for e in existing_manifest.get('parts',[]) if e.get('fallback_pdf_url')}
+    root, receipt = folder_data(FOLDER)
+    manifest = {'title':20,'inventory_receipt':receipt.id,'chapters':[], 'parts':[],
+                'non_html_files':[], 'pending_nested_folders':[]}
+    assert not root['files'], 'Unexpected top-level files; review inventory'
+    for chapter in root['folders']:
+        body, receipt = folder_data(chapter['folderId'])
+        manifest['chapters'].append({'name':chapter['name'],'receipt':receipt.id,'files':len(body['files'])})
+        manifest['pending_nested_folders'] += body['folders']
+        for f in body['files']:
+            if f['type'].lower() not in {'html','htm'}:
+                manifest['non_html_files'].append({'chapter':chapter['name'],'file':f})
+                continue
+            part_match = re.fullmatch(r'(20)\.(\d+)\.(\d+)\.html?',f['name'],re.I)
+            if not part_match:
+                raise ValueError('Unexpected HTML filename '+f['name'])
+            part = '.'.join(str(int(i)) for i in part_match.groups())
+            url=RF+'GetWidgetFileLink?'+urlencode({'fileId':f['fileId'],'widgetId':WIDGET,'accountGUID':ACCOUNT})
+            link_receipt=acquirer.fetch(url)
+            link=json.loads(store.artifact(link_receipt.sha256))
+            if link.get('status') != 'ok' or link.get('message'):
+                raise ValueError('Public file link unavailable')
+            if not link['data'].startswith(RF+'PublicFiles/'+ACCOUNT+'/'):
+                raise ValueError('Additional file host/scope requires ownership coordination: '+link['data'])
+            manifest['parts'].append({'part':part,'url':link['data'],'chapter':chapter['name'],
+                'inventory_receipt':receipt.id,'link_receipt':link_receipt.id,'publisher_file_metadata':f})
+        (ROOT/'manifest.json').write_text(json.dumps(manifest,indent=2)+'\n')
+        print('Inventory',chapter['name'],len(body['files']),'files',flush=True)
+    manifest['discovery_complete'] = not manifest['pending_nested_folders']
+    for entry in manifest['parts']:
+        previous=reviewed_fallbacks.get(entry['part'])
+        if previous and previous['url']==entry['url']:
+            entry.update({k:v for k,v in previous.items() if k.startswith('fallback_')})
+    (ROOT/'manifest.json').write_text(json.dumps(manifest,indent=2)+'\n')
+    return manifest
+
+
+if __name__ == '__main__':
+    import sys
+    store = Store(ROOT/'store')
+    acquirer = NMCollectorAcquirer(store)
+    try:
+        if '--discover' in sys.argv:
+            discover_title20(store,acquirer)
+        result=sync_nm(store,acquirer)
+        (ROOT/'sync-result.json').write_text(json.dumps(result,indent=2)+'\n')
+        print(json.dumps(result,indent=2),flush=True)
+    finally:
+        acquirer.close()
+        store.close()

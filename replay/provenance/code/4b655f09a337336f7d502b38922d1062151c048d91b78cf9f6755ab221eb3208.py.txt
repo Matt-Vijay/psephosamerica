@@ -1,0 +1,212 @@
+"""Official Alaska Statutes title exports, isolated collector; no vendor requests.
+
+sync_ak accepts the current Store/Acquirer interfaces. limit counts publisher titles.
+Unknown exact snapshot dates prohibit as_of selection. Run with PYTHONDONTWRITEBYTECODE=1.
+"""
+from __future__ import annotations
+
+import re
+import json
+import shutil
+from collections import Counter
+from lxml import html, etree
+from psephos.acquire import Acquirer, AcquisitionError
+from psephos.parse import readable, source_links, media_links
+from psephos.store import Store, Provision
+
+BASE = 'https://www.akleg.gov/basis/statutes.asp'
+COLLECTION = 'ak-statutes'
+PARSER = 'ak-title-html-1'
+BOUNDARY = re.compile(r'<b>\s*(?=(?:<i>\s*)?<a\s+name\s*=|<h[567]\b)', re.I)
+ANCHOR = re.compile(r'<a\s+name\s*=\s*["\']([^"\']+)["\']', re.I)
+
+
+def decode(data: bytes) -> str:
+    # HTML's Windows-1252 mapping for ISO-8859-1 labels preserves smart punctuation.
+    return data.decode('cp1252', errors='strict')
+
+
+def parse_title(data: bytes, title: str, year: int) -> list[Provision]:
+    raw = decode(data)
+    if not re.search(r'class=["\']statute["\']', raw, re.I):
+        raise ValueError('Not a statute print representation')
+    matches = list(BOUNDARY.finditer(raw))
+    if not matches:
+        raise ValueError('No source headings')
+    # Reject content lost before the first heading (only publisher empty <p> tags expected).
+    prefix = html.fragment_fromstring(raw[:matches[0].start()], create_parent='div')
+    if readable(prefix).strip():
+        raise ValueError('Unexpected pre-heading content')
+    units = []
+    seen = Counter()
+    chapter = title
+    for i, match in enumerate(matches):
+        end = matches[i + 1].start() if i + 1 < len(matches) else len(raw)
+        fragment = raw[match.start():end]
+        node = html.fragment_fromstring(fragment, create_parent='div')
+        malformed_tags = []
+        for element in node.iter():
+            if not isinstance(element.tag, str):
+                continue
+            try:
+                etree.QName(element)
+            except ValueError:
+                malformed_tags.append(element.tag)
+                element.set('data-source-tag', element.tag)
+                element.tag = 'span'
+        if node.xpath('.//script|.//iframe'):
+            raise ValueError('Unexpected active content in legal representation')
+        native_match = ANCHOR.search(fragment.split('</b>',1)[0])
+        native = native_match.group(1) if native_match else None
+        headings = node.xpath('./b')
+        if not headings:
+            raise ValueError('Missing boundary heading')
+        heading = readable(headings[0]).strip()
+        if native:
+            if native.split('.')[0] != title:
+                raise ValueError(f'Cross-title body: {native}')
+            if re.fullmatch(r'\d{2}\.\d{2,3}\.\d{3,4}[A-Za-z]?', native):
+                kind = 'section'
+                citation = f'AS {native}'
+                basekey = f'ak-statutes:{native}'
+                heading = re.sub(r'^Sec\.\s*' + re.escape(native) + r'\.\s*', '', heading)
+            elif re.fullmatch(r'\d{2}\.\d{2,3}', native):
+                kind, citation, basekey = 'chapter_heading', f'AS {native}', f'ak-statutes:{native}'
+                chapter = native
+            elif native == title:
+                kind, citation, basekey = 'title_heading', f'AS {title}', f'ak-statutes:{title}'
+            else:
+                kind, citation, basekey = 'scope_heading', f'AS {native}', f'ak-statutes:{native}'
+        else:
+            kind, citation = 'scope_heading', f'AS {chapter} — {heading}'
+            basekey = f'ak-statutes:{chapter}/heading/{heading}'
+        seen[basekey] += 1
+        key = basekey if seen[basekey] == 1 else f'{basekey}/occurrence/{seen[basekey]}'
+        text = readable(node)
+        if not text:
+            raise ValueError('Empty indexed fragment')
+        units.append(Provision(
+            key=key, citation=citation, heading=heading, text=text, markup=etree.tostring(node, encoding="unicode", method="xml"),
+            url=f'{BASE}?year={year}#{native or chapter}',
+            parent_key=None if native == title else f'ak-statutes:{chapter if kind == "section" else title}',
+            unit_kind=kind,
+            metadata={'native_anchor': native, 'source_edition_year': year,
+                      'malformed_source_tags': malformed_tags,
+                      'source_character_start': match.start(), 'source_character_end': end,
+                      'occurrence': seen[basekey], 'tables':len(node.xpath('.//table')),
+                      'source_media':media_links(node, BASE),
+                      'encoding':'Windows-1252 per HTML ISO-8859-1 mapping',
+                      'status_notice':bool(re.search(r'\[(?:Repealed|Renumbered|Transferred)',heading))},
+            references=source_links(node, BASE)))
+    source_anchors = ANCHOR.findall(raw)
+    parsed_anchors = [u.metadata['native_anchor'] for u in units if u.metadata['native_anchor']]
+    if Counter(source_anchors) != Counter(parsed_anchors):
+        raise ValueError('Native anchors missing from projection')
+    # Exact source segmentation remains available; only empty prefix tags are not indexed.
+    assert ''.join(raw[u.metadata['source_character_start']:u.metadata['source_character_end']] for u in units) == raw[matches[0].start():]
+    return units
+
+
+def toc_targets(data: bytes) -> list[str]:
+    root = html.fromstring(decode(data))
+    targets = []
+    for el in root.xpath('//a[@onclick]'):
+        m = re.search(r'loadTOC\(["\']?([\d.p]+)', el.get('onclick',''))
+        if m and m.group(1) not in targets:
+            targets.append(m.group(1))
+    return targets
+
+
+def sync_ak(store: Store, acquirer: Acquirer, limit: int | None = None,
+            as_of: str | None = None) -> dict:
+    if as_of is not None:
+        raise ValueError('Alaska edition has year only; exact snapshot date unknown, cannot satisfy as_of')
+    if limit is not None and limit < 0:
+        raise ValueError('limit must be nonnegative')
+    acquirer.delay = max(acquirer.delay, 1.0)
+    if acquirer.store.root != store.root:
+        raise ValueError('Store and Acquirer must share the same isolated root')
+    if shutil.disk_usage(store.root).free < 105*1024**3:
+        raise AcquisitionError('Free disk approaches 100 GiB')
+    index = acquirer.fetch(BASE)
+    index_root = html.fromstring(decode(store.artifact(index.sha256)))
+    year_match = re.search(r'Alaska Statutes (\d{4})', index_root.text_content())
+    if not year_match:
+        raise ValueError('Missing source edition')
+    year = int(year_match.group(1))
+    titles = []
+    for el in index_root.xpath('//ul[@id="TitleToc"]//a'):
+        m = re.match(r'Title (\d+)\.', el.text_content().strip())
+        if m:
+            titles.append((f'{int(m.group(1)):02}', ' '.join(el.text_content().split())))
+    if not titles or len(set(t[0] for t in titles)) != len(titles):
+        raise ValueError('Invalid title inventory')
+    store.collection(COLLECTION, ('us-ak','Alaska','state','us'),
+        name='Alaska Statutes', authority='Alaska State Legislature', kind='statutes',
+        homepage=BASE, source_status='official legislature online text; source edition year only',
+        access='Public reference/search access; robots Content-Signal search=yes, ai-train=no, use=reference. No blanket redistribution license asserted.',
+        metadata={'edition_year':year,'index_acquisition':index.id,'snapshot_date':None,
+                  'effective_on':None,'scope':'47-title publisher statute inventory; excludes regulations and uncodified acts'})
+    result = {'edition_year':year,'index_receipt':index.id,'titles':[],'new_versions':0,
+              'declared_titles':len(titles),'errors':[]}
+    for title, name in titles:
+        url = f'{BASE}?year={year}&media=print&secStart={title}&secEnd={title}'
+        previous = store.db.execute('SELECT status FROM inventories WHERE collection_id=? AND item=?',(COLLECTION,title)).fetchone()
+        if not previous:
+            store.inventory(COLLECTION,title,url,'pending')
+    for title, name in titles[:limit] if limit is not None else titles:
+        url = f'{BASE}?year={year}&media=print&secStart={title}&secEnd={title}'
+        try:
+            toc_url = f'{BASE}?year={year}&media=js&type=TOC&title={title}'
+            toc = acquirer.fetch(toc_url)
+            targets = toc_targets(store.artifact(toc.sha256))
+            chapters = {x for x in targets if re.fullmatch(r'\d{2}\.\d{2,3}', x)}
+            for part in [x for x in targets if 'p' in x]:
+                pr = acquirer.fetch(f'{BASE}?year={year}&media=js&type=TOC&title={part}')
+                chapters.update(x for x in toc_targets(store.artifact(pr.sha256)) if re.fullmatch(r'\d{2}\.\d{2,3}',x))
+            receipt = acquirer.fetch(url, max_file_bytes=25*1024**2)
+            response = store.db.execute('SELECT status,headers FROM acquisitions WHERE id=?',(receipt.id,)).fetchone()
+            if response['status'] != 200 or 'text/html' not in json.loads(response['headers']).get('content-type',''):
+                raise ValueError('Title export is not HTTP 200 HTML')
+            units = parse_title(store.artifact(receipt.sha256),title,year)
+            sections = [u for u in units if u.unit_kind == 'section']
+            entry = {'title':title,'name':name,'receipt_id':receipt.id,'sha256':receipt.sha256,
+                     'bytes':receipt.size,'toc_receipt':toc.id,'chapters_expected':sorted(chapters),
+                     'sections':len(sections),'units':len(units),'effective_on':None,'snapshot_date':None}
+            if not sections:
+                if 'No Sections' not in decode(store.artifact(toc.sha256)):
+                    raise ValueError('No legal sections without inventory confirmation')
+                store.inventory(COLLECTION,title,url,'empty_title')
+                entry['status']='empty_title; publisher explicitly reports No Sections; not indexed as legal text'
+            else:
+                anchors = {u.metadata['native_anchor'] for u in units}
+                if not chapters.issubset(anchors):
+                    raise ValueError(f'Missing chapters: {chapters-anchors}')
+                if not chapters:
+                    raise ValueError('No chapter inventory for nonempty title')
+                last = max(chapters,key=lambda c:int(c.split('.')[1]))
+                last_r = acquirer.fetch(f'{BASE}?year={year}&media=js&type=TOC&title={last}')
+                last_root = html.fromstring(decode(store.artifact(last_r.sha256)))
+                expected_last = {m.group(1) for a in last_root.xpath('//a[@href]')
+                    if (m := re.match(r'Sec\.\s+(\d{2}\.\d{2,3}\.\d{3,4}[A-Za-z]?)\.', a.text_content().strip()))}
+                if expected_last and not expected_last.issubset(anchors):
+                    raise ValueError(f'Missing terminal chapter sections: {expected_last-anchors}')
+                entry.update({'last_chapter_toc_receipt':last_r.id,'last_chapter_sections_checked':len(expected_last),'status':'complete_title_export'})
+                version,count,created = store.ingest(collection=COLLECTION,
+                    document=f'ak-statutes:title-{title}',title=name,url=url,acquisition=receipt.id,
+                    snapshot_date=None,snapshot_basis=f'Publisher Alaska Statutes {year} edition; exact incorporation/snapshot date unknown',
+                    parser=PARSER,provisions=units,metadata={**entry,'source_edition_year':year,
+                    'scope':'complete publisher title print representation',
+                    'published_on':None,'currency_date':None,'effective_on':None})
+                entry['version_id']=version
+                result['new_versions']+=int(created)
+                store.inventory(COLLECTION,title,url,'acquired')
+            result['titles'].append(entry)
+            print(f'AK {title}: {entry["status"]}, {len(sections)} sections',flush=True)
+        except (AcquisitionError, ValueError) as exc:
+            store.inventory(COLLECTION,title,url,'error',str(exc))
+            result['errors'].append({'title':title,'error':str(exc)})
+            print(f'AK {title}: ERROR {exc}',flush=True)
+            if isinstance(exc,AcquisitionError):
+                break
+    return result

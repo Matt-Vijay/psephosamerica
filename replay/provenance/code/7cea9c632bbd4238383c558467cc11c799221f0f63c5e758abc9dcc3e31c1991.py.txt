@@ -1,0 +1,182 @@
+"""Official Utah Legislature title XML collector; no shared-core modifications.
+
+sync_ut(Store, Acquirer, limit=None, as_of=None) imports current/future title
+exports. limit counts inventory entries, including separately published title
+variants. Snapshot and blanket effective dates remain unknown. The CLI uses the
+isolated persistent byte-metered, host-scoped UtahAcquirer in discover.py.
+"""
+from __future__ import annotations
+import json,re,sys
+from collections import Counter
+from copy import deepcopy
+from pathlib import Path
+from urllib.parse import parse_qs,urljoin,urlsplit
+from lxml import etree,html
+from psephos.acquire import Acquirer,AcquisitionError
+from psephos.parse import xml_root,readable,markup,source_links,media_links
+from psephos.store import Store,Provision,Reference,utc_now
+
+HOME='https://le.utah.gov/xcode/code.html'
+INDEX='https://le.utah.gov/xcode/C_1800010118000101.html'
+TERMS='https://le.utah.gov/documents/disclaimer.htm'
+PUBLISHER='https://le.utah.gov/xcode/js/code.js'
+ROOT=Path(__file__).resolve().parent
+PARSER='utah-title-xml-3'
+WARNING='Live title export includes current and future-effective parallel sections. Acquisition time, HTTP modification time, and title version tokens are not publisher snapshot dates or blanket legal effective dates.'
+
+def ut_text(node):
+    """Project native XML with explicit attribute-based numbering and date labels."""
+    out=deepcopy(node)
+    for n in out.iter():
+        if not isinstance(n.tag,str):continue
+        kind=n.tag
+        number=n.get('number')
+        if number:
+            label=number[number.index('('):] if kind=='subsection' and '(' in number else number
+            n.text=label+' '+(n.text or '')
+        if kind in {'catchline','history','modyear','effdate','enddate','chapter','title','part','article','histories'}:
+            n.tag='div'
+        if kind=='effdate':n.text='Effective date (publisher): '+(n.text or '')
+        if kind=='enddate':n.text='End date (publisher; type '+n.get('type','unknown')+'): '+(n.text or '')
+        if kind=='modyear':n.text='History year: '+(n.text or '')
+        if kind in {'tab','eol'}:n.tag='br'
+        if kind=='tbl':n.tag='table'
+        if kind=='cell':n.tag='td'
+        if kind in {'center','right','mid','format'}:n.tag='div'
+        if kind=='char':n.text='[Source symbol: set='+n.get('set','')+', char='+n.get('char','')+'; glyph not decoded.]'
+        if kind=='special':n.text={'lt;':'<','gt;':'>','amp;':'&'}.get(n.get('type'), '[Source special symbol: '+n.get('type','unknown')+'; glyph not decoded.]')
+        if kind=='contingent':n.text='[Publisher contingent marker: '+n.get('type','unknown')+']'+(n.text or '')
+    return readable(out)
+
+def ut_units(data:bytes,title:str,edition:str,url:str):
+    root=xml_root(data)
+    if root.tag!='title' or root.get('number')!=title:
+        raise ValueError('Not a complete matching Utah title XML export')
+    sections=root.xpath('.//section')
+    if not sections or any(not n.get('number') for n in sections):
+        raise ValueError('No numbered legal sections in title export')
+    totals=Counter(n.get('number') for n in sections);seen=Counter()
+    for node in sections:
+        number=node.get('number');seen[number]+=1
+        suffix=f'/_occurrence/{seen[number]}' if totals[number]>1 else ''
+        refs=list(source_links(node,url))
+        for x in node.xpath('.//xref[@refnumber]'):
+            refs.append(Reference('ut:code/'+x.get('refnumber'),'publisher_citation_identifier',readable(x),markup(x)))
+        for x in node.xpath('.//ext_ref'):
+            refs.append(Reference('publisher-external:'+x.get('type','unknown')+':'+x.get('refnumber',''),'publisher_external_reference',readable(x),markup(x)))
+        hierarchy=[{'kind':p.tag,'number':p.get('number'),'heading':p.findtext('catchline'),'source_effective_date_text':p.findtext('effdate'),'source_end_date_text':p.findtext('enddate'),'source_end_date_type':p.find('enddate').get('type') if p.find('enddate') is not None else None,'contingent_markers':[dict(c.attrib) for c in p.findall('contingent')]} for p in reversed(list(node.iterancestors()))]
+        yield Provision(key='ut:code/'+number+suffix,citation='Utah Code § '+number,
+            heading=node.findtext('catchline') or '',text=ut_text(node),markup=markup(node),
+            url=url,parent_key='ut:code/'+str(node.getparent().get('number','')),
+            metadata={'hierarchy':hierarchy,'source_number':number,'source_edition_token':edition,
+                'source_effective_date_text':node.findtext('effdate'),
+                'source_end_date_text':node.findtext('enddate'),
+                'source_end_date_type':node.find('enddate').get('type') if node.find('enddate') is not None else None,
+                'duplicate_identifier_count':totals[number],'occurrence':seen[number],
+                'tables':len(node.xpath('.//table | .//tbl')),'source_symbols':[{**dict(n.attrib),'kind':n.tag} for n in node.xpath('.//char | .//special')],'media':media_links(node,url),
+                'native_anchors':node.xpath('.//@id | .//@name'),
+                'date_warning':WARNING,'reading_link_scope':'Complete publisher XML export; native section number retained'},
+            references=tuple(refs))
+    # Retain every non-section title/chapter/part note and heading as a separate
+    # source context projection. Raw XML remains unchanged in the object store.
+    context=deepcopy(root)
+    for n in context.xpath('.//section'):
+        parent=n.getparent();tail=n.tail;prev=n.getprevious()
+        if tail:
+            if prev is not None:prev.tail=(prev.tail or '')+tail
+            else:parent.text=(parent.text or '')+tail
+        parent.remove(n)
+    if ut_text(context).strip():
+        yield Provision(key=f'ut:code/title-{title}/_context',citation=f'Utah Code Title {title} — scope notes',
+            heading=root.findtext('catchline') or '',text=ut_text(context),markup=markup(context),url=url,
+            unit_kind='scope_notes',metadata={'source_edition_token':edition,'scope':'All non-section title/chapter/part context'},
+            references=source_links(context,url))
+
+def inventory(data):
+    root=html.fromstring(data);result=[]
+    for row in root.xpath('//table[@id="childtbl"]/tr'):
+        links=row.xpath('.//a[@href]')
+        if not links:continue
+        link=links[0];href=urljoin(INDEX,link.get('href'))
+        title=readable(link).removeprefix('Title ').strip()
+        token=parse_qs(urlsplit(href).query).get('v',[''])[0]
+        if not re.fullmatch(r'[0-9]+[A-Z]?',title) or not re.fullmatch(r'C'+re.escape(title)+r'_\d{16}',token):
+            raise ValueError('Unexpected publisher title inventory entry')
+        result.append({'title':title,'edition':token,'label':' '.join(readable(row).split()),
+            'landing_url':href,'url':urljoin(href,token+'.xml')})
+    if len(result)<90:raise ValueError('Incomplete or blocked Utah title inventory')
+    if len({r['url'] for r in result})!=len(result):raise ValueError('Duplicate export URL in title inventory')
+    return result
+
+def sync_ut(s:Store,a:Acquirer,limit:int|None=None,as_of:str|None=None):
+    if as_of:raise ValueError('Utah live XML exports lack a verified snapshot date; historical sync is not implemented')
+    if limit is not None and limit<0:raise ValueError('limit must be nonnegative')
+    a.delay=max(a.delay,1.0)
+    evidence={}
+    for label,url in [('homepage',HOME),('inventory',INDEX),('terms',TERMS),('publisher',PUBLISHER)]:
+        r=a.fetch(url);evidence[label]={'url':url,'acquisition_id':r.id,'sha256':r.sha256}
+    entries=inventory(s.artifact(evidence['inventory']['sha256']))
+    s.collection('utah-code',('us-ut','Utah','state','us'),name='Utah Code — official current/future title XML',
+        authority='Utah Legislature, Office of Legislative Research and General Counsel',kind='statutory_code',homepage=HOME,
+        source_status='Official publisher electronic code; live complete title exports',
+        access='Public supported XML downloads; Legislature terms permit personal copying/distribution and require attribution for commercial use; no blanket copyright warranty.',
+        metadata={'evidence':evidence,'snapshot_warning':WARNING,'expected_title_exports':len(entries),
+            'inventory_artifact':evidence['inventory']['sha256'],'terms_artifact':evidence['terms']['sha256'],
+            'url_derivation':'Publisher title inventory v token + .xml relative to title landing page, verified against Title 3 download link'})
+    for entry in entries:
+        prior=s.db.execute('SELECT status FROM inventories WHERE collection_id=? AND item=?',('utah-code',entry['edition'])).fetchone()
+        if not prior:s.inventory('utah-code',entry['edition'],entry['url'],'pending')
+    results=[]
+    was_acquisition_error=False
+    for entry in entries[:limit]:
+        was_acquisition_error=False
+        try:
+            r=a.fetch(entry['url'],max_file_bytes=35*1024**2)
+            row=s.db.execute('SELECT status FROM acquisitions WHERE id=?',(r.id,)).fetchone()
+            if row[0]!=200:raise ValueError('Expected HTTP 200 complete export')
+            units=list(ut_units(s.artifact(r.sha256),entry['title'],entry['edition'],entry['url']))
+            version,count,new=s.ingest(collection='utah-code',document='ut:code/title/'+entry['title']+'/'+entry['edition'],
+                title=entry['label'],url=entry['url'],acquisition=r.id,snapshot_date=None,
+                snapshot_basis='Undated live XML export; version token is not a reliable snapshot date',parser=PARSER,
+                provisions=units,metadata={**entry,'warning':WARNING,'inventory_artifact':evidence['inventory']['sha256'],
+                    'sections':sum(u.unit_kind=='section' for u in units),'source_encoding':'UTF-8 XML',
+                    'published_on':None,'currency_date':None,'effective_on':None})
+            s.inventory('utah-code',entry['edition'],entry['url'],'indexed')
+            item={**entry,'status':'indexed','version':version,'units':count,'new':new,'sha256':r.sha256,'bytes':r.size}
+        except (AcquisitionError,ValueError,etree.XMLSyntaxError) as exc:
+            was_acquisition_error=isinstance(exc,AcquisitionError)
+            s.inventory('utah-code',entry['edition'],entry['url'],'failed',str(exc))
+            item={**entry,'status':'failed','error':str(exc)}
+        results.append(item)
+        print(json.dumps(item),flush=True)
+        (s.root/'sync_progress.json').write_text(json.dumps({'updated_at':utc_now(),'decoded_http_bytes':a.downloaded,'results':results},indent=2)+'\n')
+        if was_acquisition_error:break
+    # Images are immutable receipt evidence, not additional legal-text provisions.
+    media_records=[]
+    if results and not any(r['status']=='failed' and 'Offline cache miss' in r.get('error','') for r in results) and not was_acquisition_error:
+        seen_media=set()
+        for row in s.db.execute("SELECT citation,metadata FROM provisions WHERE version_id IN (SELECT id FROM versions WHERE document_id IN (SELECT id FROM documents WHERE collection_id='utah-code'))").fetchall():
+            for media in json.loads(row['metadata']).get('media',[]):
+                media_url=media['url']
+                if media_url in seen_media:continue
+                seen_media.add(media_url)
+                if urlsplit(media_url).hostname!='le.utah.gov':
+                    media_records.append({**media,'status':'not_fetched_unowned_host'});continue
+                try:
+                    mr=a.fetch(media_url,max_file_bytes=10*1024**2)
+                    mb=s.artifact(mr.sha256)
+                    if not mb.startswith(b'\xff\xd8\xff') or not mb.endswith(b'\xff\xd9'):
+                        raise ValueError('Expected complete source JPEG')
+                    media_records.append({**media,'citation':row['citation'],'status':'retained_not_transcribed','acquisition_id':mr.id,'sha256':mr.sha256,'bytes':mr.size,'object_path':str(s.object_path(mr.sha256))})
+                except (AcquisitionError,ValueError) as exc:
+                    media_records.append({**media,'status':'failed','error':str(exc)})
+                    (s.root/'media_receipts.json').write_text(json.dumps(media_records,indent=2)+'\n')
+                    return results
+    (s.root/'media_receipts.json').write_text(json.dumps(media_records,indent=2)+'\n')
+    return results
+
+if __name__=='__main__':
+    from discover import UtahAcquirer
+    s=Store(ROOT/'indexed-store');a=UtahAcquirer(s)
+    try:sync_ut(s,a,int(sys.argv[1]) if len(sys.argv)>1 else None,None)
+    finally:a.close();s.close()

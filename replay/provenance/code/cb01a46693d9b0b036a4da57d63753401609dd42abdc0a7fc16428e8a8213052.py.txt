@@ -1,0 +1,89 @@
+"""Kansas-only bounded HTTP, with persistent accounting for every decoded body."""
+import hashlib, json, shutil, time
+from pathlib import Path
+from urllib.parse import urlsplit
+from urllib.robotparser import RobotFileParser
+from psephos.acquire import Acquirer, AcquisitionError, Receipt, USER_AGENT, SAFE_HEADERS, validate_url, retry_seconds
+from psephos.store import utc_now
+
+ROOT = Path(__file__).resolve().parent
+CAP = 80 * 1024**2
+class KansasAcquirer(Acquirer):
+    def __init__(self, store, **kw):
+        super().__init__(store, max_bytes=CAP, delay=1.0, **kw)
+        self.ledger_path = ROOT / 'byte-ledger.json'
+        self.ledger = json.loads(self.ledger_path.read_text()) if self.ledger_path.exists() else {'decoded_bytes':0,'requests':[]}
+        self.client.headers['Accept-Encoding'] = 'identity'
+    def save(self):
+        self.ledger_path.write_text(json.dumps(self.ledger, indent=2))
+    def _allowed(self, url):
+        parts=urlsplit(url); origin=f'{parts.scheme}://{parts.netloc}'
+        if origin not in self.robots:
+            p=RobotFileParser(origin+'/robots.txt')
+            try:
+                r=self.fetch(origin+'/robots.txt',check_robots=False)
+                data=self.store.artifact(r.sha256).decode('utf-8-sig','replace')
+                if '<' in data or '>' in data: raise AcquisitionError('Markup robots response; policy unverifiable')
+                import re
+                for line in data.splitlines():
+                    line=line.split('#',1)[0]
+                    if len(re.findall(r'(?:user-agent|allow|disallow|crawl-delay|request-rate|sitemap)\s*:',line,re.I))>1:raise AcquisitionError('Ambiguous robots directives; policy unverifiable')
+                p.parse(data.splitlines())
+            except AcquisitionError:
+                row=self.store.db.execute('SELECT status FROM acquisitions WHERE url=? ORDER BY id DESC LIMIT 1',(origin+'/robots.txt',)).fetchone()
+                if row and row[0] in (404,410): p.parse([])
+                else: raise
+            self.robots[origin]=p
+        p=self.robots[origin]
+        if not p.can_fetch(USER_AGENT,url): raise AcquisitionError('Robots disallows '+url)
+        rate=p.request_rate(USER_AGENT)
+        self.delay=max(1.05,float(p.crawl_delay(USER_AGENT) or 0), rate.seconds/rate.requests if rate else 0)
+    def fetch(self,url,*,immutable=False,check_robots=True,max_file_bytes=CAP,accept=None,max_age_seconds=None):
+        validate_url(url)
+        if urlsplit(url).hostname not in {'www.kslegislature.gov','kslegislature.gov','www.ksrevisor.gov','ksrevisor.gov','revisor.ks.gov','sos.ks.gov'}:
+            raise AcquisitionError('Host outside assigned Kansas state publisher scope: '+url)
+        cached=self._cached(url)
+        if cached: return cached
+        negative=self.store.db.execute('SELECT status FROM acquisitions WHERE url=? ORDER BY id DESC LIMIT 1',(url,)).fetchone()
+        if negative and negative[0]>=400:raise AcquisitionError(f'Retained HTTP {negative[0]}; no retry: '+url)
+        if check_robots:self._allowed(url)
+        current=url
+        for _ in range(5):
+            if shutil.disk_usage(ROOT).free < 101*1024**3: raise AcquisitionError('Disk free safety floor')
+            if self.ledger['decoded_bytes'] > CAP-1024**2: raise AcquisitionError('Cumulative decoded byte budget reserve reached')
+            host=urlsplit(current).netloc
+            previous=max((r['started_epoch'] for r in self.ledger['requests'] if urlsplit(r['url']).netloc==host),default=0)
+            wait=max(previous+self.delay-time.time(),self.last_request.get(host,0)+self.delay-time.monotonic())
+            if wait>30: raise AcquisitionError('Publisher delay deferred')
+            if wait>0:time.sleep(wait)
+            self.last_request[host]=time.monotonic()
+            entry={'url':current,'started_epoch':time.time(),'started_at':utc_now(),'decoded_bytes':0,'status':0}
+            self.ledger['requests'].append(entry);self.save()
+            try:
+                with self.client.stream('GET',current,headers={'Accept':accept} if accept else {}) as response:
+                    entry['status']=response.status_code
+                    headers={k:v for k,v in response.headers.items() if k in SAFE_HEADERS}
+                    chunks=[]
+                    for chunk in response.iter_bytes(chunk_size=8192):
+                        entry['decoded_bytes']+=len(chunk);self.ledger['decoded_bytes']+=len(chunk);self.downloaded+=len(chunk)
+                        if self.ledger['decoded_bytes']>CAP-8192 or entry['decoded_bytes']>max_file_bytes:
+                            raise AcquisitionError('Decoded byte budget reached')
+                        chunks.append(chunk)
+                    data=b''.join(chunks);sha=hashlib.sha256(data).hexdigest();path=self.store.object_path(sha)
+                    path.parent.mkdir(parents=True,exist_ok=True)
+                    if path.exists():self.store.artifact(sha)
+                    else:path.write_bytes(data)
+                    with self.store.db:self.store.db.execute('INSERT OR IGNORE INTO artifacts VALUES (?,?)',(sha,len(data)))
+                    entry['sha256']=sha; entry['finished_at']=utc_now()
+                    rid=self._record(url,current,entry['finished_at'],response.status_code,headers,sha,None)
+                    self.save()
+                    if response.status_code in (301,302,303,307,308):
+                        if 'retry-after' in headers: raise AcquisitionError('Redirect Retry-After deferred: '+headers['retry-after'])
+                        current=str(response.url.join(response.headers['location']));validate_url(current)
+                        if check_robots:self._allowed(current)
+                        continue
+                    if response.status_code>=400:raise AcquisitionError(f'HTTP {response.status_code}; stopped, Retry-After={headers.get("retry-after")}')
+                    return Receipt(rid,url,sha,entry['finished_at'],len(data))
+            except Exception as e:
+                entry['error']=str(e);self.save();raise AcquisitionError(f'{current}: {e}') from e
+        raise AcquisitionError('Too many redirects')

@@ -1,0 +1,369 @@
+"""NH General Court RSA collector. Isolated, resumable, bounded title exports.
+
+No historical snapshots are advertised. `limit` caps chapter exports per call;
+None processes the configured titles (LXIV, XVII, II), not the whole state code.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import re
+import shutil
+import time
+from collections import Counter
+from copy import deepcopy
+from pathlib import Path
+from urllib.parse import urljoin, urlsplit
+
+from lxml import etree, html
+
+from psephos.acquire import Acquirer, AcquisitionError
+from psephos.parse import markup, media_links, readable, source_links
+from psephos.store import Provision, Store, utc_now
+
+ROOT = Path(__file__).resolve().parent
+CAP = 188743680
+COLLECTION = "nh-rsa"
+HOME = "https://gc.nh.gov/rsa/html/indexes/default.aspx"
+TOC = "https://gc.nh.gov/rsa/html/nhtoc.htm"
+TITLES = ("LXIV", "XVII", "II")
+PARSER = "nh-rsa-mrg-1"
+CURRENCY = "These RSAs are current through the 2025 regular legislative session, or December 2025."
+
+
+def parse_chapter(data: bytes, url: str, title: str, chapter: str) -> list[Provision]:
+    root = html.fromstring(data)
+    body = root.find("body")
+    if body is None or not re.search(
+        r"Chapter\s+" + re.escape(chapter) + r"\b", readable(body), re.I
+    ):
+        raise ValueError("Response is not the requested RSA chapter")
+    if not root.xpath("//codesect") and not re.search(r"repealed|reserved", readable(body), re.I):
+        raise ValueError("No statute text or explicit repeal/reservation notice")
+    # Split only at publisher native section headings; retain every body node,
+    # including scope headings, source notes, future text, tables and media markers.
+    groups = []
+    wrapper = etree.Element("div")
+    wrapper.text = body.text
+    number = None
+    context = []
+    group_context = []
+    for child in body:
+        if not isinstance(child.tag, str):
+            if child.tail:
+                if len(wrapper):
+                    wrapper[-1].tail = (wrapper[-1].tail or "") + child.tail
+                else:
+                    wrapper.text = (wrapper.text or "") + child.tail
+            continue
+        section = (
+            child.xpath("./h3")
+            if child.tag.lower() == "center"
+            else ([child] if child.tag.lower() == "h3" else [])
+        )
+        match = re.fullmatch(r"Section\s+(\S+)", readable(section[0])) if section else None
+        scopes = child.xpath("./h1|./h2") if child.tag.lower() == "center" else []
+        if match or scopes:
+            if readable(wrapper):
+                groups.append((number, wrapper, group_context))
+            wrapper = etree.Element("div")
+            number = match.group(1) if match else None
+            if scopes:
+                context = (
+                    context[:2] + [readable(scopes[0])]
+                    if len(context) >= 2
+                    else context + [readable(scopes[0])]
+                )
+            group_context = list(context)
+        wrapper.append(deepcopy(child))
+    if readable(wrapper):
+        groups.append((number, wrapper, group_context))
+    totals = Counter(n for n, _, _ in groups if n)
+    seen = Counter()
+    units = []
+    for ordinal, (num, node, hierarchy) in enumerate(groups):
+        if num and not num.startswith(chapter + ":"):
+            raise ValueError(f"Unexpected section identity {num} in chapter {chapter}")
+        if num:
+            seen[num] += 1
+            suffix = f"/_occurrence/{seen[num]}" if totals[num] > 1 else ""
+            key = f"nh-rsa:{num}{suffix}"
+            citation = f"RSA {num}"
+            b = node.xpath("./b")
+            heading = readable(b[0]) if b else "Section " + num
+            kind = "section"
+        else:
+            key = f"nh-rsa:chapter-{chapter}/_scope/{ordinal}"
+            citation = f"RSA chapter {chapter} — scope {ordinal + 1}"
+            heading = readable(node).splitlines()[0]
+            kind = "chapter_notice" if not root.xpath("//codesect") else "scope_heading"
+        units.append(
+            Provision(
+                key=key,
+                citation=citation,
+                heading=heading,
+                text=readable(node),
+                markup=markup(node),
+                url=url,
+                parent_key=f"nh-rsa:chapter-{chapter}",
+                unit_kind=kind,
+                metadata={
+                    "title": title,
+                    "chapter": chapter,
+                    "source_number": num,
+                    "hierarchy": hierarchy,
+                    "source_notes": [readable(n) for n in node.xpath(".//sourcenote")],
+                    "media": media_links(node, url),
+                    "tables": len(node.xpath(".//table")),
+                    "duplicate_identifier_count": totals[num] if num else 0,
+                },
+                references=source_links(node, url),
+            )
+        )
+
+    # Fail closed on any omitted legal wording, including exception tails/history.
+    def norm(text):
+        return re.sub(r"\s+", "", text)
+
+    if norm(readable(body)) != norm("".join(p.text for p in units)):
+        raise ValueError("Chapter projection loses or changes source body text")
+    return units
+
+
+def _budget_path(store):
+    return store.root.parent / "budget.json"
+
+
+def _budget(store):
+    path = _budget_path(store)
+    return (
+        json.loads(path.read_text())
+        if path.exists()
+        else {"cap_bytes": CAP, "newly_decoded_bytes": 0, "other_http_bytes": 0}
+    )
+
+
+def _report(store, status="in_progress", error=None):
+    receipts = [dict(r) for r in store.db.execute("SELECT * FROM acquisitions ORDER BY id")]
+    for row in receipts:
+        row["headers"] = json.loads(row["headers"])
+    (store.root.parent / "receipts.json").write_text(json.dumps(receipts, indent=2))
+    counts = {
+        t: store.db.execute(f"SELECT count(*) FROM {t}").fetchone()[0]
+        for t in ("collections", "documents", "versions", "provisions", "acquisitions", "artifacts")
+    }
+    counts["unique_raw_bytes"] = store.db.execute(
+        "SELECT coalesce(sum(bytes),0) FROM artifacts"
+    ).fetchone()[0]
+    inventories = [dict(r) for r in store.db.execute("SELECT * FROM inventories ORDER BY item")]
+    covered = [
+        r["item"]
+        for r in inventories
+        if r["status"] == "complete" and r["item"].startswith("title:")
+    ]
+    report = {
+        "state": "NH",
+        "status": status,
+        "updated_at": utc_now(),
+        "store_path": str(store.root),
+        "adapter_path": str(Path(__file__).resolve()),
+        "baseline": "e077e981d1e7f9914e17f73407b557973ee0ef15",
+        "counts": counts,
+        "budget": _budget(store),
+        "unit_kinds": dict(
+            store.db.execute("SELECT unit_kind,count(*) FROM provisions GROUP BY unit_kind")
+        ),
+        "configured_titles": list(TITLES),
+        "complete_titles": covered,
+        "inventories": inventories,
+        "clocks": {
+            "publisher_currency_statement": CURRENCY,
+            "currency_month": "2025-12",
+            "snapshot_date": None,
+            "effective_on": None,
+            "basis": "Month/session only; no exact incorporation day inferred. Individual amendment/effective notices retained verbatim. HTTP dates and acquisition timestamps are not legal currency.",
+        },
+        "access": {
+            "host": "gc.nh.gov",
+            "robots_crawl_delay_seconds": 11,
+            "initial_probe_timing_exception": "Receipt 3 started 9 seconds after receipt 2 during an initial process restart; restart host timers were then seeded conservatively. Subsequent request-start intervals meet 11 seconds. No access restriction response occurred.",
+            "accounts": False,
+            "license": "Local research use only; no blanket redistribution license asserted. State copyright/footer and statutory site disclaimer retained in acquisition receipts.",
+            "source_status": "Official state government host; online text explicitly informational. Publisher directs readers to bound West RSA volumes for official version.",
+            "bulk_discovery": "Official downloads page and RSA home checked; no complete statute bulk archive linked. Whole chapter -mrg.htm representations used.",
+        },
+        "gaps": [
+            "Only configured titles acquired; all other title inventories remain pending.",
+            "Regulations, constitution, session laws and municipal law not acquired.",
+            "No reconciliation of post-2025 amendments; live pages may contain prospective text.",
+            "External media are not downloaded; locators and explicit not-transcribed markers retained.",
+        ],
+        "receipts_path": str(store.root.parent / "receipts.json"),
+        "runtime_path": str(ROOT.parents[2] / ".venv/bin/python"),
+        "dependencies": [
+            "psephos.store",
+            "psephos.acquire",
+            "psephos.parse",
+            "psephos.retrieve (checks only)",
+            "lxml",
+            "httpx (via Acquirer)",
+        ],
+        "error": error,
+    }
+    (store.root.parent / "report.json").write_text(json.dumps(report, indent=2))
+    return report
+
+
+def sync_nh(store: Store, acquirer: Acquirer, limit: int | None = None, as_of: str | None = None):
+    if as_of is not None:
+        raise ValueError(
+            "NH source has no verified exact historical snapshot date; as_of unsupported"
+        )
+    if limit is not None and limit < 0:
+        raise ValueError("limit must be nonnegative")
+    if acquirer.store.root != store.root:
+        raise ValueError("Acquirer and store must match")
+    budget = _budget(store)
+    acquirer.max_bytes = min(
+        acquirer.max_bytes, acquirer.downloaded + CAP - budget["newly_decoded_bytes"]
+    )
+    acquirer.delay = max(acquirer.delay, 1.0)
+    # Conservative restart separation; _allowed then honors the cached 11s robots delay.
+    acquirer.last_request["gc.nh.gov"] = time.monotonic()
+    last_downloaded = acquirer.downloaded
+
+    def fetch(url):
+        nonlocal last_downloaded
+        if urlsplit(url).hostname != "gc.nh.gov":
+            raise ValueError("Uncoordinated publisher host")
+        if shutil.disk_usage(store.root).free < 100 * 1024**3:
+            raise AcquisitionError("Free disk below 100 GiB")
+        remaining = acquirer.max_bytes - acquirer.downloaded
+        if remaining < 5_000_000:
+            raise AcquisitionError("Conservative stop before cumulative HTTP byte cap")
+        try:
+            return acquirer.fetch(url, max_file_bytes=min(5_000_000, remaining))
+        finally:
+            budget["newly_decoded_bytes"] += acquirer.downloaded - last_downloaded
+            last_downloaded = acquirer.downloaded
+            _budget_path(store).write_text(json.dumps(budget, indent=2))
+
+    store.collection(
+        COLLECTION,
+        ("us-nh", "New Hampshire", "state", "us"),
+        name="New Hampshire Revised Statutes Online",
+        authority="New Hampshire General Court",
+        kind="statutes",
+        homepage=HOME,
+        source_status="Government-hosted informational RSA compilation; incomplete scoped acquisition",
+        access="Public HTTPS; robots delay 11 seconds; no blanket license asserted",
+        metadata={
+            "publisher_currency_statement": CURRENCY,
+            "scoped_titles": list(TITLES),
+            "snapshot_date": None,
+        },
+    )
+    done = 0
+    try:
+        home = fetch(HOME)
+        if CURRENCY not in readable(html.fromstring(store.artifact(home.sha256))):
+            raise ValueError("Publisher currency notice changed; inspect before proceeding")
+        toc = fetch(TOC)
+        root = html.fromstring(store.artifact(toc.sha256))
+        title_links = {}
+        for el in root.xpath("//a[@href]"):
+            m = re.search(r"NHTOC-([IVXLCDM]+(?:-A)?)\.htm$", el.get("href"), re.I)
+            if m:
+                title_links[m.group(1)] = urljoin(TOC, el.get("href"))
+                existing = store.db.execute(
+                    "SELECT status FROM inventories WHERE collection_id=? AND item=?",
+                    (COLLECTION, "title:" + m.group(1)),
+                ).fetchone()
+                if not existing:
+                    store.inventory(
+                        COLLECTION, "title:" + m.group(1), title_links[m.group(1)], "pending"
+                    )
+        for title in TITLES:
+            title_url = title_links[title]
+            inv = fetch(title_url)
+            invroot = html.fromstring(store.artifact(inv.sha256))
+            chapters = []
+            for el in invroot.xpath("//a[@href]"):
+                m = re.fullmatch(r"NHTOC-" + re.escape(title) + r"-(.+)\.htm", el.get("href"), re.I)
+                if m:
+                    ch = m.group(1)
+                    url = f"https://gc.nh.gov/rsa/html/{title}/{ch}/{ch}-mrg.htm"
+                    chapters.append(
+                        (
+                            ch,
+                            url,
+                            " ".join(el.text_content().split()),
+                            urljoin(title_url, el.get("href")),
+                        )
+                    )
+                    existing = store.db.execute(
+                        "SELECT status FROM inventories WHERE collection_id=? AND item=?",
+                        (COLLECTION, "chapter:" + ch),
+                    ).fetchone()
+                    if not existing:
+                        store.inventory(COLLECTION, "chapter:" + ch, url, "pending")
+            if not chapters:
+                raise ValueError("No chapter inventory for title " + title)
+            for ch, url, name, index_url in chapters:
+                if limit is not None and done >= limit:
+                    return _report(store, "limited")
+                receipt = fetch(url)
+                units = parse_chapter(store.artifact(receipt.sha256), url, title, ch)
+                version, count, created = store.ingest(
+                    collection=COLLECTION,
+                    document="nh-rsa:chapter-" + ch,
+                    title=name,
+                    url=url,
+                    acquisition=receipt.id,
+                    snapshot_basis="Publisher states current through December 2025/2025 session, no exact day; snapshot_date unknown",
+                    parser=PARSER,
+                    provisions=units,
+                    metadata={
+                        "title": title,
+                        "chapter": ch,
+                        "currency_statement": CURRENCY,
+                        "currency_receipt": home.id,
+                        "inventory_receipt": inv.id,
+                        "chapter_index_url": index_url,
+                        "export_url_basis": "publisher whole-chapter -mrg.htm convention; verified against chapter 672 linked export",
+                        "source_text_status": "informational online compilation",
+                    },
+                )
+                store.inventory(COLLECTION, "chapter:" + ch, url, "acquired")
+                done += 1
+                _report(store)
+                print(
+                    json.dumps(
+                        {
+                            "chapter": ch,
+                            "units": count,
+                            "created": created,
+                            "newly_decoded_bytes": budget["newly_decoded_bytes"],
+                        }
+                    ),
+                    flush=True,
+                )
+            store.inventory(COLLECTION, "title:" + title, title_url, "complete")
+        return _report(store, "complete_scoped_batch")
+    except Exception as exc:
+        _report(store, "blocked", str(exc))
+        raise
+
+
+if __name__ == "__main__":
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--limit", type=int)
+    args = ap.parse_args()
+    store = Store(ROOT / "store")
+    acquirer = Acquirer(store, max_bytes=CAP - _budget(store)["newly_decoded_bytes"], delay=1.1)
+    try:
+        sync_nh(store, acquirer, args.limit)
+    finally:
+        acquirer.close()
+        store.close()

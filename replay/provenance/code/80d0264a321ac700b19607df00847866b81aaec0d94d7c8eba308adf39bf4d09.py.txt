@@ -1,0 +1,92 @@
+"""Oklahoma Senate scoped complete-PDF collection, isolated from canonical publication.
+Run with repository .venv/bin/python data/collectors/oklahoma/adapter.py.
+Every source page is retained, including contents, notices and mixed pages; page
+counts are not section counts and publication by the Senate is not currency proof.
+"""
+import html as html_std
+import json
+import re
+import shutil
+import subprocess
+from collections import Counter
+from urllib.parse import urljoin
+from lxml import html
+from pypdf import PdfReader
+from psephos.store import Store, Provision, Reference, utc_now
+from network import ROOT, OklahomaAcquirer
+
+INDEX='https://oksenate.gov/search-statutes-constitution'
+COLLECTION='ok-senate-scoped-code'
+
+def sync_ok(store: Store, acquirer: OklahomaAcquirer, limit=6, as_of=None):
+    if not isinstance(acquirer,OklahomaAcquirer) or acquirer.store is not store:
+        raise ValueError('Use OklahomaAcquirer with the same isolated Store to enforce lifetime ledger')
+    if as_of is not None:
+        raise ValueError('No verified incorporation dates: historical as_of synchronization unsupported')
+    if not store.root.is_relative_to(ROOT): raise ValueError('Isolated Oklahoma store required')
+    store.collection(COLLECTION,('us-ok','Oklahoma','state','us'), name='Oklahoma Senate Constitution and Statutes — scoped retained PDFs', authority='Oklahoma Senate',kind='constitution_and_statutes',homepage=INDEX,source_status='official publisher; retained editions of unknown currency',access='public HTTPS; robots and privacy receipts retained',metadata={'scope':'Complete Senate Constitution PDF and complete Titles 1–5 only','current_law_completeness':False})
+    acquirer.fetch('https://oksenate.gov/privacy-policy')
+    inventory=[]
+    for page in range(7):
+        url=INDEX+(f'?page={page}' if page else '')
+        receipt=acquirer.fetch(url)
+        root=html.fromstring(store.artifact(receipt.sha256))
+        for a in root.xpath('//a[@href]'):
+            if '.pdf' in a.get('href','').lower():
+                inventory.append({'label':a.text_content().strip(),'url':urljoin(url,a.get('href')),'inventory_receipt':receipt.id})
+    (ROOT/'inventory.json').write_text(json.dumps(inventory,indent=2))
+    chosen=[x for x in inventory if 'entire' in x['label'] or re.match(r'Title [1-5]\.',x['label'])]
+    chosen=chosen[:max(0,limit)] if limit is not None else chosen
+    chosen_urls={x['url'] for x in chosen}
+    for x in inventory:
+        store.inventory(COLLECTION,x['label'],x['url'],'selected' if x['url'] in chosen_urls else 'outside_scoped_batch')
+    docs=[]
+    for item in chosen:
+        if shutil.disk_usage(ROOT).free<105*1024**3: raise RuntimeError('Disk floor reached')
+        receipt=acquirer.fetch(item['url'])
+        if not store.artifact(receipt.sha256).startswith(b'%PDF-'): raise ValueError('Expected real PDF; no barrier/index stub ingest')
+        reader=PdfReader(store.object_path(receipt.sha256))
+        text=subprocess.check_output(['pdftotext','-layout',str(store.object_path(receipt.sha256)),'-']).decode('utf-8')
+        pages=text.split('\f')
+        if not pages[-1].strip():pages.pop()
+        if len(pages)!=len(reader.pages) or any(len(x.strip())<30 for x in pages):raise ValueError('Page extraction incomplete; no silent OCR stubs')
+        slug='constitution' if 'entire' in item['label'] else 'title-'+re.search(r'\d+',item['label'])[0]
+        label='Oklahoma Constitution' if slug=='constitution' else 'Oklahoma Statutes '+item['label']
+        units=[]
+        for n,(page,pdfpage) in enumerate(zip(pages,reader.pages),1):
+            image_count=len(pdfpage.images)
+            # Preserve full layout text. Native section labels and PDF destinations are
+            # locators, not fabricated standalone section boundaries.
+            markers=re.findall(r'(?:SECTION\s+[IVXLC]+[A-Z]?-\d+[A-Za-z]?|§\d+[A-Za-z]?-[\dA-Za-z.\-]+)',page)
+            refs=[]
+            for annot in pdfpage.get('/Annots',[]):
+                obj=annot.get_object();action=obj.get('/A',{})
+                if action.get('/URI'):
+                    target=str(action['/URI']);refs.append(Reference(target,'publisher_pdf_link',target,str(obj)))
+            projected=page
+            if image_count:projected+=f'\n[Source media: {image_count} PDF images on page {n}; retained in original PDF, not transcribed.]\n'
+            units.append(Provision(key=f'ok:{slug}:page:{n}',citation=f'{label}, PDF page {n}',heading=f'{label} — page {n}',text=projected,markup='<pre>'+html_std.escape(projected)+'</pre>',url=item['url']+f'#page={n}',unit_kind='source_page',metadata={'pdf_page':n,'source_section_markers':list(dict.fromkeys(markers)),'dot_leader_lines':len(re.findall(r'\.{4,}',page)),'image_count':image_count,'coverage_class':'complete_text_projection_of_source_page; may include TOC, notices or mixed content','raw_pdf_sha256':receipt.sha256},references=tuple(refs)))
+        metadata={'pdf_metadata':{str(k):str(v) for k,v in (reader.metadata or {}).items()},'named_destinations':{str(k):str(v) for k,v in reader.named_destinations.items()},'pages':len(pages),'inventory_receipt':item['inventory_receipt'],'coverage':'complete publisher PDF text, page-indexed; not current-law completeness','legal_effect':None,'incorporation_date':None,'edition_date':None,'publication_date':None,'file_dates_not_legal_clocks':True}
+        version,count,created=store.ingest(collection=COLLECTION,document='ok-senate:'+slug,title=label,url=item['url'],acquisition=receipt.id,snapshot_date=None,snapshot_basis='Unknown publisher incorporation date; upload path, PDF creation and HTTP timestamps are not legal currency',parser='ok-senate-pdftotext-layout-v1',provisions=units,metadata=metadata)
+        store.inventory(COLLECTION,item['label'],item['url'],'complete_publisher_pdf_text')
+        docs.append({**item,'document':'ok-senate:'+slug,'version':version,'receipt':receipt.id,'sha256':receipt.sha256,'raw_path':str(store.object_path(receipt.sha256)),'pages':count,'created':created,'image_count':sum(u.metadata['image_count'] for u in units)})
+    return docs
+
+def report(store,docs):
+    receipts=[dict(row) for row in store.db.execute('SELECT * FROM acquisitions ORDER BY id')]
+    for row in receipts:
+        row['headers']=json.loads(row['headers'])
+        row['raw_path']=str(store.object_path(row['sha256'])) if row['sha256'] else None
+    inventory=json.loads((ROOT/'inventory.json').read_text())
+    ledger=json.loads((ROOT/'http_ledger.json').read_text())
+    result={'state':'Oklahoma','status':'quiesced_scoped_collection_complete','generated_at':utc_now(),'canonical_publication_task':'01a07957-bec3-70c1-ad7d-607c4ab3d9ad','canonical_copy_performed':False,'paths':{'adapter':str(ROOT/'adapter.py'),'store':str(store.root),'database':str(store.root/'legal.sqlite3'),'ledger':str(ROOT/'http_ledger.json'),'inventory':str(ROOT/'inventory.json'),'checks':str(ROOT/'checks.json')},'counts':{'full_legal_text_publisher_documents':len(docs),'source_page_units':sum(x['pages'] for x in docs),'standalone_legal_section_units':0,'scope_heading_only_documents':0,'notice_only_documents':0,'metadata_only_ingested_documents':0,'inventory_metadata_entries':len(inventory),'inventory_entries_outside_scoped_batch':len(inventory)-len(docs),'notice_and_toc_units':'Not independently segmented; retained within complete source-page projections, excluded from claims of standalone section coverage','document_versions':store.db.execute('SELECT count(*) FROM versions').fetchone()[0]},'documents':docs,'receipts':receipts,'bytes':{'lifetime_cap':ledger['cap'],'newly_decoded_http_bytes':ledger['decoded_bytes'],'conservative_charged_bytes':ledger['charged_bytes'],'uncertain_reservation_bytes':ledger['charged_bytes']-ledger['decoded_bytes'],'raw_artifact_bytes':store.db.execute('SELECT sum(bytes) FROM artifacts').fetchone()[0],'free_disk_bytes':shutil.disk_usage(ROOT).free},'hosts_contacted':['oksenate.gov'],'other_government_publishers':[],'commercial_hosts':[],'terms':{'robots_receipt':1,'privacy_receipt':6,'observations':'Plaintext robots permits inventory and public PDF paths. Privacy page describes public download access; no bulk prohibition observed. No blanket license asserted. All source bytes, notices and metadata retained. Literal robots /search? rule preserved; Python default parser loses trailing query delimiter.','rate':'At least one second per host; longest applicable crawl-delay/request-rate; persistent host clocks and Retry-After barriers; no automatic retries'},'clocks':{'acquisition':'Per receipt observed_at; request start stored separately in headers','edition':None,'incorporation':None,'publication':None,'legal_effect':None,'file_metadata':'Retained per version; never used as legal effect or snapshot. Selected statute PDFs carry 2019 creation metadata; Constitution PDF carries January 2022 metadata; URLs have 2022-05 folders.'},'coverage_gaps':['Only six complete publisher PDF volumes collected: Constitution and Titles 1–5. All other statute titles and administrative regulations remain outside this batch.','No current-law completeness claim: later amendments, repeals, judicial effects and newer publications not reconciled.','Constitution individual-article PDFs not independently reconciled with complete export.','Page indexing preserves cross-page provisions and citations but does not create section-level legal units.','Contents and repeal/renumbering notices retained within source pages; source_page count includes these and is not a substantive law-section count.','PDF images, if any, retained in raw PDFs with visible omission markers; layout text remains a projection.'],'network_notes':['A guessed /publications/oklahoma-statutes URL returned a retained 404 before homepage discovery.','An initial compressed homepage response was rejected before decoding; 16 MiB reservation conservatively retained. Gzip decoding is now bounded by reserved allowance.'],'process':'No background collector processes; file lock prevents simultaneous network runs.'}
+    (ROOT/'report.json').write_text(json.dumps(result,indent=2))
+    return result
+
+if __name__=='__main__':
+    store=Store(ROOT/'store');acquirer=OklahomaAcquirer(store)
+    try:
+        docs=sync_ok(store,acquirer,limit=6)
+        print(json.dumps(report(store,docs)['counts'],indent=2))
+    finally:
+        acquirer.close();store.close()

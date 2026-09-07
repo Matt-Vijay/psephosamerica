@@ -1,0 +1,431 @@
+"""Wyoming official publisher collector; all mutable state stays beside this file."""
+
+from __future__ import annotations
+
+import hashlib
+import html
+import json
+import os
+import re
+import shutil
+import subprocess
+import time
+from pathlib import Path
+from urllib.parse import urlsplit
+
+import httpx
+
+from psephos.acquire import (
+    SAFE_HEADERS,
+    Acquirer,
+    AcquisitionError,
+    Receipt,
+    retry_seconds,
+    validate_url,
+)
+from psephos.store import Provision, Reference, Store, utc_now
+
+ROOT = Path(__file__).resolve().parent
+HOSTS = {"wyoleg.gov", "www.wyoleg.gov"}
+CAP = 200 * 1024**2
+STORE_ROOT = ROOT / "validated-store"
+
+
+class WyomingAcquirer(Acquirer):
+    """Identity-only transport with durable reservations covering interrupted reads."""
+
+    def __init__(self, store):
+        if not store.root.is_relative_to(ROOT):
+            raise ValueError("WY collector requires its own Store below collector root")
+        super().__init__(store, max_bytes=CAP, delay=1.0)
+        self.client.headers["Accept-Encoding"] = "identity"
+        self.ledger_path = ROOT / "http-ledger.json"
+        self.ledger = (
+            json.loads(self.ledger_path.read_text())
+            if self.ledger_path.exists()
+            else {
+                "cap_bytes": CAP,
+                "decoded_bytes": 0,
+                "unsettled_reserved_bytes": 0,
+                "last_request": {},
+                "requests": [],
+            }
+        )
+        self.downloaded = self.ledger["decoded_bytes"] + self.ledger["unsettled_reserved_bytes"]
+        self._save()
+
+    def _save(self):
+        temp = self.ledger_path.with_suffix(".tmp")
+        with temp.open("w") as f:
+            json.dump(self.ledger, f, indent=2)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(temp, self.ledger_path)
+
+    def _pause(self, url, delay=None):
+        host = urlsplit(url).hostname
+        if host not in HOSTS:
+            raise AcquisitionError(f"Unclaimed host: {host}")
+        wait = (
+            max(
+                self.ledger["last_request"].get(host, 0) + max(1, delay or self.delay),
+                self.ledger.get("retry_not_before", {}).get(host, 0),
+            )
+            - time.time()
+        )
+        if wait > 30:
+            raise AcquisitionError(f"Publisher delay deferred: {wait}s")
+        if wait > 0:
+            time.sleep(wait)
+        self.ledger["last_request"][host] = time.time()
+        self._save()
+
+    def fetch(
+        self,
+        url,
+        *,
+        immutable=False,
+        check_robots=True,
+        max_file_bytes=64 * 1024**2,
+        accept=None,
+        max_age_seconds=None,
+    ):
+        validate_url(url)
+        if urlsplit(url).hostname not in HOSTS:
+            raise AcquisitionError("Unclaimed publisher host")
+        cached = self._cached(url)
+        if cached:
+            return cached
+        if shutil.disk_usage(ROOT).free < 100 * 1024**3:
+            raise AcquisitionError("Free disk below 100 GiB")
+        if check_robots:
+            self._allowed(url)
+        current = url
+        for _attempt in range(5):
+            self._pause(current)
+            observed = utc_now()
+            row = {
+                "url": current,
+                "started_at": observed,
+                "decoded_bytes": 0,
+                "status": None,
+                "complete": False,
+            }
+            self.ledger["requests"].append(row)
+            self._save()
+            status, headers = 0, {}
+            try:
+                with self.client.stream(
+                    "GET", current, headers={"Accept": accept or "*/*"}
+                ) as response:
+                    status = row["status"] = response.status_code
+                    headers = {k: v for k, v in response.headers.items() if k in SAFE_HEADERS}
+                    if headers.get("retry-after"):
+                        embargo = time.time() + retry_seconds(headers["retry-after"], 0)
+                        self.ledger.setdefault("retry_not_before", {})[
+                            urlsplit(current).hostname
+                        ] = embargo
+                        self._save()
+                    if response.headers.get("content-encoding", "identity").lower() != "identity":
+                        raise AcquisitionError(
+                            "Unexpected content encoding; stopped without decoding"
+                        )
+                    body = bytearray()
+                    chunks = response.iter_raw(chunk_size=65536)
+                    while True:
+                        reserve = min(65536, CAP - self.downloaded)
+                        if reserve < 65536:
+                            raise AcquisitionError("Cumulative HTTP cap reached")
+                        self.ledger["unsettled_reserved_bytes"] += reserve
+                        self._save()
+                        try:
+                            chunk = next(chunks)
+                        except StopIteration:
+                            self.ledger["unsettled_reserved_bytes"] -= reserve
+                            self._save()
+                            break
+                        self.ledger["unsettled_reserved_bytes"] -= reserve
+                        self.ledger["decoded_bytes"] += len(chunk)
+                        row["decoded_bytes"] += len(chunk)
+                        self.downloaded += len(chunk)
+                        self._save()
+                        body.extend(chunk)
+                        if len(body) > max_file_bytes:
+                            raise AcquisitionError("Per-response cap exceeded")
+                    row["complete"] = True
+                    self._save()
+                    declared = response.headers.get("content-length")
+                    if declared and int(declared) != len(body):
+                        raise AcquisitionError("Incomplete HTTP representation")
+                    sha = hashlib.sha256(body).hexdigest()
+                    path = self.store.object_path(sha)
+                    path.parent.mkdir(parents=True, exist_ok=True)
+                    if path.exists():
+                        self.store.artifact(sha)
+                    else:
+                        path.write_bytes(body)
+                    with self.store.db:
+                        self.store.db.execute(
+                            "INSERT OR IGNORE INTO artifacts VALUES (?,?)", (sha, len(body))
+                        )
+                    headers["psephos_request_started_at"] = observed
+                    observed = utc_now()
+                    headers["psephos_observed_at_basis"] = "complete response retained"
+                    receipt_id = self._record(
+                        url,
+                        current,
+                        observed,
+                        status,
+                        headers,
+                        sha,
+                        None if status == 200 else f"HTTP {status}",
+                    )
+                    row.update(receipt_id=receipt_id, sha256=sha)
+                    self._save()
+                    if status in (301, 302, 303, 307, 308):
+                        destination = str(response.url.join(response.headers["location"]))
+                        if urlsplit(destination).hostname not in HOSTS:
+                            raise AcquisitionError("Unclaimed redirect host")
+                        if headers.get("retry-after"):
+                            wait = retry_seconds(headers["retry-after"], 0)
+                            if wait > 30:
+                                raise AcquisitionError("Retry-After deferred")
+                            time.sleep(wait)
+                        if check_robots:
+                            self._allowed(destination)
+                        current = destination
+                        continue
+                    if status != 200:
+                        # Record Retry-After but do not retry barriers or errors in this run.
+                        raise AcquisitionError(
+                            f"HTTP {status}; stopped; Retry-After={headers.get('retry-after')}"
+                        )
+                    return Receipt(receipt_id, url, sha, observed, len(body))
+            except (httpx.HTTPError, OSError, AcquisitionError) as exc:
+                row["error"] = str(exc)
+                self._save()
+                self._record(url, current, observed, status, headers, None, str(exc))
+                raise AcquisitionError(f"{url}: {exc}") from exc
+        raise AcquisitionError("Too many redirects")
+
+
+INDEX = "https://wyoleg.gov/stateStatutes/StatutesDownload"
+BUNDLE = "https://wyoleg.gov/chunk-D87uIAUX.js"
+EDITION = "2026-07-01"
+NOTICE = (
+    "This version of the Wyoming Statutes contains changes from the 2026 Budget "
+    "Session and reflects the contents of the statutes as they exist as of July 1, 2026."
+)
+
+
+def inventory(store, acquirer):
+    """Pinned publisher UI module is retained as the actual download inventory."""
+    receipt = acquirer.fetch(BUNDLE, immutable=True)
+    body = store.artifact(receipt.sha256).decode("utf-8")
+    if NOTICE not in body:
+        raise ValueError("Publisher edition statement differs; review inventory before indexing")
+    urls = list(
+        dict.fromkeys(re.findall(r"https://wyoleg\.gov/statutes/compress/title[0-9.]+\.pdf", body))
+    )
+    expected = {f"{i:02}" for i in range(1, 43)} | {"34.1", "97", "99"}
+    if {re.search(r"title([0-9.]+)\.pdf", u)[1] for u in urls} != expected:
+        raise ValueError("Publisher title inventory incomplete or changed")
+    return receipt, urls
+
+
+def pdf_pages(store, receipt, native_title):
+    data = store.artifact(receipt.sha256)
+    row = store.db.execute(
+        "SELECT status,headers FROM acquisitions WHERE id=?", (receipt.id,)
+    ).fetchone()
+    if row["status"] != 200 or not data.startswith(b"%PDF-"):
+        raise ValueError("HTTP 200 PDF semantics failed")
+    if "application/pdf" not in json.loads(row["headers"]).get("content-type", ""):
+        raise ValueError("Unexpected PDF content type")
+    source = store.object_path(receipt.sha256)
+    info = subprocess.run(
+        ["pdfinfo", str(source)], capture_output=True, text=True, check=True
+    ).stdout
+    page_count = int(re.search(r"^Pages:\s+(\d+)", info, re.M)[1])
+    extraction = subprocess.run(
+        ["pdftotext", "-layout", "-enc", "UTF-8", str(source), "-"], capture_output=True, check=True
+    ).stdout.decode("utf-8")
+    pages = extraction.split("\f")
+    if pages[-1] == "":
+        pages.pop()
+    if len(pages) != page_count or sum(len(p.strip()) for p in pages) < page_count * 40:
+        raise ValueError("PDF extraction empty or page count mismatch")
+    first = pages[0]
+    if native_title == "97":
+        if "CONSTITUTION" not in first.upper() or "WYOMING" not in first.upper():
+            raise ValueError("Constitution semantic marker absent")
+    elif native_title == "99":
+        if "WATER" not in first.upper():
+            raise ValueError("Water laws semantic marker absent")
+    elif not re.search(
+        r"TITLE\s+" + re.escape(str(float(native_title)).removesuffix(".0")) + r"\s*[-–]", first
+    ):
+        raise ValueError(f"Title identity mismatch: {native_title}: {first[:100]}")
+    derived = ROOT / "derived"
+    derived.mkdir(exist_ok=True)
+    (derived / f"{receipt.sha256}.txt").write_text(extraction)
+    (derived / f"{receipt.sha256}.pdfinfo.txt").write_text(info)
+    return pages
+
+
+def page_units(pages, native_title, url):
+    label = (
+        "Wyoming Constitution"
+        if native_title == "97"
+        else "Wyoming Non-Codified Water Laws"
+        if native_title == "99"
+        else f"Wyo. Stat. Title {native_title.lstrip('0')}"
+    )
+    for number, text in enumerate(pages, 1):
+        citations = sorted(set(re.findall(r"\b\d+(?:\.\d+)?-\d+-\d+(?:\.\d+)?\b", text)))
+        native_headings = re.findall(
+            r"^\s*((?:\d+(?:\.\d+)?-\d+-\d+(?:\.\d+)?\.|§\s*\d+\.|ARTICLE\s+\d+)[^\n]*)", text, re.M
+        )
+        yield Provision(
+            key=f"wy:pdf/title{native_title}/page/{number}",
+            citation=f"{label}, PDF page {number}",
+            heading=f"{label} — PDF page {number}",
+            text=text
+            if text.strip()
+            else "[Source PDF page has no extractable text; consult retained PDF.]",
+            markup='<pre data-projection="pdftotext-layout">' + html.escape(text) + "</pre>",
+            url=f"{url}#page={number}",
+            unit_kind="pdf_page" if text.strip() else "source_page_placeholder",
+            metadata={
+                "source_title_file": native_title,
+                "pdf_page": number,
+                "text_quality": "layout_text_unverified" if text.strip() else "no_extractable_text",
+                "is_source_page_placeholder": not bool(text.strip()),
+                "blank_page_visual_verification": "visually_blank"
+                if (native_title, number) in {("03", 104), ("15", 286)}
+                else None,
+                "native_headings_on_page": native_headings,
+                "native_citation_strings": citations,
+                "fidelity": "All page layout text retained; legal units can cross pages. Source PDF is authoritative for figures, tables and typography; no OCR or media transcription.",
+                "markup_is_derived": True,
+            },
+            references=tuple(
+                Reference("wy:citation:" + c, "citation_text", c, c) for c in citations
+            ),
+        )
+
+
+def sync_wy(store: Store, acquirer: Acquirer, limit=None, as_of=None):
+    """Index the complete official 2026 inventory as explicitly labelled PDF pages.
+
+    limit bounds title documents, not provisions. as_of cannot invent older editions.
+    For bounded network use WyomingAcquirer; already retained Acquirer receipts work offline.
+    Collector-root Store writes are enforced. Canonical publication must import the reviewed
+    validated-store through the sole publisher; this entrypoint cannot target a canonical Store.
+    """
+    if not store.root.is_relative_to(ROOT):
+        raise ValueError("Refusing shared/canonical Store")
+    if as_of is not None and str(as_of) < EDITION:
+        return {"documents": 0, "units": 0, "reason": "No acquired edition on/before as_of"}
+    if limit is not None and limit < 0:
+        raise ValueError("limit must be nonnegative")
+    inv, urls = inventory(store, acquirer)
+    collection = "wy-statutes"
+    store.collection(
+        collection,
+        ("us-wy", "Wyoming", "state", "us"),
+        name="Wyoming Statutes, Constitution and Non-Codified Water Laws",
+        authority="Wyoming Legislature, Legislative Service Office",
+        kind="code_and_constitution",
+        homepage=INDEX,
+        source_status="official publisher text-only PDF exports",
+        access="Public official bulk PDFs; robots.txt actual HTTP 404. At least one second per host.",
+        metadata={
+            "edition_date": EDITION,
+            "edition_notice": NOTICE,
+            "inventory_acquisition": inv.id,
+            "unit_kinds": ["pdf_page", "source_page_placeholder"],
+            "edition_date_scope": "43 statutory titles only; constitution and water-law snapshot dates unknown",
+            "effective_on": None,
+            "published_on": None,
+        },
+    )
+    documents = []
+    for position, url in enumerate(urls):
+        title = re.search(r"title([0-9.]+)\.pdf", url)[1]
+        if as_of is not None and title in {"97", "99"}:
+            continue  # Unknown snapshot dates never satisfy an as-of date filter.
+        if limit is not None and position >= limit:
+            existing = store.db.execute(
+                "SELECT status FROM inventories WHERE collection_id=? AND item=?",
+                (collection, title),
+            ).fetchone()
+            if not existing:
+                store.inventory(collection, title, url, "pending", "limit")
+            continue
+        store.inventory(collection, title, url, "pending")
+        receipt = acquirer.fetch(url, immutable=True)
+        pages = pdf_pages(store, receipt, title)
+        version, count, added = store.ingest(
+            collection=collection,
+            document=f"wy:title{title}",
+            title=(
+                "Wyoming Constitution"
+                if title == "97"
+                else "Non-Codified Water Laws"
+                if title == "99"
+                else f"Wyoming Statutes Title {title.lstrip('0')}"
+            ),
+            url=url,
+            acquisition=receipt.id,
+            snapshot_date=None if title in {"97", "99"} else EDITION,
+            snapshot_basis=(
+                "Unknown: July 1 statutory currency notice does not unambiguously date this constitution/water-law export"
+                if title in {"97", "99"}
+                else "Publisher download inventory states statutes as of July 1, 2026; not a blanket legal effective date"
+            ),
+            parser="wy-pdf-layout-pages/2",
+            provisions=page_units(pages, title, url),
+            metadata={
+                "inventory_receipt": inv.id,
+                "edition_notice": NOTICE,
+                "edition_notice_applies_to_document": title not in {"97", "99"},
+                "pdf_pages": len(pages),
+                "clock_caveat": "Edition reflects incorporation/currency; legal effect and publication day unknown.",
+                "fidelity": "Original PDF bytes retained; layout-text page projection, no semantic table markup or media transcription.",
+            },
+        )
+        store.inventory(collection, title, url, "ingested")
+        documents.append(
+            {
+                "title": title,
+                "url": url,
+                "acquisition_id": receipt.id,
+                "sha256": receipt.sha256,
+                "source_path": str(store.object_path(receipt.sha256)),
+                "extracted_text_path": str(ROOT / "derived" / f"{receipt.sha256}.txt"),
+                "version_id": version,
+                "snapshot_date": None if title in {"97", "99"} else EDITION,
+                "units": count,
+                "added": added,
+            }
+        )
+        print(f"WY {title}: {count} pages; added={added}", flush=True)
+    return {
+        "documents": len(documents),
+        "units": sum(d["units"] for d in documents),
+        "inventory_documents": len(urls),
+        "sources": documents,
+        "inventory_receipt": inv.id,
+    }
+
+
+if __name__ == "__main__":
+    store = Store(STORE_ROOT)
+    acquirer = WyomingAcquirer(store)
+    try:
+        result = sync_wy(store, acquirer)
+        (ROOT / "sync-result.json").write_text(json.dumps(result, indent=2))
+    finally:
+        acquirer.close()
+        store.close()

@@ -1,0 +1,96 @@
+"""Isolated South Dakota complete-title exports. No historical snapshot inference."""
+from __future__ import annotations
+from collections import Counter
+from datetime import date,datetime
+from dataclasses import replace
+from pathlib import Path
+from urllib.parse import parse_qs,urlsplit
+import json,re
+from lxml import html
+from psephos.store import Store,Provision
+from psephos.acquire import Acquirer
+from psephos.parse import readable,markup,media_links,source_links
+BASE='https://sdlegislature.gov'
+COLLECTION='sd-codified-laws'
+SELECTED=('1','2','6','7','8','9','11','12')
+PARSER='sd-concatenated-title-html/1'
+INDEX=BASE+'/api/Statutes/Title'
+CLOCK=BASE+'/api/Statutes/LastStatuesEffectiveDate'
+
+def decode(data):
+ return data.decode('utf-16-le' if data[1:80:2].count(0)>20 else 'utf-8-sig')
+
+def fragments(data):
+ text=decode(data)
+ chunks=re.findall(r'<html\b.*?</html>',text,re.I|re.S)
+ if len(chunks)!=len(re.findall(r'<body\b',text,re.I)) or not chunks:raise ValueError('Incomplete concatenated HTML bodies')
+ leftover=re.sub(r'<html\b.*?</html>','',text,flags=re.I|re.S)
+ if re.sub(r'<(?:br\s*/?|hr)\s*>|\s','',leftover,flags=re.I):raise ValueError('Unparsed source outside HTML documents')
+ return chunks
+
+def parse_title(data,title):
+ result=[];seen=Counter();stats=Counter();chapter_catalog=set();chapter_bodies=set()
+ for ordinal,chunk in enumerate(fragments(data),1):
+  root=html.fromstring(chunk);body=root.find('body')
+  if body is None:raise ValueError('Missing body')
+  text=readable(body);first=text.splitlines()[0]
+  if first.startswith('TITLE '):
+   sid=first.removeprefix('TITLE ').strip();kind='title_index'
+   for link in body.xpath('.//a/@href'):
+    q=parse_qs(urlsplit(link).query);key=q.get('Statute',[urlsplit(link).path.rsplit('/',1)[-1]])[0]
+    if re.fullmatch(re.escape(title)+r'-[0-9]+[A-Z]*',key):chapter_catalog.add(key)
+  elif first.startswith('CHAPTER'):
+   native=first.removeprefix('CHAPTER').strip();sid=native if '-' in native else title+'-'+str(int(native));kind='chapter_index';chapter_bodies.add(sid)
+  elif first.startswith('Effective '):
+   sid=title+'/_effective_notice/'+str(ordinal);kind='effective_date_notice'
+  elif first.startswith('APPENDIX TO CHAPTER '):
+   sid=first.removeprefix('APPENDIX TO CHAPTER ')+'/_appendix';kind='editorial_notice'
+  else:
+   m=re.match(r'^(.+?)\.(?:\s|$)',first) or re.fullmatch(r'(\d+[A-Z]*-\d+[A-Z]*-\d+[A-Z]*(?:\.\d+)*)',first)
+   if not m:raise ValueError(f'Unknown source heading: {first[:160]}')
+   sid=m.group(1)
+   if not re.match(re.escape(title)+r'-\d+[A-Z]*-',sid):raise ValueError(f'Unexpected identifier {sid}')
+   after=text[len(sid)+1:].strip()
+   kind='editorial_notice' if re.match(r'(?:Repealed|Transferred|Omitted|Reserved|Superseded|Obsolete|Expired|Executed|Deleted|Renumbered)\b',after,re.I) else 'section'
+  seen[sid]+=1;key='sdcl:'+sid+(f'/_occurrence/{seen[sid]}' if seen[sid]>1 else '')
+  media=media_links(body,BASE)
+  stats[kind]+=1;stats['tables']+=len(body.xpath('.//table'));stats['media']+=len(media)
+  urls=root.xpath('//meta[@property="og:url"]/@content')
+  native_links=[a.get('href') for a in body.xpath('.//a[@href]') if a.text_content().strip()==sid]
+  url=urls[0] if urls else native_links[0] if native_links else BASE+'/api/Statutes/'+title+'.html?all=true'
+  result.append(Provision(key=key,citation='SDCL '+sid,heading=first,text=text,markup=chunk,url=url,parent_key='sdcl:'+title,unit_kind=kind,metadata={'source_identifier':sid,'source_heading':first,'source_fragment_ordinal':ordinal,'source_occurrence':seen[sid],'source_css_ids':sorted(set(re.findall(r'\bs(\d{7})',chunk))),'tables':len(body.xpath('.//table')),'media':media,'title':title,'content_role':'actual_legal_text' if kind=='section' else 'supporting_index_or_notice','date_semantics':'No exact snapshot or blanket section effective date inferred.'},references=source_links(body,BASE)))
+ for i,unit in enumerate(result):
+  if unit.unit_kind=='effective_date_notice':
+   following=result[i+1] if i+1<len(result) else None
+   if following is None or following.unit_kind!='section':raise ValueError('Effective notice without following section')
+   exact_date=datetime.strptime(unit.text.removeprefix('Effective '),'%B %d, %Y').date().isoformat()
+   relation={'notice_key':unit.key,'notice_text':unit.text,'effective_on':exact_date,'notice_fragment_ordinal':unit.metadata['source_fragment_ordinal'],'basis':'Publisher standalone notice immediately precedes this source section occurrence; not a blanket title effective date'}
+   result[i]=replace(unit,metadata={**unit.metadata,'following_section_key':following.key,'source_effective_on':exact_date})
+   result[i+1]=replace(following,metadata={**following.metadata,'publisher_effective_notice':relation})
+ missing=sorted(chapter_catalog-chapter_bodies)
+ if missing:raise ValueError(f'Export missing catalogued chapters: {missing}')
+ return result,{'counts':dict(stats),'html_fragments':len(result),'catalogued_chapters':len(chapter_catalog),'retained_chapter_bodies':len(chapter_bodies),'missing_catalogued_chapters':missing,'duplicate_source_identifiers':{k:v for k,v in seen.items() if v>1}}
+
+def sync_sd(store:Store,acquirer:Acquirer,limit=None,as_of=None):
+ """Sync the bounded 8-title batch; limit caps titles. Unknown snapshot dates stay null.
+ Historical as_of is unsupported and rejected before network or writes.
+ Use explore.GuardAcquirer for the cumulative task ledger and 80 MiB bound.
+ """
+ if as_of is not None:
+  date.fromisoformat(str(as_of));raise ValueError('South Dakota live exports have no verified snapshot date; as_of unsupported')
+ if limit is not None and (isinstance(limit,bool) or not isinstance(limit,int) or limit<0):raise ValueError('limit must be a nonnegative integer')
+ acquirer.delay=max(acquirer.delay,1.1)
+ ir=acquirer.fetch(INDEX);inventory=json.loads(store.artifact(ir.sha256))
+ cr=acquirer.fetch(CLOCK);clock=json.loads(store.artifact(cr.sha256))
+ store.collection(COLLECTION,('us-sd','South Dakota','state','us'),name='South Dakota Codified Laws — selected complete title exports',authority='South Dakota Legislature / Legislative Research Council',kind='codified_law',homepage=BASE+'/Statutes',source_status='Official government publisher; internet version, printed code prevails',access='Public HTTPS; robots allows selected API exports; publisher disclaimer retained',metadata={'publisher_global_effective_label_raw':clock,'clock_receipt_sha256':cr.sha256,'snapshot_date':None,'blanket_effective_on':None,'scope':list(SELECTED)})
+ for entry in inventory:
+  old=store.db.execute('SELECT status FROM inventories WHERE collection_id=? AND item=?',(COLLECTION,entry['Statute'])).fetchone()
+  store.inventory(COLLECTION,entry['Statute'],BASE+'/api/Statutes/'+entry['Statute']+'.html?all=true',old[0] if old else 'pending')
+ by_id={x['Statute']:x for x in inventory};out=[]
+ for title in SELECTED[:limit]:
+  row=by_id[title];url=BASE+'/api/Statutes/'+title+'.html?all=true';receipt=acquirer.fetch(url)
+  units,coverage=parse_title(store.artifact(receipt.sha256),title)
+  version,count,inserted=store.ingest(collection=COLLECTION,document='sdcl:title:'+title,title=f"Title {title} — {row['CatchLine']}",url=BASE+'/Statutes/'+title,acquisition=receipt.id,snapshot_date=None,snapshot_basis='Exact publisher snapshot unknown; global Effective label retained separately, not a snapshot or blanket legal-effect date',parser=PARSER,provisions=units,metadata={'source_inventory_entry':row,'inventory_sha256':ir.sha256,'publisher_global_effective_label_raw':clock,'clock_receipt_sha256':cr.sha256,'coverage':coverage})
+  store.inventory(COLLECTION,title,url,'acquired')
+  out.append({'title':title,'version':version,'inserted':inserted,'sha256':receipt.sha256,'decoded_bytes':receipt.size,'provisions':count,**coverage})
+ return {'titles':out,'publisher_title_denominator':len(inventory),'inventory_sha256':ir.sha256,'clock_sha256':cr.sha256,'publisher_global_effective_label_raw':clock}

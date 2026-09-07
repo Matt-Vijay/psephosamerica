@@ -1,0 +1,509 @@
+"""Official Florida collector; all mutable state is confined to this directory."""
+
+from __future__ import annotations
+
+import argparse
+import fcntl
+import json
+import os
+import re
+import shutil
+import time
+from collections import Counter
+from copy import deepcopy
+from pathlib import Path
+from urllib.parse import urldefrag, urljoin, urlsplit
+from urllib.robotparser import RobotFileParser
+
+from lxml import html
+
+from psephos.acquire import Acquirer, AcquisitionError, robots_lines
+from psephos.parse import markup, media_links, readable, source_links
+from psephos.store import Provision, Store, utc_now
+
+ROOT = Path(__file__).resolve().parent
+CAP = 209715200
+
+
+class BudgetAcquirer(Acquirer):
+    """Persist decoded bytes at every read, including robots and failed partial reads.
+
+    Identity encoding prevents decompression expansion. A 10 MiB request-start
+    reserve and 8 MiB per-file cap keep reads away from the lifetime hard limit.
+    An interrupted ledger replacement leaves the previous completed replacement;
+    an in-flight reservation is permanently charged on the next startup.
+    """
+
+    def __init__(self, store):
+        self.lock_file = (ROOT / "collector.lock").open("a+")
+        try:
+            fcntl.flock(self.lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            raise AcquisitionError("Florida collector already running") from None
+        self.ledger_path = ROOT / "budget.json"
+        if (
+            not self.ledger_path.exists()
+            and store.db.execute("select count(*) from acquisitions").fetchone()[0]
+        ):
+            raise AcquisitionError("Existing acquisitions without lifetime ledger; refusing reset")
+        self.state = (
+            json.loads(self.ledger_path.read_text())
+            if self.ledger_path.exists()
+            else {"cap_bytes": CAP, "consumed_decoded_bytes": 0, "crash_reservation_bytes": 0}
+        )
+        if self.state.get("inflight_reserved_bytes", 0):
+            self.state["crash_reservation_bytes"] += self.state["inflight_reserved_bytes"]
+            self.state["inflight_reserved_bytes"] = 0
+        self._downloaded = self.state["consumed_decoded_bytes"]
+        self.initializing = True
+        super().__init__(
+            store, delay=1.1, max_bytes=CAP - self.state["crash_reservation_bytes"] - 2 * 1024**2
+        )
+        self.initializing = False
+        self.client.headers["Accept-Encoding"] = "identity"
+        self.client.event_hooks["response"] = [self._identity]
+        self.depth = 0
+        self._save()
+
+    @property
+    def downloaded(self):
+        return self._downloaded
+
+    @downloaded.setter
+    def downloaded(self, value):
+        if getattr(self, "initializing", False):
+            return
+        self._downloaded = value
+        self.state["consumed_decoded_bytes"] = value
+        self._save()
+
+    def close(self):
+        super().close()
+        self.lock_file.close()
+
+    def _save(self):
+        self.state["updated_at"] = utc_now()
+        tmp = self.ledger_path.with_suffix(".tmp")
+        with tmp.open("w") as f:
+            json.dump(self.state, f, indent=2)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp, self.ledger_path)
+
+    def _identity(self, response):
+        if response.headers.get("content-encoding", "").lower() not in ("", "identity"):
+            response.close()
+            raise AcquisitionError("Server ignored identity encoding; body not decoded")
+
+    def _pause(self, url, delay=None):
+        host = urlsplit(url).netloc
+        floor = 10.1 if host.endswith("flsenate.gov") else self.delay
+        interval = max(floor, delay or 0)
+        last = self.state.get("last_request_wallclock", {}).get(host, 0)
+        wait = last + interval - time.time()
+        if wait > 30:
+            raise AcquisitionError("Publisher delay deferred")
+        if wait > 0:
+            time.sleep(wait)
+        super()._pause(url, interval)
+        self.state.setdefault("last_request_wallclock", {})[host] = time.time()
+        self._save()
+
+    def _allowed(self, url):
+        host = urlsplit(url).hostname
+        if not host or not any(
+            host == h or host.endswith("." + h) for h in ("flsenate.gov", "leg.state.fl.us")
+        ):
+            raise AcquisitionError("Uncoordinated host: " + str(host))
+        origin = "https://" + urlsplit(url).netloc
+        if origin not in self.robots:
+            raw = self.fetch(origin + "/robots.txt", check_robots=False, max_age_seconds=86400)
+            policy = RobotFileParser(origin + "/robots.txt")
+            policy.parse(robots_lines(self.store.artifact(raw.sha256)))
+            self.robots[origin] = policy
+        policy = self.robots[origin]
+        if not policy.can_fetch("PsephosLegal/0.1", url):
+            raise AcquisitionError("Disallowed by publisher robots policy: " + url)
+        if policy.crawl_delay("PsephosLegal/0.1"):
+            self.delay = max(self.delay, policy.crawl_delay("PsephosLegal/0.1"))
+        rate = policy.request_rate("PsephosLegal/0.1")
+        if rate:
+            self.delay = max(self.delay, rate.seconds / rate.requests)
+
+    def fetch(self, url, **kwargs):
+        if shutil.disk_usage(ROOT).free < 105 * 1024**3:
+            raise AcquisitionError("Disk free space below 105 GiB stop threshold")
+        cached = self._cached(url)
+        if cached and not self.refresh and kwargs.get("max_age_seconds") is None:
+            return cached
+        reserve = 10 * 1024**2
+        if CAP - self.downloaded - self.state["crash_reservation_bytes"] < reserve:
+            raise AcquisitionError("Lifetime byte budget reserve exhausted")
+        outer = self.depth == 0
+        if outer:
+            self.state["inflight_reserved_bytes"] = reserve
+            self._save()
+        self.depth += 1
+        try:
+            kwargs["max_file_bytes"] = min(kwargs.get("max_file_bytes", 8 * 1024**2), 8 * 1024**2)
+            return super().fetch(url, **kwargs)
+        finally:
+            self.depth -= 1
+            if outer:
+                self.state["inflight_reserved_bytes"] = 0
+                self._save()
+
+
+BASE = "https://www.flsenate.gov"
+INDEX = BASE + "/Laws/Statutes"
+CONSTITUTION = BASE + "/Laws/Constitution"
+# Explicit complete-title scope; unselected titles remain visibly pending.
+TITLES = (1, 2, 3, 9, 11, 12, 13)
+COLLECTION = "florida-statutes-2026"
+CONST_COLLECTION = "florida-constitution"
+
+
+def florida_units(data, document, url, constitution=False):
+    page = html.fromstring(data)
+    containers = page.xpath(
+        '//div[@class="Constitution"]' if constitution else '//div[@class="Chapter"]'
+    )
+    if len(containers) != 1:
+        raise ValueError("Expected one complete publisher legal container")
+    container = containers[0]
+    sections = container.xpath('.//div[@class="Section"]')
+    if not sections:
+        raise ValueError("No legal sections; refuse catalog/blocked stub")
+    native_keys = []
+    for node in sections:
+        number = "".join(node.xpath('./span[@class="SectionNumber"]//text()')).strip()
+        if not number:
+            raise ValueError("Section missing native number")
+        article_nodes = node.xpath('ancestor::div[@class="Article"]/div[@class="ArticleNumber"]')
+        article = readable(article_nodes[0]) if article_nodes else ""
+        native_keys.append((article, number))
+    totals = Counter(native_keys)
+    seen = Counter()
+    for node, (article, number) in zip(sections, native_keys, strict=True):
+        seen[(article, number)] += 1
+        anchor = next(iter(node.xpath('./span[@class="SectionNumber"]//a/@name')), None)
+        clean_number = re.sub(r"^SECTION\s+|\.$", "", number)
+        key = f"fl:const/{article}/{clean_number}" if constitution else f"fl:stat/{clean_number}"
+        if totals[(article, number)] > 1:
+            key += f"/occurrence/{seen[(article, number)]}"
+        heading = "".join(
+            node.xpath('./span[@class="Catchline"]//span[@class="CatchlineText"]//text()')
+        ).strip()
+        hierarchy = [
+            readable(n)
+            for a in reversed(list(node.iterancestors()))
+            for n in a.xpath(
+                './div[@class="Title" or @class="ChapterTitle" or @class="PartTitle" or @class="ArticleNumber" or @class="ArticleName"]'
+            )
+        ]
+        yield Provision(
+            key=key,
+            citation=f"Fla. Const. {article.title()}, § {clean_number}"
+            if constitution
+            else f"Fla. Stat. § {clean_number} (2026)",
+            heading=heading,
+            text=readable(node),
+            markup=markup(node),
+            url=url + ("#" + anchor if anchor else ""),
+            parent_key=document,
+            metadata={
+                "source_number": number,
+                "source_anchor": anchor,
+                "article": article,
+                "hierarchy": hierarchy,
+                "duplicate_number_count": totals[(article, number)],
+                "tables": len(node.xpath(".//table")),
+                "media": media_links(node, url),
+                "clock_note": "History and future/conditional effective notes retained verbatim; no inferred legal effect date.",
+            },
+            references=source_links(node, url),
+        )
+    # Everything outside section blocks remains searchable as explicit context.
+    context = deepcopy(container)
+    for node in context.xpath('.//div[@class="Section"]'):
+        node.drop_tree()
+    if readable(context):
+        yield Provision(
+            key=document + "/_context",
+            citation=("Florida Constitution" if constitution else document)
+            + " — publisher context",
+            heading="Publisher headings, indexes, preamble, and scope notes",
+            text=readable(context),
+            markup=markup(context),
+            url=url,
+            parent_key=document,
+            unit_kind="scope_notes",
+            metadata={
+                "includes_preamble": constitution,
+                "source_sections": len(sections),
+                "media": media_links(context, url),
+            },
+            references=source_links(context, url),
+        )
+
+
+def write_report(s, a, scope=None):
+    counts = {
+        table: s.db.execute("select count(*) from " + table).fetchone()[0]
+        for table in [
+            "collections",
+            "documents",
+            "versions",
+            "provisions",
+            "artifacts",
+            "acquisitions",
+            "legal_references",
+        ]
+    }
+    receipts = [
+        dict(r)
+        for r in s.db.execute(
+            "select a.id,a.url,a.final_url,a.observed_at,a.status,a.sha256,a.error,b.bytes from acquisitions a left join artifacts b on b.sha256=a.sha256 order by a.id"
+        )
+    ]
+    inv = [dict(r) for r in s.db.execute("select * from inventories order by collection_id,item")]
+    prior = (
+        json.loads((ROOT / "report.json").read_text()) if (ROOT / "report.json").exists() else {}
+    )
+    report = {
+        "state": "Florida",
+        "updated_at": utc_now(),
+        "source_store_root": str(s.root),
+        "source_database": str(s.root / "legal.sqlite3"),
+        "adapter": str(ROOT / "adapter.py"),
+        "helper_files": [
+            str(ROOT / "self_check.py"),
+            str(ROOT / "budget.json"),
+            str(ROOT / "checks.json"),
+        ],
+        "collection_ids": [r[0] for r in s.db.execute("select id from collections")],
+        "counts": counts,
+        "counts_by_collection": [
+            dict(r)
+            for r in s.db.execute(
+                "select d.collection_id,p.unit_kind,count(*) as units from provisions p join versions v on v.id=p.version_id join documents d on d.id=v.document_id group by d.collection_id,p.unit_kind"
+            )
+        ],
+        "retained_artifact_bytes": s.db.execute(
+            "select coalesce(sum(bytes),0) from artifacts"
+        ).fetchone()[0],
+        "consumed_decoded_bytes": a.downloaded,
+        "budget": a.state,
+        "hosts": sorted(set(urlsplit(r["final_url"]).hostname for r in receipts)),
+        "scope": scope or prior.get("scope", {}),
+        "inventory": inv,
+        "receipts": receipts,
+        "terms": {
+            "authority": "Florida Senate official public legal compilation",
+            "copyright": "Online Sunshine discovery page carries Copyright © 1995-2026 The Florida Legislature. No blanket redistribution license asserted; source bytes/notices retained for local legal research.",
+            "privacy_receipt_url": BASE + "/About/Privacy",
+            "bulk_assessment": "Online Sunshine download is 2025 Windows Search & Browse installation package; not installed/downloaded. Selected public complete chapter HTML and full constitution instead.",
+            "robots": "Senate Crawl-delay: 10; local adapter strips UTF-8 BOM and enforces >=10.1 seconds; APIs disallowed and unused.",
+            "initial_policy_incident": "Initial Senate discovery acquisitions IDs 1,2,7,8,9,10 used >=1.1 second base delay because shared RobotFileParser did not recognize BOM-prefixed User-agent. Detected before sync; fixed local parser and explicit 10.1s floor. No blocked path requested. See acquisition timestamps for exact initial requests.",
+        },
+        "clocks": {
+            "acquisition": "Each immutable acquisition observed_at is completion of retained response; HTTP headers retained separately.",
+            "edition": "2026 statutes label; Constitution revised 1968 and subsequently amended, current incorporation date unknown.",
+            "snapshot_date": None,
+            "publication_date": None,
+            "legal_effective_date": None,
+            "treatment": "Year label is not promoted to an exact date. Null exact clocks intentionally excluded by date-filtered retrieval; future-effective/conditional text and history retained, not resolved.",
+        },
+        "gaps": [
+            "Titles outside explicitly selected complete-title scope are uncollected; root inventory enumerates all 49 titles.",
+            "Administrative regulations, session laws, local ordinances and case law uncollected; denominator not inventoried.",
+            "External media is located and explicitly marked not transcribed; source markup and original HTML retained.",
+            "Publisher auxiliary indexes, tracing tables and preface PDFs not collected.",
+        ],
+        "checks": json.loads((ROOT / "checks.json").read_text())
+        if (ROOT / "checks.json").exists()
+        else [],
+        "free_disk_bytes": shutil.disk_usage(ROOT).free,
+    }
+    (ROOT / "report.json").write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n")
+
+
+def sync_fl(s: Store, a: Acquirer, limit: int | None = None, as_of: str | None = None):
+    if as_of:
+        raise ValueError("Exact publisher snapshot dates unknown; historical as_of unsupported")
+    if not isinstance(a, BudgetAcquirer):
+        raise ValueError("Use Florida BudgetAcquirer for persistent lifetime accounting")
+    if s.root != (ROOT / "source").resolve():
+        raise ValueError("Florida source Store only; no production writes")
+    for cid, name, kind, home in [
+        (COLLECTION, "2026 Florida Statutes — selected complete titles", "statutory_code", INDEX),
+        (CONST_COLLECTION, "Florida Constitution", "constitution", CONSTITUTION),
+    ]:
+        s.collection(
+            cid,
+            ("us-fl", "Florida", "state", "us"),
+            name=name,
+            authority="Florida Senate",
+            kind=kind,
+            homepage=home,
+            source_status="Official publisher HTML; exact incorporation date unknown",
+            access="Public complete-text pages; source policy receipts retained",
+            metadata={
+                "edition_year": 2026 if cid == COLLECTION else None,
+                "exact_date_unknown": True,
+            },
+        )
+    a.fetch(BASE + "/About/Privacy")
+    index = a.fetch(INDEX)
+    page = html.fromstring(s.artifact(index.sha256))
+    titles = []
+    for link in page.xpath("//a[@href]"):
+        m = re.fullmatch(r"/Laws/Statutes/2026/Title(\d+)/#Title\d+", link.get("href", ""))
+        if m:
+            n = int(m[1])
+            url = urldefrag(urljoin(BASE, link.get("href")))[0]
+            titles.append((n, url, " ".join(link.text_content().split())))
+    if len(titles) != 49:
+        raise ValueError(f"Unexpected title denominator {len(titles)}")
+    scope = {
+        "statute_edition": "2026",
+        "statewide_title_denominator": len(titles),
+        "selected_title_numbers": list(TITLES),
+        "constitution": "complete published container including all 12 articles, preamble and editorial notes",
+        "title_details": [],
+    }
+    for n, url, _label in titles:
+        existing = s.db.execute(
+            "select status from inventories where collection_id=? and item=?",
+            (COLLECTION, f"title-{n}"),
+        ).fetchone()
+        if not existing:
+            s.inventory(
+                COLLECTION,
+                f"title-{n}",
+                url,
+                "pending",
+                None if n in TITLES else "Outside selected complete-title scope",
+            )
+    cr = a.fetch(CONSTITUTION)
+    units = list(florida_units(s.artifact(cr.sha256), "fl:constitution", CONSTITUTION, True))
+    s.ingest(
+        collection=CONST_COLLECTION,
+        document="fl:constitution",
+        title="Florida Constitution",
+        url=CONSTITUTION,
+        acquisition=cr.id,
+        snapshot_basis="Undated current Constitution publication; 1968 revision plus subsequent amendments, no inferred exact incorporation clock",
+        parser="fl-html-1",
+        provisions=units,
+        metadata={"section_count": len(units) - 1},
+    )
+    s.inventory(CONST_COLLECTION, "constitution", CONSTITUTION, "indexed")
+    processed = 0
+    for n, url, label in titles:
+        if n not in TITLES:
+            continue
+        ir = a.fetch(url)
+        tpage = html.fromstring(s.artifact(ir.sha256))
+        chapters = []
+        for link in tpage.xpath("//a[@href]"):
+            m = re.fullmatch(r"/Laws/Statutes/2026/Chapter([\w]+)", link.get("href", ""))
+            if m:
+                c = m[1]
+                entry = (
+                    c,
+                    urljoin(BASE, link.get("href")) + "/All",
+                    " ".join(link.text_content().split()),
+                )
+                if entry not in chapters:
+                    chapters.append(entry)
+        if not chapters:
+            raise ValueError("Empty title chapter inventory " + url)
+        detail = {
+            "title": n,
+            "label": label,
+            "inventory_receipt": ir.id,
+            "chapter_denominator": len(chapters),
+            "chapters": [c[0] for c in chapters],
+        }
+        scope["title_details"].append(detail)
+        for c, cu, _ct in chapters:
+            old = s.db.execute(
+                "select status from inventories where collection_id=? and item=?",
+                (COLLECTION, f"chapter-{c}"),
+            ).fetchone()
+            if not old:
+                s.inventory(COLLECTION, f"chapter-{c}", cu, "pending")
+        for c, cu, ct in chapters:
+            if limit is not None and processed >= limit:
+                break
+            try:
+                raw = a.fetch(cu)
+                data = s.artifact(raw.sha256)
+                units = list(florida_units(data, f"fl:chapter/{c}", cu))
+                doc = html.fromstring(data)
+                expected = doc.xpath(
+                    '//div[@class="CatchlineIndex"]//div[@class="IndexItem"]/span[@class="SectionNumber"]'
+                )
+                numbers = [readable(x).strip() for x in expected]
+                found = [u.metadata["source_number"] for u in units if u.unit_kind == "section"]
+                if Counter(numbers) != Counter(found):
+                    raise ValueError("Chapter TOC/section multiset mismatch")
+                s.ingest(
+                    collection=COLLECTION,
+                    document=f"fl:chapter/{c}",
+                    title=ct,
+                    url=cu,
+                    acquisition=raw.id,
+                    snapshot_basis="Publisher labels 2026 annual edition; exact publication/incorporation day unknown",
+                    parser="fl-html-1",
+                    provisions=units,
+                    metadata={
+                        "title_number": n,
+                        "edition_year": 2026,
+                        "title_inventory_receipt": ir.id,
+                        "section_denominator": len(numbers),
+                    },
+                    snapshot_date=None,
+                )
+                s.inventory(COLLECTION, f"chapter-{c}", cu, "indexed")
+                processed += 1
+                print(
+                    f"indexed title {n} chapter {c}: {len(found)} sections; bytes {a.downloaded}",
+                    flush=True,
+                )
+            except (ValueError, AcquisitionError) as exc:
+                s.inventory(COLLECTION, f"chapter-{c}", cu, "failed", str(exc))
+                print(f"FAILED {c}: {exc}", flush=True)
+                if isinstance(exc, AcquisitionError):
+                    write_report(s, a, scope)
+                    raise
+            write_report(s, a, scope)
+        statuses = [
+            s.db.execute(
+                "select status from inventories where collection_id=? and item=?",
+                (COLLECTION, f"chapter-{c}"),
+            ).fetchone()[0]
+            for c, _, _ in chapters
+        ]
+        complete = all(x == "indexed" for x in statuses)
+        detail["indexed_chapters"] = statuses.count("indexed")
+        detail["complete"] = complete
+        s.inventory(COLLECTION, f"title-{n}", url, "indexed" if complete else "partial")
+        write_report(s, a, scope)
+    return write_report(s, a, scope)
+
+
+if __name__ == "__main__":
+    p = argparse.ArgumentParser()
+    p.add_argument("--limit", type=int)
+    p.add_argument("--as-of")
+    args = p.parse_args()
+    s = Store(ROOT / "source")
+    a = BudgetAcquirer(s)
+    try:
+        sync_fl(s, a, args.limit, args.as_of)
+    finally:
+        write_report(s, a)
+        a.close()
+        s.close()

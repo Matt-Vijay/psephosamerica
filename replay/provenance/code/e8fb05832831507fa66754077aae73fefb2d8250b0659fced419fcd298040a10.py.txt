@@ -1,0 +1,129 @@
+"""Single-worker strict publisher transport with persistent decoded HTTP ledger."""
+import hashlib
+import json
+import os
+import shutil
+import time
+from pathlib import Path
+from urllib.parse import urlsplit
+import httpx
+from psephos.acquire import Acquirer, AcquisitionError, Receipt, SAFE_HEADERS, retry_seconds, validate_url
+from psephos.store import utc_now
+
+ROOT = Path(__file__).resolve().parent
+HOSTS = {'leg.mt.gov', 'archive.legmt.gov', 'legmt.gov', 'www.legmt.gov', 'mca.legmt.gov'}
+CAP = 200 * 1024**2
+
+class MontanaAcquirer(Acquirer):
+    def __init__(self, store, **kwargs):
+        super().__init__(store, delay=1.05, max_bytes=CAP, **kwargs)
+        self.ledger_path = ROOT / 'http_ledger.json'
+        self.ledger = json.loads(self.ledger_path.read_text()) if self.ledger_path.exists() else {
+            'cap_bytes': CAP, 'decoded_bytes': 0, 'reserved_bytes': 0, 'requests': [], 'last_request': {},
+            'basis': 'All decoded response bodies including robots/discovery/errors; 64KiB reserved before each iterator read, unreconciled reservation remains charged after interruption.'}
+        self.save()
+    def save(self):
+        temp = self.ledger_path.with_suffix('.tmp')
+        with temp.open('w') as out:
+            json.dump(self.ledger, out, indent=2)
+            out.flush(); os.fsync(out.fileno())
+        temp.replace(self.ledger_path)
+    def _pause(self, url, delay=None):
+        validate_url(url)
+        host = urlsplit(url).hostname
+        if host not in HOSTS:
+            raise AcquisitionError('Unclaimed host: ' + host)
+        if shutil.disk_usage(ROOT).free < 101 * 1024**3:
+            raise AcquisitionError('Stop before free storage reaches 100GiB')
+        wait = self.ledger['last_request'].get(host, 0) + max(1.05, delay or self.delay) - time.time()
+        if wait > 30:
+            raise AcquisitionError('Publisher wait deferred; resume later')
+        if wait > 0: time.sleep(wait)
+        self.ledger['last_request'][host] = time.time()
+        self.save()
+    def _allowed(self, url):
+        super()._allowed(url)
+        origin = 'https://' + urlsplit(url).netloc
+        parser = self.robots[origin]
+        rate = parser.request_rate('PsephosLegal')
+        if rate:
+            self._pause(url, rate.seconds/rate.requests)
+    def fetch(self, url, *, immutable=False, check_robots=True, max_file_bytes=20*1024**2, accept=None, max_age_seconds=None):
+        validate_url(url)
+        if urlsplit(url).hostname not in HOSTS:
+            raise AcquisitionError('Unclaimed host: '+url)
+        cached = self._cached(url)
+        if cached:
+            row = self.store.db.execute('SELECT status FROM acquisitions WHERE id=?',(cached.id,)).fetchone()
+            if row[0] == 200: return cached
+        if check_robots: self._allowed(url)
+        current = url
+        for attempt in range(5):
+            self._pause(current)
+            entry = {'url': url, 'request_url': current, 'started_at': utc_now(), 'status': 0, 'decoded_bytes': 0, 'complete': False}
+            self.ledger['requests'].append(entry); self.save()
+            status = 0; headers = {}; body = bytearray(); observed = utc_now()
+            try:
+                with self.client.stream('GET', current, headers={'Accept-Encoding':'identity', **({'Accept':accept} if accept else {})}) as response:
+                    status = response.status_code
+                    headers = {k:v for k,v in response.headers.items() if k in SAFE_HEADERS}
+                    entry['status'] = status
+                    iterator = response.iter_bytes(chunk_size=65536)
+                    while True:
+                        reserve = 65536
+                        if self.ledger['decoded_bytes'] + self.ledger['reserved_bytes'] + reserve > CAP:
+                            raise AcquisitionError('Cumulative decoded budget stop')
+                        self.ledger['reserved_bytes'] += reserve; self.save()
+                        try:
+                            chunk = next(iterator)
+                        except StopIteration:
+                            self.ledger['reserved_bytes'] -= reserve; self.save(); break
+                        self.ledger['reserved_bytes'] -= reserve
+                        self.ledger['decoded_bytes'] += len(chunk)
+                        self.downloaded += len(chunk)
+                        entry['decoded_bytes'] += len(chunk); self.save()
+                        body.extend(chunk)
+                        if len(body) > max_file_bytes: raise AcquisitionError('Per-file decoded byte limit')
+                    entry['complete'] = True
+                    sha = hashlib.sha256(body).hexdigest()
+                    target = self.store.object_path(sha); target.parent.mkdir(parents=True,exist_ok=True)
+                    if target.exists(): self.store.artifact(sha)
+                    else:
+                        with target.open('xb') as out: out.write(body)
+                    with self.store.db:
+                        self.store.db.execute('INSERT OR IGNORE INTO artifacts VALUES (?,?)',(sha,len(body)))
+                    headers['psephos_request_started_at'] = observed
+                    rid = self._record(url,current,utc_now(),status,headers,sha,None if status==200 else 'non-200; not legal text')
+                    entry.update({'sha256':sha,'acquisition_id':rid}); self.save()
+                    if 'retry-after' in response.headers:
+                        wait = retry_seconds(response.headers['retry-after'],0)
+                        self.ledger['last_request'][urlsplit(current).hostname] = time.time()+wait
+                        self.save()
+                        if wait > 30: raise AcquisitionError('Publisher Retry-After deferred')
+                        if wait: time.sleep(wait)
+                    if status in (301,302,303,307,308):
+                        destination = str(response.url.join(response.headers['location']))
+                        if urlsplit(destination).hostname not in HOSTS: raise AcquisitionError('Redirect requires new host claim: '+destination)
+                        if check_robots: self._allowed(destination)
+                        current=destination; continue
+                    if status != 200: raise AcquisitionError('HTTP '+str(status)+'; stop without retry')
+                    return Receipt(rid,url,sha,utc_now(),len(body))
+            except (httpx.HTTPError, OSError, AcquisitionError) as exc:
+                entry['error']=str(exc); self.save()
+                if not entry.get('acquisition_id'):
+                    self._record(url,current,utc_now(),status,headers,None,str(exc))
+                raise AcquisitionError(str(exc)) from exc
+        raise AcquisitionError('Redirect limit')
+
+if __name__ == '__main__':
+    import sys
+    from psephos.store import Store
+    s=Store(ROOT/'store'); a=MontanaAcquirer(s)
+    try:
+        for url in sys.argv[1:]:
+            try:
+                r=a.fetch(url)
+                print(json.dumps({'url':url,'id':r.id,'sha256':r.sha256,'bytes':r.size}))
+                print(s.artifact(r.sha256).decode('utf-8','replace')[:25000])
+            except AcquisitionError as e: print('ERROR',url,str(e))
+    finally: a.close(); s.close()

@@ -1,0 +1,191 @@
+"""Colorado 2026 OLLS export, indexed locally with source text and clocks intact.
+
+sync_co(Store, Acquirer, limit=None, as_of=None) is the integration entrypoint.
+limit bounds HTML documents indexed, not the one complete archive acquisition.
+No redistribution license is asserted. Caller controls storage and HTTP budget.
+"""
+from __future__ import annotations
+import hashlib
+import json
+import re
+import shutil
+import zipfile
+from collections import Counter
+from copy import deepcopy
+from pathlib import Path, PurePosixPath
+from lxml import etree, html
+from psephos.acquire import Acquirer, AcquisitionError
+from psephos.parse import readable, markup, source_links, media_links
+from psephos.store import Store, Provision
+
+INDEX = 'https://content.leg.colorado.gov/agencies/office-legislative-legal-services/2026-crs-titles-download'
+HOME = 'https://leg.colorado.gov/agencies/office-legislative-legal-services/colorado-revised-statutes'
+NOTICE = 'https://content.leg.colorado.gov/agencies/office-legislative-legal-services/colorado-revised-statutes-data'
+ARCHIVE = 'https://olls.info/crs/crs2026-htm.zip'
+COLLECTION = 'colorado-crs'
+CURRENCY = 'Current with the changes made by amendments, additions, and repeals to Colorado Revised Statutes by the Seventy-fifth General Assembly at its Second Regular Session in 2026.'
+ACCESS = 'Publisher offers HTM/PDF/DOCX for personal use. Local research acquisition only; redistribution requires separate compliance with publisher CRS data notice and C.R.S. 2-5-118. No blanket license or official-status claim.'
+PARSER = 'colorado-olls-html-2'
+
+
+def normalized(text):
+    return ' '.join(text.split())
+
+
+def body_blocks(body):
+    """Flatten Word's pagination wrappers only; tables and nested content stay whole."""
+    for child in body:
+        if child.tag == 'div' and child.get('class', '').startswith('WordSection'):
+            if (child.text or '').strip():
+                raise ValueError('Unexpected unwrapped Word section text')
+            yield from child
+        else:
+            yield child
+
+
+def colorado_units(data: bytes, member: str, media_members: dict | None = None):
+    root = html.fromstring(data)
+    bodies = root.xpath('//body')
+    if len(bodies) != 1:
+        raise ValueError('Export lacks a unique HTML body')
+    body = bodies[0]
+    title = normalized(' '.join(root.xpath('//title/text()')))
+    is_index = member == 'crs2026-index.htm'
+    title_num = 'index' if is_index else re.fullmatch(r'crs2026-title-([\d.]+)\.htm', member).group(1).lstrip('0') or '0'
+    if '2026' not in title or ('Colorado' not in title and not is_index):
+        raise ValueError('Unexpected export edition/title')
+    if len(readable(body)) < 500:
+        raise ValueError('Not usable legal full text')
+    groups = []
+    node = etree.Element('div')
+    identity, kind, heading = '_context', 'scope_notes', title
+    article = None
+    group_article = None
+    context = 0
+    section_pattern = re.compile(r'^(' + re.escape(title_num) + r'-\d+(?:\.\d+)*-\d+(?:\.\d+)*(?:\([\w]+\))?)\.\s')
+    for block in body_blocks(body):
+        text = normalized(readable(block))
+        bold = normalized(' '.join(block.xpath('.//b//text()')))
+        new = None
+        if is_index:
+            if text and text.isupper() and 'margin-left' not in block.get('style', ''):
+                new = ('index/' + str(len(groups) + 1), 'index_topic', text)
+        elif title_num == '0':
+            match = re.fullmatch(r'ARTICLE\s+([IVXLCDM]+)', text)
+            if match and bold:
+                article = match.group(1)
+                new = ('article-' + article + '/_context', 'scope_notes', text)
+            elif text == 'Schedule' and bold:
+                article = 'Schedule'
+                new = ('Schedule/_context', 'scope_notes', text)
+            else:
+                match = re.match(r'^Section\s+(\d+(?:\.\s*\d+)*)\.\s', bold)
+                if match and article:
+                    new = ('article-' + article + '/section-' + re.sub(r'\s+', '', match.group(1)), 'constitutional_section', text)
+        else:
+            match = section_pattern.match(bold)
+            if match and text.startswith(match.group(1) + '.'):
+                new = (match.group(1), 'section', text)
+            elif re.fullmatch(r'(?:ARTICLE|PART)\s+[\d.]+', text) and bold:
+                context += 1
+                new = ('_context/' + str(context), 'scope_notes', text)
+        if new:
+            if readable(node):
+                groups.append((identity, kind, heading, group_article, node))
+            node = etree.Element('div')
+            identity, kind, heading = new
+            group_article = article
+        node.append(deepcopy(block))
+    if readable(node):
+        groups.append((identity, kind, heading, group_article, node))
+    if normalized(readable(body)) != normalized(' '.join(readable(g[4]) for g in groups)):
+        raise ValueError('Text conservation failed; no partial title may be indexed')
+    totals = Counter(g[0] for g in groups)
+    seen = Counter()
+    url = 'https://olls.info/crs/' + member
+    for identity, kind, heading, article, node in groups:
+        seen[identity] += 1
+        suffix = '/_occurrence/' + str(seen[identity]) if totals[identity] > 1 else ''
+        citation = ('C.R.S. § ' + identity if kind == 'section' else
+                    'Colo. Const. ' + identity if kind == 'constitutional_section' else
+                    title + ' — ' + heading)
+        media = media_links(node, url)
+        for item in media:
+            locator = item['source_locator']
+            if media_members and locator in media_members:
+                item.update({'status': 'preserved_in_archive; not_transcribed', 'archive_member': locator, **media_members[locator]})
+        yield Provision(
+            key='co:' + title_num + '/' + identity + suffix, citation=citation,
+            heading=heading, text=readable(node), markup=markup(node), url=url,
+            parent_key='co:title-' + title_num, unit_kind=kind,
+            metadata={'title_number': title_num, 'constitution_article': article,
+                      'archive_member': member, 'source_anchors': node.xpath('.//@id|.//a/@name'),
+                      'source_identifier': identity if kind in ('section', 'constitutional_section') else None,
+                      'duplicate_identifier_count': totals[identity], 'occurrence': seen[identity],
+                      'tables': len(node.xpath('.//table')), 'media': media,
+                      'segmentation': 'bold publisher section heading; all intervening text retained; context separate at article/part headings',
+                      'clock_warning': 'Future-effective parallel text, exceptions, histories and annotations retained without resolving legal effect.'},
+            references=source_links(node, url))
+
+
+def sync_co(s: Store, a: Acquirer, limit: int | None = None, as_of: str | None = None):
+    if as_of is not None:
+        raise ValueError('Colorado export states 2026 session currency but no exact snapshot date; historical as_of unsupported')
+    if limit is not None and limit < 0:
+        raise ValueError('limit must be nonnegative')
+    if a.delay < 1:
+        a.delay = 1
+    if shutil.disk_usage(s.root).free < 105 * 1024**3:
+        raise AcquisitionError('Disk is approaching 100 GiB free')
+    index = a.fetch(INDEX)
+    home = a.fetch(HOME)
+    notice = a.fetch(NOTICE)
+    tree = html.fromstring(s.artifact(index.sha256))
+    if CURRENCY not in normalized(tree.text_content()):
+        raise ValueError('Publisher currency changed; review before indexing')
+    expected = {PurePosixPath(u).name for u in tree.xpath('//a/@href') if re.fullmatch(r'https://olls.info/crs/crs2026-(?:title-[\d.]+|index)\.htm', u)}
+    if len(expected) != 48 or ARCHIVE not in tree.xpath('//a/@href'):
+        raise ValueError('Official inventory changed')
+    s.collection(COLLECTION, ('us-co', 'Colorado', 'state', 'us'),
+        name='Colorado Revised Statutes 2026, Constitution and General Index',
+        authority='Colorado General Assembly, Office of Legislative Legal Services',
+        kind='statutory_code_and_constitution', homepage=HOME,
+        source_status='Official publisher export; derived local index is not the official statutes', access=ACCESS,
+        metadata={'currency_notice': CURRENCY, 'edition': '2026', 'inventory_artifact': index.sha256,
+                  'access_notice_artifact': notice.sha256, 'homepage_artifact': home.sha256,
+                  'snapshot_warning': 'Session-level currency only; exact snapshot and effective dates null'})
+    for member in sorted(expected):
+        existing = s.db.execute('SELECT status FROM inventories WHERE collection_id=? AND item=?', (COLLECTION, member)).fetchone()
+        if not existing:
+            s.inventory(COLLECTION, member, ARCHIVE, 'pending')
+    raw = a.fetch(ARCHIVE, max_file_bytes=100*1024**2)
+    if s.db.execute('SELECT status FROM acquisitions WHERE id=?', (raw.id,)).fetchone()[0] != 200:
+        raise ValueError('Archive requires HTTP 200')
+    results = []
+    with zipfile.ZipFile(s.object_path(raw.sha256)) as archive:
+        infos = archive.infolist()
+        if len({i.filename for i in infos}) != len(infos) or sum(i.file_size for i in infos) > 600*1024**2:
+            raise ValueError('Unsafe archive inventory')
+        members = {i.filename for i in infos if i.filename.endswith('.htm')}
+        if members != expected or archive.testzip() is not None:
+            raise ValueError('Archive does not match complete official title inventory / CRC failure')
+        media = {i.filename: {'sha256': hashlib.sha256(archive.read(i)).hexdigest(), 'bytes': i.file_size} for i in infos if not i.is_dir() and i.filename not in members}
+        for member in sorted(members)[:limit]:
+            if shutil.disk_usage(s.root).free < 105*1024**3:
+                raise AcquisitionError('Disk is approaching 100 GiB free')
+            data = archive.read(member)
+            units = list(colorado_units(data, member, media))
+            title = normalized(' '.join(html.fromstring(data).xpath('//title/text()')))
+            version, count, new = s.ingest(collection=COLLECTION, document='co:' + PurePosixPath(member).stem,
+                title=title, url='https://olls.info/crs/' + member, acquisition=raw.id, member=member,
+                snapshot_date=None, snapshot_basis='Publisher 2026 Second Regular Session currency; exact snapshot day unknown',
+                parser=PARSER, provisions=units,
+                metadata={'edition': '2026', 'currency_notice': CURRENCY, 'inventory_artifact': index.sha256,
+                          'access_notice_artifact': notice.sha256, 'source_member_sha256': hashlib.sha256(data).hexdigest(),
+                          'archive_url': ARCHIVE, 'member_bytes': len(data), 'full_text_conservation_verified': True,
+                          'media_members': media, 'published_on': None, 'effective_on': None})
+            s.inventory(COLLECTION, member, ARCHIVE, 'indexed')
+            result = {'member': member, 'version': version, 'provisions': count, 'new': new}
+            results.append(result)
+            print(json.dumps(result), flush=True)
+    return results

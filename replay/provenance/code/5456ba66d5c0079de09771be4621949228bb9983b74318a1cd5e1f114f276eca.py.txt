@@ -1,0 +1,226 @@
+"""Bounded Missouri publisher PDF acquisition; run with repository Python, no core writes.
+
+2025 publisher volumes are pinned to inspected hashes. A changed PDF fails closed
+until its bookmarks, page boundaries and text fidelity have been inspected again.
+"""
+from __future__ import annotations
+
+import html as escape_html
+import json
+import re
+import shutil
+import subprocess
+from pathlib import Path
+from urllib.parse import urljoin
+
+from lxml import html
+from pypdf import PdfReader
+from psephos.acquire import Acquirer, AcquisitionError
+from psephos.store import Store, Provision, Reference, utc_now
+
+ROOT = Path(__file__).resolve().parent
+ORIGIN = 'https://revisor.mo.gov'
+HOME = ORIGIN + '/main/Home.aspx'
+INFO = ORIGIN + '/main/Info.aspx'
+FAQ = ORIGIN + '/main/FAQ.aspx'
+CAP = 200 * 1024**2
+NOTICE = ('Missouri Legislature copyright/all rights reserved notice retained. '
+          'Public download links; no account or purchase used. robots.txt redirects '
+          'to HTML homepage with no robots directives, recorded as absent/unusable '
+          'rather than a real allow policy. Whole-chapter noindex,nofollow honored '
+          'by withholding that HTML from indexing. Minimum 1.1 seconds per host.')
+WARNING = ('Page-level text projection, not section-level consolidation. Original PDF '
+           'preserves typography, tables, maps, signatures and amendment markup. '
+           'PDF acquisition and file metadata dates are not legal effective or snapshot '
+           'dates. Unknown snapshot/effective dates remain NULL.')
+
+# Inclusive physical PDF page ranges, validated against publisher bookmarks.
+VOLUMES = [
+    dict(id='2025session', file='2025SessionLaws.pdf', pages=1590,
+         sha='b88612caffd7ef640d658a16a1713e8c776836e1c69a4b2b01687617acd4a066',
+         scopes=[
+             ('regular-appropriations',29,562,'mo-session-laws','First regular session — appropriation bills'),
+             ('regular-house',563,988,'mo-session-laws','First regular session — House bills'),
+             ('regular-senate',989,1464,'mo-session-laws','First regular session — Senate bills'),
+             ('regular-hcr',1465,1466,'mo-session-laws','First regular session — House concurrent resolutions'),
+             ('regular-scr',1467,1468,'mo-session-laws','First regular session — Senate concurrent resolutions'),
+             ('regular-proposals',1469,1474,'mo-proposed-amendments','First regular session — proposed constitutional amendments for November 3, 2026 election'),
+             ('extra1-appropriations',1477,1480,'mo-session-laws','First extraordinary session — appropriation bill'),
+             ('extra1-senate',1481,1500,'mo-session-laws','First extraordinary session — Senate bills'),
+             ('extra2-house',1503,1556,'mo-session-laws','Second extraordinary session — House bill'),
+             ('extra2-proposals',1557,1560,'mo-proposed-amendments','Second extraordinary session — proposed constitutional amendment for November 3, 2026 election'),
+         ]),
+    dict(id='2025appendix', file='2025AppendicesTablesCumSupp.pdf', pages=346,
+         sha='77f25640a45d711e0212a95bd26b3d5e17e3a1425523e80d1b4db14c873bf9e2',
+         scopes=[
+             ('appendix-a',3,16,'mo-supplement-appendices','Appendix A — Reorganization Plans'),
+             ('appendix-h',51,72,'mo-supplement-appendices','Appendix H — Concurrent Resolutions Having Force and Effect of Law'),
+             ('appendix-k',83,152,'mo-supplement-appendices','Appendix K — Sections Containing Editorial Changes'),
+             ('supreme-rules-1',153,172,'mo-supplement-appendices','Legislative Amendments to Supreme Court Rules — Part 1'),
+             ('supreme-rules-2',173,178,'mo-supplement-appendices','Legislative Amendments to Supreme Court Rules — Part 2'),
+         ]),
+]
+
+
+def pages_for(store, receipt, volume):
+    if receipt.sha256 != volume['sha']:
+        raise ValueError('Publisher PDF changed; manual scope/fidelity review required')
+    path = store.object_path(receipt.sha256)
+    if not store.artifact(receipt.sha256).startswith(b'%PDF-'):
+        raise ValueError('HTTP 200 was not a PDF')
+    reader = PdfReader(path)
+    if len(reader.pages) != volume['pages']:
+        raise ValueError('PDF page count changed')
+    result = subprocess.run(['pdftotext','-layout',str(path),'-'],capture_output=True,check=True)
+    pages = result.stdout.decode('utf-8').split('\f')
+    if pages[-1].strip() or len(pages)-1 != len(reader.pages):
+        raise ValueError('Extracted and physical PDF page counts differ')
+    return reader, pages[:-1]
+
+
+def excluded_reason(text):
+    if 'This page intentionally left blank.' in text:
+        return 'publisher intentional blank'
+    if 'Table of Contents' in text[:600]:
+        return 'publisher table of contents; not law text'
+    if not text.strip():
+        return 'no extracted text; original PDF retained, no OCR stub indexed'
+    return None
+
+
+def pdf_units(reader, pages, volume, scope):
+    ident,start,end,collection,title = scope
+    url = INFO + '?doc=' + volume['file']
+    for number in range(start,end+1):
+        text = pages[number-1].rstrip()
+        if excluded_reason(text):
+            continue
+        page = reader.pages[number-1]
+        refs = []
+        for annotation in page.get('/Annots',[]):
+            obj = annotation.get_object()
+            action = obj.get('/A',{})
+            if hasattr(action,'get_object'): action=action.get_object()
+            target = action.get('/URI')
+            if target:
+                refs.append(Reference(str(target),'source_link',str(target),'PDF link annotation'))
+        # PDF original is the faithful markup; a preformatted projection is explicitly labeled.
+        metadata = dict(physical_pdf_page=number,source_volume=volume['file'],
+                        source_scope=ident,source_identifier=f'{volume["file"]}#page={number}',
+                        edition_year=2025,warning=WARNING,
+                        text_format='pdftotext -layout; bold/italics not represented',
+                        legal_status='proposed constitutional amendment, not adopted constitutional text'
+                        if collection=='mo-proposed-amendments' else
+                        'supporting editorial compilation/index; excluded from full-law-page counts'
+                        if ident=='appendix-k' else 'publisher legislative text; effectiveness not resolved')
+        if ident=='appendix-k':
+            metadata['classification_revision']='editorial-index-1'
+            metadata['full_law_page']=False
+        yield Provision(key=f'mo:{volume["id"]}/page-{number}',
+                        citation=f'Missouri {volume["file"]} PDF p. {number}',
+                        heading=f'{title} — PDF page {number}',text=text,
+                        markup='<pre data-projection="pdftotext-layout">'+escape_html.escape(text)+'</pre>',
+                        url=url+f'#page={number}',parent_key=f'mo:{volume["id"]}/{ident}',
+                        unit_kind='proposed_amendment_page' if collection=='mo-proposed-amendments' else 'editorial_index' if ident=='appendix-k' else 'page',
+                        metadata=metadata,references=tuple(refs))
+
+
+def sync_mo(store: Store, acquirer: Acquirer, limit=None, as_of=None):
+    if as_of is not None:
+        raise ValueError('Missouri selected PDF volumes have no verified exact snapshot date; as_of unsupported')
+    if limit is not None and (not isinstance(limit,int) or limit < 0):
+        raise ValueError('limit must be a nonnegative number of selected complete volumes')
+    if shutil.disk_usage(ROOT).free < 100 * 1024**3:
+        raise AcquisitionError('Stop: free disk below 100 GiB')
+    acquirer.delay = max(acquirer.delay,1.1)
+    retained = store.db.execute('SELECT coalesce(sum(b.bytes),0) FROM acquisitions a JOIN artifacts b ON a.sha256=b.sha256 WHERE a.status BETWEEN 200 AND 299').fetchone()[0]
+    acquirer.max_bytes = min(acquirer.max_bytes,acquirer.downloaded + max(0,CAP-retained))
+    receipts = [acquirer.fetch(u,max_file_bytes=2*1024**2) for u in (HOME,INFO,FAQ)]
+    names = {
+        'mo-statutes':('Missouri Revised Statutes — withheld chapter exports','statutory_code'),
+        'mo-session-laws':('Missouri Session Laws — 2025, 103rd General Assembly','session_laws'),
+        'mo-proposed-amendments':('Missouri proposed constitutional amendments — 2025 resolutions','proposed_constitutional_amendments'),
+        'mo-supplement-appendices':('Missouri 2025 Cumulative Supplement — selected complete appendices','statutory_supplement'),
+        'mo-regulations':('Missouri regulations — not acquired','administrative_code'),
+    }
+    for cid,(name,kind) in names.items():
+        store.collection(cid,('us-mo','Missouri','state','us'),name=name,
+                         authority='Missouri Joint Committee on Legislative Research / Revisor of Statutes' if cid!='mo-regulations' else 'Missouri Secretary of State',
+                         kind=kind,homepage=INFO if cid!='mo-regulations' else 'https://www.sos.mo.gov/adrules/csr/csr',
+                         source_status='Uncollected' if cid in ('mo-statutes','mo-regulations') else 'Official publisher PDF; scope and legal status explicitly qualified',
+                         access=NOTICE,metadata=dict(warning=WARNING,notice_artifact=receipts[2].sha256,
+                         inventory_artifact=receipts[1].sha256,snapshot_warning=WARNING))
+    home = html.fromstring(store.artifact(receipts[0].sha256))
+    chapters = {}
+    for link in home.xpath('//a[contains(@href,"PageSelect.aspx?chapter=")]'):
+        match = re.search(r'chapter=(\d+)',link.get('href'))
+        if match: chapters[match[1]]=urljoin(HOME,link.get('href'))
+    for chapter,url in chapters.items():
+        store.inventory('mo-statutes','chapter-'+chapter,url,'blocked',
+                        'Chapter export route withheld after representative ViewChapter page showed noindex,nofollow; individual chapter policies not exhaustively checked')
+    info = html.fromstring(store.artifact(receipts[1].sha256))
+    for link in info.xpath('//a[@href]'):
+        url=urljoin(INFO,link.get('href'));label=' '.join(link.text_content().split())
+        if re.search(r'doc=\d{4}SessionLaws\.pdf',url):
+            item=url.split('doc=')[1]
+            old=store.db.execute('SELECT status FROM inventories WHERE collection_id=? AND item=?',('mo-session-laws',item)).fetchone()
+            if not old: store.inventory('mo-session-laws',item,url,'pending','Earlier years outside selected 2025 batch')
+        elif 'Appendices' in label and 'doc=' in url:
+            item=url.split('doc=')[1]
+            old=store.db.execute('SELECT status FROM inventories WHERE collection_id=? AND item=?',('mo-supplement-appendices',item)).fetchone()
+            if not old: store.inventory('mo-supplement-appendices',item,url,'pending','Unselected earlier supplement')
+    store.inventory('mo-regulations','state-regulations','https://www.sos.mo.gov/adrules/csr/csr','pending','Not explored in this bounded batch; no regulation completeness claim')
+    manifest=[]
+    for volume in VOLUMES[:limit]:
+        url=INFO+'?doc='+volume['file']
+        receipt=acquirer.fetch(url,max_file_bytes=40*1024**2)
+        reader,pages=pages_for(store,receipt,volume)
+        outlined={reader.get_destination_page_number(d)+1 for d in reader.outline if isinstance(d,dict)}
+        record=dict(volume=volume['file'],sha256=receipt.sha256,acquisition_id=receipt.id,
+                    bytes=receipt.size,pdf_pages=len(pages),pdf_metadata={str(k):str(v) for k,v in reader.metadata.items()},scopes=[],page_disposition=[])
+        assigned={}
+        for scope in volume['scopes']:
+            ident,start,end,collection,title=scope
+            if start not in outlined: raise ValueError('Scope no longer starts at publisher bookmark')
+            units=list(pdf_units(reader,pages,volume,scope))
+            version,count,new=store.ingest(collection=collection,document=f'mo:{volume["id"]}/{ident}',
+                title=title+' — 2025',url=url+f'#page={start}',acquisition=receipt.id,
+                member=f'physical PDF pages {start}-{end}',snapshot_date=None,
+                snapshot_basis='Edition year 2025 only; attestation 2025-10-22 for session volume is not a snapshot date',
+                parser='mo-pdf-2' if ident=='appendix-k' else 'mo-pdf-1',provisions=units,metadata=dict(edition_year=2025,physical_pdf_pages=[start,end],
+                warning=WARNING,source_bookmarks=[d.title for d in reader.outline if isinstance(d,dict) and reader.get_destination_page_number(d)+1==start],
+                attestation_date='2025-10-22' if volume['id']=='2025session' else None,
+                sessions=['103rd General Assembly first regular session','first extraordinary session','second extraordinary session'] if volume['id']=='2025session' else None))
+            # Focused classification migration of the existing local projection: same
+            # source text and immutable source identity, no duplicate version added.
+            if ident=='appendix-k':
+                with store.db:
+                    for unit in units:
+                        store.db.execute('UPDATE provisions SET unit_kind=?,metadata=? WHERE version_id=? AND key=?',
+                                         (unit.unit_kind,json.dumps(unit.metadata),version,unit.key))
+                store.inventory(collection,volume['file']+'/'+ident,url,'supporting_index',
+                                'All Appendix K units are supporting editorial_index, excluded from full-law-page totals')
+            else:
+                store.inventory(collection,volume['file']+'/'+ident,url,'indexed')
+            record['scopes'].append(dict(id=ident,collection=collection,pages=[start,end],provisions=count,version=version,
+                                        unit_kind=units[0].unit_kind,full_law_pages=count if units[0].unit_kind=='page' else 0,
+                                        supporting_editorial_index_pages=count if ident=='appendix-k' else 0,
+                                        proposed_amendment_pages=count if collection=='mo-proposed-amendments' else 0))
+            for n in range(start,end+1): assigned[n]=excluded_reason(pages[n-1]) or ('supporting editorial_index' if ident=='appendix-k' else 'indexed')
+            print(json.dumps(dict(scope=ident,provisions=count,new=new)),flush=True)
+        for n in range(1,len(pages)+1):
+            record['page_disposition'].append(dict(page=n,status=assigned.get(n,'retained only: front matter, index, session divider, or unselected appendix/table')))
+        cid='mo-session-laws' if volume['id']=='2025session' else 'mo-supplement-appendices'
+        store.inventory(cid,volume['file'],url,'indexed' if volume['id']=='2025session' else 'partial',
+                        None if volume['id']=='2025session' else 'Complete raw volume retained; only Appendices A, H, K and legislative Supreme Court rule amendments indexed; D/E/F/G/I and tables retained only')
+        manifest.append(record)
+    (ROOT/'manifest.json').write_text(json.dumps(manifest,indent=2))
+    return manifest
+
+
+if __name__=='__main__':
+    store=Store(ROOT/'store');acquirer=Acquirer(store,max_bytes=CAP,delay=1.1)
+    try: sync_mo(store,acquirer)
+    finally:
+        print(json.dumps(dict(newly_decoded_bytes_this_run=acquirer.downloaded,finished_at=utc_now())),flush=True)
+        acquirer.close();store.close()

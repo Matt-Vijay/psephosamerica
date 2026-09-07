@@ -50,6 +50,10 @@ material from 44 states to the Texas baseline: 77 collections and 1,383,595 mixe
 retrieval units in the latest acquired documents. Held/blocked states, partial
 inventories and source-quality limits remain explicit; this is not all U.S. law.
 
+For retained-source maintenance, see [accepted-source replay](replay/README.md):
+three exercised offline parser families, with the remaining accepted collector
+code preserved separately as provenance. This does not refresh the corpus.
+
 ## Recorded initial coverage
 
 This table freezes the initial `e077e98` checkpoint, measured in

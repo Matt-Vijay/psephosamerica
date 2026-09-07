@@ -1,0 +1,80 @@
+"""Isolated, persistent 80 MiB ledger; identity responses avoid decoder overshoot."""
+import json, shutil, time
+from pathlib import Path
+from urllib.parse import urlsplit
+import httpx
+from psephos.acquire import Acquirer, AcquisitionError, Receipt, SAFE_HEADERS, validate_url, retry_seconds
+from psephos.store import digest, utc_now, json_text
+
+ROOT = Path(__file__).resolve().parent
+CAP = 80 * 1024**2
+class IowaAcquirer(Acquirer):
+    def __init__(self, store):
+        super().__init__(store, delay=1, max_bytes=CAP)
+        self.ledger_path = ROOT / 'byte_ledger.json'
+        self.ledger = json.loads(self.ledger_path.read_text()) if self.ledger_path.exists() else {'cap_bytes':CAP,'decoded_http_bytes':0,'requests':[]}
+        self.client.headers['Accept-Encoding'] = 'identity'
+    def save(self):
+        self.ledger_path.write_text(json.dumps(self.ledger, indent=2))
+    def fetch(self, url, *, immutable=False, check_robots=True, max_file_bytes=CAP, accept=None, max_age_seconds=None):
+        validate_url(url)
+        if urlsplit(url).hostname not in {'www.legis.iowa.gov','legis.iowa.gov'}:
+            raise AcquisitionError('Host outside owned publisher scope: '+url)
+        cached=self._cached(url)
+        if cached and not self.refresh:
+            return cached
+        if check_robots: self._allowed(url)
+        current=url
+        for attempt in range(5):
+            if shutil.disk_usage(ROOT).free < 100*1024**3:
+                raise AcquisitionError('Disk free space is below 100 GiB')
+            if self.ledger['decoded_http_bytes'] >= CAP - 65536:
+                raise AcquisitionError('Strict cumulative byte cap reached')
+            self._pause(current)
+            started=utc_now()
+            entry={'url':current,'started_at':started,'decoded_bytes':0,'status':0}
+            self.ledger['requests'].append(entry); self.save()
+            headers={}; status=0
+            try:
+                with self.client.stream('GET',current,headers={'Accept-Encoding':'identity', **({'Accept':accept} if accept else {})}) as r:
+                    status=r.status_code; entry['status']=status
+                    headers={k:v for k,v in r.headers.items() if k in SAFE_HEADERS}
+                    encoding=r.headers.get('content-encoding','identity')
+                    if encoding not in ('','identity'):
+                        raise AcquisitionError('Nonidentity encoding refused before decoding: '+encoding)
+                    remaining=min(max_file_bytes,CAP-self.ledger['decoded_http_bytes'])
+                    if int(r.headers.get('content-length','0')) > remaining:
+                        raise AcquisitionError('Declared body exceeds remaining strict byte budget')
+                    chunks=[]; size=0
+                    for chunk in r.iter_raw(chunk_size=1 if remaining < 65536 else 65536):
+                        # Reserve one full 64 KiB transport chunk; refuse the next before reading.
+                        size+=len(chunk); self.downloaded+=len(chunk)
+                        self.ledger['decoded_http_bytes']+=len(chunk); entry['decoded_bytes']+=len(chunk)
+                        self.save(); chunks.append(chunk)
+                        if size > max_file_bytes or self.ledger['decoded_http_bytes'] > CAP:
+                            raise AcquisitionError('Byte cap unexpectedly exceeded')
+                        if CAP-self.ledger['decoded_http_bytes'] < 65536 and size != int(r.headers.get('content-length','-1')):
+                            raise AcquisitionError('Stopped with 64 KiB reserve to preserve strict cap')
+                    data=b''.join(chunks)
+                    sha=digest(data); target=self.store.object_path(sha); target.parent.mkdir(parents=True,exist_ok=True)
+                    if target.exists(): self.store.artifact(sha)
+                    else: target.write_bytes(data)
+                    with self.store.db: self.store.db.execute('INSERT OR IGNORE INTO artifacts VALUES (?,?)',(sha,size))
+                    observed=utc_now(); headers['psephos_request_started_at']=started
+                    rid=self._record(url,current,observed,status,headers,sha,None if status<400 else 'HTTP status '+str(status))
+                    entry.update(sha256=sha,receipt_id=rid,completed_at=observed); self.save()
+                    if status in (301,302,303,307,308):
+                        destination=str(r.url.join(r.headers['location']))
+                        validate_url(destination)
+                        if urlsplit(destination).hostname not in {'www.legis.iowa.gov','legis.iowa.gov'}: raise AcquisitionError('Redirect outside owned hosts')
+                        if 'retry-after' in r.headers: raise AcquisitionError('Publisher redirect asks for Retry-After; deferred')
+                        if check_robots: self._allowed(destination)
+                        current=destination; continue
+                    if status>=400: raise AcquisitionError('Publisher HTTP '+str(status)+'; no retry in bounded run; Retry-After='+r.headers.get('retry-after','unknown'))
+                    if status==304 and cached: return cached
+                    return Receipt(rid,url,sha,observed,size)
+            except (httpx.HTTPError, OSError, AcquisitionError) as exc:
+                entry['error']=str(exc); self.save()
+                if 'receipt_id' not in entry: self._record(url,current,utc_now(),status,headers,None,str(exc))
+                raise AcquisitionError(str(exc)) from exc
+        raise AcquisitionError('Redirect limit')

@@ -1,0 +1,176 @@
+"""Isolated Idaho official-government chapter-export collector.
+
+sync_id(Store, Acquirer, limit=None, as_of=None) collects scoped COMPLETE titles.
+No shared core writes, no third-party host, no imputed legal-effective dates.
+"""
+from __future__ import annotations
+import json
+import re
+import shutil
+from dataclasses import replace
+from pathlib import Path
+from urllib.parse import urljoin, urlsplit
+from lxml import html
+from pypdf import PdfReader
+from psephos.acquire import Acquirer, AcquisitionError
+from psephos.municipal import pdf_units
+from psephos.store import Store, Reference, utc_now
+
+ROOT = Path(__file__).resolve().parent
+BASE = 'https://legislature.idaho.gov'
+INDEX = BASE + '/statutesrules/idstat/'
+CURRENCY = BASE + '/statutesrules/howcurrentisthislaw'
+TERMS = BASE + '/site-disclaimer'
+TITLES = (1, 34, 50, 73, 74)
+COLLECTION = 'id-statutes'
+CAP = 200 * 1024**2
+
+class IdahoAcquirer(Acquirer):
+    """Persistent decoded-byte meter and exclusive-host/disk guard around Acquirer."""
+    def __init__(self, store, **kwargs):
+        self.ledger = ROOT / 'bytes.json'
+        self.prior = json.loads(self.ledger.read_text())['decoded_bytes'] if self.ledger.exists() else 0
+        super().__init__(store, max_bytes=CAP - 1024**2 - self.prior, delay=1.1, **kwargs)
+    def _pause(self, url, delay=None):
+        if urlsplit(url).hostname not in {'legislature.idaho.gov', 'adminrules.idaho.gov'}:
+            raise AcquisitionError('Host requires separate coordination: ' + url)
+        if shutil.disk_usage(ROOT).free <= 100 * 1024**3:
+            raise AcquisitionError('Free disk reached 100 GiB stop threshold')
+        if self.downloaded >= self.max_bytes:
+            raise AcquisitionError('Decoded byte budget exhausted (1 MiB safety reserve)')
+        super()._pause(url, delay)
+    def fetch(self, *args, **kwargs):
+        try:
+            return super().fetch(*args, **kwargs)
+        finally:
+            self.ledger.write_text(json.dumps({'decoded_bytes': self.prior+self.downloaded,
+                'cap_bytes': CAP, 'updated_at': utc_now(),
+                'basis': 'Acquirer decoded iter_bytes; includes discovery and robots; reused cache adds zero'}, indent=2))
+
+def clean_text(data):
+    root = html.fromstring(data)
+    for node in root.xpath('//script|//style'):
+        node.drop_tree()
+    return ' '.join(root.text_content().split())
+
+def chapter_units(s, receipt, title, chapter, url):
+    path = s.object_path(receipt.sha256)
+    if not s.artifact(receipt.sha256).startswith(b'%PDF-'):
+        raise ValueError('Expected PDF; HTML or blocked response is not legal text')
+    reader = PdfReader(path)
+    units = list(pdf_units(path, f'id-statutes:title-{title}/chapter-{chapter}',
+                          f'Idaho Code, Title {title}, Chapter {chapter}', url))
+    # Two source-hash-pinned final pages were visually checked: history notes only, not OCR stubs.
+    checked_short_pages = {
+        ('adb3d936020e06d1e94218810570f7219b9a3cc62d89c683997e95f135e8cd82', 2),
+        ('a8e2803b0914d5aa802bfe0b74d0b27f8cf4a2191ba1e2d4861eeb595122bb58', 4),
+    }
+    units = [replace(u, metadata={**u.metadata, 'text_quality': 'short_history_note_visually_verified'})
+             if (receipt.sha256, u.metadata['pdf_page']) in checked_short_pages else u for u in units]
+    if not units or any(u.metadata['text_quality'] not in {'layout_text_unverified', 'short_history_note_visually_verified'} for u in units):
+        raise ValueError('PDF contains a page without usable extracted text; not accepted as full text')
+    if not re.search(rf'TITLE\s+{title}\b', units[0].text, re.I):
+        raise ValueError('PDF title identity not found')
+    if not re.search(rf'CHAPTER\s+{chapter}\b', units[0].text, re.I):
+        raise ValueError('PDF chapter identity not found')
+    for n, unit in enumerate(units):
+        page = reader.pages[n]
+        refs = []
+        for annot in page.get('/Annots', []):
+            obj = annot.get_object()
+            action = obj.get('/A')
+            if action:
+                action = action.get_object()
+                if action.get('/URI'):
+                    target = str(action['/URI'])
+                    refs.append(Reference(target, 'publisher_pdf_link', target, str(obj)))
+        yield replace(unit, references=tuple(refs), metadata={**unit.metadata,
+            'title': title, 'chapter': chapter,
+            'source_native_anchor': f'#page={n+1}',
+            'embedded_images': len(page.images),
+            'fidelity': 'Complete original PDF retained; layout text is a page projection; tables and media remain in original PDF.',
+            'legal_effective_date': None})
+
+def sync_id(s: Store, a: Acquirer, limit: int | None = None, as_of: str | None = None):
+    if as_of is not None:
+        raise ValueError('Only live current publisher exports supported; exact snapshot date unknown')
+    if limit is not None and limit < 0:
+        raise ValueError('limit must be nonnegative or None')
+    a.delay = max(1.0, a.delay)
+    # Preserve the caller's tighter budget and reserve room for a decoded chunk.
+    a.max_bytes = min(a.max_bytes, a.downloaded + CAP - 1024**2)
+    for url in (INDEX, TERMS, CURRENCY):
+        a.fetch(url, max_file_bytes=2*1024**2)
+    currency_receipt = a.fetch(CURRENCY)
+    currency_text = clean_text(s.artifact(currency_receipt.sha256))
+    match = re.search(r'current through the (\d{4}) Legislative Session', currency_text)
+    if not match:
+        raise ValueError('Publisher currency statement missing')
+    session = match.group(1)
+    s.collection(COLLECTION, ('us-id', 'Idaho', 'state', 'us'),
+        name='Idaho Statutes — selected complete title exports',
+        authority='Idaho State Legislature / Legislative Services Office', kind='statutes',
+        homepage=INDEX, source_status='Official government website; publisher identifies Lexis printed Code as official copies',
+        access='Public HTTPS; robots honored. Copyright footer retained. No blanket redistribution license asserted.',
+        metadata={'scoped_titles':list(TITLES), 'edition':f'current through {session} Legislative Session',
+                  'snapshot_date':None, 'effective_on':None, 'terms_url':TERMS,
+                  'currency_url':CURRENCY, 'unit_scope':'complete chapter PDF, indexed by page'})
+    tasks=[]; coverage=[]
+    for title in TITLES:
+        url=INDEX+f'Title{title}/'
+        r=a.fetch(url, max_file_bytes=2*1024**2)
+        root=html.fromstring(s.artifact(r.sha256))
+        links=[]
+        for node in root.xpath('//a[@href]'):
+            href=urljoin(url,node.get('href'))
+            m=re.fullmatch(re.escape(BASE)+rf'/wp-content/uploads/statutesrules/idstat/Title{title}/T{title}CH(\d+[A-Z]?)\.pdf',href)
+            if m and href not in [v[1] for v in links]:
+                links.append((m.group(1),href))
+        if not links:
+            raise ValueError(f'No chapter exports in Title {title}')
+        text=clean_text(s.artifact(r.sha256))
+        unavailable=re.findall(r'CHAPTER\s+(\d+[A-Z]?)\s+((?:(?!CHAPTER\s).)*?\[(?:REPEALED|RESERVED)\])', text)
+        coverage.append({'title':title,'inventory_acquisition':r.id,'inventory_sha256':r.sha256,
+                         'export_chapters':len(links),'nonexport_repealed_reserved_notices':unavailable})
+        for chapter,href in links:
+            item=f'T{title}CH{chapter}'
+            existing=s.db.execute('SELECT status FROM inventories WHERE collection_id=? AND item=?',(COLLECTION,item)).fetchone()
+            if not existing or existing[0]!='indexed':
+                s.inventory(COLLECTION,item,href,'pending')
+            tasks.append((title,chapter,href,r.sha256))
+    results=[]
+    for title,chapter,url,index_sha in tasks[:limit]:
+        item=f'T{title}CH{chapter}'
+        if shutil.disk_usage(s.root).free <= 100*1024**3:
+            raise AcquisitionError('Disk stop threshold')
+        try:
+            r=a.fetch(url,max_file_bytes=16*1024**2)
+            status=s.db.execute('SELECT status FROM acquisitions WHERE id=?',(r.id,)).fetchone()[0]
+            if status != 200:
+                raise ValueError('Legal PDF requires validated HTTP 200')
+            version,count,new=s.ingest(collection=COLLECTION,document='id-statutes:'+item,
+                title=f'Idaho Code Title {title} Chapter {chapter}', url=url,acquisition=r.id,
+                snapshot_date=None,snapshot_basis='Exact snapshot date unknown; publisher states current through '+session+' Legislative Session; July 1 annual update policy is not individual legal effectiveness',
+                parser='idaho-chapter-pdf-v1',provisions=chapter_units(s,r,title,chapter,url),
+                metadata={'source_edition':session+' Legislative Session','currency_evidence_sha256':currency_receipt.sha256,
+                          'inventory_sha256':index_sha,'title':title,'chapter':chapter,
+                          'source_snapshot_date':None,'effective_date':None})
+            s.inventory(COLLECTION,item,url,'indexed')
+            results.append({'item':item,'pages':count,'new':new,'version':version})
+            print(f'{item}: {count} pages; new={new}',flush=True)
+        except (ValueError,AcquisitionError) as exc:
+            s.inventory(COLLECTION,item,url,'failed',str(exc))
+            results.append({'item':item,'error':str(exc)})
+            if isinstance(exc,AcquisitionError):
+                break
+    return {'title_coverage':coverage,'results':results,'discovered_exports':len(tasks)}
+
+def main():
+    s=Store(ROOT/'store');a=IdahoAcquirer(s)
+    try:
+        result=sync_id(s,a)
+        (ROOT/'collection_result.json').write_text(json.dumps(result,indent=2))
+    finally:
+        a.close();s.close()
+
+if __name__=='__main__': main()

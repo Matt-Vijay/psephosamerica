@@ -1,0 +1,200 @@
+"""Isolated Rhode Island official General Laws collector; no shared store writes."""
+from __future__ import annotations
+import json
+import shutil
+import time
+from pathlib import Path
+from urllib.parse import urlsplit, urljoin
+import re
+from lxml import html
+from psephos.parse import readable, markup, media_links, source_links
+from psephos.store import Provision, utc_now
+from psephos.acquire import Acquirer, AcquisitionError, USER_AGENT
+from psephos.store import Store
+
+BASE = Path(__file__).resolve().parent
+CAP = 188743680
+HOSTS = {'webserver.rilegislature.gov', 'www.rilegislature.gov'}
+
+class RICollector(Acquirer):
+    """Persistent cumulative decoded-byte budget, strict official-host restriction."""
+    def __init__(self, store: Store):
+        self.ledger_path = BASE / 'ledger.json'
+        self.ledger = json.loads(self.ledger_path.read_text()) if self.ledger_path.exists() else {'cap_bytes':CAP,'decoded_bytes':0,'last_request':{},'runs':0}
+        super().__init__(store, max_bytes=CAP-1048576, delay=1.05)
+        self.downloaded = self.ledger['decoded_bytes']
+        self.decoded_total = self.downloaded
+        self.ledger['runs'] += 1
+        self.client.event_hooks['request'] = [self.guard]
+        self.client.event_hooks['response'] = [self.track_response]
+        self.client.headers['Accept-Encoding'] = 'identity'
+        self.persist()
+    def persist(self):
+        self.ledger['decoded_bytes'] = self.decoded_total
+        tmp = self.ledger_path.with_suffix('.tmp')
+        tmp.write_text(json.dumps(self.ledger, indent=2)+'\n')
+        tmp.replace(self.ledger_path)
+    def track_response(self, response):
+        original = response.iter_bytes
+        def counted(chunk_size=None):
+            for chunk in original(chunk_size=65536):
+                self.decoded_total += len(chunk)
+                self.persist()
+                if self.decoded_total > CAP:
+                    raise AcquisitionError('Hard cumulative decoded byte cap exceeded')
+                yield chunk
+        response.iter_bytes = counted
+    def guard(self, request):
+        if request.url.host not in HOSTS:
+            raise AcquisitionError('Non-approved host: '+str(request.url))
+        if self.downloaded >= CAP-1048576:
+            raise AcquisitionError('Cumulative byte cap safety margin reached')
+        if shutil.disk_usage(BASE).free < 105 * 1024**3:
+            raise AcquisitionError('Disk free approaches 100 GiB')
+    def _pause(self, url, delay=None):
+        host = urlsplit(url).netloc
+        if host not in HOSTS:
+            raise AcquisitionError('Non-approved host: '+url)
+        pause = max(1.05, self.delay, delay or 0)
+        for origin, policy in self.robots.items():
+            if urlsplit(origin).netloc == host:
+                pause = max(pause, policy.crawl_delay(USER_AGENT) or 0)
+                rate = policy.request_rate(USER_AGENT)
+                if rate:
+                    pause = max(pause, rate.seconds / rate.requests)
+        remaining = self.ledger['last_request'].get(host, 0) + pause - time.time()
+        if remaining > 30:
+            raise AcquisitionError(f'Publisher delay {remaining:.1f}s; deferred')
+        if remaining > 0:
+            time.sleep(remaining)
+        self.ledger['last_request'][host] = time.time()
+        self.persist()
+    def fetch(self, url, **kwargs):
+        try:
+            return super().fetch(url, **{'max_file_bytes': 16*1024**2, **kwargs})
+        finally:
+            self.persist()
+
+
+INDEX = 'https://webserver.rilegislature.gov/Statutes/'
+COLLECTION = 'ri-general-laws'
+TITLE_ORDER = ('43', '1', '38', '25', '47')
+
+
+def links(data, base, pattern):
+    root = html.fromstring(data)
+    result = []
+    for a in root.xpath('//a[@href]'):
+        url = urljoin(base, a.get('href'))
+        if urlsplit(url).hostname == 'webserver.rilegislature.gov' and re.fullmatch(pattern, urlsplit(url).path, re.I):
+            entry = (url, ' '.join(a.text_content().split()))
+            if entry[0] not in {u for u, _ in result}:
+                result.append(entry)
+    return result
+
+
+def parse_section(data: bytes, url: str) -> Provision:
+    root = html.fromstring(data)
+    bodies = root.xpath('//body')
+    headers = root.xpath('//h3')
+    if len(bodies) != 1 or len(headers) != 1:
+        raise ValueError('Not an official section page: missing unique body/citation')
+    body = bodies[0]
+    citation = ' '.join(headers[0].text_content().split())
+    native_id = urlsplit(url).path.rsplit('/', 1)[-1].rsplit('.',1)[0]
+    citation_id = re.match(r'^R\.I\. Gen\. Laws §+\s*([0-9A-Za-z.-]+)', citation)
+    if not citation_id or citation_id.group(1) != native_id:
+        raise ValueError('Section citation does not match source URL: '+citation)
+    headings = body.xpath('./div/p/b')
+    if not headings:
+        raise ValueError('Missing legal content; index/error pages cannot be ingested')
+    heading = ' '.join(headings[0].text_content().split())
+    text = readable(body)
+    status_only = bool(re.search(r'(?:Repealed|Reserved|Transferred|Expired|Superseded)\.', heading, re.I))
+    if not status_only and not body.xpath('./div//p[not(b)]'):
+        raise ValueError('No substantive body and not an explicit status notice')
+    return Provision(
+        key='ri-gl:'+native_id, citation=citation, heading=heading, text=text,
+        markup=markup(body), url=url, parent_key='ri-gl:chapter:'+urlsplit(url).path.split('/')[-2],
+        unit_kind='section_status' if status_only else 'section',
+        metadata={'source_identifier':native_id, 'source_citation':citation,
+                  'title':readable(body.xpath('.//h1')[0]),
+                  'chapter':readable(body.xpath('.//h2')[0]),
+                  'tables':len(body.xpath('.//table')), 'media':media_links(body,url),
+                  'source_history_preserved':True, 'legal_effect_not_inferred':True},
+        references=source_links(body,url))
+
+
+def sync_ri(store: Store, acquirer: Acquirer, limit: int | None = None, as_of: str | None = None):
+    """Collect complete selected titles; limit counts titles in TITLE_ORDER.
+
+    Snapshot dates are unknown. Historical as_of is rejected without network.
+    A bounded RICollector is mandatory to enforce the assignment-wide ledger.
+    """
+    if as_of is not None:
+        raise ValueError('Historical as_of unavailable: publisher snapshot date is unknown')
+    if not isinstance(acquirer, RICollector) or acquirer.store is not store:
+        raise ValueError('Use RICollector with the identical isolated Store')
+    if store.root != (BASE/'store').resolve():
+        raise ValueError('Only the isolated ri-northeast/store is authorized')
+    if limit is not None and (isinstance(limit,bool) or limit < 0):
+        raise ValueError('limit must be nonnegative or None')
+    context_receipt = acquirer.fetch('https://webserver.rilegislature.gov/statutes/Statutes.html')
+    context = html.fromstring(store.artifact(context_receipt.sha256)).text_content()
+    edition = re.search(r'Search the (\d{4}) General Laws', context)
+    edition_year = edition.group(1) if edition else None
+    store.collection(COLLECTION, ('us-ri','Rhode Island','state','us'),
+        name='Rhode Island General Laws — selected complete titles',
+        authority='Rhode Island General Assembly',kind='statutes',homepage=INDEX,
+        source_status='Official state-hosted informational text, expressly provisional; not an official record of Assembly action. Exact currency unknown',
+        access='Public HTTPS; robots 404 on statute host. No blanket reuse license asserted. Publisher notices retained as source bytes.',
+        metadata={'scope':'Selected complete titles only','snapshot_date':None,
+                  'incorporation_date':None,'effective_on':None,'edition_year':edition_year,'context_acquisition':context_receipt.id,
+                  'acquisition_date_is_not_legal_currency':True})
+    receipt = acquirer.fetch(INDEX)
+    titles = links(store.artifact(receipt.sha256), INDEX, r'/Statutes/TITLE[\dA.]+/INDEX\.HTM')
+    if len(titles) < 40:
+        raise ValueError('Title inventory failed semantic validation')
+    title_map = {re.search(r'/TITLE([^/]+)/',url).group(1): (url,label) for url,label in titles}
+    for title_id,(url,label) in title_map.items():
+        old=store.db.execute('select status from inventories where collection_id=? and item=?',(COLLECTION,'title:'+title_id)).fetchone()
+        if not old:
+            store.inventory(COLLECTION,'title:'+title_id,url,'pending')
+    selected = TITLE_ORDER if limit is None else TITLE_ORDER[:limit]
+    for title_id in selected:
+        title_url,title_label = title_map[title_id]
+        tr=acquirer.fetch(title_url)
+        chapters=links(store.artifact(tr.sha256),title_url,r'/Statutes/TITLE[^/]+/[^/]+/INDEX\.htm')
+        if not chapters:
+            raise ValueError('No chapters: '+title_url)
+        count=0
+        for chapter_url,chapter_label in chapters:
+            store.inventory(COLLECTION,'chapter:'+chapter_url,chapter_url,'pending')
+            cr=acquirer.fetch(chapter_url)
+            sections=links(store.artifact(cr.sha256),chapter_url,r'/Statutes/TITLE[^/]+/[^/]+/(?!INDEX)[^/]+\.htm')
+            if not sections:
+                raise ValueError('No section inventory: '+chapter_url)
+            for section_url,label in sections:
+                store.inventory(COLLECTION,'section:'+section_url,section_url,'pending')
+            for section_url,label in sections:
+                try:
+                    sr=acquirer.fetch(section_url)
+                    unit=parse_section(store.artifact(sr.sha256),section_url)
+                    store.ingest(collection=COLLECTION,document='ri-gl:'+unit.metadata['source_identifier'],
+                        title=unit.heading,url=section_url,acquisition=sr.id,
+                        snapshot_date=None,snapshot_basis='Unknown: live publisher text; no exact edition/incorporation date established',
+                        parser='ri-official-html-1',provisions=[unit],
+                        metadata={'title_id':title_id,'title_inventory_acquisition':tr.id,
+                                  'chapter_inventory_acquisition':cr.id,'root_inventory_acquisition':receipt.id,
+                                  'edition_year':edition_year,'context_acquisition':context_receipt.id,'incorporation_date':None,'effective_date':None,
+                                  'history_dates_are_not_snapshot_dates':True})
+                    store.inventory(COLLECTION,'section:'+section_url,section_url,'acquired')
+                    count+=1
+                except Exception as exc:
+                    store.inventory(COLLECTION,'section:'+section_url,section_url,'failed',str(exc))
+                    raise
+            store.inventory(COLLECTION,'chapter:'+chapter_url,chapter_url,'acquired')
+            print(json.dumps({'title':title_id,'chapter':chapter_label,'cumulative_title_units':count,'decoded_bytes':acquirer.decoded_total}),flush=True)
+        store.inventory(COLLECTION,'title:'+title_id,title_url,'acquired')
+        print(json.dumps({'complete_title':title_id,'units':count}),flush=True)
+    return {'titles_in_inventory':len(titles),'selected_titles':list(selected)}

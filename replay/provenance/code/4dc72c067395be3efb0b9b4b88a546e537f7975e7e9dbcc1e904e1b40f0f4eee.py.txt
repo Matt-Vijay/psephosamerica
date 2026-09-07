@@ -1,0 +1,338 @@
+"""Isolated Delaware official-publisher collector. No shared catalog writes."""
+
+from __future__ import annotations
+
+import hashlib
+import json
+import re
+import shutil
+import time
+from datetime import datetime
+from pathlib import Path
+from urllib.parse import urljoin, urlsplit
+
+from lxml import html
+
+from psephos.acquire import (
+    SAFE_HEADERS,
+    Acquirer,
+    AcquisitionError,
+    Receipt,
+    retry_seconds,
+    validate_url,
+)
+from psephos.store import Provision, Store, utc_now
+
+BASE = Path(__file__).resolve().parent
+CAP = 188743680
+HOSTS = {"delcode.delaware.gov"}
+COLLECTION = "de-code"
+
+
+class DelawareAcquirer(Acquirer):
+    """Persistent cumulative accounting, including robots and non-200 bodies."""
+
+    def __init__(self, store):
+        super().__init__(store, max_bytes=CAP, delay=1.05)
+        self.ledger_path = BASE / "http-ledger.json"
+        self.ledger = (
+            json.loads(self.ledger_path.read_text())
+            if self.ledger_path.exists()
+            else {"cap_bytes": CAP, "newly_decoded_bytes": 0, "requests": [], "last_request": {}}
+        )
+        self.client.headers["Accept-Encoding"] = "identity"
+        self.save()
+
+    def save(self):
+        tmp = self.ledger_path.with_suffix(".tmp")
+        tmp.write_text(json.dumps(self.ledger, indent=2))
+        tmp.replace(self.ledger_path)
+
+    def _cached(self, url):
+        row = self.store.db.execute(
+            "SELECT a.*,b.bytes FROM acquisitions a JOIN artifacts b ON a.sha256=b.sha256 WHERE a.url=? AND a.status=200 AND a.error IS NULL ORDER BY a.id DESC LIMIT 1",
+            (url,),
+        ).fetchone()
+        if row:
+            self.store.artifact(row["sha256"])
+            return Receipt(row["id"], url, row["sha256"], row["observed_at"], row["bytes"])
+        return None
+
+    def _pause(self, url, delay=None):
+        host = urlsplit(url).netloc
+        seconds = max(1.05, delay or 0, self.delay)
+        origin = "https://" + host
+        policy = self.robots.get(origin)
+        if policy:
+            seconds = max(seconds, float(policy.crawl_delay("PsephosLegal") or 0))
+            rate = policy.request_rate("PsephosLegal")
+            if rate:
+                seconds = max(seconds, rate.seconds / rate.requests)
+        wait = self.ledger["last_request"].get(host, 0) + seconds - time.time()
+        if wait > 30:
+            raise AcquisitionError(f"Publisher delay deferred: {wait}")
+        if wait > 0:
+            time.sleep(wait)
+        self.ledger["last_request"][host] = time.time()
+        self.save()
+
+    def fetch(
+        self,
+        url,
+        *,
+        immutable=False,
+        check_robots=True,
+        max_file_bytes=CAP,
+        accept=None,
+        max_age_seconds=None,
+    ):
+        validate_url(url)
+        if urlsplit(url).hostname not in HOSTS:
+            raise AcquisitionError("Host outside official allowlist: " + url)
+        cached = self._cached(url)
+        if cached:
+            return cached
+        if shutil.disk_usage(BASE).free < 105 * 1024**3:
+            raise AcquisitionError("Near 100 GiB free disk stop")
+        if check_robots:
+            self._allowed(url)
+        self._pause(url)
+        if CAP - self.ledger["newly_decoded_bytes"] < 1024:
+            raise AcquisitionError("Cumulative cap reserve reached")
+        observed = utc_now()
+        entry = {"url": url, "started_at": observed, "status": 0, "newly_decoded_bytes": 0}
+        self.ledger["requests"].append(entry)
+        self.save()
+        data = bytearray()
+        headers = {}
+        status = 0
+        error = None
+        try:
+            with self.client.stream(
+                "GET",
+                url,
+                headers={"Accept-Encoding": "identity", **({"Accept": accept} if accept else {})},
+            ) as response:
+                status = response.status_code
+                entry["status"] = status
+                headers = {k: v for k, v in response.headers.items() if k in SAFE_HEADERS}
+                if response.headers.get("content-encoding", "identity").lower() not in (
+                    "",
+                    "identity",
+                ):
+                    raise AcquisitionError(
+                        "Encoded response refused without decoding; identity requested"
+                    )
+                for chunk in response.iter_raw(chunk_size=1024):
+                    # 1 KiB reserve ensures no decode/read crosses hard cap.
+                    if self.ledger["newly_decoded_bytes"] + len(chunk) > CAP:
+                        raise AcquisitionError("Cumulative cap reached")
+                    self.ledger["newly_decoded_bytes"] += len(chunk)
+                    entry["newly_decoded_bytes"] += len(chunk)
+                    data.extend(chunk)
+                    self.save()
+                    if len(data) > max_file_bytes:
+                        raise AcquisitionError("File cap reached")
+                    if CAP - self.ledger["newly_decoded_bytes"] < 1024:
+                        raise AcquisitionError("Cap reserve reached")
+                if headers.get("content-length") and int(headers["content-length"]) != len(data):
+                    raise AcquisitionError("Incomplete response")
+                if status != 200:
+                    error = f"HTTP {status}"
+        except Exception as exc:
+            error = str(exc)
+        sha = hashlib.sha256(data).hexdigest()
+        path = self.store.object_path(sha)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        if path.exists():
+            self.store.artifact(sha)
+        else:
+            path.write_bytes(data)
+        with self.store.db:
+            self.store.db.execute("INSERT OR IGNORE INTO artifacts VALUES (?,?)", (sha, len(data)))
+        ended = utc_now()
+        headers["psephos_request_started_at"] = observed
+        receipt_id = self._record(url, url, ended, status, headers, sha, error)
+        if headers.get("retry-after"):
+            self.ledger["last_request"][urlsplit(url).netloc] = time.time() + retry_seconds(
+                headers["retry-after"], 0
+            )
+        entry.update(
+            {"ended_at": ended, "sha256": sha, "acquisition_id": receipt_id, "error": error}
+        )
+        self.save()
+        if error:
+            raise AcquisitionError(url + ": " + error)
+        return Receipt(receipt_id, url, sha, ended, len(data))
+
+
+def pdf_units(store, receipt, item):
+    """One page per unit; no invented section boundaries or provision IDs."""
+    import subprocess
+    from html import escape
+
+    from pypdf import PdfReader
+
+    path = store.object_path(receipt.sha256)
+    if not store.artifact(receipt.sha256).startswith(b"%PDF-"):
+        raise ValueError("HTTP 200 representation is not a PDF")
+    reader = PdfReader(path)
+    if reader.is_encrypted:
+        raise ValueError("Encrypted PDF")
+    result = subprocess.run(
+        ["pdftotext", "-layout", "-enc", "UTF-8", str(path), "-"], capture_output=True, check=True
+    )
+    texts = result.stdout.decode("utf-8").split("\f")
+    if not texts[-1].strip():
+        texts.pop()
+    if len(texts) != len(reader.pages):
+        raise ValueError("PDF/extracted page count mismatch")
+    all_text = "\n".join(texts)
+    if len(all_text.strip()) < 1000 or not re.search(r"§|Section\s+\d", all_text):
+        raise ValueError("No substantive selectable legal text: not counted as full text")
+    notice = " ".join(texts[0].split())
+    found = re.search(
+        r"includes all acts enacted as of ([A-Za-z]+ \d{1,2}, \d{4}), (.*?)(?:DISCLAIMER|$)", notice
+    )
+    incorporation = (
+        datetime.strptime(found.group(1), "%B %d, %Y").date().isoformat() if found else None
+    )
+    metadata = {
+        "source_edition_label": item["label"],
+        "publisher_incorporation_date": incorporation,
+        "incorporation_notice": found.group(0).strip() if found else None,
+        "effective_date": None,
+        "publication_date": None,
+        "pdf_metadata": {str(k): str(v) for k, v in (reader.metadata or {}).items()},
+        "pdf_pages": len(texts),
+        "blank_or_cover_only_pages": [],
+        "text_projection": "pdftotext -layout UTF-8; physical PDF page units; section numbers remain in text",
+        "fidelity": "Complete original authenticated PDF retained, including tables, images and signatures. Digital signature not cryptographically verified. Text projection may have ordering/ligature limitations; no OCR.",
+        "authentication_label": "Authenticated PDF (publisher index label)",
+        "index_acquisition_id": item["index_acquisition_id"],
+    }
+    units = []
+    for number, text in enumerate(texts, 1):
+        blank = len(text.strip()) < 30
+        if blank:
+            metadata["blank_or_cover_only_pages"].append(number)
+        native_ids = re.findall(r"§\s*([\d]+[A-Za-z]?(?:[.\-][\dA-Za-z]+)*)", text)
+        units.append(
+            Provision(
+                key=f"de-code:{item['id']}:pdf-page:{number}",
+                citation=f"{item['label']} — PDF page {number}",
+                heading=f"{item['label']} — PDF page {number}",
+                text=text.strip() or "[Blank PDF page; original retained.]",
+                markup="<pre>" + escape(text) + "</pre>",
+                url=item["url"] + f"#page={number}",
+                unit_kind="pdf_page",
+                metadata={
+                    "physical_page": number,
+                    "source_section_identifiers_on_page": native_ids,
+                    "identity_basis": "document ID from publisher URL plus physical PDF page; not a legal section identity",
+                    "blank_or_cover_only": blank,
+                    "source_pdf_sha256": receipt.sha256,
+                    "media_status": "Tables, figures and signatures retained in original PDF; text does not transcribe images.",
+                },
+            )
+        )
+    return units, metadata, incorporation
+
+
+def sync_de(store: Store, acquirer: Acquirer, limit=None, as_of=None):
+    if store.root != (BASE / "store").resolve():
+        raise ValueError("Only isolated de-northeast/store is authorized")
+    if not isinstance(acquirer, DelawareAcquirer):
+        raise ValueError("Use DelawareAcquirer for persistent hard byte cap")
+    if as_of is not None:
+        raise ValueError(
+            "Historical Delaware snapshots are not supported by this current-volume adapter"
+        )
+    store.collection(
+        COLLECTION,
+        ("us-de", "Delaware", "state", "us"),
+        name="Delaware Code and Constitution",
+        authority="Delaware General Assembly, Division of Legislative Services and Delaware Code Revisors",
+        kind="statutes",
+        homepage="https://delcode.delaware.gov/",
+        source_status="official publisher authenticated full-volume PDFs",
+        access="Public HTTPS; robots.txt returned HTTP 404 (no policy); 1.05-second minimum host interval; no credentials; publisher disclaimer retained",
+        metadata={
+            "scope": "31 titles and Constitution listed on the official index",
+            "dates": "Incorporation date parsed per PDF notice; effectivity unknown",
+            "unit_granularity": "physical PDF pages",
+        },
+    )
+    index = acquirer.fetch("https://delcode.delaware.gov/")
+    root = html.fromstring(store.artifact(index.sha256).decode("utf-8"))
+    if "The Delaware Code Online" not in root.text_content():
+        raise ValueError("Index semantic validation failed")
+    inventory = []
+    for div in root.xpath('//div[@class="title-links"]'):
+        links = div.xpath("./a")
+        label = " ".join(links[0].text_content().split())
+        for anchor in links:
+            href = anchor.get("href", "").strip()
+            if not href.endswith(".pdf"):
+                continue
+            url = urljoin(index.url, href)
+            ident = urlsplit(url).path.split("/")[1]
+            inventory.append(
+                {
+                    "id": ident,
+                    "label": label,
+                    "url": url,
+                    "html_url": urljoin(index.url, links[0].get("href").strip()),
+                    "index_acquisition_id": index.id,
+                }
+            )
+    if len(inventory) != 32 or {x["id"] for x in inventory} != {
+        "constitution",
+        *(f"title{i}" for i in range(1, 32)),
+    }:
+        raise ValueError("Unexpected bulk title inventory")
+    (BASE / "inventory.json").write_text(json.dumps(inventory, indent=2))
+    for item in inventory:
+        prior = store.db.execute(
+            "SELECT status FROM inventories WHERE collection_id=? AND item=?",
+            (COLLECTION, item["id"]),
+        ).fetchone()
+        if not prior:
+            store.inventory(COLLECTION, item["id"], item["url"], "pending")
+    for item in inventory[:limit]:
+        try:
+            receipt = acquirer.fetch(item["url"], max_file_bytes=30 * 1024**2)
+            units, metadata, snapshot = pdf_units(store, receipt, item)
+            version, count, new = store.ingest(
+                collection=COLLECTION,
+                document="de-code:" + item["id"],
+                title=item["label"],
+                url=item["url"],
+                acquisition=receipt.id,
+                snapshot_date=snapshot,
+                snapshot_basis="Publisher PDF incorporation notice; not blanket legal effectivity"
+                if snapshot
+                else "Unknown; no per-volume incorporation date found",
+                parser="de-authenticated-pdf-pages-1",
+                provisions=units,
+                metadata=metadata,
+            )
+            store.inventory(COLLECTION, item["id"], item["url"], "ingested")
+            print(
+                json.dumps(
+                    {
+                        "item": item["id"],
+                        "pages": count,
+                        "new": new,
+                        "bytes": receipt.size,
+                        "incorporation_date": snapshot,
+                    }
+                ),
+                flush=True,
+            )
+        except Exception as exc:
+            store.inventory(COLLECTION, item["id"], item["url"], "error", str(exc))
+            print(json.dumps({"item": item["id"], "error": str(exc)}), flush=True)
+            # Access, disk, cap or network conditions freeze the batch for review.
+            break
+    return inventory

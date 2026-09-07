@@ -1,0 +1,99 @@
+"""Official 2026 Iowa Code: complete publisher PDF volumes, chapter projections.
+All original source bytes are authoritative; extracted text is a layout projection.
+No section splitting, date inference, or amendment consolidation is performed.
+"""
+from __future__ import annotations
+import bisect, collections, html as html_std, json, re, subprocess
+from pathlib import Path
+from urllib.parse import urljoin
+from lxml import html
+from psephos.acquire import Acquirer
+from psephos.store import Store, Provision, digest, utc_now
+from acquisition import ROOT, IowaAcquirer
+INDEX='https://www.legis.iowa.gov/law/iowaCode'
+COLLECTION='ia-code'
+PARSER='iowa-official-volume-chapters/1'
+CHAPTER=re.compile(r'^ *(CHAPTERS? (\d+[A-Z]*(?: (?:to|and) \d+[A-Z]*)?)) *$',re.M)
+POLICIES=['https://www.legis.iowa.gov/law/disclaimer','https://www.legis.iowa.gov/law/officialAndUnofficialEditions']
+
+def extract(store, receipt):
+    data=store.artifact(receipt.sha256)
+    if not data.startswith(b'%PDF-'): raise ValueError('Not a PDF legal volume')
+    output=subprocess.run(['pdftotext','-layout',str(store.object_path(receipt.sha256)),'-'],capture_output=True,check=True).stdout
+    text=output.decode('utf-8')
+    if 'PREFACE TO 2026 IOWA CODE' not in text[:15000]: raise ValueError('Wrong edition or barrier')
+    return text
+
+def units(text, url, volume):
+    pages=text.split('\f')
+    if not pages[-1].strip(): pages.pop()
+    page_starts=[0]
+    for m in re.finditer('\f',text):page_starts.append(m.end())
+    end_of_law=len(text)
+    if volume=='VIII':
+        assert len(pages)==1577 and pages[1551].lstrip().startswith('MORTALITY TABLES')
+        end_of_law=page_starts[1551]
+    starts=list(CHAPTER.finditer(text,0,end_of_law))
+    if not starts:raise ValueError('No full chapters found')
+    if len({m.group(2) for m in starts})!=len(starts):raise ValueError('Duplicate chapter identifiers')
+    result=[]
+    def add(key,citation,heading,start,end,kind,extra=None):
+        body=text[start:end]
+        if len(body.strip())<10:raise ValueError('Empty law unit')
+        meta={'source_identifier':heading,'volume':volume,'pdf_page_start':bisect.bisect_right(page_starts,start),'pdf_page_end':bisect.bisect_right(page_starts,end-1),'source_text_char_start':start,'source_text_char_end':end,'text_sha256':digest(body.encode()),'projection':'Poppler pdftotext -layout; original PDF retains exact visual tables/media/typography','effective_on':None,**(extra or {})}
+        result.append(Provision(key=key,citation=citation,heading=heading,text=body,markup='<pre>'+html_std.escape(body)+'</pre>',url=url+'#page='+str(meta['pdf_page_start']),unit_kind=kind,metadata=meta))
+    for i,m in enumerate(starts):
+        end=starts[i+1].start() if i+1<len(starts) else end_of_law
+        lines=text[m.end():end].strip().splitlines()
+        descriptive=lines[0].strip() if lines else ''
+        native=m.group(2)
+        kind='reserved_chapter_notice' if descriptive=='RESERVED' else 'chapter'
+        add('ia-code:chapter:'+native,'Iowa Code '+('chs. ' if ' ' in native else 'ch. ')+native,m.group(1)+' — '+descriptive,m.start(),end,kind,{'source_identifier':m.group(1),'source_number':native,'heading_first_line':descriptive})
+    if volume=='I':
+        assert len(pages)==1618 and 'CODIFIED' in pages[45][:100] and 'ORIGINAL' in pages[72][:100]
+        segments=[(17,20,'Declaration of Independence','historical_foundational_text'),(20,27,'Articles of Confederation','historical_foundational_text'),(27,28,'Authentication of Records (Federal Statutes)','reproduced_federal_statutes'),(28,45,'Constitution of the United States of America','reproduced_federal_constitution'),(45,72,'1857 Constitution of the State of Iowa — Codified','constitution'),(72,114,'1857 Constitution of the State of Iowa — Original','historical_constitution_with_amendments')]
+        for start,end,title,kind in segments:
+            add('ia-code:volume-I:front:'+str(start+1),title,title,page_starts[start],page_starts[end],kind,{'identity_basis':'publisher title and PDF page; not invented section number'})
+    if volume=='VIII':
+        segments=[(1551,1556,'MORTALITY TABLES','legal_reference_tables'),(1562,1566,'IOWA-MISSOURI BOUNDARY COMPROMISE','reproduced_acts'),(1566,1570,'IOWA-NEBRASKA BOUNDARY COMPROMISE','reproduced_acts'),(1570,1577,'ADMISSION OF IOWA INTO THE UNION','reproduced_acts')]
+        for start,end,title,kind in segments:
+            assert pages[start].lstrip().startswith(title)
+            add('ia-code:volume-VIII:appendix:'+str(start+1),title,title,page_starts[start],page_starts[end],kind,{'identity_basis':'publisher title and PDF page; not a current Code chapter number'})
+    return result, {'pdf_pages':len(pages),'chapter_containers':len(starts),'index_units':len(result),'extraction_sha256':digest(text.encode()),'chapter_projection_start':starts[0].start(),'chapter_projection_end':end_of_law,'front_matter_notice':text[:page_starts[12]],'excluded_from_search':'navigation/analysis, front notices (retained here and PDF); historical chronology at VIII PDF pages 1557–1562; blank pages'}
+
+def sync_ia(store: Store, acquirer: Acquirer, limit=None, as_of=None):
+    if as_of is not None:
+        raise ValueError('Iowa 2026 edition has no verified exact publisher snapshot date; as_of selection unsupported. Incorporation cutoff is not a snapshot or blanket effective date.')
+    if limit is not None and (not isinstance(limit,int) or limit<0):raise ValueError('limit must be a nonnegative volume count')
+    if acquirer.store.root != store.root:raise ValueError('Acquirer and Store must match')
+    receipt=acquirer.fetch(INDEX)
+    doc=html.fromstring(store.artifact(receipt.sha256))
+    if 'Iowa Code - 2026' not in doc.text_content():raise ValueError('Index edition changed; review required')
+    inventory=[(a.text_content().strip().replace('Vol ',''),urljoin(INDEX,a.get('href'))) for a in doc.xpath('//a[contains(@href,"/ICV/")]')]
+    if len(inventory)!=8:raise ValueError('Publisher volume inventory changed')
+    policies=[acquirer.fetch(url) for url in POLICIES]
+    store.collection(COLLECTION,('us-ia','Iowa','state','us'),name='Iowa Code — official 2026 volumes',authority='Iowa Legislative Services Agency',kind='statutes',homepage=INDEX,source_status='Official publisher-designated PDFs; derived text is not the official format',access='Public HTTPS; robots and publisher notices retained; no blanket license asserted',metadata={'edition_year':2026,'publisher_incorporation_cutoff':'2026-01-01','incorporation_basis':'Volume preface: enactments through 2025 regular session effective by January 1, 2026','snapshot_date':None,'effective_on':None,'inventory_receipt':receipt.id,'policy_receipts':[r.id for r in policies],'granularity':'complete chapter containers, including grouped reserved notices; constitutional and appended legal texts'})
+    results=[]
+    for pos,(volume,url) in enumerate(inventory):
+        if limit is not None and pos>=limit:
+            exists=store.db.execute('SELECT 1 FROM documents WHERE id=?',('ia-code:volume:'+volume,)).fetchone()
+            if not exists:store.inventory(COLLECTION,volume,url,'pending','Outside requested volume limit')
+            continue
+        try:
+            source=acquirer.fetch(url)
+            provisions,meta=units(extract(store,source),url,volume)
+            meta.update(edition_year=2026,publisher_incorporation_cutoff='2026-01-01',effective_date_qualification='Consult individual enactments and footnotes; no blanket effective date',inventory_receipt=receipt.id)
+            version,count,created=store.ingest(collection=COLLECTION,document='ia-code:volume:'+volume,title='Iowa Code 2026 — Volume '+volume,url=url,acquisition=source.id,snapshot_date=None,snapshot_basis='Exact publisher snapshot date unknown; 2026 edition and January 1, 2026 incorporation cutoff retained separately',parser=PARSER,provisions=provisions,metadata=meta)
+            store.inventory(COLLECTION,volume,url,'acquired')
+            results.append({'volume':volume,'version_id':version,'units':count,'created':created,'receipt_id':source.id,'sha256':source.sha256,'bytes':source.size,'pdf_pages':meta['pdf_pages'],'chapter_containers':meta['chapter_containers']})
+            print(json.dumps(results[-1]),flush=True)
+        except Exception as e:
+            store.inventory(COLLECTION,volume,url,'failed',str(e));raise
+    return results
+
+if __name__=='__main__':
+    store=Store(ROOT/'store');acquirer=IowaAcquirer(store)
+    try:
+        result=sync_ia(store,acquirer)
+        (ROOT/'sync_result.json').write_text(json.dumps(result,indent=2))
+    finally:acquirer.close();store.close()

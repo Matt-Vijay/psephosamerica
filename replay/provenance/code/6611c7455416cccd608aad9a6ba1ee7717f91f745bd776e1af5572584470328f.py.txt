@@ -1,0 +1,29 @@
+from pathlib import Path
+import json, sys
+from psephos.acquire import Acquirer
+from psephos.store import Store
+ROOT=Path(__file__).resolve().parent
+BUDGET=188743680
+class BudgetAcquirer(Acquirer):
+    def __init__(self, store):
+        self.ledger=ROOT/'http_budget.json'
+        self.base=json.loads(self.ledger.read_text())['newly_decoded_bytes'] if self.ledger.exists() else 0
+        super().__init__(store,max_bytes=max(0,BUDGET-self.base-1048576),delay=1.1)
+    def fetch(self,*args,**kwargs):
+        try:
+            if self.downloaded>=self.max_bytes and (self.refresh or self._cached(args[0]) is None):
+                raise RuntimeError('Cumulative budget exhausted')
+            return super().fetch(*args,**kwargs)
+        finally:
+            self.ledger.write_text(json.dumps({'hard_cap':BUDGET,'newly_decoded_bytes':self.base+self.downloaded,'other_http_bytes':0,'accounting':'All HTTP through Acquirer; counts newly decoded response body bytes including robots, inventories, policies and probes. Unread error/redirect bodies are not decoded.'},indent=2))
+if __name__=='__main__':
+    s=Store(ROOT/'store'); a=BudgetAcquirer(s)
+    try:
+        for url in sys.argv[1:]:
+            try:
+                r=a.fetch(url,max_file_bytes=min(20000000,a.max_bytes-a.downloaded))
+                print(json.dumps({'url':url,'id':r.id,'sha256':r.sha256,'bytes':r.size,'path':str(s.object_path(r.sha256))}))
+                data=s.artifact(r.sha256)
+                if not data.startswith(b'%PDF'): print(data.decode('utf-8','replace')[:30000])
+            except Exception as e: print(type(e).__name__,str(e))
+    finally: a.close();s.close()

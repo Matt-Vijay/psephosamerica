@@ -1,0 +1,207 @@
+"""Maryland government article-PDF collector; no shared-core writes.
+
+Run from repository: .venv/bin/python data/collectors/md-northeast/adapter.py
+All network goes through BudgetAcquirer. Existing SHA-256 objects are rehashed/reused.
+The public API's include-enactments view is captured; PDF pages are page units,
+never represented as statutory sections. as_of is unsupported for acquisition.
+"""
+from __future__ import annotations
+import argparse
+import html as stdhtml
+import json
+import re
+import shutil
+import subprocess
+from pathlib import Path
+from urllib.parse import urlsplit
+
+from lxml import html
+from psephos.acquire import Acquirer, AcquisitionError
+from psephos.store import Store, Provision, utc_now
+from importlib.util import module_from_spec, spec_from_file_location
+
+_probe_spec = spec_from_file_location("md_northeast_budget", Path(__file__).with_name("probe.py"))
+assert _probe_spec is not None and _probe_spec.loader is not None
+_probe_module = module_from_spec(_probe_spec)
+_probe_spec.loader.exec_module(_probe_module)
+BudgetAcquirer = _probe_module.BudgetAcquirer
+
+ROOT = Path(__file__).resolve().parent
+BASE = 'https://mgaleg.maryland.gov'
+HOME = BASE + '/mgawebsite/Laws/Statutes'
+INVENTORY = BASE + '/mgawebsite/api/Laws/GetArticles?enactments=true'
+PARSER = 'md-official-pdf-pages-1/poppler-layout'
+ACCESS = ('Public Maryland General Assembly / Department of Legislative Services article exports; '
+          'robots.txt returned 404 (no published directives); at least 1.1 seconds between requests. '
+          'About Laws identifies this Code as evidence of law, with Session Laws controlling conflicts. '
+          'No blanket reuse license inferred; publisher notices and original PDFs retained.')
+
+
+def pdf_pages(path: Path, code: str, title: str, url: str):
+    """Native digital text only; preserve page layout and all source words."""
+    if not path.read_bytes()[:5] == b'%PDF-':
+        raise ValueError('200 response is not a PDF')
+    info_result = subprocess.run(['pdfinfo', str(path)], capture_output=True, text=True, check=True)
+    info = dict(re.findall(r'^([^:\n]+):\s*(.*)$', info_result.stdout, re.M))
+    pages = int(info['Pages'])
+    result = subprocess.run(['pdftotext', '-layout', '-enc', 'UTF-8', str(path), '-'],
+                            capture_output=True, check=True)
+    text_pages = result.stdout.decode('utf-8').split('\f')
+    if not text_pages[-1].strip():
+        text_pages.pop()
+    if len(text_pages) != pages:
+        raise ValueError(f'PDF page count mismatch: {pages} versus {len(text_pages)}')
+    if sum(c.isalpha() for t in text_pages for c in t) < 50:
+        raise ValueError('PDF lacks useful native digital legal text; not counted as full text')
+    if not any('§' in t or 'Article' in t or 'CONSTITUTION' in t.upper() or 'DECLARATION' in t.upper()
+               for t in text_pages[:3]):
+        raise ValueError('PDF legal-content semantics not established')
+    blank_pages = []
+    units = []
+    for number, text in enumerate(text_pages, 1):
+        if not text.strip():
+            blank_pages.append(number)
+            continue
+        section_starts = re.findall(r'^\s*§\s*([^\n]+)\s*$', text, re.M)
+        units.append(Provision(
+            key=f'md-code:{code}:page:{number}',
+            citation=f'Maryland {title}, PDF page {number}',
+            heading=f'{title} — PDF page {number}',
+            text=text.strip(),
+            markup='<pre data-source-format="pdf" data-page="'+str(number)+'">'+stdhtml.escape(text.strip())+'</pre>',
+            url=url + '#page=' + str(number),
+            parent_key=f'md-code:{code}', unit_kind='page',
+            metadata={'pdf_page': number, 'source_identifier': code,
+                      'section_heading_lines_on_page': section_starts,
+                      'extraction': 'Native PDF text via pdftotext -layout; no OCR',
+                      'media_notice': 'Original PDF retains all media, tables and layout; fixed-width text does not transcribe non-text figures. Consult source PDF for visual fidelity.',
+                      'page_boundary_warning': 'Legal sections may span adjacent PDF pages; this unit is not a complete statutory section.'}
+        ))
+    return units, {'pdf_pages': pages, 'indexed_pages': len(units), 'blank_pages': blank_pages,
+                   'pdf_info': info, 'pdfinfo_warnings': info_result.stderr,
+                   'pdftotext_warnings': result.stderr.decode('utf-8','replace')}
+
+
+def write_report(s: Store, error: str | None = None):
+    counts = {t: s.db.execute('SELECT COUNT(*) FROM '+t).fetchone()[0]
+              for t in ['collections','documents','versions','provisions','acquisitions','artifacts']}
+    stats = s.db.execute('SELECT COALESCE(SUM(bytes),0) FROM artifacts').fetchone()[0]
+    receipts = [dict(r) for r in s.db.execute('SELECT a.*,b.bytes FROM acquisitions a LEFT JOIN artifacts b ON a.sha256=b.sha256 ORDER BY a.id')]
+    (ROOT/'receipts.json').write_text(json.dumps(receipts,indent=2))
+    documents = []
+    for row in s.db.execute('SELECT d.id,d.title,d.url,v.id version_id,v.artifact_sha,v.acquisition_id,v.snapshot_date,v.snapshot_basis,v.metadata FROM documents d JOIN versions v ON v.document_id=d.id ORDER BY d.id'):
+        item=dict(row);item['metadata']=json.loads(item['metadata']);documents.append(item)
+    inventory=[dict(r) for r in s.db.execute('SELECT * FROM inventories ORDER BY item')]
+    budget=json.loads((ROOT/'http_budget.json').read_text()) if (ROOT/'http_budget.json').exists() else {}
+    report={'state':'MD','status':'complete_scoped_batch' if inventory and all(r['status']=='acquired' for r in inventory) else 'partial',
+      'generated_at':utc_now(),'store_path':str(s.root),'database_path':str(s.root/'legal.sqlite3'),
+      'adapter_path':str(ROOT/'adapter.py'),'local_dependency_paths':[str(ROOT/'probe.py')],
+      'python_path':str(ROOT.parents[2]/'.venv/bin/python'),
+      'rights':'Local research use only; no blanket redistribution license asserted. No external publication performed by this collector.',
+      'baseline':'e077e981d1e7f9914e17f73407b557973ee0ef15',
+      'counts':counts,'unit_kinds':dict(s.db.execute('SELECT unit_kind,COUNT(*) FROM provisions GROUP BY unit_kind')),
+      'unique_raw_bytes':stats,'newly_decoded_bytes':budget.get('newly_decoded_bytes'), 'http_budget':budget,
+      'coverage':'Complete PDF article volumes marked acquired in inventory, including constitution articles if available; native PDF page text, not section-level parsing.',
+      'gaps':['COMAR regulations not acquired in this first batch.', 'Session Laws, annotated commercial editions, local codes and municipal charters not acquired.',
+              'Only include-enactments=true public API inventory collected; January view is not collected.',
+              'PDF text projections do not transcribe non-text figures; original PDFs preserve all page content.',
+              'No section-level atomic retrieval; consult adjacent pages for provisions spanning pages.'],
+      'clocks':{'snapshot_date':None,'basis':'Exact incorporation/snapshot date not independently established. Publisher UI says include enactments of last session, statutes in effect as of October 1st of this year. API returned 2027RS paths at acquisition in 2026. UI statement and path retained without treating folder year, file creation date, HTTP Last-Modified, or acquisition date as a legal effective/snapshot date.',
+                'legal_effective_dates':'Not assigned globally; conditional/future effective text is retained within PDF pages.',
+                'acquisition':'Per source receipt observed_at, completed response retained.'},
+      'access_conditions':ACCESS,'inventory':inventory,'documents':documents,'receipts_path':str(ROOT/'receipts.json'),
+      'error':error,'disk_free_bytes':shutil.disk_usage(ROOT).free}
+    (ROOT/'report.json').write_text(json.dumps(report,indent=2))
+    return report
+
+
+def sync_md(s: Store, a: Acquirer, limit: int | None = None, as_of: str | None = None):
+    if as_of:
+        raise ValueError('MD public API acquisition does not support historical as_of. Unknown snapshot dates remain unknown.')
+    if limit is not None and limit < 0:
+        raise ValueError('limit must be nonnegative')
+    a.delay=max(a.delay,1.1)
+    home=a.fetch(HOME)
+    about=a.fetch(BASE+'/mgawebsite/Laws/About')
+    policy=a.fetch(BASE+'/mgawebsite/Information/Text/privacy_notice')
+    inv=a.fetch(INVENTORY)
+    articles=json.loads(s.artifact(inv.sha256))
+    if not isinstance(articles,list) or len(articles)<30:
+        raise ValueError('Official article inventory shape changed')
+    if any(not re.fullmatch(r'(g[a-z]{2}|c[0-9]+[a-z]?)',r['Value']) for r in articles):
+        raise ValueError('Unexpected scope in Maryland state article inventory')
+    codes=[r['Value'] for r in articles]
+    if len(set(codes))!=len(codes): raise ValueError('Duplicate article identifiers')
+    home_root=html.fromstring(s.artifact(home.sha256))
+    for el in home_root.xpath('//script|//style'): el.drop_tree()
+    home_text=' '.join(home_root.text_content().split())
+    start=home_text.find('Include enactments of the last session')
+    currency=home_text[start:home_text.find('Articles',start)]
+    if 'October 1st' not in currency: raise ValueError('Publisher view semantics changed')
+    s.collection('md-code',('us-md','Maryland','state','us'),name='Maryland Code and Constitution — official state publisher article PDFs',
+       authority='Maryland General Assembly, Department of Legislative Services',kind='state_statutes_and_constitution',
+       homepage=HOME,source_status='Government compiled Code: evidence of law; Session Laws prevail in a conflict. Native page-level extraction.',
+       access=ACCESS,metadata={'inventory_sha256':inv.sha256,'inventory_acquisition_id':inv.id,
+          'homepage_sha256':home.sha256,'about_sha256':about.sha256,'privacy_sha256':policy.sha256,
+          'publisher_view_statement':currency,'include_enactments':True,
+          'snapshot_date':None,'legal_effective_on':None,'full_text_unit':'PDF page',
+          'warning':'Page-level native PDF text, not atomic sections. Publisher October 1 include-enactments view may include future-effective wording; exact incorporation date unknown. Local research use only; no blanket redistribution license.',
+          'currency_notice':currency,
+          'raw_pdf_fidelity':'Immutable complete original PDFs; all source wording, notices and figures retained.'})
+    for row in articles:
+        code=row['Value']; endpoint=BASE+f'/mgawebsite/api/Laws/GetArticleLink?articleCode={code}&enactments=true'
+        existing=s.db.execute('SELECT status FROM inventories WHERE collection_id=? AND item=?',('md-code',code)).fetchone()
+        if not existing: s.inventory('md-code',code,endpoint,'pending')
+    write_report(s)
+    # Definitions and land-use context first, then complete publisher inventory.
+    priority={'ggp':0,'glu':1,'grp':2,'glg':3}
+    articles.sort(key=lambda row:(priority.get(row['Value'],4),codes.index(row['Value'])))
+    for row in articles[:limit]:
+        if shutil.disk_usage(ROOT).free<100*1024**3: raise RuntimeError('Free disk below 100 GiB stop threshold')
+        code=row['Value'];title=re.sub(r' - \([^)]+\)$','',row['DisplayText'])
+        endpoint=BASE+f'/mgawebsite/api/Laws/GetArticleLink?articleCode={code}&enactments=true'
+        try:
+            link=a.fetch(endpoint)
+            url=json.loads(s.artifact(link.sha256))
+            if not isinstance(url,str) or urlsplit(url).hostname!='mgaleg.maryland.gov' or not re.search(r'/Statute_Web/[^/]+/[^/]+\.pdf$',url):
+                raise ValueError('Article API did not return an authorized official PDF')
+            remaining=a.max_bytes-a.downloaded
+            cached=a._cached(url)
+            if remaining<2*1024**2 and (cached is None or a.refresh):
+                raise AcquisitionError('Remaining acquisition cap too low; deferred')
+            raw=a.fetch(url,max_file_bytes=max(1,remaining))
+            # A repeat synchronization does not reparse immutable objects already indexed.
+            existing=s.db.execute('SELECT id FROM versions WHERE document_id=? AND artifact_sha=? AND parser=?',
+                                 (f'md-code:{code}',raw.sha256,PARSER+'/text-2')).fetchone()
+            if existing:
+                print(f'{code}: cached existing version {existing[0]}',flush=True)
+            else:
+                units,metadata=pdf_pages(s.object_path(raw.sha256),code,title,url)
+                metadata.update({'publisher_article_code':code,'publisher_display_text':row['DisplayText'],
+                  'publisher_path_edition':url.split('/')[3],'publisher_view_statement':currency,
+                  'include_enactments':True,'inventory_receipt_id':inv.id,'article_link_receipt_id':link.id,
+                  'pdf_creation_date_is_not_legal_effective_date':True})
+                version,count,new=s.ingest(collection='md-code',document=f'md-code:{code}',title='Maryland '+title,url=url,
+                   acquisition=raw.id,snapshot_date=None,
+                   snapshot_basis='Unknown exact snapshot/incorporation date; publisher October 1 include-enactments view and edition path retained in metadata, not inferred as blanket legal effect.',
+                   parser=PARSER,provisions=units,metadata=metadata)
+                print(f'{code}: {count} native PDF pages; {raw.size:,} bytes; version {version}',flush=True)
+            s.inventory('md-code',code,url,'acquired')
+            write_report(s)
+        except Exception as exc:
+            s.inventory('md-code',code,endpoint,'failed',str(exc))
+            write_report(s,str(exc))
+            print(f'{code}: FAILED {exc}',flush=True)
+            if any(term in str(exc).lower() for term in ['cap','budget','403','429','retry','robots','disk']):
+                raise
+    return write_report(s)
+
+if __name__=='__main__':
+    args=argparse.ArgumentParser();args.add_argument('--limit',type=int);args.add_argument('--as-of');opts=args.parse_args()
+    store=Store(ROOT/'store');acquirer=BudgetAcquirer(store)
+    error=None
+    try: sync_md(store,acquirer,opts.limit,opts.as_of)
+    except Exception as exc:
+        error=str(exc);raise
+    finally:
+        write_report(store,error);acquirer.close();store.close()

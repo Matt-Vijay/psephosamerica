@@ -1,0 +1,152 @@
+"""Kansas official-publisher bounded collector. No production integration required.
+
+sync_ks(Store, Acquirer, limit=None, as_of=None) imports immutable receipts into
+its supplied store. The shipped entry point uses KansasAcquirer and only own store.
+limit caps source documents, not policies/inventories. as_of cannot infer history.
+"""
+from __future__ import annotations
+import json, re, subprocess
+from copy import deepcopy
+from dataclasses import replace
+from datetime import date
+from pathlib import Path
+from urllib.parse import urljoin, urlsplit
+from lxml import etree, html
+from psephos.acquire import Acquirer, AcquisitionError
+from psephos.store import Store, Provision
+from psephos.parse import readable, markup, media_links, source_links
+
+BASE='https://www.ksrevisor.gov/'
+CONSTITUTION=BASE+'kanconst.html'
+KSA=BASE+'ksa.html'
+SESSION='https://sos.ks.gov/publications/session-laws.html'
+PARSER='ks-official-2'
+
+def revisor_unit(data: bytes, url: str, collection: str) -> Provision:
+    root=html.fromstring(data)
+    nodes=root.xpath('//*[@id="print"]')
+    if len(nodes)!=1:raise ValueError('Expected exactly one full publisher print container: '+url)
+    node=nodes[0]
+    if not node.xpath('.//p'):raise ValueError('No source paragraphs: '+url)
+    title=' '.join(root.xpath('//title/text()')).strip()
+    if collection=='ks-statutes':
+        number=node.xpath('.//*[contains(concat(" ",normalize-space(@class)," ")," stat_number ")]')
+        if not number:raise ValueError('No statute number')
+        citation='K.S.A. '+readable(number[0]).rstrip('.')
+    else:citation=title
+    native=urlsplit(url).path
+    lead=node.xpath('.//p[contains(concat(" ",normalize-space(@class)," ")," ksa_stat " )]')
+    opening=readable(lead[0]) if lead else readable(node)[:300]
+    notice=bool(re.search(r'(?:repealed|eliminated by revision|transferred|omitted)',opening[:220],re.I))
+    kind='source_notice' if notice else 'historical_source_text' if native.startswith(('/kanconst/090_','/kanconst/091_')) else 'source_legal_text'
+    headings=node.xpath('.//*[contains(concat(" ",normalize-space(@class)," ")," stat_caption ")]')
+    heading=readable(headings[0]) if headings else title
+    media=media_links(node,url)
+    return Provision(key='ks:'+native,citation=citation,heading=heading,text=readable(node),markup=markup(node),url=url,
+        unit_kind=kind,metadata={'source_identifier':native,'tables':len(node.xpath('.//table')),'media':media,'publisher_annotations_retained':True,'whole_print_container':True},references=source_links(node,url))
+
+def scope_notes(data:bytes,url:str,collection:str):
+    root=html.fromstring(data)
+    # Index entries are NOT law units. Only substantive annotation divs are projected.
+    for node in root.xpath('//div[contains(concat(" ",normalize-space(@class)," ")," content-hidden ")]'):
+        if not readable(node):continue
+        identity=node.get('id')
+        if not identity:raise ValueError('Annotation without native id')
+        yield Provision(key='ks:'+urlsplit(url).path+'#'+identity,citation='Kansas Constitution — publisher scope annotations '+identity,heading='Publisher scope annotations',text=readable(node),markup=markup(node),url=url+'#'+identity,unit_kind='scope_notes',metadata={'source_identifier':identity,'not_statutory_text':True},references=source_links(node,url))
+
+def pdf_pages(store:Store,receipt,url:str,volume:int):
+    path=store.object_path(receipt.sha256)
+    proc=subprocess.run(['pdftotext','-layout',str(path),'-'],check=True,capture_output=True)
+    text=proc.stdout.decode('utf8')
+    pages=text.split('\f')
+    if not pages[-1].strip():pages.pop()
+    info=subprocess.check_output(['pdfinfo',str(path)],text=True)
+    expected=int(re.search(r'^Pages:\s+(\d+)',info,re.M).group(1))
+    if len(pages)!=expected:raise ValueError('PDF page count mismatch')
+    for n,page in enumerate(pages,1):
+        blank=not page.strip()
+        content=page if not blank else '[Source PDF page contains no extractable text; inspect retained PDF.]'
+        node=etree.Element('pre',source=url,page=str(n));node.text=content
+        yield Provision(key=f'ks:sessionlaws/2026/volume-{volume}/pdf-page-{n}',citation=f'2026 Kansas Session Laws, vol. {volume}, PDF page {n}',heading=f'PDF page {n}',text=content,markup=markup(node),url=url+f'#page={n}',unit_kind='pdf_blank_or_image_page' if blank else 'pdf_page',metadata={'source_locator':f'#page={n}','identity_basis':'physical PDF page, not a legal section identifier','pdf_pages':expected,'fidelity':'Original PDF retains italics, canceled text, tables, and media. Plain text does not distinguish enacted additions from canceled words. Read PDF for legal amendment typography.','extraction':'pdftotext -layout','not_section_count':True})
+
+def sync_ks(store:Store,acquirer:Acquirer,limit=None,as_of=None):
+    if limit is not None and (not isinstance(limit,int) or limit<0):raise ValueError('limit must be nonnegative integer')
+    cutoff=date.fromisoformat(as_of).isoformat() if as_of else None
+    sources=[('ks-session-laws','Kansas Session Laws — 2026 complete volumes',SESSION,'session_laws'),('ks-constitution','Kansas Constitution and founding documents',CONSTITUTION,'constitution'),('ks-statutes','Kansas Statutes — Chapter 1',KSA,'statutes')]
+    for cid,name,url,kind in sources:
+        store.collection(cid,('us-ks','Kansas','state','us'),name=name,authority='Kansas Secretary of State' if cid=='ks-session-laws' else 'Kansas Office of Revisor of Statutes',kind=kind,homepage=url,source_status='official state publisher; online KSA not authenticated printed edition',access='public HTTPS; robots honored; immutable receipts',metadata={'warning':'Bounded scope; see report.json. Snapshot date is not blanket legal effectiveness.','currency_notice':'2025 legislative session for statutes; constitution revised through July 1, 2025; session volumes published July 1, 2026.'})
+    lawdocs=0;errors=[]
+    # Inventories and currency notices are always receipts, never counted as law.
+    receipts={u:acquirer.fetch(u) for u in (SESSION,CONSTITUTION,KSA)}
+    chapter_url=BASE+'statutes/ksa_ch1.html';chapter_receipt=acquirer.fetch(chapter_url)
+    root=html.fromstring(store.artifact(receipts[KSA].sha256))
+    for href in root.xpath('//a[starts-with(@href,"/statutes/ksa_ch")]/@href'):
+        store.inventory('ks-statutes','chapter-catalog:'+href,urljoin(KSA,href),'scope_selected' if href.endswith('ksa_ch1.html') else 'out_of_scope','Catalog only; not full law text')
+    selected=[];inventory_labels={}
+    sessionroot=html.fromstring(store.artifact(receipts[SESSION].sha256))
+    for n in (1,2):
+        href=f'sessionlaws/2026/2026-Session-Laws-Book-{n}.pdf'
+        if href not in sessionroot.xpath('//a/@href'):raise ValueError('Volume not publisher-linked')
+        selected.append(('ks-session-laws',urljoin(SESSION,href),f'ks:sessionlaws/2026/volume-{n}','2026-07-01',n))
+    for cid,index,receipt,prefix in [('ks-constitution',CONSTITUTION,receipts[CONSTITUTION],'kanconst/'),('ks-statutes',chapter_url,chapter_receipt,'/statutes/chapters/ch01/')]:
+        r=html.fromstring(store.artifact(receipt.sha256));seen=set()
+        for href in r.xpath('//a/@href'):
+            if not href.startswith(prefix) or href in seen:continue
+            seen.add(href);url=urljoin(index,href)
+            anchors=r.xpath('//a[@href=$href]',href=href)
+            inventory_labels[url]=' '.join(anchors[0].itertext()).strip()
+            selected.append((cid,url,'ks:'+urlsplit(url).path,None,None))
+    for cid,url,doc,snapshot,n in selected:
+        if cutoff and (snapshot is None or snapshot>cutoff):
+            store.inventory(cid,doc,url,'excluded_by_as_of','Unknown or later publisher snapshot');continue
+        if limit is not None and lawdocs>=limit:
+            if not store.db.execute('SELECT 1 FROM documents WHERE id=?',(doc,)).fetchone():store.inventory(cid,doc,url,'pending','Document limit')
+            continue
+        store.inventory(cid,doc,url,'pending')
+        try:
+            receipt=acquirer.fetch(url)
+            if n:
+                units=list(pdf_pages(store,receipt,url,n));title=f'2026 Kansas Session Laws volume {n}';basis='Volume title page explicitly states Date of Publication July 1, 2026'
+            else:
+                units=[revisor_unit(store.artifact(receipt.sha256),url,cid)];title=units[0].citation;basis='Live constitution index states enactments as of July 1, 2025; incorporation currency only, exact snapshot day unknown' if cid=='ks-constitution' else 'Index states 2025 session; no exact snapshot day published'
+                label=inventory_labels[url]
+                notice=bool(re.search(r'(?:Repealed|Eliminated by revision|Transferred|Omitted)(?:\.|$)',label,re.I))
+                kind='source_notice' if notice else 'historical_source_text' if urlsplit(url).path.startswith(('/kanconst/090_','/kanconst/091_')) else 'source_legal_text'
+                units[0]=replace(units[0],unit_kind=kind,metadata={**units[0].metadata,'publisher_inventory_label':label,'classification_basis':'publisher linked entry explicitly marks notices; organic/admission acts treated as historical sources'})
+                for media in units[0].metadata['media']:
+                    if media['url']:
+                        try:
+                            mr=acquirer.fetch(media['url']);media.update(status='retained_original_media',sha256=mr.sha256,acquisition_id=mr.id)
+                        except AcquisitionError as e:media.update(status='omitted_access_or_fetch_error',error=str(e))
+            result=store.ingest(collection=cid,document=doc,title=title,url=url,acquisition=receipt.id,snapshot_date=snapshot,snapshot_basis=basis,published_on='2026-07-01' if n else None,parser=PARSER,provisions=units,metadata={'source_identifier':urlsplit(url).path,'scope':'whole publisher source document','publisher_index_artifact':receipts[SESSION if n else CONSTITUTION if cid=='ks-constitution' else KSA].sha256,'effective_date_warning':'No blanket effectiveness inferred; histories retained in source.','publisher_currency_date':'2025-07-01' if cid=='ks-constitution' else None,'publisher_currency_quote':'This version of the Kansas Constitution includes new and revised articles and sections enacted as of July 1, 2025.' if cid=='ks-constitution' else None})
+            store.inventory(cid,doc,url,'acquired');lawdocs+=1
+            print(json.dumps({'document':doc,'units':result[1],'new':result[2]}),flush=True)
+        except (AcquisitionError,ValueError) as e:
+            store.inventory(cid,doc,url,'error',str(e));errors.append({'url':url,'error':str(e)});print('ERROR',url,str(e),flush=True)
+            # A source denial never triggers alternate access or retries.
+            if isinstance(e,AcquisitionError):
+                prior=store.db.execute('SELECT status FROM acquisitions WHERE url=? ORDER BY id DESC LIMIT 1',(url,)).fetchone()
+                if not prior or prior[0] not in (404,410):break
+    if not cutoff:
+        receipt=receipts[CONSTITUTION];notes=list(scope_notes(store.artifact(receipt.sha256),CONSTITUTION,'ks-constitution'))
+        if notes and (limit is None or lawdocs<limit):
+            store.ingest(collection='ks-constitution',document='ks:kanconst.html#scope-notes',title='Kansas Constitution publisher scope annotations',url=CONSTITUTION,acquisition=receipt.id,snapshot_date=None,snapshot_basis='Live index enactment currency July 1, 2025; exact snapshot date unknown',parser=PARSER,provisions=notes,metadata={'not_catalog_law':True})
+    if not cutoff and (limit is None or lawdocs<limit):
+        cr=html.fromstring(store.artifact(chapter_receipt.sha256))
+        container=cr.xpath('//div[@class="ksa"]')[0]
+        note=etree.Element('div')
+        for child in container:
+            if child.tag=='ul':break
+            note.append(deepcopy(child))
+        if 'Cross References' in readable(note):
+            unit=Provision(key='ks:/statutes/ksa_ch1.html#context',citation='K.S.A. Chapter 1 — scope notes',heading='Chapter cross references',text=readable(note),markup=markup(note),url=chapter_url,unit_kind='scope_notes',metadata={'not_statutory_text':True,'identity_basis':'publisher chapter container preceding section inventory'})
+            store.ingest(collection='ks-statutes',document='ks:/statutes/ksa_ch1.html#context',title=unit.citation,url=chapter_url,acquisition=chapter_receipt.id,snapshot_basis='2025 session; exact snapshot day unknown',parser=PARSER,provisions=[unit])
+    return {'source_documents_processed':lawdocs,'errors':errors,'selected_documents':len(selected),'selected_by_collection':{cid:sum(x[0]==cid for x in selected) for cid,_,_,_ in sources}}
+
+if __name__=='__main__':
+    from runtime import KansasAcquirer,ROOT
+    s=Store(ROOT/'store')
+    if s.root.parent!=ROOT:raise ValueError('Standalone collector must use its own store')
+    a=KansasAcquirer(s)
+    try:(ROOT/'sync-result.json').write_text(json.dumps(sync_ks(s,a),indent=2))
+    finally:a.close();s.close()

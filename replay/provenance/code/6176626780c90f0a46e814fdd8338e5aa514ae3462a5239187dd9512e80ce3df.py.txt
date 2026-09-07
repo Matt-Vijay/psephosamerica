@@ -1,0 +1,364 @@
+"""Arkansas official collection. All writes and lifetime network accounting are local."""
+
+from __future__ import annotations
+import contextlib, fcntl, hashlib, json, os, shutil, time
+from pathlib import Path
+from urllib.parse import urlsplit
+import httpx
+from psephos.acquire import Acquirer, AcquisitionError
+from psephos.store import Store, utc_now
+
+ROOT = Path(__file__).resolve().parent
+CAP = 200 * 1024**2
+HOSTS = {
+    "codeofarrules.arkansas.gov",
+    "arkleg.state.ar.us",
+    "www.arkleg.state.ar.us",
+    "sos.arkansas.gov",
+    "www.sos.arkansas.gov",
+    "portal.arkansas.gov",
+}
+
+
+class GuardedClient:
+    """Account decoded responses including policies, redirects, and failed attempts.
+
+    Reserve 20 MiB durably before each request; on interruption reservation remains
+    charged. Successful completion settles actual decoded size. No concurrent runs.
+    """
+
+    def __init__(self, client, store):
+        self.client, self.store = client, store
+        self.path = ROOT / "ledger.json"
+        self.ledger = (
+            json.loads(self.path.read_text())
+            if self.path.exists()
+            else {
+                "cap_bytes": CAP,
+                "charged_bytes": 0,
+                "requests": [],
+                "external_discovery": "One web search for URL discovery; no web-open source downloads. Search-engine transfer not measurable here.",
+            }
+        )
+
+    def save(self):
+        temp = self.path.with_suffix(".tmp")
+        temp.write_text(json.dumps(self.ledger, indent=2))
+        os.replace(temp, self.path)
+
+    @contextlib.contextmanager
+    def stream(self, method, url, **kwargs):
+        host = urlsplit(str(url)).hostname
+        if host in {"arkleg.state.ar.us", "www.arkleg.state.ar.us", "codeofarrules.arkansas.gov"}:
+            raise AcquisitionError("Publisher robots disallows ChatGPT; host stopped")
+        if host not in HOSTS:
+            raise AcquisitionError(f"Unapproved host: {host}")
+        if shutil.disk_usage(ROOT).free < 105 * 1024**3:
+            raise AcquisitionError("Free disk below 105 GiB")
+        last = max(
+            (r["started_epoch"] for r in self.ledger["requests"] if r["host"] == host), default=0
+        )
+        time.sleep(max(0, last + 10.05 - time.time()))
+        reserve = 20 * 1024**2
+        if self.ledger["charged_bytes"] + reserve > CAP:
+            raise AcquisitionError("Insufficient lifetime byte reservation")
+        record = {
+            "url": str(url),
+            "host": host,
+            "started_epoch": time.time(),
+            "started_at": utc_now(),
+            "charged_bytes": reserve,
+            "state": "reserved",
+        }
+        self.ledger["requests"].append(record)
+        self.ledger["charged_bytes"] += reserve
+        self.save()
+        try:
+            with self.client.stream(method, url, **kwargs) as response:
+                body = bytearray()
+                for chunk in response.iter_bytes(chunk_size=65536):
+                    body.extend(chunk)
+                    if len(body) >= reserve:
+                        raise AcquisitionError(
+                            "Per-response reservation exhausted; full reservation remains charged"
+                        )
+                data = bytes(body)
+                sha = hashlib.sha256(data).hexdigest()
+                target = self.store.object_path(sha)
+                target.parent.mkdir(parents=True, exist_ok=True)
+                if not target.exists():
+                    target.write_bytes(data)
+                with self.store.db:
+                    self.store.db.execute(
+                        "INSERT OR IGNORE INTO artifacts VALUES (?,?)", (sha, len(data))
+                    )
+                record.update(
+                    headers=dict(response.headers),
+                    state="complete",
+                    status=response.status_code,
+                    decoded_bytes=len(data),
+                    sha256=sha,
+                    finished_at=utc_now(),
+                    charged_bytes=len(data),
+                )
+                self.ledger["charged_bytes"] += len(data) - reserve
+                self.save()
+                decoded_headers = {
+                    k: v
+                    for k, v in response.headers.items()
+                    if k.lower() not in {"content-encoding", "content-length"}
+                }
+                copy = httpx.Response(
+                    response.status_code,
+                    headers=decoded_headers,
+                    content=data,
+                    request=response.request,
+                )
+            yield copy
+        except Exception as exc:
+            record["error"] = str(exc)
+            self.save()
+            raise
+
+    def close(self):
+        self.client.close()
+
+
+@contextlib.contextmanager
+def session():
+    with (ROOT / "collector.lock").open("a") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        s = Store(ROOT / "store")
+        a = Acquirer(s, max_bytes=CAP, delay=10.05)
+        a.client = GuardedClient(a.client, s)
+        try:
+            yield s, a
+        finally:
+            a.close()
+            s.close()
+
+
+PDF_URL = "https://www.sos.arkansas.gov/uploads/elections/Arkansas_Election_Laws_and_Constitution_2025_Edition.pdf"
+LANDING = "https://www.sos.arkansas.gov/elections/more-election-information/"
+COLLECTION = "ar-election-laws-constitution"
+DOCUMENT = "ar:2025-election-laws-constitution"
+PARSER = "ar-official-election-pdf-1"
+
+
+def volume_units(path):
+    """Full source pages, with page labels/native citations, not inferred sections."""
+    import re
+    from dataclasses import replace
+    from psephos.municipal import pdf_units
+
+    pages = list(
+        pdf_units(path, DOCUMENT, "Arkansas election laws and constitution (2025 edition)", PDF_URL)
+    )
+    if len(pages) != 883 or "2025 EDITION" not in pages[0].text:
+        raise ValueError("Publisher volume changed; review scope boundaries before updating parser")
+    if (
+        "ALCOHOLIC BEVERAGES" not in pages[13].text
+        or "CONSTITUTION OF THE" not in pages[597].text
+        or "AMEND. 104." not in pages[791].text
+    ):
+        raise ValueError("Volume boundaries no longer match reviewed edition")
+    for page in pages:
+        n = page.metadata["pdf_page"]
+        text = page.text
+        substantive = re.sub(r"Previous\s+Next Page", "", text).strip()
+        if not substantive:
+            kind, scope = "blank_navigation_page", "blank"
+        elif n <= 4:
+            kind, scope = "publisher_notice_page", "front_matter"
+        elif n <= 13:
+            kind, scope = "contents_page", "contents"
+        elif n >= 794:
+            kind, scope = "index_page", "index"
+        else:
+            kind, scope = (
+                "legal_text_and_annotations_page",
+                "constitution" if n >= 598 else "selected_statutes",
+            )
+        metadata = dict(page.metadata)
+        metadata.update(
+            source_printed_page=str(n - 13) if n >= 14 else None,
+            source_native_citations=sorted(
+                set(
+                    re.findall(
+                        r"\b\d{1,2}-\d{1,2}-\d{1,4}\b|(?:Art\.|Amend\.)\s*\d+(?:,\s*§\s*\d+)?", text
+                    )
+                )
+            ),
+            scope=scope,
+            legal_section_count=None,
+            classification_warning="Body-range pages can combine legal text, continuation, editorial annotation, history, and scope headings; they are not separately counted legal sections.",
+            source_media="Complete native PDF retained; figures are not separately transcribed.",
+            copyright_notice="Copyright 2025 by the State of Arkansas. All rights reserved. LexisNexis/Matthew Bender trademarks and publication contacts appear on PDF page 3. No redistribution license asserted.",
+        )
+        if n in (2, 3, 4):
+            metadata["text_quality"] = "source_font_encoding_corruption; consult preserved PDF"
+            text = (
+                "[Source font encoding warning: extracted front-matter text is unreliable; consult preserved PDF.]\n"
+                + text
+            )
+        if n == 3:
+            metadata["visually_verified_notice"] = (
+                "© 2025 by the State of Arkansas. All rights reserved."
+            )
+        yield replace(page, text=text, unit_kind=kind, metadata=metadata)
+
+
+def sync_ar(s, a, limit=None, as_of=None):
+    """Core-compatible sync signature; one reviewed, complete official volume."""
+    if s.root != (ROOT / "store").resolve() or not isinstance(a.client, GuardedClient):
+        raise ValueError(
+            "sync_ar requires the isolated Arkansas Store and lifetime-ledger session()"
+        )
+    if as_of:
+        raise ValueError("Exact publisher snapshot date is unknown; historical sync unsupported")
+    s.collection(
+        COLLECTION,
+        ("us-ar", "Arkansas", "state", "us"),
+        name="Arkansas election laws and constitution — 2025 official volume",
+        authority="Arkansas Secretary of State, Elections Division",
+        kind="scoped_statutes_and_constitution",
+        homepage=LANDING,
+        source_status="Official state-hosted 2025 compilation, reprinted from annotated code; not entire Arkansas Code or current CAR",
+        access="Publicly downloadable official PDF. State copyright and publisher notices preserved; no blanket reuse license asserted.",
+        metadata={
+            "edition_year": 2025,
+            "warning": "883 source pages; legal provisions are not individually segmented. Source front-matter pages 2–4 have font extraction corruption. Current legal effect not inferred.",
+            "snapshot_date": None,
+            "incorporated_through": None,
+        },
+    )
+    s.inventory(COLLECTION, DOCUMENT, PDF_URL, "pending")
+    if limit == 0:
+        return {"indexed": False, "reason": "limit=0"}
+    a.fetch(LANDING)
+    receipt = a.fetch(PDF_URL)
+    version, count, new = s.ingest(
+        collection=COLLECTION,
+        document=DOCUMENT,
+        title="Election Laws of Arkansas and Constitution of the State of Arkansas of 1874 — 2025 Edition",
+        url=PDF_URL,
+        acquisition=receipt.id,
+        snapshot_date=None,
+        snapshot_basis="Publisher labels 2025 Edition and 2025 Cumulative Supplement; exact publication/incorporation day unknown.",
+        published_on=None,
+        effective_on=None,
+        parser=PARSER,
+        provisions=volume_units(s.object_path(receipt.sha256)),
+        metadata={
+            "edition_year": 2025,
+            "incorporated_through": None,
+            "published_on": None,
+            "legal_effective_on": None,
+            "scope": "Complete 883-page volume: selected election-related statutes and complete included constitution/amendment text through listed Amendment 104, notices, contents, index. Not complete Arkansas statutory code.",
+            "pdf_page_ranges": {
+                "front_matter": [1, 13],
+                "selected_statutes": [14, 597],
+                "constitution": [598, 792],
+                "index": [794, 882],
+            },
+            "limitations": "Some legal and editorial text spans pages. Two-column annotations retained as layout text; raw PDF controls fidelity. Pages 2–4 need visual reading. No effective date inferred from historical dates within text.",
+        },
+    )
+    s.inventory(COLLECTION, DOCUMENT, PDF_URL, "indexed")
+    return {"version": version, "page_units": count, "new": new, "receipt": receipt.__dict__}
+
+
+def write_report(s, result):
+    ledger = json.loads((ROOT / "ledger.json").read_text())
+    receipts = [dict(r) for r in s.db.execute("SELECT * FROM acquisitions ORDER BY id")]
+    for r in receipts:
+        r["headers"] = json.loads(r["headers"])
+    counts = {
+        r[0]: r[1]
+        for r in s.db.execute("SELECT unit_kind,count(*) FROM provisions GROUP BY unit_kind")
+    }
+    raw = dict(
+        s.db.execute("SELECT count(*) AS objects,sum(bytes) AS bytes FROM artifacts").fetchone()
+    )
+    report = {
+        "state": "quiescent; ready for south-lead review, not imported",
+        "generated_at": utc_now(),
+        "adapter": str(ROOT / "adapter.py"),
+        "store": str(ROOT / "store"),
+        "database": str(ROOT / "store/legal.sqlite3"),
+        "result": result,
+        "counts": {
+            "complete_legal_volumes": 1,
+            "individually_segmented_legal_bodies": 0,
+            "actual_legal_section_count": None,
+            "page_units_by_kind": counts,
+            "documents": s.db.execute("SELECT count(*) FROM documents").fetchone()[0],
+            "versions": s.db.execute("SELECT count(*) FROM versions").fetchone()[0],
+            "raw": raw,
+        },
+        "bytes": {
+            "lifetime_decoded_source_http_bytes": ledger["charged_bytes"],
+            "cap_bytes": CAP,
+            "ledger_path": str(ROOT / "ledger.json"),
+            "includes": "Policies, redirects, error bodies, retries; durable pre-request reservation remains charged after interruption. Raw artifacts include guard-retained error/policy bodies not indexed as law.",
+            "web_discovery": "Two web search calls only, URL discovery; no web-open or remote source fetches. Search-engine backend transfer is not measurable in this ledger.",
+        },
+        "hosts": {
+            "used": [
+                "codeofarrules.arkansas.gov",
+                "arkleg.state.ar.us",
+                "www.sos.arkansas.gov",
+                "portal.arkansas.gov",
+            ],
+            "added_official": ["portal.arkansas.gov (SOS-linked acceptable-use policy)"],
+            "stopped": [
+                "codeofarrules.arkansas.gov and arkleg.state.ar.us: robots explicitly disallow ChatGPT; no content requests made"
+            ],
+            "commercial_hosts_requested": [],
+        },
+        "policies": {
+            "terms_receipt_sha256": "1512d2996b601910f035e03080e0ed541ab2ff2f81a32fe79c402c30f4070155",
+            "copyright": "PDF page 3 visually checked: © 2025 State of Arkansas, all rights reserved; LexisNexis/Matthew Bender notices retained. Local research store; no distribution license asserted.",
+            "timing": "Current persistent guard waits >=10.05s per host; core longer robots delays and Retry-After remain active. Initial SOS robots-to-register request used core generic 5s, before identifying ChatGPT-specific 10s; corrected. Initial portal requests used >=1s because Crawl-delay:10 appears before User-agent and core parser ignores it; corrected to conservative 10.05s for all hosts. See exact ledger start times.",
+            "initial_client_error": "First two policy bodies retained and counted (99 bytes each); decoded-wrapper error occurred before core retained normal receipts. Raw policy recovered offline; hosts stopped. No retry downloads.",
+        },
+        "clocks": {
+            "edition_year": 2025,
+            "publisher_snapshot_date": None,
+            "incorporated_through": None,
+            "publication_date": None,
+            "legal_effect_date": None,
+            "acquisition_observed_at": result["receipt"]["observed_at"],
+            "basis": "Edition year and HTTP metadata never promoted to exact legal/publisher dates.",
+        },
+        "gaps": [
+            "Entire current Arkansas Code and Code of Arkansas Rules not collected; robots block their hosts.",
+            "This complete volume contains selected statutes, not complete titles other than the scope supplied by publisher.",
+            "883 pages indexed; pages 2–4 have front-matter font encoding corruption, conspicuously flagged. Raw source remains complete.",
+            "Page units combine legal text and annotations; legal section count unknown, not inflated using contents or index entries.",
+            "August 2026 register PDF is only a filing inventory; retained raw, not indexed as law.",
+            "No claim of 2026 currency or reconstruction of intervening amendments.",
+        ],
+        "checks": {"test_file": str(ROOT / "self_check.py"), "result": "pending"},
+        "free_disk_bytes": shutil.disk_usage(ROOT).free,
+        "receipts": receipts,
+        "ledger_requests": ledger["requests"],
+    }
+    (ROOT / "report.json").write_text(json.dumps(report, indent=2))
+    return report
+
+
+if __name__ == "__main__":
+    with session() as (s, a):
+        result = sync_ar(s, a)
+        report = write_report(s, result)
+        print(
+            json.dumps(
+                {
+                    "result": result,
+                    "counts": report["counts"],
+                    "decoded_bytes": report["bytes"]["lifetime_decoded_source_http_bytes"],
+                },
+                indent=2,
+            )
+        )
