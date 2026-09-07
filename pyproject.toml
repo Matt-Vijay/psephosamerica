@@ -1,0 +1,48 @@
+[build-system]
+requires = ["hatchling>=1.27,<2"]
+build-backend = "hatchling.build"
+
+[project]
+name = "psephos-legal"
+version = "0.1.0"
+description = "Source-grounded US legal information for language-model tools"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+  "httpx>=0.28,<1",
+  "lxml>=5.3,<7",
+  "mcp>=1.12,<2",
+  "pypdf>=5,<7",
+  "shapely>=2.0,<3",
+  "pyogrio>=0.12,<1",
+  "pyproj>=3.7,<4",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8,<10", "ruff>=0.12,<1", "mypy>=1.15,<2", "types-lxml>=2025", "types-shapely>=2.1"]
+
+[project.scripts]
+psephos = "psephos.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/psephos"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I", "B", "UP"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+packages = ["psephos"]
+mypy_path = "src"
+
+[[tool.mypy.overrides]]
+module = ["pyogrio", "pyogrio.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

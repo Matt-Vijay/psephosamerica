@@ -1,0 +1,710 @@
+{
+  "generated_at": "2026-09-07T00:29:31Z",
+  "status": "PASS",
+  "meaning": "Storage/source invariants only; not a completeness or legal-accuracy certification.",
+  "coverage": {
+    "collections": [
+      {
+        "id": "dc-code",
+        "jurisdiction_id": "us-dc",
+        "name": "Code of the District of Columbia",
+        "authority": "Council of the District of Columbia",
+        "kind": "statutory_code",
+        "homepage": "https://code.dccouncil.gov",
+        "source_status": "Council-published codified XML snapshot",
+        "access": "Public domain per publisher; pinned bulk archive, no site scraping",
+        "metadata": {
+          "codified_date": "2026-05-19",
+          "current_through": "2026-04-29",
+          "warning": "Codified date and recency-through differ; neither is a section's blanket effective date."
+        },
+        "inventory": [
+          {
+            "status": "indexed",
+            "items": 55
+          }
+        ],
+        "documents": 55,
+        "versions": 55,
+        "units_in_latest_documents": [
+          {
+            "unit_kind": "section",
+            "count": 24640
+          }
+        ],
+        "features_in_latest_documents": 0,
+        "clocks": {
+          "earliest_snapshot": "2026-05-19",
+          "latest_snapshot": "2026-05-19",
+          "first_acquired": "2026-09-06T23:27:33Z",
+          "last_acquired": "2026-09-06T23:27:33Z"
+        },
+        "failures": []
+      },
+      {
+        "id": "dc-laws",
+        "jurisdiction_id": "us-dc",
+        "name": "D.C. Council law instruments in code publication",
+        "authority": "Council of the District of Columbia",
+        "kind": "session_law",
+        "homepage": "https://code.dccouncil.gov",
+        "source_status": "Council-published codified XML snapshot",
+        "access": "Public domain per publisher; pinned bulk archive, no site scraping",
+        "metadata": {
+          "codified_date": "2026-05-19",
+          "current_through": "2026-04-29",
+          "warning": "Codified date and recency-through differ; neither is a section's blanket effective date."
+        },
+        "inventory": [
+          {
+            "status": "indexed",
+            "items": 4544
+          }
+        ],
+        "documents": 4544,
+        "versions": 4544,
+        "units_in_latest_documents": [
+          {
+            "unit_kind": "amending_instrument",
+            "count": 1583
+          },
+          {
+            "unit_kind": "law_metadata",
+            "count": 2961
+          }
+        ],
+        "features_in_latest_documents": 0,
+        "clocks": {
+          "earliest_snapshot": "2026-05-19",
+          "latest_snapshot": "2026-05-19",
+          "first_acquired": "2026-09-06T23:27:33Z",
+          "last_acquired": "2026-09-06T23:27:33Z"
+        },
+        "failures": []
+      },
+      {
+        "id": "ecfr",
+        "jurisdiction_id": "us",
+        "name": "Electronic Code of Federal Regulations",
+        "authority": "Office of the Federal Register and Government Publishing Office",
+        "kind": "regulation",
+        "homepage": "https://www.ecfr.gov",
+        "source_status": "Government-maintained eCFR; not an official legal edition",
+        "access": "Keyless publisher REST API; https://www.ecfr.gov/developers/documentation/api/v1",
+        "metadata": {
+          "api_meta": {
+            "date": "2026-09-03",
+            "import_in_progress": false
+          },
+          "inventory_artifact": "77279f0b1e3dbcde3cae86ba1f27cacf827ca825b60d6bc59fffacf98c005f41"
+        },
+        "inventory": [
+          {
+            "status": "indexed",
+            "items": 52
+          },
+          {
+            "status": "pending",
+            "items": 46
+          },
+          {
+            "status": "reserved",
+            "items": 2
+          }
+        ],
+        "documents": 49,
+        "versions": 52,
+        "units_in_latest_documents": [
+          {
+            "unit_kind": "appendix",
+            "count": 4096
+          },
+          {
+            "unit_kind": "scope_notes",
+            "count": 13571
+          },
+          {
+            "unit_kind": "section",
+            "count": 227518
+          }
+        ],
+        "features_in_latest_documents": 0,
+        "clocks": {
+          "earliest_snapshot": "2024-01-01",
+          "latest_snapshot": "2026-09-03",
+          "first_acquired": "2026-09-06T23:32:41Z",
+          "last_acquired": "2026-09-06T23:47:47Z"
+        },
+        "failures": []
+      },
+      {
+        "id": "nyc-zoning",
+        "jurisdiction_id": "us-ny-nyc",
+        "name": "New York City Zoning Resolution",
+        "authority": "NYC Department of City Planning",
+        "kind": "zoning_resolution",
+        "homepage": "https://zoningresolution.planning.nyc.gov",
+        "source_status": "City-published zoning text; GIS vintage is separate; not a parcel legal determination",
+        "access": "Public publisher chapter pages and linked full-document download; publisher robots respected",
+        "metadata": {
+          "approved_changes_through": "2026-08-13",
+          "inventory_artifact": "23730576171f20f58558bc97ee3fad35acb5750e666be6aa5af98eb5909bdd24",
+          "warning": "Approved-through is publisher currency, not a blanket effective date."
+        },
+        "inventory": [
+          {
+            "status": "indexed",
+            "items": 117
+          }
+        ],
+        "documents": 117,
+        "versions": 117,
+        "units_in_latest_documents": [
+          {
+            "unit_kind": "appendix",
+            "count": 16
+          },
+          {
+            "unit_kind": "section",
+            "count": 3636
+          },
+          {
+            "unit_kind": "section_heading",
+            "count": 416
+          }
+        ],
+        "features_in_latest_documents": 0,
+        "clocks": {
+          "earliest_snapshot": "2026-08-13",
+          "latest_snapshot": "2026-08-13",
+          "first_acquired": "2026-09-06T23:25:23Z",
+          "last_acquired": "2026-09-06T23:45:46Z"
+        },
+        "failures": []
+      },
+      {
+        "id": "nyc-zoning-gis",
+        "jurisdiction_id": "us-ny-nyc",
+        "name": "NYC Zoning GIS Features",
+        "authority": "NYC Department of City Planning",
+        "kind": "zoning_geography",
+        "homepage": "https://data.cityofnewyork.us/api/views/mm69-vrje.json",
+        "source_status": "Publisher informational GIS, not individual-tax-lot legal determination",
+        "access": "Official bulk GIS download; NYC Open Data and agency-specific terms apply, not a generic CC0 claim",
+        "metadata": {
+          "metadata_artifact": "c2f34a979f6779327eb99089d3b6673505da0c6a5cd47a370f35f1e26d6b7e9a",
+          "terms_artifact": "1296c7fa8314cf9420a947525965b41f30a366a4a820bf076aa9bf428799844f",
+          "warning": "Description vintage is independent of portal viewLastModified and text currency."
+        },
+        "inventory": [
+          {
+            "status": "indexed",
+            "items": 1
+          }
+        ],
+        "documents": 1,
+        "versions": 1,
+        "units_in_latest_documents": [
+          {
+            "unit_kind": "dataset_metadata",
+            "count": 1
+          }
+        ],
+        "features_in_latest_documents": 16901,
+        "clocks": {
+          "earliest_snapshot": null,
+          "latest_snapshot": null,
+          "first_acquired": "2026-09-06T23:39:29Z",
+          "last_acquired": "2026-09-06T23:39:29Z"
+        },
+        "failures": []
+      },
+      {
+        "id": "portland-zoning",
+        "jurisdiction_id": "us-or-portland",
+        "name": "Portland Title 33 \u2014 Planning and Zoning",
+        "authority": "City of Portland",
+        "kind": "zoning_code",
+        "homepage": "https://www.portland.gov/code/33",
+        "source_status": "City-published complete printable code; later ordinances not silently folded in",
+        "access": "Publisher full printable download via City Archives; preserve source-specific terms",
+        "metadata": {
+          "index_artifact": "c794ce9b1ae57b8685e91c85f3aa682b23e85d32e128593cf6fe640ac92b48c2",
+          "limitation": "PDF page retrieval; no automatic table/diagram interpretation or parcel opinion.",
+          "publisher_edition_effective_on": "2026-07-01",
+          "record_artifact": "cfd3a93ebc231ca3694b1a5366e279111b90550db362d775d443714a34b4ece7"
+        },
+        "inventory": [
+          {
+            "status": "indexed",
+            "items": 1
+          }
+        ],
+        "documents": 1,
+        "versions": 1,
+        "units_in_latest_documents": [
+          {
+            "unit_kind": "pdf_page",
+            "count": 1855
+          }
+        ],
+        "features_in_latest_documents": 0,
+        "clocks": {
+          "earliest_snapshot": "2026-07-01",
+          "latest_snapshot": "2026-07-01",
+          "first_acquired": "2026-09-06T23:37:15Z",
+          "last_acquired": "2026-09-06T23:37:15Z"
+        },
+        "failures": []
+      },
+      {
+        "id": "portland-zoning-gis",
+        "jurisdiction_id": "us-or-portland",
+        "name": "Portland Detailed Zoning Designations",
+        "authority": "City of Portland",
+        "kind": "zoning_geography",
+        "homepage": "https://www.portlandmaps.com/arcgis/rest/services/Public/Zoning/MapServer/3",
+        "source_status": "City informational GIS; includes separately marked unincorporated administered areas",
+        "access": "Publisher ArcGIS read/export API; retained terms describe default PDDL but PDF is watermarked DRAFT; verify terms before redistribution",
+        "metadata": {
+          "expected_features": 15703,
+          "inventory_artifact": "0e4bb219713af7c992ec6459ac10debf5159e6791826fd0fc282c48d5f57ab46",
+          "layer_metadata_artifact": "c5d56369eac9ba61cf058de877dbe22d06280003c6de248c4fa28a4e987c362e",
+          "terms_artifact": "ab09cde06427591bacec22ff7ba515615e88103cd3e06bc91693eac43c91d572",
+          "warning": "All intersecting acquired polygons, including boundaries. A point is not a parcel; GIS/text vintages may differ. District, overlay, plan, pending-map and agency-area fields retain their source meanings. This does not certify buildability, applicability, or absence of restrictions. Empty results are a coverage/result statement, not permission."
+        },
+        "inventory": [
+          {
+            "status": "indexed",
+            "items": 1
+          }
+        ],
+        "documents": 1,
+        "versions": 1,
+        "units_in_latest_documents": [
+          {
+            "unit_kind": "dataset_metadata",
+            "count": 1
+          }
+        ],
+        "features_in_latest_documents": 15703,
+        "clocks": {
+          "earliest_snapshot": null,
+          "latest_snapshot": null,
+          "first_acquired": "2026-09-06T23:45:42Z",
+          "last_acquired": "2026-09-06T23:45:42Z"
+        },
+        "failures": []
+      },
+      {
+        "id": "texas",
+        "jurisdiction_id": "us-tx",
+        "name": "Texas Constitution and Statutes",
+        "authority": "Texas Legislative Council",
+        "kind": "statutory_code_and_constitution",
+        "homepage": "https://statutes.capitol.texas.gov/download.aspx",
+        "source_status": "Council-published bulk compilation; historical/future-effective notes retained",
+        "access": "Publisher-supported per-code chapter HTML ZIP downloads; information/privacy notice retained",
+        "metadata": {
+          "currency_notice": [
+            "The statutes available on this website are current through the 89th 2nd Called Legislative Session, 2025. The constitutional provisions found on this website are current through the amendments approved by voters in November 2025."
+          ],
+          "inventory_artifact": "a7ceb31fab5c336fde77bc3c7f054a917ebfdf559d0e1c751ce8a1e22fce6685",
+          "notice_artifact": "3809ba3f58b70bb021db657ff86e0a7a995de74d59ff37f809846809c846b981",
+          "snapshot_warning": "Session-level currency, not a precisely dated export. As-of excludes undated versions."
+        },
+        "inventory": [
+          {
+            "status": "indexed",
+            "items": 5024
+          }
+        ],
+        "documents": 4993,
+        "versions": 4993,
+        "units_in_latest_documents": [
+          {
+            "unit_kind": "scope_notes",
+            "count": 4993
+          },
+          {
+            "unit_kind": "section",
+            "count": 138491
+          }
+        ],
+        "features_in_latest_documents": 0,
+        "clocks": {
+          "earliest_snapshot": null,
+          "latest_snapshot": null,
+          "first_acquired": "2026-09-06T23:30:04Z",
+          "last_acquired": "2026-09-06T23:39:59Z"
+        },
+        "failures": []
+      },
+      {
+        "id": "uscode",
+        "jurisdiction_id": "us",
+        "name": "United States Code",
+        "authority": "Office of the Law Revision Counsel, US House of Representatives",
+        "kind": "statutory_code",
+        "homepage": "https://uscode.house.gov/download/download.shtml",
+        "source_status": "Publisher USLM compilation; positive-law status retained per title",
+        "access": "Publisher-provided all-title/per-title bulk ZIP downloads; US government publication",
+        "metadata": {
+          "current_through_public_law_date": "2026-07-12",
+          "inventory_artifact": "190a227afe0fff10944e0e600a15f14f4b16e59fef34d435e73456245e96b98b",
+          "release_point": "119-102",
+          "warning": "Release-point currency is not a blanket effective date."
+        },
+        "inventory": [
+          {
+            "status": "indexed",
+            "items": 58
+          },
+          {
+            "status": "reserved",
+            "items": 1
+          }
+        ],
+        "documents": 58,
+        "versions": 58,
+        "units_in_latest_documents": [
+          {
+            "unit_kind": "compiled_act",
+            "count": 5
+          },
+          {
+            "unit_kind": "courtRule",
+            "count": 544
+          },
+          {
+            "unit_kind": "editorial_notice",
+            "count": 1
+          },
+          {
+            "unit_kind": "reorganizationPlan",
+            "count": 107
+          },
+          {
+            "unit_kind": "scope_notes",
+            "count": 2349
+          },
+          {
+            "unit_kind": "section",
+            "count": 60469
+          }
+        ],
+        "features_in_latest_documents": 0,
+        "clocks": {
+          "earliest_snapshot": "2026-07-12",
+          "latest_snapshot": "2026-07-12",
+          "first_acquired": "2026-09-06T23:25:50Z",
+          "last_acquired": "2026-09-06T23:25:50Z"
+        },
+        "failures": []
+      }
+    ],
+    "jurisdictions": [
+      {
+        "id": "us",
+        "name": "United States",
+        "level": "federal",
+        "parent_id": null
+      },
+      {
+        "id": "us-dc",
+        "name": "District of Columbia",
+        "level": "district",
+        "parent_id": "us"
+      },
+      {
+        "id": "us-ny",
+        "name": "New York",
+        "level": "state",
+        "parent_id": "us"
+      },
+      {
+        "id": "us-ny-nyc",
+        "name": "New York City",
+        "level": "municipality",
+        "parent_id": "us-ny"
+      },
+      {
+        "id": "us-or",
+        "name": "Oregon",
+        "level": "state",
+        "parent_id": "us"
+      },
+      {
+        "id": "us-or-portland",
+        "name": "Portland, Oregon",
+        "level": "municipality",
+        "parent_id": "us-or"
+      },
+      {
+        "id": "us-tx",
+        "name": "Texas",
+        "level": "state",
+        "parent_id": "us"
+      }
+    ],
+    "raw_artifacts": {
+      "count": 287,
+      "bytes": 1220587392
+    },
+    "scope_warning": "Coverage is the listed acquired inventories, not all US law.",
+    "temporal_semantics": "As-of selects the latest acquired publisher snapshot dated on/before the requested date. It does not reconstruct intervening legal changes or decide legal effectiveness. Observation cutoff is independent; unknown effective dates remain unknown."
+  },
+  "checks": {
+    "sqlite_quick_check": [
+      "ok"
+    ],
+    "foreign_key_violations": [],
+    "duplicate_version_keys": 0,
+    "missing_provision_url_or_text": 0,
+    "invalid_source_versions": 0,
+    "missing_geometry_bounds": 0,
+    "orphan_geometry_bounds": 0
+  },
+  "artifacts_rehashed": 287,
+  "artifact_failures": [],
+  "acquisition_hosts": {
+    "api.github.com": 8,
+    "app.leg.wa.gov": 4,
+    "code.dccouncil.gov": 2,
+    "codeload.github.com": 2,
+    "data.cityofnewyork.us": 4,
+    "efiles.portlandoregon.gov": 3,
+    "opendata.cityofnewyork.us": 2,
+    "raw.githubusercontent.com": 6,
+    "statutes.capitol.texas.gov": 7,
+    "tcss.legis.texas.gov": 33,
+    "unblock.federalregister.gov": 1,
+    "uscode.house.gov": 6,
+    "www.ecfr.gov": 108,
+    "www.portland.gov": 2,
+    "www.portlandmaps.com": 41,
+    "zoningresolution.planning.nyc.gov": 133
+  },
+  "version_clocks": [
+    {
+      "collection_id": "dc-code",
+      "versions": 55,
+      "undated": 0,
+      "explicit_effective_dates": 0
+    },
+    {
+      "collection_id": "dc-laws",
+      "versions": 4544,
+      "undated": 0,
+      "explicit_effective_dates": 4544
+    },
+    {
+      "collection_id": "ecfr",
+      "versions": 52,
+      "undated": 0,
+      "explicit_effective_dates": 0
+    },
+    {
+      "collection_id": "nyc-zoning",
+      "versions": 117,
+      "undated": 0,
+      "explicit_effective_dates": 0
+    },
+    {
+      "collection_id": "nyc-zoning-gis",
+      "versions": 1,
+      "undated": 1,
+      "explicit_effective_dates": 0
+    },
+    {
+      "collection_id": "portland-zoning",
+      "versions": 1,
+      "undated": 0,
+      "explicit_effective_dates": 1
+    },
+    {
+      "collection_id": "portland-zoning-gis",
+      "versions": 1,
+      "undated": 1,
+      "explicit_effective_dates": 0
+    },
+    {
+      "collection_id": "texas",
+      "versions": 4993,
+      "undated": 4993,
+      "explicit_effective_dates": 0
+    },
+    {
+      "collection_id": "uscode",
+      "versions": 58,
+      "undated": 0,
+      "explicit_effective_dates": 0
+    }
+  ],
+  "latest_reference_relations": [
+    {
+      "relation": "publisher_applicability",
+      "count": 5027
+    },
+    {
+      "relation": "publisher_budget_legislation",
+      "count": 80
+    },
+    {
+      "relation": "publisher_citation",
+      "count": 93073
+    },
+    {
+      "relation": "publisher_citation_identifier",
+      "count": 1093057
+    },
+    {
+      "relation": "publisher_construction_of_law",
+      "count": 37
+    },
+    {
+      "relation": "publisher_cross_references",
+      "count": 3
+    },
+    {
+      "relation": "publisher_editor's_notes",
+      "count": 788
+    },
+    {
+      "relation": "publisher_effect_of_amendments",
+      "count": 6
+    },
+    {
+      "relation": "publisher_emergency_legislation",
+      "count": 8186
+    },
+    {
+      "relation": "publisher_expiration_of_law",
+      "count": 81
+    },
+    {
+      "relation": "publisher_history",
+      "count": 72934
+    },
+    {
+      "relation": "publisher_link",
+      "count": 341993
+    },
+    {
+      "relation": "publisher_prior_codifications",
+      "count": 10
+    },
+    {
+      "relation": "publisher_references_in_text",
+      "count": 2
+    },
+    {
+      "relation": "publisher_repeal_of_law",
+      "count": 3
+    },
+    {
+      "relation": "publisher_temporary_legislation",
+      "count": 1738
+    }
+  ],
+  "exact_identifier_resolution": {
+    "references_count": 376594,
+    "acquired_exact_targets": 273541
+  },
+  "geometry": {
+    "features": 32604,
+    "invalid": 51,
+    "empty": 0
+  },
+  "invalid_geometry_by_layer": {
+    "nyc-zoning-gis/nysp": 2,
+    "nyc-zoning-gis/nysp_sd": 1,
+    "nyc-zoning-gis/nyzma": 8,
+    "portland-zoning-gis/3": 40
+  },
+  "text_quality": [
+    {
+      "collection_id": "dc-code",
+      "quality": "publisher_text_projection",
+      "units": 24640
+    },
+    {
+      "collection_id": "dc-laws",
+      "quality": "metadata_only",
+      "units": 2961
+    },
+    {
+      "collection_id": "dc-laws",
+      "quality": "publisher_structured_xml",
+      "units": 1583
+    },
+    {
+      "collection_id": "ecfr",
+      "quality": "publisher_text_projection",
+      "units": 245185
+    },
+    {
+      "collection_id": "nyc-zoning",
+      "quality": "publisher_text_projection",
+      "units": 4068
+    },
+    {
+      "collection_id": "nyc-zoning-gis",
+      "quality": "publisher_text_projection",
+      "units": 1
+    },
+    {
+      "collection_id": "portland-zoning",
+      "quality": "image_or_extraction_warning",
+      "units": 224
+    },
+    {
+      "collection_id": "portland-zoning",
+      "quality": "layout_text_unverified",
+      "units": 1631
+    },
+    {
+      "collection_id": "portland-zoning-gis",
+      "quality": "publisher_text_projection",
+      "units": 1
+    },
+    {
+      "collection_id": "texas",
+      "quality": "publisher_text_projection",
+      "units": 143484
+    },
+    {
+      "collection_id": "uscode",
+      "quality": "publisher_text_projection",
+      "units": 63475
+    }
+  ],
+  "media_bearing_units": [
+    {
+      "collection_id": "dc-code",
+      "units": 2
+    },
+    {
+      "collection_id": "ecfr",
+      "units": 2713
+    },
+    {
+      "collection_id": "nyc-zoning",
+      "units": 81
+    },
+    {
+      "collection_id": "uscode",
+      "units": 6
+    }
+  ],
+  "software": {
+    "psephos-legal": "0.1.0",
+    "httpx": "0.28.1",
+    "lxml": "6.1.3",
+    "mcp": "1.29.1",
+    "pypdf": "6.17.0",
+    "shapely": "2.1.2",
+    "pyogrio": "0.13.0",
+    "pyproj": "3.8.0"
+  }
+}

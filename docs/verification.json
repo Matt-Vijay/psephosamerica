@@ -1,0 +1,110 @@
+{
+  "generated_at": "2026-09-07T00:28:50Z",
+  "python": "3.12.13",
+  "commands": [
+    {
+      "command": ".venv/bin/pytest -q",
+      "seconds": 0.866,
+      "exit_code": 0,
+      "stdout_sha256": "50f5248dc8806b21b235e40d31612f2c691996ab4455de73129a28ebbf7139e9",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "command": ".venv/bin/ruff check src scripts tests",
+      "seconds": 0.011,
+      "exit_code": 0,
+      "stdout_sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "command": ".venv/bin/ruff format --check src scripts tests",
+      "seconds": 0.011,
+      "exit_code": 0,
+      "stdout_sha256": "a0a0f191878d553ae2b88299d5ead34d7a6367937ff1bd9e304fb73059c83f8a",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "command": ".venv/bin/mypy src/psephos",
+      "seconds": 0.32,
+      "exit_code": 0,
+      "stdout_sha256": "8f3f4c0ebcb835e848682f2c6610a1bf32c86a993bdb626d9ff36e3a49408398",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "command": "venv/bin/python: verify import is installed site-packages",
+      "seconds": 0.019,
+      "exit_code": 0,
+      "stdout_sha256": "93e30eff6e7b833c312dc28d7be3eeec60083f9b6167d254c8894524bbd0336d",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "command": "venv/bin/psephos --data demo-data sync uscode --limit 1",
+      "seconds": 20.463,
+      "exit_code": 0,
+      "stdout_sha256": "5f45c6b3aab0916e585422c3d7b4922b1e7b4b5004c7ac2bb0c19a5fbbf4d43a",
+      "stderr_sha256": "3335ca517c4246804b09af7681dfe2268e34f2b1028a0684bb31476e89d79bec"
+    },
+    {
+      "command": "venv/bin/psephos --data demo-data read \"1 USC 1\"",
+      "seconds": 0.042,
+      "exit_code": 0,
+      "stdout_sha256": "a242eb48af4c957d363b704f2146a4174b144edcefe65e7df891688a2c7b84e0",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "command": "venv/bin/psephos --data demo-data sync uscode --limit 1 (idempotent repeat)",
+      "seconds": 0.197,
+      "exit_code": 0,
+      "stdout_sha256": "6379125621205314a2042c7f34947fc0756303e9b5adc34b9e875651741a6912",
+      "stderr_sha256": "760111a74c39de89788af236fa02c6afb181e90568c9953a40b7e5fb765d25b9"
+    },
+    {
+      "command": "fresh installed Python: scripts/verify_corpus.py --data retained-store --out docs/retrieval-verification.json",
+      "seconds": 7.099,
+      "exit_code": 0,
+      "stdout_sha256": "d0185ad9d2d06396c68e8ce2ad980b78c7614e042a618be4a27d447c4f9e6dee",
+      "stderr_sha256": "fcd025c1089afd22da1c8764f01a7948e2d45746c17b1c4a238306066353b079"
+    },
+    {
+      "command": "psephos audit",
+      "seconds": 19.157,
+      "exit_code": 0,
+      "stdout_sha256": "bebe7a779b2aa996485c4e2f2a73f6bcccef1eb92897bd828d222e51ed9d4152",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "focused_test_result": "...................                                                      [100%]\n19 passed in 0.65s",
+  "fresh_install": {
+    "isolated_directory": true,
+    "installed_from_wheel": true,
+    "dependency_install_seconds": 4.37,
+    "package_import": "installed wheel, not source checkout"
+  },
+  "fresh_demo_downloaded_bytes": 125772,
+  "fresh_demo": {
+    "key": "usc:/us/usc/t1/s1",
+    "artifact_sha": "02ce7c6441eb11252cd9eb67c63b4c2bfdee017d97a1321845a736c5b030859f",
+    "snapshot_date": "2026-07-12",
+    "text_characters": 22319
+  },
+  "fresh_repeat_downloaded_bytes": 0,
+  "retrieval_result": {
+    "status": "PASS",
+    "seconds": 6.421
+  },
+  "software": {
+    "pytest": "9.1.1",
+    "ruff": "0.16.6",
+    "mypy": "1.20.2"
+  },
+  "wheel_sha256": "10154e7da8cd50063c38c33f01d43b2255c5408718e399d79390e6d77e504e5c",
+  "release_boundary": {
+    "staged_files": 29,
+    "largest_file_bytes": 485542,
+    "tracked_raw_data_or_environment_files": 0,
+    "private_path_or_credential_pattern_findings": [],
+    "production_modules_equal_verified_wheel": 13,
+    "scan_limit": "Basic explicit-pattern scan, not a comprehensive security certification"
+  },
+  "status": "PASS"
+}
