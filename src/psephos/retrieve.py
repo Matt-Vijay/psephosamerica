@@ -53,6 +53,41 @@ def _display_metadata(raw: str, key: str) -> dict[str, Any]:
     return metadata
 
 
+def _georgia_page_summary(result: dict[str, Any]) -> None:
+    """Project department-wide navigation, never rewrite stored PDF/page evidence."""
+    if not result["parser"].startswith("ga-department-pdf-pages/"):
+        return
+    metadata, version = result["metadata"], result["version_metadata"]
+    page = metadata.get("physical_page")
+    outlines = version.get("publisher_outlines", [])
+    preceding = [n for n in outlines if page is not None and n["page"] < page]
+    metadata["preceding_publisher_bookmark"] = preceding[-1] if preceding else None
+    on_page = metadata.get("publisher_outlines", [])
+    metadata["publisher_outlines_count"] = len(on_page)
+    metadata["publisher_outlines"] = on_page[:20]
+    metadata["publisher_outlines_omitted"] = max(0, len(on_page) - 20)
+    omitted = {}
+    for key in (
+        "publisher_outlines",
+        "image_pages",
+        "machine_ocr_pages",
+        "media_only_pages",
+        "unextractable_or_blank_pages",
+    ):
+        if isinstance(version.get(key), list):
+            omitted[key] = len(version.pop(key))
+    version["omitted_list_counts"] = omitted
+    version["projection"] = (
+        "Department-wide lists omitted from this page response; counts shown above. "
+        "Page metadata retains up to 20 bookmarks starting on this physical page and "
+        "the last preceding bookmark (navigation context, not inferred legal scope). "
+        "Read neighbors by immutable id, legal_references for page links, and "
+        "source_receipt(acquisition_id) for the exact original PDF/hash. Its complete "
+        "outline and images, and the full stored version metadata, remain unchanged; "
+        "the latter is evaluator/operator evidence, not paginated by legal_read."
+    )
+
+
 def eligible(
     as_of: str | None, observed: str | None, *, exact: bool = False, target_key: str | None = None
 ) -> tuple[str, list[Any]]:
@@ -595,6 +630,7 @@ class Reader:
         result = self._locate(key_or_id, as_of=as_of, observation_cutoff=observation_cutoff)
         if not result["found"]:
             return result
+        _georgia_page_summary(result)
         # Old parsers duplicated raw image attributes (including base64) in metadata.
         # One paginated descriptor list is sufficient; immutable source markup is untouched.
         media = list(result["metadata"].pop("media", []))

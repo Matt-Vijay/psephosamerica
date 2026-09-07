@@ -40,6 +40,15 @@ access the network. `legal_read` returns explicit media descriptors and receipts
 bound to the **same PDF hash**, even when a newer file exists at its URL.
 Search results identify unverified OCR; original images always control.
 
+Short page reads do not dump the department-wide outline. They retain page-local
+bookmarks (up to 20, with an explicit omitted count), the preceding source bookmark
+as navigation context, and version summary/counts. Neighbors remain exact-version
+links; `source_receipt` identifies the original PDF with its complete outline and
+images. Full stored metadata is unchanged and is not paginated by `legal_read`.
+The [two-case MCP receipt](georgia-read-verification.json) measures 1,000-character
+reads shrinking from 206,796 to 7,383 bytes and 450,503 to 7,615 bytes without
+changing their text, clocks, source, neighbors, media or OCR warnings.
+
 The continuation uses a sealed `data/georgia-completion/plan.json`, seeded from
 inventory receipt 11407 by `--index-receipt 11407 --edition 2026-08-21`.
 `--acquire-only` separates acquisition from indexing when needed. This is a

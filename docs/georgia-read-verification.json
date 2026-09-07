@@ -1,0 +1,72 @@
+{
+  "status": "PASS",
+  "method": "Two real stdio MCP legal_read calls before/after; JSON byte counts use Python json.dumps defaults. Read-only canonical store; no acquisition or reindexing.",
+  "all_versions_metadata_sha256": "a5e1b3b4769d96794b343cf51e8b16d843dc2d258bab026a1d9db1b70a8bdbf5",
+  "retained_versions_compared": 4,
+  "cases": [
+    {
+      "key": "ga-rules:department-110:page-298",
+      "length": 1000,
+      "before_json_bytes": 206796,
+      "after_json_bytes": 7383,
+      "version_metadata_before_bytes": 201609,
+      "version_metadata_after_bytes": 1782,
+      "preserved_fields": [
+        "id",
+        "key",
+        "version_id",
+        "artifact_sha",
+        "acquisition_id",
+        "artifact_url",
+        "snapshot_date",
+        "snapshot_basis",
+        "published_on",
+        "effective_on",
+        "amended_on",
+        "repealed_on",
+        "observed_at",
+        "text",
+        "text_characters",
+        "next_offset",
+        "neighbors",
+        "media",
+        "references",
+        "text_completeness"
+      ],
+      "page_quality": "source_media_only",
+      "status": "PASS"
+    },
+    {
+      "key": "ga-rules:department-40:page-842",
+      "length": 1000,
+      "before_json_bytes": 450503,
+      "after_json_bytes": 7615,
+      "version_metadata_before_bytes": 445015,
+      "version_metadata_after_bytes": 1782,
+      "preserved_fields": [
+        "id",
+        "key",
+        "version_id",
+        "artifact_sha",
+        "acquisition_id",
+        "artifact_url",
+        "snapshot_date",
+        "snapshot_basis",
+        "published_on",
+        "effective_on",
+        "amended_on",
+        "repealed_on",
+        "observed_at",
+        "text",
+        "text_characters",
+        "next_offset",
+        "neighbors",
+        "media",
+        "references",
+        "text_completeness"
+      ],
+      "page_quality": "machine_ocr_unverified",
+      "status": "PASS"
+    }
+  ]
+}

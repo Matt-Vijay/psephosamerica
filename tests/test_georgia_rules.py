@@ -107,6 +107,63 @@ def driver():
     return module
 
 
+def test_page_read_bounds_department_outline_without_mutating_versions(store):
+    receipt = retain(store, b"%PDF-original")
+    outlines = [
+        {"title": f"Rule {n}. Exact heading", "parents": ["Chapter 1"], "page": n + 1}
+        for n in range(1700)
+    ]
+    units = [
+        Provision(
+            f"page-{n}",
+            f"Page {n}",
+            f"Page {n}",
+            "Original page text",
+            "",
+            receipt.url,
+            metadata={"physical_page": n, "publisher_outlines": [outlines[n - 1]]},
+        )
+        for n in (40, 41, 42)
+    ]
+    version, _, _ = store.ingest(
+        collection="test",
+        document="department",
+        title="Department",
+        url=receipt.url,
+        acquisition=receipt.id,
+        parser="ga-department-pdf-pages/3",
+        snapshot_date="2026-08-21",
+        snapshot_basis="Cover filing-through date",
+        metadata={
+            "publisher_outlines": outlines,
+            "image_pages": list(range(1000)),
+            "page_count": 1700,
+            "fidelity": "Original PDF controls",
+        },
+        provisions=units,
+    )
+    original = store.db.execute("SELECT metadata FROM versions WHERE id=?", (version,)).fetchone()[
+        0
+    ]
+    result = Reader(store).read("page-41", length=1000)
+    assert len(json.dumps(result).encode()) < 10000
+    assert result["metadata"]["preceding_publisher_bookmark"] == outlines[39]
+    assert result["metadata"]["publisher_outlines"] == [outlines[40]]
+    assert result["version_metadata"]["omitted_list_counts"] == {
+        "publisher_outlines": 1700,
+        "image_pages": 1000,
+    }
+    assert result["version_metadata"]["fidelity"] == "Original PDF controls"
+    assert result["version_metadata"]["page_count"] == 1700
+    assert [r["key"] for r in result["neighbors"]] == ["page-40", "page-42"]
+    assert result["artifact_sha"] == receipt.sha256 and result["effective_on"] is None
+    assert not Reader(store).read("page-41", as_of="2026-08-20")["found"]
+    assert (
+        store.db.execute("SELECT metadata FROM versions WHERE id=?", (version,)).fetchone()[0]
+        == original
+    )
+
+
 def test_acquisition_lifetime_cap_failed_bytes_and_cache_resume(store, tmp_path, monkeypatch):
     module = driver()
     monkeypatch.setattr(module, "CAP", 256 * 1024)
