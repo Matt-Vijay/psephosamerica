@@ -401,20 +401,22 @@
             "us-nm",
             "us-nv",
             "us-sc",
+            "us-va",
             "us-wa"
           ],
-          "people": 44418818,
-          "percent_of_us": 12.9961
+          "people": 53298925,
+          "percent_of_us": 15.5943
         },
         "closed_publisher_inventory": {
           "jurisdiction_ids": [
             "us-ga",
             "us-la",
             "us-nv",
-            "us-sc"
+            "us-sc",
+            "us-va"
           ],
-          "people": 24773399,
-          "percent_of_us": 7.2482
+          "people": 33653506,
+          "percent_of_us": 9.8464
         },
         "verified_complete_current_layer": {
           "jurisdiction_ids": [],
@@ -667,8 +669,8 @@
       "note":"No accepted regulatory body; no separate family-wide access finding asserted.","evidence":["docs/collection-wave.json#/blocked_not_published/us-vt"]},
     {"jurisdiction_id":"us-va","family":"statutes","status":"complete_publisher_edition","collection_ids":["va-code"],"layer_complete":false,
       "inventory":{"unit":"CSV title exports","expected":76,"retained":76,"excluded":0},"edition":"Observed title exports; precise snapshot/effect unknown","fidelity_exclusions":"33,383 native rows retained including headings/repeals and duplicate occurrences; separate constitution retained. Uncodified acts, charters, authorities and compacts excluded.","evidence":["data/collectors/leads/publish/acceptance-south-va-20260907-01.json#/completeness_review"]},
-    {"jurisdiction_id":"us-va","family":"regulations","status":"absent","collection_ids":[],"layer_complete":false,
-      "inventory":{"unit":"noted Administrative Code titles","expected":24,"retained":0,"excluded":24},"evidence":["data/collectors/leads/publish/acceptance-south-va-20260907-01.json#/completeness_review"]},
+    {"jurisdiction_id":"us-va","family":"regulations","status":"complete_publisher_edition","collection_ids":["va-administrative-code"],"layer_complete":false,
+      "inventory":{"unit":"native permanent Administrative Code chapters","expected":2027,"retained":2027,"excluded":0,"titles":24,"agencies":152,"publisher_labeled_repealed_chapters":774},"edition":"Live chapter snapshots observed September 7–8,2026 UTC; not one uniform legal edition","fidelity_exclusions":"Emergency rules, source-update lag, external forms/IBR and inferred amendment application excluded. 175/180 external image URLs retained; five literal HTTP links outside reviewed HTTPS routes, plus one embedded-data image in source markup. Tables/images not certified legal transcriptions; repeated publisher citations retain explicit source occurrences; 151 agency summaries are not regulations.","evidence":["docs/virginia-edition-verification.json","docs/virginia-edition.md","data/virginia-completion/inventory.json"]},
     {"jurisdiction_id":"us-wa","family":"statutes","status":"partial","collection_ids":["wa-rcw"],"layer_complete":false,
       "inventory":{"unit":"chapter exports","expected":2785,"retained":425,"excluded":2360,"pending":2358,"failed":2},"scope":"Wave's 424 chapters plus later 43.21C. Complete selected nine titles plus incidental chapters; 101 title-inventory rows are not chapter bodies.","edition":"Live publisher chapters; exact blanket snapshot unknown","evidence":["data/collectors/leads/publish/acceptance-west-wa-20260907-01.json#/completeness_review","docs/washington-land-use-verification.json#/measurements"]},
     {"jurisdiction_id":"us-wa","family":"regulations","status":"partial","collection_ids":["wa-wac"],"layer_complete":false,
@@ -707,6 +709,7 @@
     {"collection":"wa-rcw","remaining":"2,358 pending plus two failed chapter exports","assessment":"Maintained adapter and exact inventory; large acquisition, not demonstrated cheap.","evidence":"docs/washington-land-use-verification.json#/measurements; data/legal.sqlite3 inventories.collection_id=wa-rcw"},
     {"collection":"ne-revised-statutes","remaining":"40 numbered chapters","assessment":"Bounded worker-adapter opportunity, not maintained-core replay; UCC/appendix still excluded after those chapters.","evidence":"data/collectors/leads/publish/acceptance-midwest-ne-20260907-01.json#/completeness_review"},
     {"collection":"ga-administrative-rules","remaining":"0 publisher-listed department PDFs","assessment":"Completed one uniform August 21 publisher edition, preserving older evidence; source-media/OCR limitations remain explicit. Adds 11,302,748 residents once to closed regulatory-source inventory reach, not complete current-law coverage.","evidence":"docs/georgia-edition-verification.json"},
+    {"collection":"va-administrative-code","remaining":"0 native permanent-code chapter bodies","assessment":"All 2027 native chapters exactly replayed; source-media, emergency-rule and temporal limitations remain explicit. Named regulatory-source inventory closure, not complete current-law coverage.","evidence":"docs/virginia-edition-verification.json"},
     {"collections":["us-ca-codes","ny-state-laws","il-statutes"],"assessment":"Remaining large-state opportunities are not complete: CA documented PUBINFO cannot establish TipIn/deletion closure; NY authoritative denominator missing; IL 67 unexpanded chapters and 10.1-second pacing. Georgia won the retained-evidence comparison; no CA/IL acquisition launched.","evidence":"docs/georgia-edition.md#why-this-family-not-california-or-illinois"},
     {"collection":"utah-code","remaining":"No missing nonempty title export","assessment":"Future Title 16 is a heading-only source stub: annotation/projection accountability, not a download-completion opportunity.","evidence":"data/collectors/leads/publish/acceptance-west-ut-20260907-01.json#/completeness_review"}
   ]

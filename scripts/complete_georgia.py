@@ -6,15 +6,13 @@ import argparse
 import fcntl
 import hashlib
 import json
-import os
-import time
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
 
-import httpx
-
-from psephos.acquire import Acquirer, AcquisitionError
+from psephos.acquire import AcquisitionError
+from psephos.campaign import CampaignAcquirer
+from psephos.campaign import save as save
 from psephos.georgia_rules import (
     CLOCK_NOTE,
     COLLECTION,
@@ -28,16 +26,6 @@ from psephos.store import Store, json_text, utc_now
 
 CAP = 512 * 1024**2
 FILE_CAP = 128 * 1024**2
-
-
-def save(path: Path, value: Any) -> None:
-    temporary = path.with_suffix(".tmp")
-    with temporary.open("w") as stream:
-        json.dump(value, stream, indent=2)
-        stream.write("\n")
-        stream.flush()
-        os.fsync(stream.fileno())
-    os.replace(temporary, path)
 
 
 def old_state(s: Store, ids: list[str] | None = None) -> dict[str, Any]:
@@ -64,47 +52,11 @@ def old_state(s: Store, ids: list[str] | None = None) -> dict[str, Any]:
     }
 
 
-class GeorgiaAcquirer(Acquirer):
+class GeorgiaAcquirer(CampaignAcquirer):
     """Same HTTP engine, one persistent byte budget and host clock, no prohibited endpoints."""
 
     def __init__(self, store: Store, directory: Path, initial_bytes: int):
-        self.budget_path = directory / "budget.json"
-        self.budget = (
-            json.loads(self.budget_path.read_bytes())
-            if self.budget_path.exists()
-            else {"consumed_bytes": initial_bytes, "last_request_unix": 0.0, "cap_bytes": CAP}
-        )
-        # A prior process may have died after receiving bytes but before the core
-        # committed their exact length. Never spend that reservation a second time.
-        abandoned = self.budget.pop("reserved_bytes", 0)
-        self.budget["consumed_bytes"] += abandoned
-        self.budget["uncertain_reserved_bytes"] = (
-            self.budget.get("uncertain_reserved_bytes", 0) + abandoned
-        )
-        self._initializing = True
-        super().__init__(store, max_bytes=CAP, delay=2.1)
-        self._initializing = False
-        self.client.headers["Accept-Encoding"] = "identity"
-        self.client.event_hooks["response"] = [self._bounded_response]
-        save(self.budget_path, self.budget)
-
-    @property
-    def downloaded(self) -> int:
-        return int(self.budget["consumed_bytes"])
-
-    @downloaded.setter
-    def downloaded(self, value: int) -> None:
-        if not self._initializing:
-            self.budget["consumed_bytes"] = value
-            self.budget["reserved_bytes"] = 0
-            save(self.budget_path, self.budget)
-
-    def _pause(self, url: str, delay: float | None = None) -> None:
-        elapsed = max(0.0, time.time() - self.budget["last_request_unix"])
-        self.last_request[urlsplit(url).netloc] = time.monotonic() - elapsed
-        super()._pause(url, delay)
-        self.budget["last_request_unix"] = time.time()
-        save(self.budget_path, self.budget)
+        super().__init__(store, directory, initial_bytes, cap=CAP, file_cap=FILE_CAP)
 
     def _allowed(self, url: str) -> None:
         parsed = urlsplit(url)
@@ -115,35 +67,6 @@ class GeorgiaAcquirer(Acquirer):
         ):
             raise AcquisitionError("Only the reviewed Georgia download endpoint is in scope")
         super()._allowed(url)
-
-    def _bounded_response(self, response: httpx.Response) -> None:
-        if self.budget.get("reserved_bytes"):
-            raise AcquisitionError(
-                "Unresolved response reservation; restart before acquiring more bytes"
-            )
-        if response.status_code != 200:
-            return
-        if response.headers.get("content-encoding", "identity").lower() not in ("", "identity"):
-            raise AcquisitionError("Unexpected encoding; response not decoded")
-        length = response.headers.get("content-length", "")
-        if length.isdigit() and int(length) > min(FILE_CAP, CAP - self.downloaded):
-            raise AcquisitionError("Declared PDF exceeds campaign/file cap; body unread")
-
-        def chunks(chunk_size: int | None = None) -> Any:
-            iterator = response.iter_raw(chunk_size=65536)
-            while True:
-                if self.downloaded + 65536 > CAP:
-                    raise AcquisitionError("Hard lifetime cap before next response chunk")
-                self.budget["reserved_bytes"] = 65536
-                save(self.budget_path, self.budget)
-                try:
-                    yield next(iterator)
-                except StopIteration:
-                    self.budget["reserved_bytes"] = 0
-                    save(self.budget_path, self.budget)
-                    return
-
-        response.iter_bytes = chunks  # type: ignore[method-assign]
 
 
 def plan(s: Store, directory: Path, index_id: int | None, edition: str | None) -> dict[str, Any]:

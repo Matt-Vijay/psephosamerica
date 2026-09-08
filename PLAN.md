@@ -41,19 +41,18 @@ are represented, but 90 unverified OCR pages and two source-media-only pages do 
 count as verified publisher text. See docs/georgia-edition.md and its verification
 receipt; the single coverage ledger records the closed-inventory population gain.
 
-Deferred lead, not accepted corpus or a collector assignment: Virginia administrative
-code. Parent's September 7 publisher probes found the advertised developer services
-at https://law.lis.virginia.gov/developers/ and /xmlapi/ link to operational **/api/**
-endpoints; `AdministrativeCodeGetTitleListOfXml/` and
-`AdministrativeCodeGetSectionListOfXml/9/25/875/` returned JSON, not XML. The latter
-supplies membership/hierarchy but sampled Body=null. Actual section bodies are in
-https://law.lis.virginia.gov/admincodefull/title9/agency25/chapter875/ (675,102 bytes;
-reported SHA-256 2a037d27ebf70686449e6bc0c8a5514ac50e4f8a06272f144477a66eb1e1023a).
-Its HTML title is misleading; inspect the chapter heading, seven tables, four images,
-IBR, part-scoped definitions and history before any fidelity claim. Broader inventory
-completeness is unverified; these memory-only probes are not canonical receipts.
-The publisher FAQ at https://codecommission.dls.virginia.gov/faq_va_admin_code.shtml
-describes daily permanent-code updates at effectiveness (some exempt actions lag)
-and exclusion of emergency regulations. Developer access is not blanket reuse
-permission: Commonwealth copyright/IBR notices require a separate bounded preflight.
-Do not launch this or the deferred Florida administrative-code work automatically.
+Completed Virginia continuation: all 2,027 native chapters across 24 titles and
+152 agencies are retained and exactly replayed. The 151 agency summaries are
+separately labeled. All 180 external image URLs are accounted for: 175 retained,
+five literal HTTP references outside the reviewed HTTPS routes. Observed September
+7–8 UTC snapshots are not a uniform edition or complete current regulations;
+emergency rules and source-update lag remain excluded. See docs/virginia-edition.md
+and docs/virginia-edition-verification.json, including network-forbidden resumption.
+
+Current authorized continuation: parallel source completion in separate app tasks.
+Fifteen source-scoped workers each have a non-resetting 512 MiB allowance; including
+Virginia's allowance, total allocated new payload is at most 8 GiB. Each worker
+owns an isolated output store; this main task alone verifies and imports into the
+canonical SQLite catalog and coverage ledger. Existing source evidence is reused;
+no held/partial source is promoted without exact inventory and fidelity checks.
+The local coordination receipt is data/source-completion-20260908/fleet.json.

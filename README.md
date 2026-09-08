@@ -68,6 +68,10 @@ department PDFs at one filing-through date, with image-only pages and unverified
 OCR distinguished from publisher text. It includes reproducible reading and
 verification commands; it is not a complete-current-law claim.
 
+The [Virginia Administrative Code guide](docs/virginia-edition.md) covers all 2,027
+native chapters, separately labeled agency summaries, exact replay and explicit
+image/source limitations. This permanent-code inventory excludes emergency rules.
+
 The [completed collection wave](docs/collection-wave.md) adds reviewed source
 material from 44 states to the Texas baseline: 77 collections and 1,383,595 mixed
 retrieval units in the latest acquired documents. Held/blocked states, partial

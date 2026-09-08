@@ -1,0 +1,333 @@
+{
+  "status": "PASS",
+  "recorded_at": "2026-09-08T00:43:40Z",
+  "counts": {
+    "chapters": 2027,
+    "chapter_units": 40224,
+    "native_section_units": 34597,
+    "repeated_native_index_entries": 6,
+    "tables": 1614,
+    "images": 270,
+    "chapter_html_bytes": 141262121,
+    "index_html_bytes": 71743882,
+    "chapter_context_units": 2027,
+    "hierarchy_context_units": 3600,
+    "section_units": 33873,
+    "source_reference_list_units": 724,
+    "agency_summaries_with_body": 151,
+    "preface_json_bytes": 483982,
+    "agency_summaries_without_body": 1,
+    "documents": 2178,
+    "distinct_native_section_citations": 34596,
+    "image_response_bytes": 4494540
+  },
+  "titles": 24,
+  "agencies": 152,
+  "publisher_labeled_repealed_chapters": 774,
+  "snapshot_dates": [
+    "2026-09-07",
+    "2026-09-08"
+  ],
+  "status_counts": {
+    "ingested": 1998,
+    "ingested_with_source_media": 29
+  },
+  "all_chapters_exact_replay": "PASS",
+  "independent_raw_native_link_and_table_image_counts": "PASS",
+  "source_quirks": [
+    {
+      "chapter": "2VAC5-332",
+      "unclosed_layout_wrappers": 8
+    },
+    {
+      "chapter": "8VAC20-850",
+      "repeated_native_index_entries": {
+        "9998": 1
+      }
+    },
+    {
+      "chapter": "9VAC5-80",
+      "empty_source_section_headings": 1
+    },
+    {
+      "chapter": "9VAC20-121",
+      "empty_source_section_headings": 1
+    },
+    {
+      "chapter": "9VAC25-115",
+      "malformed_anchor_whitespace_repairs": 1
+    },
+    {
+      "chapter": "9VAC25-210",
+      "empty_source_section_headings": 1
+    },
+    {
+      "chapter": "12VAC5-230",
+      "empty_source_hierarchy_blocks": 1
+    },
+    {
+      "chapter": "12VAC5-371",
+      "repeated_native_index_entries": {
+        "75": 1
+      }
+    },
+    {
+      "chapter": "12VAC35-105",
+      "unclosed_layout_wrappers": 2
+    },
+    {
+      "chapter": "12VAC35-230",
+      "empty_source_section_headings": 1
+    },
+    {
+      "chapter": "13VAC5-63",
+      "preserved_cross_section_wrappers": [
+        {
+          "data-show-promulgator": "1"
+        },
+        {
+          "data-qa": "referenceStandard",
+          "data-qa-meta": "ea0cf904-9546-49e9-a6c3-361e977053ce",
+          "data-ref-promulgator": "IMC2021P1_Ch15_PromUL"
+        },
+        {
+          "data-show-promulgator": "0"
+        },
+        {
+          "data-qa": "referenceStandard",
+          "data-qa-meta": "890ef400-6b4e-499b-8310-cf173f886279",
+          "data-ref-promulgator": "IMC2021P1_Ch15_PromUL"
+        }
+      ]
+    },
+    {
+      "chapter": "18VAC41-50",
+      "repeated_native_index_entries": {
+        "125": 1,
+        "15": 1,
+        "255": 1,
+        "45": 1
+      }
+    },
+    {
+      "chapter": "18VAC115-100",
+      "scoped_native_occurrences": {
+        "60": [
+          {
+            "native_part": "II",
+            "occurrence": 1,
+            "publisher_entry_ids": [
+              "sectionID36113"
+            ]
+          },
+          {
+            "native_part": "III",
+            "occurrence": 2,
+            "publisher_entry_ids": [
+              "sectionID36114"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "chapter": "22VAC40-131",
+      "empty_source_hierarchy_blocks": 1
+    }
+  ],
+  "media": {
+    "source_image_occurrences": 270,
+    "without_fetchable_descriptor": 1,
+    "unique_external_urls": 180,
+    "status_counts": {
+      "not_acquired_outside_reviewed_image_routes": 5,
+      "retained_image_response": 175
+    },
+    "unavailable_or_unreviewed": [
+      {
+        "url": "http://law.lis.virginia.gov/RISImages/678220685369DHCDVH_files/image002.jpg",
+        "status": "not_acquired_outside_reviewed_image_routes",
+        "reason": "Source link retained; no inferred HTTPS upgrade or third-party fetch."
+      },
+      {
+        "url": "http://law.lis.virginia.gov/RISImages/678220685369DHCDVH_files/image003.jpg",
+        "status": "not_acquired_outside_reviewed_image_routes",
+        "reason": "Source link retained; no inferred HTTPS upgrade or third-party fetch."
+      },
+      {
+        "url": "http://law.lis.virginia.gov/RISImages/678220685369DHCDVH_files/image004.jpg",
+        "status": "not_acquired_outside_reviewed_image_routes",
+        "reason": "Source link retained; no inferred HTTPS upgrade or third-party fetch."
+      },
+      {
+        "url": "http://law.lis.virginia.gov/RISImages/678220685369DHCDVH_files/image005.jpg",
+        "status": "not_acquired_outside_reviewed_image_routes",
+        "reason": "Source link retained; no inferred HTTPS upgrade or third-party fetch."
+      },
+      {
+        "url": "http://law.lis.virginia.gov/RISImages/693206298796DHCDVH_files/image001.jpg",
+        "status": "not_acquired_outside_reviewed_image_routes",
+        "reason": "Source link retained; no inferred HTTPS upgrade or third-party fetch."
+      }
+    ],
+    "semantics": "Separately observed image responses, not a certification of diagrams or snapshot-bound historical assets. Embedded image bytes remain in original HTML/markup."
+  },
+  "acquisition": {
+    "first_acquisition_id": 11563,
+    "last_acquisition_id": 18040,
+    "observation_range": [
+      "2026-09-07T20:48:54Z",
+      "2026-09-08T00:42:45Z"
+    ],
+    "http_status_counts": {
+      "301": 2042,
+      "404": 17,
+      "200": 4415,
+      "0": 4
+    },
+    "receipted_payload_bytes": 219531172,
+    "unique_new_objects_rehashed": 4399,
+    "unique_new_object_bytes": 219481223,
+    "initial_preflight_bytes": 2869997,
+    "budget": {
+      "consumed_bytes": 219596708,
+      "last_request_unix": 1788828165.310733,
+      "cap_bytes": 536870912,
+      "uncertain_reserved_bytes": 65536,
+      "interruptions": [
+        {
+          "at": "2026-09-07T21:20:50Z",
+          "charged_bytes": 65536,
+          "basis": "Operator SIGINT while HTTP headers were pending; conservative one-read allowance, not measured retained payload. No source bytes or successful receipt asserted."
+        }
+      ]
+    },
+    "semantics": "Application-read payload charges, including failed transfers; not HTTP framing or unread redirect/error bodies. Uncertain interruption allowances are separate from successfully retained bytes."
+  },
+  "local_manifest": {
+    "path_relative_to_data": "virginia-completion/verified-chapters.json",
+    "sha256": "e7514997ed7a54365827047ed7c643360183fd852dfd962e20b399543464b040"
+  },
+  "limits": [
+    "Native publisher permanent-code chapters; emergency rules and some lagging exempt actions are outside this source.",
+    "Observed snapshots, not a guarantee of complete effective regulations on those dates.",
+    "Forms/IBR links are not retained incorporated documents; images are not certified transcriptions.",
+    "Rule/section counts include repealed, removed, and reference-list entries."
+  ],
+  "cached_resume": {
+    "status": "PASS",
+    "network": "forbidden",
+    "before": {
+      "acquisitions": 18040,
+      "versions": 2178,
+      "provisions": 40375,
+      "consumed_bytes": 219596708
+    },
+    "after": {
+      "acquisitions": 18040,
+      "versions": 2178,
+      "provisions": 40375,
+      "consumed_bytes": 219596708
+    }
+  },
+  "mcp_cases": [
+    {
+      "tool": "legal_coverage",
+      "arguments": {
+        "collection": "va-administrative-code"
+      },
+      "response_sha256": "4734a37e938137ac774500a5da2ce03dc04d7d6664b087bf113c5a0a0edc3180",
+      "json_bytes": 2634
+    },
+    {
+      "tool": "legal_search",
+      "arguments": {
+        "collection": "va-administrative-code",
+        "query": "stormwater",
+        "limit": 2
+      },
+      "response_sha256": "c0b88a1b209d4ece1aa8b33b828e1df9c5b3681274d738f1f6bb3e47e2af4c27",
+      "json_bytes": 2309
+    },
+    {
+      "tool": "legal_read",
+      "arguments": {
+        "key_or_id": "va-vac:9VAC25-875-10",
+        "length": 2000
+      },
+      "response_sha256": "874e4a8c61ea9c7fb08c997c943233b2fdf1b74ca8e4900ec80162e5bebe8940",
+      "json_bytes": 6526
+    },
+    {
+      "tool": "legal_read",
+      "arguments": {
+        "key_or_id": "va-vac:9VAC25-875-20",
+        "length": 2000
+      },
+      "response_sha256": "ebb5ccb1da0d48f577eac3fefb183605faafea77711bce8f6d1a4518a78471f3",
+      "json_bytes": 7857
+    },
+    {
+      "tool": "legal_read",
+      "arguments": {
+        "key_or_id": "va-vac:9VAC25-875-1375",
+        "length": 1000
+      },
+      "response_sha256": "b5382625b28cf72abe5a60cc3d5aaa041c8e2ab7616534d38b7591ab89c443db",
+      "json_bytes": 7957
+    },
+    {
+      "tool": "legal_read",
+      "arguments": {
+        "key_or_id": "va-vac:2VAC5-332-70",
+        "length": 2000
+      },
+      "response_sha256": "05d380d3a4be6b6c1fffdfd195cc7048bced0ffe7e17beab2fefe355eea3253a",
+      "json_bytes": 6308
+    },
+    {
+      "tool": "legal_read",
+      "arguments": {
+        "key_or_id": "va-vac:1VAC17-10-10",
+        "length": 1000
+      },
+      "response_sha256": "9fedac4cd35a8c6ca6ef9063035524bc233ede29e8aef254c48da06355442371",
+      "json_bytes": 4206
+    },
+    {
+      "tool": "legal_read",
+      "arguments": {
+        "key_or_id": "va-vac:18VAC115-100-60/_occurrence/1",
+        "length": 1000
+      },
+      "response_sha256": "99387efe965424d53f24b7b93fbd448a775d741a8aaa4d5dc71ae0a0ff7e8bc4",
+      "json_bytes": 6894
+    },
+    {
+      "tool": "legal_read",
+      "arguments": {
+        "key_or_id": "va-vac:18VAC115-100-60/_occurrence/2",
+        "length": 1000
+      },
+      "response_sha256": "644cd20aae60a0c9948937eee18fccd90e405cbea86876365f3b7cb90b70095c",
+      "json_bytes": 6882
+    },
+    {
+      "tool": "legal_read",
+      "arguments": {
+        "key_or_id": "va-vac:18VAC115-100-60",
+        "length": 1000
+      },
+      "expectation": "ambiguous native citation; both publisher occurrences offered",
+      "response_sha256": "579ca2eade36c4d193c9322cf11f1f2179988fcc37bd7370e36da78f1858ceb7",
+      "json_bytes": 239
+    }
+  ],
+  "verification_seconds": 28.885,
+  "runtime": {
+    "python": "3.12.13",
+    "lxml": "6.1.3",
+    "httpx": "0.28.1",
+    "mcp": "1.29.1"
+  }
+}
