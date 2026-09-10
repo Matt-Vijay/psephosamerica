@@ -1,6 +1,9 @@
 import gzip
+import socket
 from datetime import UTC, datetime, timedelta
 from email.utils import format_datetime
+from http.server import BaseHTTPRequestHandler, HTTPServer
+from threading import Thread
 
 import httpx
 import pytest
@@ -13,6 +16,51 @@ def client(store, handler, **kwargs):
     a.client.close()
     a.client = httpx.Client(transport=httpx.MockTransport(handler))
     return a
+
+
+@pytest.mark.parametrize("variable", ["HTTPS_PROXY", "https_proxy"])
+def test_https_proxy_is_used_without_direct_dns_or_fallback(store, monkeypatch, variable):
+    tunnels = []
+
+    class Proxy(BaseHTTPRequestHandler):
+        def do_CONNECT(self):
+            tunnels.append(self.path)
+            self.send_error(403, "Fixture proxy denies destination")
+
+        def log_message(self, *args):
+            pass
+
+    server = HTTPServer(("127.0.0.1", 0), Proxy)
+    worker = Thread(target=server.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True)
+    worker.start()
+    for key in ("HTTPS_PROXY", "https_proxy"):
+        monkeypatch.delenv(key, raising=False)
+    monkeypatch.setenv(variable, f"http://127.0.0.1:{server.server_port}")
+    # The runtime also supplies SOCKS; HTTPS acquisition must not need socksio.
+    monkeypatch.setenv("ALL_PROXY", "socks5h://127.0.0.1:1")
+    monkeypatch.setenv("SSL_CERT_FILE", "/nonexistent/psephos-test-ca.pem")
+    resolve = socket.getaddrinfo
+
+    def only_proxy(host, *args, **kwargs):
+        assert host == "127.0.0.1", "Acquisition bypassed the configured HTTPS proxy"
+        return resolve(host, *args, **kwargs)
+
+    monkeypatch.setattr(socket, "getaddrinfo", only_proxy)
+    a = None
+    try:
+        a = Acquirer(store, delay=0)
+        with pytest.raises(AcquisitionError, match="Fixture proxy denies destination"):
+            a.fetch("https://publisher.invalid/source", check_robots=False)
+        assert tunnels == ["publisher.invalid:443"]
+        assert a.downloaded == 0
+        assert store.db.execute("SELECT count(*) FROM acquisitions").fetchone()[0] == 1
+        assert store.db.execute("SELECT count(*) FROM artifacts").fetchone()[0] == 0
+    finally:
+        if a is not None:
+            a.close()
+        server.shutdown()
+        worker.join(timeout=1)
+        server.server_close()
 
 
 def test_decoded_hash_caps_and_cached_role_independence(store):

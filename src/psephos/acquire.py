@@ -14,6 +14,7 @@ from email.utils import parsedate_to_datetime
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
+from urllib.request import getproxies_environment
 from urllib.robotparser import RobotFileParser
 
 import httpx
@@ -102,6 +103,9 @@ class Acquirer:
             timeout=httpx.Timeout(90, connect=30),
             follow_redirects=False,
             headers={"User-Agent": USER_AGENT, "Accept-Encoding": "gzip, deflate"},
+            # Public HTTPS sources use the operator's HTTPS proxy, if supplied.
+            # Keep certificate defaults; do not instantiate unrelated SOCKS routes.
+            proxy=getproxies_environment().get("https"),
             trust_env=False,
         )
 

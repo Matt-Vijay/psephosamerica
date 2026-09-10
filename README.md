@@ -133,6 +133,10 @@ Retry-After; it defers long waits and stops on access restrictions. Default core
 limits are 4 GiB per run and 1 GiB per file; source-specific adapters can use an
 explicitly bounded exception, such as California's bulk archive. No API key or paid
 service is used.
+For proxy-managed networks, acquisition uses `HTTPS_PROXY` (or `https_proxy`) as
+its explicit HTTPS route. Proxy failures never fall back to a direct connection.
+TLS verification stays enabled with the normal certificate defaults; unrelated
+SOCKS routes and environment certificate overrides are not loaded.
 The verification script checks the recorded milestone corpus plus the two Portland
 reader guides; future publisher changes can require updated expectations. Omit `--publisher-checks`
 to verify only already-retained alternate-source receipts, with no network.
