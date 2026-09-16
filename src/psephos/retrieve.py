@@ -183,6 +183,7 @@ def _washington_reference(target: str) -> tuple[str, str, str] | None:
 class Reader:
     def __init__(self, store: Store):
         self.db = store.db
+        self.root = store.root
 
     def coverage(
         self,
@@ -370,6 +371,9 @@ class Reader:
         return result
 
     def _source_card(self, row: dict[str, Any]) -> dict[str, Any]:
+        from .refresh import collection_status
+
+        row["refresh"] = collection_status(self.root, row["id"])
         metadata = json.loads(row["metadata"])
         # Large machine inventories are drill-down evidence, not scope/currency notices.
         bulk = {"layer_metadata", "portal", "title_inventory"}

@@ -23,13 +23,13 @@ model, a hosted service, or a nationwide current-law guarantee.
 
 ## Coverage and demonstrated use
 
-The local catalog contains **87 collections, 21,037 documents, 21,285 versions
+At the v0.1.0 checkpoint, the local catalog contained **87 collections, 21,037 documents, 21,285 versions
 and 1,523,925 mixed retrieval records**. This continuation adds Nebraska's
 66-document completion and all 15 Portland Charter chapters, preserving the
 prior corpus. These additions total 28,018 retrieval records; they are not
 28,018 new laws. The public starter remains the smaller federal-only dataset.
 
-The [coverage ledger](coverage-ledger.json) is the current source-by-source
+The [coverage ledger](coverage-ledger.json) is that release's source-by-source
 accounting. It separates completed publisher inventories, partial bodies,
 blocked sources and absent families. A completed inventory can be an older or
 narrowed edition; population living in those jurisdictions is not comprehensive
@@ -47,10 +47,19 @@ discovered all nine tools and exercised eight real stdio calls. Reproduce the
 small installed-package check with `scripts/verify_release.py`. CI exercises
 offline fixtures and lint, without downloading the legal corpus.
 
-The integrated gate passed 168 tests with one skip and one intentionally
+The v0.1.0 integrated gate passed 168 tests with one skip and one intentionally
 deselected full-payload check; Ruff and strict mypy passed. All 28 package modules
-match the released wheel. A separate local full-data backup preserves the working
+matched the released wheel. A separate local full-data backup preserves the working
 catalog, original objects and collector evidence; it is not an off-site backup.
+
+The post-release refresh gate passed **198 tests**, with the same skip and
+deselection; Ruff and strict mypy passed. Live checks completed U.S. Code
+release 119-103, D.C.'s two collections and the two selected Portland guides.
+eCFR resumed through title 44 without redownloading completed titles; six titles
+remain in this cycle after its bounded passes. No complete eCFR check is claimed.
+The macOS timer registered, but Python startup was denied Documents access.
+It was uninstalled and refresh paused pending operator-approved folder access;
+this machine does not yet have a working unattended schedule.
 
 ## Remaining boundaries
 
@@ -63,8 +72,10 @@ catalog, original objects and collector evidence; it is not an off-site backup.
   histories are not solved by text extraction.
 - Zoning polygons and Census identities do not determine parcel applicability
   or permission to build. Invalid geometry is reported, not silently repaired.
-- Source collection is explicit and bounded. No automatic refresh service was
-  added. Portable snapshots do not transfer campaign download allowances.
+- [Automatic refresh](refresh.md) now supports four reviewed source commands,
+  with local scheduling, persistent allowances and failure/overdue reporting.
+  Other sources remain manual or fixed-edition. Portable snapshots do not
+  transfer campaign or refresh allowances.
 - Only the starter's specific artifacts received this release's redistribution
   review. No blanket right to publish the larger corpus is asserted.
 

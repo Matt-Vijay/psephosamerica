@@ -17,3 +17,9 @@ Source receipts remain under `data/nebraska-publication-20260916` and
 `data/collectors/portland-charter`. Massachusetts/Nevada remain blocked by their
 runtime permission checks. Do not restart the historical fleet or open another
 source campaign without a new assignment.
+
+The next authorized item is automatic freshness, implemented separately from
+source expansion. [Refresh operations](docs/refresh.md) cover the first four
+reviewed source commands, a bounded local worker, source-card status, and an
+optional macOS timer. Existing access denials and original campaign budgets
+remain in force; this does not reactivate the historical collection fleet.

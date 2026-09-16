@@ -40,6 +40,23 @@ def main() -> None:
     sync.add_argument(
         "--as-of", help="Acquire a source-supported historical snapshot when available"
     )
+    refresh = commands.add_parser(
+        "refresh", help="Configure and run bounded automatic source updates"
+    )
+    refresh_commands = refresh.add_subparsers(dest="refresh_command", required=True)
+    configure = refresh_commands.add_parser(
+        "configure", help="Opt existing sources into scheduled checks"
+    )
+    configure.add_argument("sources", nargs="+")
+    configure.add_argument("--interval-hours", type=int, default=168)
+    configure.add_argument("--max-mib", type=int, default=512)
+    configure.add_argument("--monthly-mib", type=int, default=8192)
+    for name in ("run", "status", "pause", "install", "uninstall"):
+        refresh_commands.add_parser(name)
+    retry = refresh_commands.add_parser(
+        "retry", help="Request another check without resetting budgets or HTTP policy"
+    )
+    retry.add_argument("source")
     status = commands.add_parser(
         "status", help="Browse bounded acquired-source coverage, clocks, and inventory status"
     )
@@ -116,6 +133,25 @@ def main() -> None:
             from .sources import available_sources
 
             result = available_sources()
+        elif args.command == "refresh":
+            from . import refresh as updater
+
+            if args.refresh_command == "configure":
+                result = updater.configure(
+                    args.data,
+                    args.sources,
+                    interval_hours=args.interval_hours,
+                    max_mib=args.max_mib,
+                    monthly_mib=args.monthly_mib,
+                )
+            elif args.refresh_command in {"install", "uninstall"}:
+                from . import refresh_service
+
+                result = getattr(refresh_service, args.refresh_command)(args.data)
+            elif args.refresh_command == "retry":
+                result = updater.retry(args.data, args.source)
+            else:
+                result = getattr(updater, args.refresh_command)(args.data)
         elif args.command == "export":
             from .datasets import export_dataset
 
@@ -220,6 +256,19 @@ def main() -> None:
             finally:
                 store.close()
         print(json.dumps(result, ensure_ascii=False, indent=2))
+        if args.command == "refresh" and args.refresh_command == "run" and result.get("enabled"):
+            if result.get("worker_error") or any(
+                entry.get("status")
+                in {
+                    "blocked",
+                    "failed_retryable",
+                    "budget_exhausted",
+                    "disk_space_low",
+                    "interrupted",
+                }
+                for entry in result.get("sources", {}).values()
+            ):
+                raise SystemExit(1)
     except (ValueError, OSError, RuntimeError, sqlite3.Error, zipfile.BadZipFile) as exc:
         print(f"psephos: {exc}", file=sys.stderr)
         raise SystemExit(1) from exc

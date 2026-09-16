@@ -84,6 +84,17 @@ def robots_lines(data: bytes) -> list[str]:
 
 
 class Acquirer:
+    resume_after: str | None = None
+
+    def resume_window(self) -> int | None:
+        """Only selected body fetches opt into reuse during an unfinished refresh cycle."""
+        if self.resume_after is None:
+            return None
+        elapsed = (
+            datetime.now(UTC) - datetime.fromisoformat(self.resume_after.replace("Z", "+00:00"))
+        ).total_seconds()
+        return max(0, min(86400, int(elapsed) + 1))
+
     def __init__(
         self,
         store: Store,
@@ -303,7 +314,7 @@ class Acquirer:
                     staging.mkdir(exist_ok=True)
                     with tempfile.NamedTemporaryFile(dir=staging, delete=False) as output:
                         temporary = Path(output.name)
-                        for chunk in response.iter_bytes():
+                        for chunk in response.iter_bytes(chunk_size=64 * 1024):
                             size += len(chunk)
                             self.downloaded += len(chunk)
                             if size > max_file_bytes or self.downloaded > self.max_bytes:

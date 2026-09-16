@@ -122,6 +122,11 @@ A second copy on the same disk protects against accidental edits, not disk loss.
 
 ## Support and limits
 
+[Automatic refresh](refresh.md) can schedule the current U.S. Code, eCFR, D.C.
+and the reviewed Portland guidance pages, with bounded downloads and visible
+failure/overdue status. Other retained collections remain explicitly unscheduled.
+This feature is in the current checkout, not the original v0.1.0 wheel.
+
 - **Fresh acquisition:** `psephos sources` lists the maintained source commands
   and their scope. Having an adapter does not mean a complete state is available.
 - **Imported archives:** readable accepted snapshots can contain collections

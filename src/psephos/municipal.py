@@ -49,7 +49,10 @@ def portland_guide(data: bytes, slug: str) -> Provision:
     )
 
 
-def sync_portland_guides(s: Store, a: Acquirer, limit: int | None, as_of: str | None) -> None:
+def sync_portland_guides(
+    s: Store, a: Acquirer, limit: int | None, as_of: str | None
+) -> dict[str, dict[str, list[str]]]:
+    """Assess the reviewed two-page selection, not a complete publisher guide roster."""
     if as_of:
         raise ValueError("Portland guide pages have no supported historical snapshot")
     s.collection(
@@ -71,20 +74,25 @@ def sync_portland_guides(s: Store, a: Acquirer, limit: int | None, as_of: str | 
         s.inventory("portland-zoning-guides", slug, PORTLAND_GUIDES + slug, "pending")
     for slug in slugs[:limit]:
         url = PORTLAND_GUIDES + slug
-        raw = a.fetch(url)
-        unit = portland_guide(s.artifact(raw.sha256), slug)
-        _, count, new = s.ingest(
-            collection="portland-zoning-guides",
-            document=unit.key,
-            title=unit.heading,
-            url=url,
-            acquisition=raw.id,
-            snapshot_basis="Undated explanatory publisher page",
-            parser="portland-guide-1",
-            provisions=[unit],
-        )
+        try:
+            raw = a.fetch(url)
+            unit = portland_guide(s.artifact(raw.sha256), slug)
+            _, count, new = s.ingest(
+                collection="portland-zoning-guides",
+                document=unit.key,
+                title=unit.heading,
+                url=url,
+                acquisition=raw.id,
+                snapshot_basis="Undated explanatory publisher page",
+                parser="portland-guide-1",
+                provisions=[unit],
+            )
+        except (ValueError, AcquisitionError) as exc:
+            s.inventory("portland-zoning-guides", slug, url, "failed", str(exc))
+            raise
         s.inventory("portland-zoning-guides", slug, url, "indexed")
         progress("portland-zoning-guides", slug, count, new)
+    return {"inventory_items": {"portland-zoning-guides": list(slugs)}}
 
 
 def nyc_units(data: bytes, url: str) -> Iterator[Provision]:

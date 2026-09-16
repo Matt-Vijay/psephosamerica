@@ -16,7 +16,7 @@ from lxml import etree
 from .acquire import Acquirer
 from .parse import child_text, local_name, markup, readable, source_links, xml_root
 from .sources import checked_zip, progress
-from .store import Provision, Reference, Store, digest
+from .store import TEXT_PROJECTION, Provision, Reference, Store, digest
 
 REPO = "https://api.github.com/repos/dccouncil/law-xml-codified"
 XI = "{http://www.w3.org/2001/XInclude}include"
@@ -142,7 +142,10 @@ def law_unit(root: etree._Element) -> Provision:
     )
 
 
-def sync_dc(s: Store, a: Acquirer, limit: int | None, as_of: str | None) -> None:
+def sync_dc(
+    s: Store, a: Acquirer, limit: int | None, as_of: str | None
+) -> dict[str, dict[str, list[str]]]:
+    """Return current archive membership without retiring historical inventory rows."""
     a.fetch("https://code.dccouncil.gov/")  # Publisher public-domain and bulk-preference notice.
     _, repo = a.json(REPO)
     branch = repo["default_branch"]
@@ -211,11 +214,29 @@ def sync_dc(s: Store, a: Acquirer, limit: int | None, as_of: str | None) -> None
             for member in archive.namelist()
             if re.search(r"/us/dc/council/periods/\d+/laws/\d+-\d+\.xml$", member)
         ]
+        inventory_items = {
+            collection: [member.removeprefix(prefix) for member in members]
+            for collection, members in (("dc-code", titles), ("dc-laws", laws))
+        }
         for collection, members in (("dc-code", titles), ("dc-laws", laws)):
+            # The archive hash covers every included member. Reuse only projections
+            # accepted with the same snapshot and parser, never inventory status alone.
+            accepted = {
+                row["member"]
+                for row in s.db.execute(
+                    "SELECT v.member FROM versions v JOIN documents d ON d.id=v.document_id "
+                    "WHERE d.collection_id=? AND v.artifact_sha=? AND v.snapshot_date=? "
+                    "AND v.parser=?",
+                    (collection, raw.sha256, snapshot, "dc-1/" + TEXT_PROJECTION),
+                )
+            }
             for member in members:
                 s.inventory(collection, member.removeprefix(prefix), raw.url, "pending")
             for member in members[:limit]:
                 item = member.removeprefix(prefix)
+                if member in accepted:
+                    s.inventory(collection, item, raw.url, "indexed")
+                    continue
                 try:
                     root = (
                         expanded(archive, member)
@@ -257,3 +278,4 @@ def sync_dc(s: Store, a: Acquirer, limit: int | None, as_of: str | None) -> None
                 except (ValueError, KeyError) as exc:
                     s.inventory(collection, item, raw.url, "failed", str(exc))
                     print(f"{collection}: {item}: FAILED: {exc}", file=sys.stderr)
+    return {"inventory_items": inventory_items}

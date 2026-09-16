@@ -19,7 +19,7 @@ from .acquire import Acquirer, AcquisitionError
 from .campaign import CampaignAcquirer
 from .parse import child_text, ecfr_units, uscode_units, xml_root
 from .retrieve import Reader, cutoff_date
-from .store import Store
+from .store import TEXT_PROJECTION, Store, writer_lock
 
 USC_INDEX = "https://uscode.house.gov/download/download.shtml"
 ECFR_INDEX = "https://www.ecfr.gov/api/versioner/v1/titles.json"
@@ -43,7 +43,7 @@ def checked_zip(path: Path) -> zipfile.ZipFile:
     return archive
 
 
-def sync_uscode(s: Store, a: Acquirer, limit: int | None, as_of: str | None) -> None:
+def sync_uscode(s: Store, a: Acquirer, limit: int | None, as_of: str | None) -> dict[str, Any]:
     if as_of:
         raise ValueError(
             "US Code sync currently supports the current OLRC release; no guessed historic URLs"
@@ -81,18 +81,40 @@ def sync_uscode(s: Store, a: Acquirer, limit: int | None, as_of: str | None) -> 
             "warning": "Release-point currency is not a blanket effective date.",
         },
     )
+    expected = []
+    inventory = []
     for link in individual:
         item_match = re.search(r"xml_(usc[^@]+)", link)
-        assert item_match is not None
+        if item_match is None:
+            raise ValueError("OLRC title URL format changed")
+        inventory.append(item_match[1].lower())
+        if link not in reserved:
+            expected.append(item_match[1].lower())
         s.inventory(
             "uscode", item_match[1].lower(), link, "reserved" if link in reserved else "pending"
         )
     individual = [link for link in individual if link not in reserved]
+    if not expected or len(set(expected)) != len(expected):
+        raise ValueError("Empty or duplicated OLRC title inventory")
     downloads = (
         individual[:limit] if limit else [next(link for link in links if "xml_uscAll" in link)]
     )
     for link in downloads:
-        raw = a.fetch(link, immutable=True)
+        raw = a.fetch(link, immutable=not a.refresh)
+        retained = {
+            row[0].removesuffix(".xml").lower()
+            for row in s.db.execute(
+                "SELECT v.member FROM versions v JOIN documents d ON d.id=v.document_id "
+                "WHERE d.collection_id='uscode' AND v.snapshot_date=? AND v.parser=? "
+                "AND json_extract(v.metadata,'$.release_point')=? AND v.artifact_sha=?",
+                (snapshot, "uslm-3/" + TEXT_PROJECTION, release, raw.sha256),
+            )
+            if row[0]
+        }
+        if set(expected) <= retained:
+            for title_url, item in zip(individual, expected, strict=True):
+                s.inventory("uscode", item, title_url, "indexed")
+            continue
         with checked_zip(s.object_path(raw.sha256)) as archive:
             for member in archive.namelist():
                 if not re.fullmatch(r"usc\d+[a-zA-Z]?\.xml", member):
@@ -131,9 +153,10 @@ def sync_uscode(s: Store, a: Acquirer, limit: int | None, as_of: str | None) -> 
                 except (ValueError, zipfile.BadZipFile) as exc:
                     s.inventory("uscode", item, link, "failed", str(exc))
                     print(f"uscode: {item}: FAILED: {exc}", file=sys.stderr)
+    return {"inventory_items": {"uscode": inventory}}
 
 
-def sync_ecfr(s: Store, a: Acquirer, limit: int | None, as_of: str | None) -> None:
+def sync_ecfr(s: Store, a: Acquirer, limit: int | None, as_of: str | None) -> dict[str, Any]:
     receipt, index = a.json(ECFR_INDEX)
     meta = index["meta"]
     s.collection(
@@ -155,8 +178,10 @@ def sync_ecfr(s: Store, a: Acquirer, limit: int | None, as_of: str | None) -> No
     if meta.get("import_in_progress") and not as_of:
         raise AcquisitionError("eCFR import in progress; resume after the publisher finishes")
     titles = index["titles"]
+    inventory = []
     for title in titles:
         snapshot = as_of or title["up_to_date_as_of"] or "reserved"
+        inventory.append(str(title["number"]) + "@" + snapshot)
         url = f"https://www.ecfr.gov/api/versioner/v1/full/{snapshot}/title-{title['number']}.xml"
         s.inventory(
             "ecfr",
@@ -165,6 +190,11 @@ def sync_ecfr(s: Store, a: Acquirer, limit: int | None, as_of: str | None) -> No
             "reserved" if title.get("reserved") else "pending",
         )
     selected = [title for title in titles if not title.get("reserved")]
+    expected = [
+        str(title["number"]) + "@" + (as_of or title["up_to_date_as_of"]) for title in selected
+    ]
+    if not expected or len(set(expected)) != len(expected):
+        raise ValueError("Empty or duplicated eCFR title inventory")
     for title in selected[:limit]:
         number = str(title["number"])
         snapshot = as_of or title["up_to_date_as_of"]
@@ -175,7 +205,16 @@ def sync_ecfr(s: Store, a: Acquirer, limit: int | None, as_of: str | None) -> No
                 raise ValueError(
                     "Requested snapshot outside documented/certified eCFR point-in-time coverage"
                 )
-            raw = a.fetch(url, accept="application/xml")
+            # eCFR can correct prior snapshots: revalidate the body, not just its date.
+            raw = a.fetch(url, accept="application/xml", max_age_seconds=a.resume_window())
+            existing = s.db.execute(
+                "SELECT 1 FROM versions WHERE document_id=? AND snapshot_date=? AND parser=? "
+                "AND artifact_sha=?",
+                ("ecfr:title-" + number, snapshot, "ecfr-1/" + TEXT_PROJECTION, raw.sha256),
+            ).fetchone()
+            if existing:
+                s.inventory("ecfr", item, url, "indexed")
+                continue
             root = xml_root(s.artifact(raw.sha256))
             _, count, new = s.ingest(
                 collection="ecfr",
@@ -199,6 +238,7 @@ def sync_ecfr(s: Store, a: Acquirer, limit: int | None, as_of: str | None) -> No
         except (ValueError, AcquisitionError) as exc:
             s.inventory("ecfr", item, url, "failed", str(exc))
             print(f"ecfr: {item}: FAILED: {exc}", file=sys.stderr)
+    return {"inventory_items": {"ecfr": inventory}}
 
 
 @dataclass(frozen=True)
@@ -398,7 +438,7 @@ def _sync_source(
             campaign.close()
 
 
-def sync_collections(
+def _sync_collections(
     root: Path,
     collections: list[str],
     *,
@@ -437,3 +477,15 @@ def sync_collections(
     finally:
         acquirer.close()
         store.close()
+
+
+def sync_collections(
+    root: Path,
+    collections: list[str],
+    *,
+    refresh: bool = False,
+    limit: int | None = None,
+    as_of: str | None = None,
+) -> dict[str, Any]:
+    with writer_lock(root):
+        return _sync_collections(root, collections, refresh=refresh, limit=limit, as_of=as_of)

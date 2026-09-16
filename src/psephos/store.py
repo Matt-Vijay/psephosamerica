@@ -5,11 +5,27 @@ from __future__ import annotations
 import hashlib
 import json
 import sqlite3
-from collections.abc import Iterable
+from collections.abc import Iterable, Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+
+
+@contextmanager
+def writer_lock(root: Path) -> Iterator[None]:
+    """Serialize scheduled work and CLI sync without locking read-only MCP clients."""
+    import fcntl
+
+    root.mkdir(parents=True, exist_ok=True)
+    with (root / "writer.lock").open("a") as lock:
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError as exc:
+            raise RuntimeError("Another Psephos writer is running; try later") from exc
+        yield
+
 
 TEXT_PROJECTION = "text-3"
 
