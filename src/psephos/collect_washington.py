@@ -7,6 +7,7 @@ The whole discovered title/chapter inventory is retained even when a tranche is 
 from __future__ import annotations
 
 import re
+import sys
 from collections import Counter
 from copy import deepcopy
 from datetime import date
@@ -176,9 +177,9 @@ def chapter_units(data: bytes, chapter: str, url: str) -> list[Provision]:
 def sync_washington(
     s: Store,
     a: Acquirer,
-    *,
     limit: int | None = None,
     as_of: str | None = None,
+    *,
     titles: tuple[str, ...] | None = DEFAULT_TITLES,
 ) -> dict[str, Any]:
     """Inventory the entire live RCW, acquire selected complete titles (None = all).
@@ -191,6 +192,7 @@ def sync_washington(
         raise ValueError("Live RCW does not support historical as-of acquisition")
     if limit is not None and limit < 0:
         raise ValueError("limit must be nonnegative")
+    initial_bytes = a.downloaded
     a.delay = max(a.delay, 1.1)
     authority = a.fetch(AUTHORITY)
     disclaimer = a.fetch(DISCLAIMER)
@@ -263,6 +265,17 @@ def sync_washington(
                 # A budget, robots, access or retry deferral must stop this host.
                 raise
     selected = [c for c in chapters if titles is None or c[0] in titles]
+    if not a.refresh:
+        selected = [
+            chapter
+            for chapter in selected
+            if not s.db.execute(
+                "SELECT 1 FROM inventories i JOIN documents d ON d.id=? "
+                "WHERE i.collection_id=? AND i.item=? AND i.status IN ('ingested','indexed') "
+                "AND EXISTS (SELECT 1 FROM versions v WHERE v.document_id=d.id)",
+                ("wa-rcw:chapter:" + chapter[1], COLLECTION, "chapter:" + chapter[1]),
+            ).fetchone()
+        ]
     if limit is not None:
         selected = selected[:limit]
     documents = sections = 0
@@ -292,7 +305,9 @@ def sync_washington(
             sections += sum(p.unit_kind == "section" for p in provisions)
             section_count = sum(p.unit_kind == "section" for p in provisions)
             print(
-                f"Washington {cite}: {section_count} sections, {len(provisions)} units", flush=True
+                f"Washington {cite}: {section_count} sections, {len(provisions)} units",
+                file=sys.stderr,
+                flush=True,
             )
         except (AcquisitionError, ValueError) as exc:
             s.inventory(COLLECTION, "chapter:" + cite, url, "failed", str(exc))
@@ -305,6 +320,6 @@ def sync_washington(
         "selected_chapters": len(selected),
         "documents": documents,
         "sections": sections,
-        "downloaded_bytes_this_run": a.downloaded,
+        "downloaded_bytes_this_run": a.downloaded - initial_bytes,
         "failures": failures,
     }

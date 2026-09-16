@@ -1,5 +1,5 @@
 {
-  "reviewed_on": "2026-09-07",
+  "reviewed_on": "2026-09-16",
   "purpose": "Operational coverage accountability from retained inventories and accepted receipts; not a new corpus audit, applicability determination or current-law certification.",
   "status_meanings": {
     "complete_publisher_edition": "The explicitly named publisher export inventory is closed. This may be an older edition, a narrowed compilation or raw files with projection exclusions; it does not establish a complete current legal layer.",
@@ -372,6 +372,7 @@
             "us-me",
             "us-mi",
             "us-nc",
+            "us-ne",
             "us-nj",
             "us-or",
             "us-pa",
@@ -382,8 +383,8 @@
             "us-wv",
             "us-wy"
           ],
-          "people": 143548158,
-          "percent_of_us": 41.9996
+          "people": 145566164,
+          "percent_of_us": 42.59
         },
         "verified_complete_current_layer": {
           "jurisdiction_ids": [],
@@ -591,8 +592,8 @@
       "inventory":{"unit":"selected title","expected":1,"retained":1,"excluded":null},"scope":"Title 1 only, 285 units; other MCA titles absent; separate constitution retained","edition":"Observed publisher title","evidence":["data/collectors/leads/publish/acceptance-west-mt-20260907-01.json#/completeness_review"]},
     {"jurisdiction_id":"us-mt","family":"regulations","status":"absent","collection_ids":[],"layer_complete":false,
       "evidence":["data/collectors/leads/publish/acceptance-west-mt-20260907-01.json#/completeness_review"]},
-    {"jurisdiction_id":"us-ne","family":"statutes","status":"partial","collection_ids":["ne-revised-statutes"],"layer_complete":false,
-      "inventory":{"unit":"numbered chapter exports","expected":90,"retained":50,"excluded":40},"scope":"Chapters 1-50; 51-90 missing. Even all 90 would exclude UCC, constitution and Revised Statutes Appendix.","edition":"Observed chapter compilation","evidence":["data/collectors/leads/publish/acceptance-midwest-ne-20260907-01.json#/completeness_review"]},
+    {"jurisdiction_id":"us-ne","family":"statutes","status":"complete_publisher_edition","collection_ids":["ne-revised-statutes","ne-uniform-commercial-code","ne-revised-statutes-appendix"],"layer_complete":false,
+      "inventory":{"unit":"numbered chapter exports","expected":90,"retained":90,"excluded":0},"scope":"All 90 numbered chapters, full UCC (670 native entries) and all 24 Appendix entries. Separate ne-constitution closes 239 native entries. Completion adds 66 documents/27,642 units including 16,808 sections; repeal/editorial notices remain distinct.","edition":"Separate September 7 and 10, 2026 observations; not one uniform edition or known legal currency","fidelity_exclusions":"Old 50 accepted chapter projections preserved, not newly section-index-reconciled. New 40 chapter occurrence inventories and ancillary memberships verified. Four additional images retained, not OCR-certified. Session laws, unincorporated changes and blanket effective dates remain outside the claim.","evidence":["data/collectors/leads/publish/acceptance-midwest-ne-20260907-01.json#/completeness_review","data/nebraska-publication-20260916/acceptance.json","data/nebraska-publication-20260916/validation.json","data/nebraska-publication-20260916/publish/ne-completion-publication-20260916-01.json"]},
     {"jurisdiction_id":"us-ne","family":"regulations","status":"absent","collection_ids":[],"layer_complete":false,
       "evidence":["data/collectors/leads/publish/acceptance-midwest-ne-20260907-01.json#/completeness_review"]},
     {"jurisdiction_id":"us-nv","family":"statutes","status":"partial","collection_ids":["nevada-nrs"],"layer_complete":false,
@@ -698,16 +699,19 @@
     {"jurisdiction_id":"us-ny-nyc","family":"zoning_geometry","status":"complete_publisher_edition","collection_ids":["nyc-zoning-gis"],"layer_complete":false,
       "inventory":{"unit":"archive feature classes","expected":6,"retained":6,"excluded":0,"features":16901},"edition":"Publisher archive description 202606; exact snapshot day unknown","fidelity_exclusions":"Six separate zoning feature classes, not a legal applicability engine; invalid source polygons remain warned, not repaired.","evidence":["docs/integrity.json#/coverage/collections","docs/integrity.json#/geometry","docs/sources.md#municipal-text-and-geography"]},
     {"jurisdiction_id":"us-or-portland","family":"municipal_code","status":"complete_publisher_edition","collection_ids":["portland-city-code","portland-zoning"],"layer_complete":false,
-      "inventory":{"unit":"Clerk-listed titles: 33 printable HTML plus reused Title33 PDF","expected":34,"retained":34,"excluded":0,"new_sections":3095,"chapter_contexts":366},"edition":"HTML observed September7,2026, exact legal snapshot unknown; Title33 retained July1,2026 edition","fidelity_exclusions":"Every new section reconciled against native chapter body; 40 city image originals retained but not transcribed. Figure labels conflict and remain warned. Recent/upcoming changes not applied. Charter, policies, emergency rules and incorporated model codes are not all acquired.","evidence":["docs/portland-code-verification.json","docs/portland-code.md","data/legal.sqlite3: acquisitions.id=10838 (title inventory)","data/legal.sqlite3: acquisitions.id=10841 (terms)"]},
+      "inventory":{"unit":"Clerk-listed titles: 33 printable HTML plus reused Title33 PDF","expected":34,"retained":34,"excluded":0,"new_sections":3095,"chapter_contexts":366},"edition":"HTML observed September7,2026, exact legal snapshot unknown; Title33 retained July1,2026 edition","fidelity_exclusions":"Every new section reconciled against native chapter body; 40 city image originals retained but not transcribed. Figure labels conflict and remain warned. Recent/upcoming changes not applied. Charter is accounted separately; policies, emergency rules and incorporated model codes are not all acquired.","evidence":["docs/portland-code-verification.json","docs/portland-code.md","data/legal.sqlite3: acquisitions.id=10838 (title inventory)","data/legal.sqlite3: acquisitions.id=10841 (terms)"]},
+    {"jurisdiction_id":"us-or-portland","family":"municipal_charter","status":"complete_publisher_edition","collection_ids":["portland-city-charter"],"layer_complete":false,
+      "inventory":{"unit":"Council Clerk-listed Charter chapters","expected":15,"retained":15,"excluded":0,"sections":297,"articles":50,"chapter_contexts":15,"changes_contexts":14},"edition":"Publisher displays observed September 16, 2026; legal snapshot/effective dates unknown","fidelity_exclusions":"All native ordered member identities and bodies matched printable exports; one table and 324 lists preserved. Chapter 6 has publisher context but no section bodies. Recent/upcoming changes remain separate context and are not applied; prior editions, ordinances and ballot measures are not independently acquired. Not comprehensive current city law or extra population reach.","evidence":["data/collectors/portland-charter/acceptance.json","data/collectors/portland-charter/main-verification.json","data/collectors/portland-charter/import-manifest.json","data/collectors/portland-charter/publish/portland-charter-publication-20260916-01.json"]},
     {"jurisdiction_id":"us-or-portland","family":"zoning_text","status":"complete_publisher_edition","collection_ids":["portland-zoning"],"layer_complete":false,
       "inventory":{"unit":"Title 33 printable PDF edition","expected":1,"retained":1,"excluded":0,"pdf_pages":1855},"edition":"2026-07-01; later November 1 ordinance not silently folded in","fidelity_exclusions":"Page retrieval, not individually validated provisions or full visual table/diagram interpretation. Two portland-zoning-guides pages are supporting guidance, not further code coverage.","evidence":["docs/integrity.json#/coverage/collections","docs/sources.md#municipal-text-and-geography","data/legal.sqlite3: acquisitions.id=151","artifact:86ba1da866c9cc1acf56df185abfddff784c23b8fbd4601fbb1c0337abb0f354"]},
     {"jurisdiction_id":"us-or-portland","family":"zoning_geometry","status":"complete_publisher_edition","collection_ids":["portland-zoning-gis"],"layer_complete":false,
       "inventory":{"unit":"ArcGIS layer 3 OBJECTIDs","expected":15703,"retained":15703,"excluded":0},"edition":"Observed live layer; precise snapshot unknown","fidelity_exclusions":"Membership closure is not transactional attribute snapshot isolation; invalid source geometry remains warned. Zoning/plan/overlay/unincorporated fields retain distinct meanings.","evidence":["docs/integrity.json#/coverage/collections","docs/sources.md#municipal-text-and-geography","artifact:0e4bb219713af7c992ec6459ac10debf5159e6791826fd0fc282c48d5f57ab46"]}
   ],
   "completion_queue": [
+    {"collection":"portland-city-charter","remaining":"0 Clerk-listed chapters","assessment":"All 15 chapters canonically published: 297 sections, 50 article contexts, 29 chapter/change contexts. Exact native/print replay and network-forbidden resume passed. No additional acquisition authorized.","evidence":"data/collectors/portland-charter/publish/portland-charter-publication-20260916-01.json"},
     {"collection":"oregon-ors","remaining":"0 listed chapter files","assessment":"Completed the clearest bounded maintained-adapter gap: 92 files, 20090622 bytes. Adds 4273586 residents to closed-edition reach, not complete current-law coverage.","evidence":"docs/oregon-completion-verification.json"},
     {"collection":"wa-rcw","remaining":"2,358 pending plus two failed chapter exports","assessment":"Maintained adapter and exact inventory; large acquisition, not demonstrated cheap.","evidence":"docs/washington-land-use-verification.json#/measurements; data/legal.sqlite3 inventories.collection_id=wa-rcw"},
-    {"collection":"ne-revised-statutes","remaining":"40 numbered chapters","assessment":"Bounded worker-adapter opportunity, not maintained-core replay; UCC/appendix still excluded after those chapters.","evidence":"data/collectors/leads/publish/acceptance-midwest-ne-20260907-01.json#/completeness_review"},
+    {"collection":"ne-revised-statutes","remaining":"none in the retained 90-chapter/UCC/Appendix/Constitution publisher inventories","assessment":"Completed and canonically imported. Maintained Nebraska parser exactly replays all 66 new documents; prior 50 remain unchanged. Separate observation dates and unknown legal currency remain explicit.","evidence":"data/nebraska-publication-20260916/publish/ne-completion-publication-20260916-01.json"},
     {"collection":"ga-administrative-rules","remaining":"0 publisher-listed department PDFs","assessment":"Completed one uniform August 21 publisher edition, preserving older evidence; source-media/OCR limitations remain explicit. Adds 11,302,748 residents once to closed regulatory-source inventory reach, not complete current-law coverage.","evidence":"docs/georgia-edition-verification.json"},
     {"collection":"va-administrative-code","remaining":"0 native permanent-code chapter bodies","assessment":"All 2027 native chapters exactly replayed; source-media, emergency-rule and temporal limitations remain explicit. Named regulatory-source inventory closure, not complete current-law coverage.","evidence":"docs/virginia-edition-verification.json"},
     {"collections":["us-ca-codes","ny-state-laws","il-statutes"],"assessment":"Remaining large-state opportunities are not complete: CA documented PUBINFO cannot establish TipIn/deletion closure; NY authoritative denominator missing; IL 67 unexpanded chapters and 10.1-second pacing. Georgia won the retained-evidence comparison; no CA/IL acquisition launched.","evidence":"docs/georgia-edition.md#why-this-family-not-california-or-illinois"},

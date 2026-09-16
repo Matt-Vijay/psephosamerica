@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import sqlite3
 import sys
+import zipfile
 from pathlib import Path
 
 from .retrieve import Reader
@@ -16,6 +18,17 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Source-grounded US legal information")
     parser.add_argument("--data", type=Path, default=Path("data"), help="Local evidence store")
     commands = parser.add_subparsers(dest="command", required=True)
+    commands.add_parser("sources", help="List maintained publisher download sources")
+    export = commands.add_parser(
+        "export", help="Package selected collections and retained source bytes"
+    )
+    export.add_argument("output", type=Path)
+    export.add_argument("--collection", action="append", required=True, dest="collections")
+    restore = commands.add_parser(
+        "import", help="Verify a dataset bundle into a new data directory"
+    )
+    restore.add_argument("bundle", type=Path)
+    restore.add_argument("--max-gib", type=float, default=32, help="Maximum expanded dataset size")
     sync = commands.add_parser("sync", help="Acquire and index supported publisher collections")
     sync.add_argument("collections", nargs="+")
     sync.add_argument(
@@ -99,7 +112,22 @@ def main() -> None:
 
             create_server(args.data).run(transport="stdio")
             return
-        if args.command == "sync":
+        if args.command == "sources":
+            from .sources import available_sources
+
+            result = available_sources()
+        elif args.command == "export":
+            from .datasets import export_dataset
+
+            result = export_dataset(args.data, args.output, args.collections)
+            result.pop("objects", None)
+        elif args.command == "import":
+            from .datasets import import_dataset
+
+            if not math.isfinite(args.max_gib) or args.max_gib <= 0:
+                raise ValueError("--max-gib must be a finite positive number")
+            result = import_dataset(args.bundle, args.data, max_bytes=int(args.max_gib * 1024**3))
+        elif args.command == "sync":
             from .sources import sync_collections
 
             result = sync_collections(
@@ -192,7 +220,7 @@ def main() -> None:
             finally:
                 store.close()
         print(json.dumps(result, ensure_ascii=False, indent=2))
-    except (ValueError, OSError, RuntimeError, sqlite3.Error) as exc:
+    except (ValueError, OSError, RuntimeError, sqlite3.Error, zipfile.BadZipFile) as exc:
         print(f"psephos: {exc}", file=sys.stderr)
         raise SystemExit(1) from exc
 

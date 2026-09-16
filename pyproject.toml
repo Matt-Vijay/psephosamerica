@@ -7,6 +7,8 @@ name = "psephos-legal"
 version = "0.1.0"
 description = "Source-grounded US legal information for language-model tools"
 readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.12"
 dependencies = [
   "httpx>=0.28,<1",
@@ -23,6 +25,10 @@ dev = ["pytest>=8,<10", "ruff>=0.12,<1", "mypy>=1.15,<2", "types-lxml>=2025", "t
 
 [project.scripts]
 psephos = "psephos.cli:main"
+
+[project.urls]
+Repository = "https://github.com/Matt-Vijay/psephosamerica"
+Documentation = "https://github.com/Matt-Vijay/psephosamerica/blob/main/docs/getting-started.md"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/psephos"]

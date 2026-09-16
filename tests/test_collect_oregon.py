@@ -10,8 +10,8 @@ from psephos.parse import readable
 from psephos.store import Provision, Store
 
 
-def test_completing_gaps_does_not_reindex_accepted_projection(store, monkeypatch):
-    monkeypatch.setattr(collect_oregon, "CHAPTERS", ("001",))
+def test_completing_gaps_does_not_reindex_accepted_projection(store, monkeypatch, capsys):
+    monkeypatch.setattr(collect_oregon, "CHAPTERS", ("001", "002"))
     monkeypatch.setattr(collect_oregon, "PRIORITY", {"001"})
     store.collection(
         "oregon-ors",
@@ -41,23 +41,48 @@ def test_completing_gaps_does_not_reindex_accepted_projection(store, monkeypatch
     store.inventory("oregon-ors", "001", chapter_url("001"), "indexed")
     preflight = retain(
         store,
-        b'<html><p>2025 Edition does not include later changes</p><table><tbody groupstring="Volume"><tr><td>Volume 1 (1)</td></tr></tbody></table></html>',
+        b'<html><p>2025 Edition does not include later changes</p><table><tbody groupstring="Volume"><tr><td>Volume 1 (2)</td></tr></tbody></table></html>',
     )
+    body = retain(
+        store,
+        b'<div class="WordSection1"><p>Chapter 2 - Courts</p><p><b>2.001 New section.</b> Body.</p></div>',
+    )
+    fetched = []
 
     class CachedPreflightOnly:
         delay = 2.1
         refresh = False
 
-        def fetch(self, url):
+        def fetch(self, url, **kwargs):
+            if url == chapter_url("002"):
+                fetched.append(url)
+                return body
             assert url in {collect_oregon.INDEX, collect_oregon.DISCLAIMER, collect_oregon.UPDATE}
             return preflight
 
-    collect_oregon.sync_oregon(store, CachedPreflightOnly())
-    assert store.db.execute("SELECT id FROM versions").fetchall()[0][0] == original[0]
-    assert store.db.execute("SELECT count(*) FROM versions").fetchone()[0] == 1
+    collect_oregon.sync_oregon(store, CachedPreflightOnly(), limit=1)
+    assert fetched == [chapter_url("002")]
+    assert store.db.execute("SELECT count(*) FROM versions").fetchone()[0] == 2
     assert (
-        store.db.execute("SELECT text FROM provisions").fetchone()[0] == "Old accepted projection"
+        store.db.execute(
+            "SELECT text FROM provisions WHERE version_id=?", (original[0],)
+        ).fetchone()[0]
+        == "Old accepted projection"
     )
+    output = capsys.readouterr()
+    assert output.out == "" and "oregon-ors 002" in output.err
+
+    class Denied(CachedPreflightOnly):
+        refresh = True
+
+        def fetch(self, url, **kwargs):
+            if url == chapter_url("001"):
+                raise collect_oregon.AcquisitionError("Publisher refusal")
+            return super().fetch(url, **kwargs)
+
+    with pytest.raises(collect_oregon.AcquisitionError, match="Publisher refusal"):
+        collect_oregon.sync_oregon(store, Denied(), limit=1)
+    assert store.db.execute("SELECT count(*) FROM versions").fetchone()[0] == 2
 
 
 def test_inventory_is_actual_fixed_689_link_seed():

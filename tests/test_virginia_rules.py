@@ -1,6 +1,5 @@
 """Native identities, intact chapter body/hierarchy, and truthful source quirks."""
 
-import importlib.util
 import json
 from pathlib import Path
 
@@ -271,11 +270,8 @@ def test_preface_api_body_and_absence_are_not_confused_with_rules():
 
 
 def test_image_receipts_and_missing_resources_resume_without_refetch(store, monkeypatch):
-    spec = importlib.util.spec_from_file_location(
-        "va_completion_test", Path("scripts/complete_virginia.py")
-    )
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
+    from psephos import collect_virginia as module
+
     monkeypatch.setattr(module, "COLLECTION", "test")
     urls = [
         "https://law.lis.virginia.gov/RISImages/fixture.png",

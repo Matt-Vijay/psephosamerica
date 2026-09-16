@@ -1,6 +1,7 @@
 """Offline, fail-closed publication of a reviewed, quiescent collector Store.
 
-No fetching, parser execution, schema migration, overwrites, or database copies.
+No fetching, parser execution, schema migration, content overwrites, or database copies.
+Reviewed inventory completion may advance pending/failed rows atomically.
 Use inspect_store() to freeze a logical digest, then supply a publisher-owned
 acceptance JSON to --manifest. Receipts/artifacts are retained even for failed
 attempts; every document and parser must be explicitly accepted by the reviewer.
@@ -160,6 +161,13 @@ def remap_json(raw, mapping):
         direct = low in {"acquisition", "acquisition_id", "receipt", "receipt_id"} or low.endswith(
             ("_acquisition", "_acquisition_id", "_receipt", "_receipt_id", "_receipts")
         )
+        if low == "membership_acquisitions":
+            require(
+                isinstance(value, dict)
+                and all(isinstance(v, int) and not isinstance(v, bool) for v in value.values()),
+                "Invalid native membership receipt map",
+            )
+            return {url: visit(identifier, "acquisition_id") for url, identifier in value.items()}
         if isinstance(value, dict):
             return {k: visit(v, k, relevant) for k, v in value.items()}
         if isinstance(value, list):
@@ -194,6 +202,31 @@ def insert_exact(db, table, row):
     return db.execute(
         f"INSERT INTO {table} ({cols}) VALUES ({','.join('?' for _ in row)})", tuple(row.values())
     ).lastrowid
+
+
+def complete_inventory(db, row, accepted_collections):
+    """Advance only a reviewed, same-URL inventory gap; never replace content rows."""
+    existing = db.execute(
+        "SELECT * FROM inventories WHERE collection_id=? AND item=?",
+        (row["collection_id"], row["item"]),
+    ).fetchone()
+    if existing is None or dict(existing) == row:
+        insert_exact(db, "inventories", row)
+        return None
+    before = dict(existing)
+    require(
+        row["collection_id"] in accepted_collections
+        and all(before[key] == row[key] for key in ("collection_id", "item", "url"))
+        and before["status"] in {"pending", "failed"}
+        and row["status"] in {"acquired", "indexed"}
+        and clock(row["checked_at"]) >= clock(before["checked_at"]),
+        "Conflicting inventories: " + str((row["collection_id"], row["item"])),
+    )
+    db.execute(
+        "UPDATE inventories SET status=?,error=?,checked_at=? WHERE collection_id=? AND item=?",
+        (row["status"], row["error"], row["checked_at"], row["collection_id"], row["item"]),
+    )
+    return {"before": before, "after": row}
 
 
 def validate_source(source, manifest, report):
@@ -384,6 +417,7 @@ def publish(source_root, target_root, manifest, ledger_root, *, min_free_bytes=1
                 )
                 used_receipts.add(mapping[local_id])
             receipt["acquisition_id_map"] = mapping
+            receipt["inventory_completions"] = []
             for table in (
                 "jurisdictions",
                 "collections",
@@ -405,7 +439,12 @@ def publish(source_root, target_root, manifest, ledger_root, *, min_free_bytes=1
                     for field in ("metadata",):
                         if field in row:
                             row[field] = remap_json(row[field], mapping)
-                    new_rowid = insert_exact(db, table, row)
+                    if table == "inventories":
+                        completion = complete_inventory(db, row, manifest["collections"])
+                        if completion:
+                            receipt["inventory_completions"].append(completion)
+                    else:
+                        new_rowid = insert_exact(db, table, row)
                     if table == "features":
                         feature_rows[local_rowid] = new_rowid
                 if table == "features":

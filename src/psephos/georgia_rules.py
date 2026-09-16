@@ -19,6 +19,20 @@ from .store import Provision, Reference, digest, json_text
 INDEX = "https://rules.sos.ga.gov/Download_pdf.aspx"
 COLLECTION = "ga-administrative-rules"
 PARSER = "ga-department-pdf-pages/3"
+# Retained visual-review evidence, bound to exact PDF hashes and physical pages.
+# These two captions remain portable; they do not apply to any later edition.
+REVIEWED_MEDIA: dict[str, dict[str, str]] = {
+    "6497d9a9e9313816c14692934c2b5e94129956c452a3518df7dd2990c7b06c51:298": {
+        "caption": "Figure J - 2.1",
+        "limitation": "Kick-out flashing detail diagram; the retained source itself has faint low-resolution callouts. Diagram geometry and labels are not transcribed. Consult the original physical page.",
+        "review": "Rendered full physical page from exact retained PDF; diagram and figure label visually confirmed.",
+    },
+    "6497d9a9e9313816c14692934c2b5e94129956c452a3518df7dd2990c7b06c51:311": {
+        "caption": "H - 2.0; H - 2.1",
+        "limitation": "Deck connection and kick-out flashing detail drawings. Faint lower callouts and diagram geometry are not transcribed; consult the original physical page.",
+        "review": "Both rendered drawings and printed H-2.0/H-2.1 labels visually confirmed independently.",
+    },
+}
 CLOCK_NOTE = (
     "The cover filing-through statement dates incorporation, not publication or legal effect. "
     "PDF creation/modification and HTTP/acquisition dates are separate. Rule histories remain "

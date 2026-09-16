@@ -1,5 +1,7 @@
 """Operational summaries must not reuse an unscoped discovery-directory page."""
 
+import json
+
 import pytest
 from conftest import retain
 
@@ -7,6 +9,38 @@ from psephos import dc, geography, municipal, sources, texas
 from psephos.audit import audit
 from psephos.retrieve import Reader
 from psephos.store import Provision, Store
+
+
+def test_source_catalog_and_imported_store_budget_boundary(store, monkeypatch):
+    catalog = sources.available_sources()
+    entries = {row["alias"]: row for row in catalog["sources"]}
+    assert {"georgia", "virginia", "oregon", "washington", "nebraska"} <= entries.keys()
+    assert entries["nebraska"]["collection_ids"] == [
+        "ne-revised-statutes",
+        "ne-uniform-commercial-code",
+        "ne-constitution",
+        "ne-revised-statutes-appendix",
+    ]
+    assert entries["ecfr"]["historical_sync"] is True
+    assert not entries["nebraska"]["historical_sync"]
+    assert json.loads(json.dumps(catalog)) == catalog
+
+    class NeverAcquire(sources.CampaignAcquirer):
+        def __init__(self, *args, **kwargs):
+            pytest.fail("Existing data without the original budget must fail before HTTP")
+
+    retain(store, b"Preflight metadata, before registering a source collection")
+    for collection, prefixes in (("test", ()), ("not-yet-discovered", ("https://example.test/",))):
+        source = sources._Source(
+            lambda *args: None,
+            (collection,),
+            "Fixture",
+            campaign=NeverAcquire,
+            receipt_prefixes=prefixes,
+        )
+        monkeypatch.setattr(sources, "_sources", lambda source=source: {"fixture": source})
+        with pytest.raises(sources.AcquisitionError, match="Restore the original fixture campaign"):
+            sources.sync_collections(store.root, ["fixture"])
 
 
 def test_sync_summarizes_only_requested_source_collections(store, monkeypatch):

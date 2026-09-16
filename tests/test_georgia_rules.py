@@ -1,8 +1,6 @@
 """Native inventory, page/source fidelity, labeled OCR, and bounded resumability."""
 
-import importlib.util
 import json
-from pathlib import Path
 from types import SimpleNamespace
 
 import httpx
@@ -99,11 +97,8 @@ def test_page_projection_preserves_native_text_and_labels_image_ocr(store, monke
 
 
 def driver():
-    spec = importlib.util.spec_from_file_location(
-        "ga_completion_test", Path("scripts/complete_georgia.py")
-    )
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
+    from psephos import collect_georgia as module
+
     return module
 
 

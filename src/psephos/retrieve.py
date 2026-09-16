@@ -752,6 +752,39 @@ class Reader:
             )
             expected_url = None
             expected_collection = None
+            usc_descendant = (
+                re.fullmatch(
+                    r"(/us/usc/t[0-9]+/s[0-9][A-Za-z0-9–-]*)(?:/[A-Za-z0-9]+)+",
+                    ref["target"],
+                )
+                if ref["relation"] == "publisher_citation_identifier"
+                else None
+            )
+            if usc_descendant:
+                target = "usc:" + usc_descendant[1]
+                expected_collection = "uscode"
+            virginia = re.fullmatch(
+                r"https://law\.lis\.virginia\.gov/admincode/title([0-9]+)/agency([0-9]+)/"
+                r"chapter([0-9]+)/section([0-9]+)/",
+                ref["target"],
+            )
+            if virginia and ref["relation"] == "publisher_link":
+                title, agency, chapter, section = virginia.groups()
+                target = f"va-vac:{title}VAC{agency}-{chapter}-{section}"
+                expected_url = ref["target"]
+                expected_collection = "va-administrative-code"
+            else:
+                virginia = None
+            virginia_code = re.fullmatch(
+                r"https://law\.lis\.virginia\.gov/vacode/([0-9]+(?:\.[0-9]+)*-[0-9]+(?:\.[0-9]+)*)/",
+                ref["target"],
+            )
+            if virginia_code and ref["relation"] == "publisher_link":
+                target = "va-code:section:" + virginia_code[1]
+                expected_url = ref["target"]
+                expected_collection = "va-code"
+            else:
+                virginia_code = None
             portland_link = re.fullmatch(
                 r"https://www\.portland\.gov/code/(\d+)(?:/[a-zA-Z0-9-]+)*", target
             )
@@ -855,27 +888,67 @@ class Reader:
                 )
             ]
             filing_candidates_saturated = expected_collection == "wa-wsr" and len(targets) == 3
+            usc_candidates_saturated = usc_descendant is not None and len(targets) == 3
+            if usc_descendant:
+                verified = []
+                for candidate in targets:
+                    markup = self.db.execute(
+                        "SELECT markup FROM provisions WHERE id=?", (candidate["id"],)
+                    ).fetchone()[0]
+                    try:
+                        root = xml_root(markup.encode())
+                    except (ValueError, etree.XMLSyntaxError):
+                        continue
+                    # A matching citation string or href is not a retained subsection.
+                    if (
+                        root.tag != "{http://xml.house.gov/schemas/uslm/1.0}section"
+                        or root.get("identifier") != usc_descendant[1]
+                        or len(root.xpath(".//*[@identifier=$target]", target=ref["target"])) != 1
+                    ):
+                        continue
+                    candidate["matched_source_identifier"] = ref["target"]
+                    candidate["navigation_scope"] = "enclosing_section"
+                    verified.append(candidate)
+                targets = verified
             if expected_collection == "wa-wsr":
                 targets = [
                     row
                     for row in targets
                     if _washington_reference(row["url"]) == (row["key"], row["url"], "wa-wsr")
                 ]
-            if washington is not None or portland_link is not None or portland_citation is not None:
-                ambiguous = len(targets) > 1 or filing_candidates_saturated
+            if any(
+                match is not None
+                for match in (
+                    washington,
+                    portland_link,
+                    portland_citation,
+                    virginia,
+                    virginia_code,
+                    usc_descendant,
+                )
+            ):
+                ambiguous = (
+                    len(targets) > 1 or filing_candidates_saturated or usc_candidates_saturated
+                )
                 ref["publisher_citation_family"] = expected_collection
                 ref["resolution_status"] = (
                     "ambiguous_acquired_target"
                     if ambiguous
+                    else "resolved_within_section"
+                    if targets and usc_descendant
                     else "resolved"
                     if targets
+                    else "subsection_not_verified_at_cutoffs"
+                    if usc_descendant
                     else "not_acquired_at_cutoffs"
                 )
                 if ambiguous:
                     targets = []
             ref["acquired_targets"] = targets
             ref["resolution_basis"] = (
-                "exact_acquired_filing_key_and_retained_publisher_url"
+                "exact_retained_uslm_identifier_in_enclosing_section"
+                if usc_descendant
+                else "exact_acquired_filing_key_and_retained_publisher_url"
                 if expected_collection == "wa-wsr"
                 else "exact_acquired_publisher_url"
                 if expected_url

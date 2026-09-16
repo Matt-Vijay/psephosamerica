@@ -47,6 +47,7 @@ def fixture_store(root):
         metadata={
             "page_receipts": [{"acquisition_id": receipt.id, "artifact_sha": receipt.sha256}],
             "acquisition": {"id": receipt.id, "url": receipt.url},
+            "membership_acquisitions": {receipt.url: receipt.id},
         },
         provisions=[
             Provision(
@@ -159,6 +160,7 @@ def test_merge_remaps_preserves_indexes_and_is_idempotent(tmp_path):
     )
     assert metadata["page_receipts"][0]["acquisition_id"] == mapped
     assert metadata["acquisition"]["id"] == mapped
+    assert metadata["membership_acquisitions"] == {receipt.url: mapped}
     metadata = json.loads(
         target.db.execute("SELECT metadata FROM collections WHERE id='xx-code'").fetchone()[0]
     )
@@ -231,9 +233,67 @@ def test_conflict_rolls_back_all_rows_and_bad_evidence_is_rejected(tmp_path):
     )
     with pytest.raises(importer.Rejected, match="Unrecognized logical receipt"):
         importer.remap_json('{"mystery_receipt_number": 1}', {1: 8})
+    with pytest.raises(importer.Rejected, match="Missing logical receipt"):
+        importer.remap_json('{"membership_acquisitions":{"https://example.test/native":9}}', {1: 8})
     source.object_path(receipt.sha256).write_bytes(b"corruption")
     with pytest.raises(importer.Rejected, match="Corrupt source"):
         importer.publish(source.root, target.root, manifest, tmp_path / "ledger", min_free_bytes=0)
     assert importer.counts(target.db) == before
     source.close()
     target.close()
+
+
+@pytest.mark.parametrize("conflict", [None, "url", "older", "completed", "later_content"])
+def test_reviewed_inventory_completion_is_atomic_and_idempotent(tmp_path, conflict):
+    source, raw, manifest = fixture_store(tmp_path / "source")
+    target = Store(tmp_path / "target")
+    try:
+        with target.db:
+            for table in ("jurisdictions", "collections"):
+                for row in source.db.execute(f"SELECT * FROM {table}"):
+                    importer.insert_exact(target.db, table, dict(row))
+        source.inventory("xx-code", "chapter-1", raw.url, "acquired")
+        target.inventory("xx-code", "chapter-1", raw.url, "pending")
+        with source.db:
+            source.db.execute("UPDATE inventories SET checked_at='2026-09-10T00:00:00Z'")
+        with target.db:
+            target.db.execute("UPDATE inventories SET checked_at='2026-09-07T00:00:00Z'")
+            if conflict == "url":
+                target.db.execute("UPDATE inventories SET url='https://example.test/other'")
+            elif conflict == "older":
+                target.db.execute("UPDATE inventories SET checked_at='2026-09-11T00:00:00Z'")
+            elif conflict == "completed":
+                target.db.execute("UPDATE inventories SET status='indexed'")
+            elif conflict == "later_content":
+                row = dict(source.db.execute("SELECT * FROM documents").fetchone())
+                row["title"] = "Conflicting retained document"
+                importer.insert_exact(target.db, "documents", row)
+        manifest["logical_sha256"] = importer.inspect_store(source)["logical_sha256"]
+        prior_row = dict(target.db.execute("SELECT * FROM inventories").fetchone())
+        before = importer.counts(target.db)
+        if conflict:
+            with pytest.raises(importer.Rejected, match="Conflicting"):
+                importer.publish(
+                    source.root, target.root, manifest, tmp_path / "ledger", min_free_bytes=0
+                )
+            assert dict(target.db.execute("SELECT * FROM inventories").fetchone()) == prior_row
+            assert importer.counts(target.db) == before
+        else:
+            first = importer.publish(
+                source.root, target.root, manifest, tmp_path / "ledger", min_free_bytes=0
+            )
+            assert first["inventory_completions"] == [
+                {
+                    "before": prior_row,
+                    "after": dict(source.db.execute("SELECT * FROM inventories").fetchone()),
+                }
+            ]
+            second = importer.publish(
+                source.root, target.root, manifest, tmp_path / "ledger", min_free_bytes=0
+            )
+            assert second["status"] == "revalidated"
+            assert second["inventory_completions"] == []
+            assert second["canonical_before"] == second["canonical_after"]
+    finally:
+        source.close()
+        target.close()

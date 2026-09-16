@@ -1,0 +1,333 @@
+{
+  "schema_version": 1,
+  "checked_on": "2026-09-16",
+  "base_commit": "a67c2b179c159745d2d12d7eefb906fca0fc307e",
+  "method": {
+    "authorship": "Model-authored research: the assistant chose/refined queries, read returned source text/markup and wrote the findings. Python only transported MCP requests and serialized results; these are not scripted expected-answer assertions.",
+    "surface": "Actual MCP stdio subprocess via mcp.client.stdio.stdio_client and ClientSession.initialize/list_tools/call_tool. No direct Python Reader fallback and no pre-registered Psephos connector.",
+    "entrypoint": ".venv/bin/python -c \"from pathlib import Path; from psephos.server import create_server; create_server(Path('data')).run(transport='stdio')\"",
+    "python": "3.12.13",
+    "mcp": "1.29.1",
+    "requests": {
+      "list_tools": 1,
+      "call_tool": 68
+    },
+    "store": "data/legal.sqlite3, opened by server with Store(..., readonly=True), SQLite mode=ro and PRAGMA query_only=ON",
+    "scope": "Retained sources only. No new network acquisition, APIs, credentials, imports, canonical-store edits, commit or push. Shared live workspace; not a frozen nationwide corpus audit.",
+    "warning": "Six selected qualitative tasks cannot estimate nationwide accuracy or certify current/applicable law. See omissions in every task. Dates are scoped source evidence, never inferred legal effectiveness."
+  },
+  "tasks": [
+    {
+      "id": "portland_adu",
+      "question": "For a 3,000-square-foot R5 lot with a house, what retained rules bear on two ADUs, size, visitability exceptions, and Oregon's minimum ADU requirement?",
+      "status": "partial_source_answer_pdf_table_unverified",
+      "calls": [
+        7,
+        11,
+        12,
+        13,
+        20,
+        23,
+        28,
+        29,
+        47,
+        60
+      ],
+      "evidence_keys": [
+        "portland:title-33/page-287",
+        "portland:title-33/page-288",
+        "portland:title-33/page-289",
+        "portland:title-33/page-290",
+        "portland:title-33/page-291",
+        "ors:197A.425"
+      ],
+      "finding": "Table 205-2's text projection reads R5: 3,000 sq ft for two ADUs, with at least one detached and specified street-frontage qualifications. Size is the lesser of 75% of the primary unit or 800 sq ft, subject to the five-year basement-conversion exception. Visitability rules and exemptions continue on pages 290-291. ORS 197A.425 requires at least one ADU in its specified city/county/UGB scope and excludes owner-occupancy/additional parking from reasonable siting/design rules, with a vacation-occupancy exception.",
+      "omissions": [
+        "PDF table/figure not visually verified; no parcel geometry or permit conclusion.",
+        "Base-zone primary-structure/covered-accessory standards were not fully researched.",
+        "ORS 2025 edition excludes 2025 special-session and 2026 regular-session changes; later city ordinances not consolidated."
+      ]
+    },
+    {
+      "id": "nyc_zoning",
+      "question": "Does every 5,000-square-foot R3-2 lot qualify for the qualifying-residential-site FAR, how do table footnotes and Bay Ridge modify the answer, and can the answer be reconstructed for 2026-08-12?",
+      "status": "source_text_answer_historical_and_parcel_limits",
+      "calls": [
+        6,
+        8,
+        14,
+        15,
+        16,
+        30,
+        37,
+        38,
+        44,
+        48,
+        54,
+        56,
+        68
+      ],
+      "evidence_keys": [
+        "nyc-zr:12-10",
+        "nyc-zr:23-21",
+        "nyc-zr:114-02",
+        "nyc-zr:66-11"
+      ],
+      "finding": "No blanket 5,000-square-foot rule: the first R1-R5 route also requires transit geography and frontage and excludes R1/R2; other community-facility/senior-housing routes exist. Section 114-02 excludes Bay Ridge lots existing December 5, 2024 above five acres. Section 23-21 markup confirms 0.75 with superscript footnote 1, not 0.751; qualifying R3-2 sites have 1.00. Footnote 1 caps a single dwelling's equivalent FAR at 0.60 on standard lots of at least 4,000 sq ft. Definition found at character 174905 in a 273324-character section. August 12 cutoff finds nothing; August 13 succeeds, not evidence of enactment on that date.",
+      "omissions": [
+        "No parcel/transit-boundary determination, HPD regulatory-agreement analysis, or complete special-district survey.",
+        "12-10 contains 17 source-media descriptors; unacquired media not interpreted.",
+        "Two listed 12-10 versions share one artifact/snapshot: parser projections, not two historical laws."
+      ]
+    },
+    {
+      "id": "florida_tenancy",
+      "question": "What does the retained Florida edition require for residential deposit return/claim notice, email delivery, and exclusions; can it establish the rule as of 2026-09-01?",
+      "status": "source_text_answer_as_of_unavailable",
+      "calls": [
+        9,
+        17,
+        18,
+        22,
+        43,
+        49,
+        53,
+        55,
+        61
+      ],
+      "evidence_keys": [
+        "fl:stat/83.49",
+        "fl:stat/83.42",
+        "fl:stat/83.505"
+      ],
+      "finding": "Section 83.49(3) distinguishes 15-day no-claim return from 30-day claim notice, and a 15-day tenant objection period after receipt. Email depends on 83.505's voluntary signed addendum and delivery/recordkeeping rules. The fewer-than-five-units exception is to subsection (2), not a blanket exemption from deposit duties. Section 83.49(4)-(5) and Part II exclusions in 83.42 require checking. Printed citations were followed manually because references were empty. Annual edition 2026 has no snapshot/effective date; the date-cutoff attempt cannot answer historical law.",
+      "omissions": [
+        "No case-specific termination, notice receipt, subsidized-housing, lease, or litigation analysis.",
+        "No session-law/effective-date reconstruction; a null-dated edition is excluded by as_of."
+      ]
+    },
+    {
+      "id": "virginia_licensing",
+      "question": "What retained Class C contractor entry requirements, electrical-specialty prerequisites, value thresholds, and exemptions should a Virginia applicant investigate?",
+      "status": "source_text_answer_current_effect_unverified",
+      "calls": [
+        10,
+        19,
+        21,
+        27,
+        31,
+        32,
+        33,
+        40,
+        46,
+        50,
+        51,
+        52,
+        57,
+        58,
+        62
+      ],
+      "evidence_keys": [
+        "va-vac:18VAC50-22-40",
+        "va-vac:18VAC50-22-61",
+        "va-code:section:54.1-1100",
+        "va-code:section:54.1-1101"
+      ],
+      "finding": "18VAC50-22-40 requires a qualified individual age 18+, one year of relevant experience, full-time employment/responsible-management status, specialty prerequisites, disclosures and a management business course. Section -61's HTML row pairs ELE with a master electrician tradesman license and No in its board-approved-examination column; it does not waive the separate master license. Section 54.1-1100 contains Class A/B/C value alternatives; its C wording is single project over $1,000 but under $30,000 OR annual value under $250,000. No final class assignment is made. Section 54.1-1101(A)(15)'s $25,000 subcontract-work exemption preserves individual-license requirements.",
+      "omissions": [
+        "Application/classification and all alternative exemptions not adjudicated; forms, emergency rules and Register instruments are outside this review.",
+        "VAC snapshot_date is acquisition-derived; statutory CSV snapshot/effective dates are null. An as_of filter therefore retains the VAC target but excludes undated statutory targets.",
+        "Passing a publisher URL directly to legal_read remains unsupported; resolved immutable IDs/citations work."
+      ]
+    },
+    {
+      "id": "federal_state_housing",
+      "question": "Can a Florida owner-occupied small-building exemption alone settle whether a housing advertisement may state a familial-status preference?",
+      "status": "source_comparison_not_individual_legal_opinion",
+      "calls": [
+        24,
+        25,
+        34,
+        35,
+        39,
+        41,
+        42,
+        45,
+        59,
+        63
+      ],
+      "evidence_keys": [
+        "usc:/us/usc/t42/s3615",
+        "usc:/us/usc/t42/s3603",
+        "usc:/us/usc/t42/s3604",
+        "fl:stat/760.23",
+        "fl:stat/760.29"
+      ],
+      "finding": "No such inference follows from the retained sources. Section 3615 preserves same-rights state/local law but invalidates contrary permission to the extent of a federal discriminatory housing practice. Section 3603(b) expressly preserves 3604(c)'s advertisement rule even for its owner-occupied four-family exemption. Florida 760.23(3) and 760.29 contain their own prohibition and detailed exemptions. The repaired 3603-to-3604(c) link verifies the exact USLM identifier and returns the enclosing section, not an invented standalone subsection.",
+      "omissions": [
+        "No individual liability opinion, case law, HUD guidance, additional exemptions, or municipality-specific protections adjudicated.",
+        "Federal July 12 release point and undated Florida 2026 edition are not a synchronized effective-law snapshot.",
+        "Federal observation cutoff one second before retained availability returns no text, not absence of a federal rule."
+      ]
+    },
+    {
+      "id": "unsupported_ann_arbor",
+      "question": "Can retained sources establish ADU permission, setbacks or parking at an Ann Arbor point (-83.743, 42.28)?",
+      "status": "not_answerable_from_retained_local_coverage",
+      "calls": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        26,
+        36,
+        64,
+        65,
+        66,
+        67
+      ],
+      "evidence_keys": [],
+      "finding": "No local-law conclusion is supported. Catalog pages cover 83 registered collections with no Ann Arbor local-law collection. The guessed jurisdiction ID explicitly returns unknown_jurisdiction. Census recognizes Ann Arbor city (PLACE GEOID 2603000), its county subdivision, Washtenaw County and Michigan; local identities are not_crosswalked. Michigan/federal source cards are separate, not substitute municipal rules. zoning_at returns no retained polygons.",
+      "omissions": [
+        "Local ordinance, parcel, overlays, county rules and current municipal amendments unavailable in this review.",
+        "Geometry vintage 2025-01-01, publication 2025-09-23 and 2026-09-07 observations do not date legal rules.",
+        "No matches means no retained answer, never permission or no restrictions."
+      ]
+    }
+  ],
+  "sources": {
+    "33": {"url":"https://uscode.house.gov/download/releasepoints/us/pl/119/102/xml_uscAll@119-102.zip","sha256":"55c8d19543c4a972a33e33532b592ac3984c83fdcb04de9f5a64ef1f8483d300","snapshot_date":"2026-07-12","snapshot_basis":"OLRC release-point current-through date","published_on":null,"effective_on":null,"observed_at":"2026-09-06T23:25:50Z","date_caveat":"OLRC release point 119-102 current-through date, not blanket legal effect. Receipt observed_at is retained-object mtime for this initial development receipt."},
+    "151": {"url":"https://efiles.portlandoregon.gov/record/17901607/file/document","sha256":"86ba1da866c9cc1acf56df185abfddff784c23b8fbd4601fbb1c0337abb0f354","snapshot_date":"2026-07-01","snapshot_basis":"Publisher explicitly dated complete code edition","published_on":null,"effective_on":"2026-07-01","observed_at":"2026-09-06T23:37:15Z","date_caveat":"2026-07-01 is the publisher complete-edition label, not an independently adjudicated effective date for each provision. Chapter 33.205 pages carry 10/1/24; receipt time was reconstructed from retained-object mtime."},
+    "216": {"url":"https://zoningresolution.planning.nyc.gov/article-i/chapter-2","sha256":"01afd8c3181ad0bd50f7840db3cb4cd67c98753de2ecb9f6db0c658fe5e4b2cf","snapshot_date":"2026-08-13","snapshot_basis":"Publisher homepage approved-text-changes-through date","published_on":null,"effective_on":null,"observed_at":"2026-09-06T23:43:29Z","date_caveat":"12-10 metadata says publisher_last_amended 2026-03-26, but the particular qualifying residential site definition says Last Amended 12/5/2024. These clocks have different scopes."},
+    "222": {"url":"https://zoningresolution.planning.nyc.gov/article-ii/chapter-3","sha256":"16fe6b17c702bcca0cabd2a06dd5d9fb89d2b146e0d0aa1cbf52bc601477a649","snapshot_date":"2026-08-13","snapshot_basis":"Publisher homepage approved-text-changes-through date","published_on":null,"effective_on":null,"observed_at":"2026-09-06T23:43:35Z"},
+    "256": {"url":"https://zoningresolution.planning.nyc.gov/article-vi/chapter-6","sha256":"98f248534ae5102328eb4cd4d17adb7a9a0da12e4b56b4573c79d9ac24511d2a","snapshot_date":"2026-08-13","snapshot_basis":"Publisher homepage approved-text-changes-through date","published_on":null,"effective_on":null,"observed_at":"2026-09-06T23:44:14Z"},
+    "286": {"url":"https://zoningresolution.planning.nyc.gov/article-xi/chapter-4","sha256":"4230e893b8b7519a1b511d222639e9833eee1bf30701d2afbc96ed48b4399839","snapshot_date":"2026-08-13","snapshot_basis":"Publisher homepage approved-text-changes-through date","published_on":null,"effective_on":null,"observed_at":"2026-09-06T23:44:54Z"},
+    "1679": {"url":"https://law.lis.virginia.gov/CSV/CoVTitle_54.1.csv","sha256":"c2088b4481e7181dfaada2929bd2453676771fcab3dd2e71215fcde097a5193b","snapshot_date":null,"snapshot_basis":"Unknown publisher edition/incorporation date; HTTP Last-Modified is an export resource clock only.","published_on":null,"effective_on":null,"observed_at":"2026-09-07T00:52:10Z"},
+    "2244": {"url":"https://www.oregonlegislature.gov/bills_laws/ors/ors197A.html","sha256":"afa1a8c5399caf01e3d6089bc434938759bb807d57bc0ffe4374a1cb5b777ae9","snapshot_date":null,"snapshot_basis":"2025 publisher edition; observed time in acquisition; not current-law or effective-date claim","published_on":null,"effective_on":null,"observed_at":"2026-09-07T00:48:25Z"},
+    "10006": {"url":"https://www.flsenate.gov/Laws/Statutes/2026/Chapter83/All","sha256":"715efc548ed76821de6a6a8231662e98b4c7e611709e1507a7047b47cc0293fc","snapshot_date":null,"snapshot_basis":"Publisher 2026 annual edition; exact incorporation/publication/effectiveness unknown","published_on":null,"effective_on":null,"observed_at":"2026-09-07T08:07:24Z"},
+    "10474": {"url":"https://www.flsenate.gov/Laws/Statutes/2026/Chapter760/All","sha256":"cd08577e99933109f687b7f3bb2131c4ca32c6769e62630c9096aaf3a6e31a30","snapshot_date":null,"snapshot_basis":"Publisher 2026 annual edition; exact incorporation/publication/effectiveness unknown","published_on":null,"effective_on":null,"observed_at":"2026-09-07T17:56:21Z"},
+    "16036": {"url":"https://law.lis.virginia.gov/admincodefull/title18/agency50/chapter22","sha256":"031018acbc6652ca20c7a4dc00d5480e3202451de193cbb7cf7e213a3d2335dc","snapshot_date":"2026-09-07","snapshot_basis":"Live publisher snapshot observed on this acquisition date; not an edition guarantee or legal effectiveness.","published_on":null,"effective_on":null,"observed_at":"2026-09-07T23:20:53Z","date_caveat":"Stored snapshot_date 2026-09-07 is explicitly acquisition-derived, not a publisher-stated currency date. Historical Notes in 18VAC50-22-40 and -61 identify September 1, 2025; effective_on remains null."}
+  },
+  "evidence": {
+    "portland:title-33/page-287": {"id":"64ce558bc726960013046019ba906887","citation":"Portland Title 33, PDF page 287","url":"https://efiles.portlandoregon.gov/record/17901607/file/document#page=287","acquisition_id":151,"text_characters":2420,"text_quality":"layout_text_unverified","calls":[11]},
+    "portland:title-33/page-288": {"id":"1b7119dede7ae69e6f20d0f69827ae70","citation":"Portland Title 33, PDF page 288","url":"https://efiles.portlandoregon.gov/record/17901607/file/document#page=288","acquisition_id":151,"text_characters":3390,"text_quality":"layout_text_unverified","calls":[12]},
+    "portland:title-33/page-289": {"id":"fbdfd7585023009bb7ee746f33e1f7b7","citation":"Portland Title 33, PDF page 289","url":"https://efiles.portlandoregon.gov/record/17901607/file/document#page=289","acquisition_id":151,"text_characters":3482,"text_quality":"layout_text_unverified","calls":[13]},
+    "nyc-zr:114-02": {"id":"61fee873f1a6f92a5de35374cac59453","citation":"NYC Zoning Resolution § 114-02","url":"https://zoningresolution.planning.nyc.gov/article-xi/chapter-4/114-02","acquisition_id":286,"text_characters":414,"text_quality":"publisher_text_projection","calls":[15]},
+    "nyc-zr:12-10": {"id":"95e14ed86dd4b14f86affdcbc10f62b0","citation":"NYC Zoning Resolution § 12-10","url":"https://zoningresolution.planning.nyc.gov/article-i/chapter-2/12-10","acquisition_id":216,"text_characters":273324,"text_quality":"incomplete_without_source_media","calls":[16,68]},
+    "fl:stat/83.49": {"id":"4d119dc2382d611e2ca9ee39a6dccc94","citation":"Fla. Stat. § 83.49 (2026)","url":"https://www.flsenate.gov/Laws/Statutes/2026/Chapter83/All","acquisition_id":10006,"text_characters":12730,"text_quality":"publisher_text_projection","calls":[17,53]},
+    "fl:stat/83.42": {"id":"838f9a5dbceca57384cdb3b8d402349b","citation":"Fla. Stat. § 83.42 (2026)","url":"https://www.flsenate.gov/Laws/Statutes/2026/Chapter83/All","acquisition_id":10006,"text_characters":1055,"text_quality":"publisher_text_projection","calls":[18]},
+    "va-vac:18VAC50-22-40": {"id":"b5bb866aca9696134219a3cc0b7cf9fd","citation":"18VAC50-22-40","url":"https://law.lis.virginia.gov/admincode/title18/agency50/chapter22/section40/","acquisition_id":16036,"text_characters":3182,"text_quality":"publisher_html","calls":[21]},
+    "fl:stat/83.505": {"id":"8379801f30cdf527b910a6f40cb0d868","citation":"Fla. Stat. § 83.505 (2026)","url":"https://www.flsenate.gov/Laws/Statutes/2026/Chapter83/All","acquisition_id":10006,"text_characters":3484,"text_quality":"publisher_text_projection","calls":[22]},
+    "usc:/us/usc/t42/s3615": {"id":"d964ff7ad8f4ffa3c16f3171c654214b","citation":"42 U.S.C. § 3615","url":"https://uscode.house.gov/view.xhtml?edition=prelim&num=0&req=granuleid%3AUSC-prelim-title42-section3615","acquisition_id":33,"text_characters":843,"text_quality":"publisher_text_projection","calls":[24]},
+    "ors:197A.425": {"id":"9091b0b26820ddda372bb81e8637e320","citation":"ORS 197A.425","url":"https://www.oregonlegislature.gov/bills_laws/ors/ors197A.html","acquisition_id":2244,"text_characters":1072,"text_quality":"publisher_text_projection","calls":[28]},
+    "portland:title-33/page-290": {"id":"2bd10365473285134c3a83622a6e9c77","citation":"Portland Title 33, PDF page 290","url":"https://efiles.portlandoregon.gov/record/17901607/file/document#page=290","acquisition_id":151,"text_characters":2706,"text_quality":"layout_text_unverified","calls":[29]},
+    "nyc-zr:23-21": {"id":"f807921222a36db294d07747aa33e080","citation":"NYC Zoning Resolution § 23-21","url":"https://zoningresolution.planning.nyc.gov/article-ii/chapter-3/23-21","acquisition_id":222,"text_characters":766,"text_quality":"publisher_text_projection","calls":[30,37]},
+    "va-vac:18VAC50-22-61": {"id":"57acffb77c6429128fee388e51b020cf","citation":"18VAC50-22-61","url":"https://law.lis.virginia.gov/admincode/title18/agency50/chapter22/section61/","acquisition_id":16036,"text_characters":3741,"text_quality":"publisher_html","calls":[31,50]},
+    "fl:stat/760.29": {"id":"c07c57e9f8e76ed02e49687e34483c11","citation":"Fla. Stat. § 760.29 (2026)","url":"https://www.flsenate.gov/Laws/Statutes/2026/Chapter760/All","acquisition_id":10474,"text_characters":8425,"text_quality":"publisher_text_projection","calls":[34]},
+    "usc:/us/usc/t42/s3603": {"id":"7924a909ab5636c2a0bb70219a0fb4a5","citation":"42 U.S.C. § 3603","url":"https://uscode.house.gov/view.xhtml?edition=prelim&num=0&req=granuleid%3AUSC-prelim-title42-section3603","acquisition_id":33,"text_characters":4505,"text_quality":"publisher_text_projection","calls":[35]},
+    "usc:/us/usc/t42/s3604": {"id":"856485013157a796d54084eaa9f0a66b","citation":"42 U.S.C. § 3604","url":"https://uscode.house.gov/view.xhtml?edition=prelim&num=0&req=granuleid%3AUSC-prelim-title42-section3604","acquisition_id":33,"text_characters":8629,"text_quality":"publisher_text_projection","calls":[39]},
+    "fl:stat/760.23": {"id":"ac7b1c9550cec5c5996196d63e336832","citation":"Fla. Stat. § 760.23 (2026)","url":"https://www.flsenate.gov/Laws/Statutes/2026/Chapter760/All","acquisition_id":10474,"text_characters":4949,"text_quality":"publisher_text_projection","calls":[42]},
+    "portland:title-33/page-291": {"id":"ddea0759d4795ade029c9e3a342082f0","citation":"Portland Title 33, PDF page 291","url":"https://efiles.portlandoregon.gov/record/17901607/file/document#page=291","acquisition_id":151,"text_characters":1785,"text_quality":"layout_text_unverified","calls":[47]},
+    "nyc-zr:66-11": {"id":"7f8758a4dea39aef396bff318d162c0f","citation":"NYC Zoning Resolution § 66-11","url":"https://zoningresolution.planning.nyc.gov/article-vi/chapter-6/66-11","acquisition_id":256,"text_characters":5367,"text_quality":"publisher_text_projection","calls":[48,54]},
+    "va-code:section:54.1-1100": {"id":"69609f1e3ec96b79451cfb72f8512f75","citation":"Va. Code § 54.1-1100","url":"https://law.lis.virginia.gov/vacode/54.1-1100/","acquisition_id":1679,"text_characters":3950,"text_quality":"markup_inspection_warning","calls":[51]},
+    "va-code:section:54.1-1101": {"id":"27a80bd098b6e01971baee53f0d72d32","citation":"Va. Code § 54.1-1101","url":"https://law.lis.virginia.gov/vacode/54.1-1101/","acquisition_id":1679,"text_characters":4824,"text_quality":"markup_inspection_warning","calls":[52]}
+  },
+  "reference_checks": [
+    {"issue":"Retained Virginia VAC/statute hyperlinks were looked up as keys","before_call":27,"after_call":57,"targets":[{"target":"https://law.lis.virginia.gov/admincode/title18/agency50/chapter22/section61/","relation":"publisher_link","label":"18VAC50-22-61","evidence":"<a href=\"/admincode/title18/agency50/chapter22/section61/\">18VAC50-22-61</a>","publisher_citation_family":"va-administrative-code","resolution_status":"resolved","acquired_targets":[{"id":"57acffb77c6429128fee388e51b020cf","key":"va-vac:18VAC50-22-61","citation":"18VAC50-22-61","url":"https://law.lis.virginia.gov/admincode/title18/agency50/chapter22/section61/","snapshot_date":"2026-09-07"}],"resolution_basis":"exact_acquired_publisher_url"},{"target":"https://law.lis.virginia.gov/vacode/2.2-4019/","relation":"publisher_link","label":"2.2-4019","evidence":"<a href=\"/vacode/2.2-4019/\">2.2-4019</a>","publisher_citation_family":"va-code","resolution_status":"resolved","acquired_targets":[{"id":"4488c43a68c5698a95201fc70ca12012","key":"va-code:section:2.2-4019","citation":"Va. Code § 2.2-4019","url":"https://law.lis.virginia.gov/vacode/2.2-4019/","snapshot_date":null}],"resolution_basis":"exact_acquired_publisher_url"},{"target":"https://law.lis.virginia.gov/vacode/2.2-4020/","relation":"publisher_link","label":"2.2-4020","evidence":"<a href=\"/vacode/2.2-4020/\">2.2-4020</a>","publisher_citation_family":"va-code","resolution_status":"resolved","acquired_targets":[{"id":"0a8c2d19ebb13c47fd9e0849f072bd03","key":"va-code:section:2.2-4020","citation":"Va. Code § 2.2-4020","url":"https://law.lis.virginia.gov/vacode/2.2-4020/","snapshot_date":null}],"resolution_basis":"exact_acquired_publisher_url"},{"target":"https://law.lis.virginia.gov/vacode/54.1-1100/","relation":"publisher_link","label":"54.1-1100","evidence":"<a href=\"/vacode/54.1-1100/\">54.1-1100</a>","publisher_citation_family":"va-code","resolution_status":"resolved","acquired_targets":[{"id":"69609f1e3ec96b79451cfb72f8512f75","key":"va-code:section:54.1-1100","citation":"Va. Code § 54.1-1100","url":"https://law.lis.virginia.gov/vacode/54.1-1100/","snapshot_date":null}],"resolution_basis":"exact_acquired_publisher_url"},{"target":"https://law.lis.virginia.gov/vacode/54.1-201/","relation":"publisher_link","label":"54.1-201","evidence":"<a href=\"/vacode/54.1-201/\">54.1-201</a>","publisher_citation_family":"va-code","resolution_status":"resolved","acquired_targets":[{"id":"20183ba0f9f8e504ae1113b44dd01aa5","key":"va-code:section:54.1-201","citation":"Va. Code § 54.1-201","url":"https://law.lis.virginia.gov/vacode/54.1-201/","snapshot_date":null}],"resolution_basis":"exact_acquired_publisher_url"},{"target":"https://law.lis.virginia.gov/vacode/54.1-204/","relation":"publisher_link","label":"54.1-204","evidence":"<a href=\"/vacode/54.1-204/\">54.1-204</a>","publisher_citation_family":"va-code","resolution_status":"resolved","acquired_targets":[{"id":"759edc6381cacc98be6fc6ebe19c2584","key":"va-code:section:54.1-204","citation":"Va. Code § 54.1-204","url":"https://law.lis.virginia.gov/vacode/54.1-204/","snapshot_date":null}],"resolution_basis":"exact_acquired_publisher_url"}]},
+    {"issue":"Retained USLM subsection identifier did not resolve to its containing section","before_call":35,"after_call":41,"targets":[{"target":"/us/usc/t42/s3604/c","relation":"publisher_citation_identifier","label":"section 3604(c) of this title","evidence":"<ref xmlns=\"http://xml.house.gov/schemas/uslm/1.0\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:dc=\"http://purl.org/dc/elements/1.1/\" xmlns:dcterms=\"http://purl.org/dc/terms/\" href=\"/us/usc/t42/s3604/c\">section 3604(c) of this title</ref>","publisher_citation_family":"uscode","resolution_status":"resolved_within_section","acquired_targets":[{"id":"856485013157a796d54084eaa9f0a66b","key":"usc:/us/usc/t42/s3604","citation":"42 U.S.C. § 3604","url":"https://uscode.house.gov/view.xhtml?edition=prelim&num=0&req=granuleid%3AUSC-prelim-title42-section3604","snapshot_date":"2026-07-12","matched_source_identifier":"/us/usc/t42/s3604/c","navigation_scope":"enclosing_section"}],"resolution_basis":"exact_retained_uslm_identifier_in_enclosing_section"}]}
+  ],
+  "queries": [
+    {"call":0,"tool":"list_tools","arguments":{},"result":{"tools":["legal_coverage","legal_search","legal_read","legal_find","legal_versions","legal_references","source_receipt","legal_sources_at","zoning_at"]}},
+    {"call":1,"tool":"legal_coverage","arguments":{"view":"collections","limit":20},"result":{"status":"ok","total":83,"returned":16,"next_offset":16}},
+    {"call":2,"tool":"legal_coverage","arguments":{"view":"collections","offset":16,"limit":20},"result":{"status":"ok","total":83,"returned":17,"next_offset":33}},
+    {"call":3,"tool":"legal_coverage","arguments":{"view":"collections","offset":36,"limit":20},"result":{"status":"ok","total":83,"returned":17,"next_offset":53}},
+    {"call":4,"tool":"legal_coverage","arguments":{"view":"collections","offset":56,"limit":20},"result":{"status":"ok","total":83,"returned":18,"next_offset":74}},
+    {"call":5,"tool":"legal_coverage","arguments":{"view":"collections","offset":76,"limit":20},"result":{"status":"ok","total":83,"returned":7,"next_offset":null}},
+    {"call":6,"tool":"legal_coverage","arguments":{"jurisdiction":"us-ny-nyc"},"result":{"status":"ok","total":2,"returned":2,"next_offset":null}},
+    {"call":7,"tool":"legal_search","arguments":{"query":"accessory dwelling units","collection":"portland-zoning","limit":5},"result":{"keys":["portland:title-33/page-289","portland:title-33/page-288","portland:title-33/page-287","portland:title-33/page-294","portland:title-33/page-298"]}},
+    {"call":8,"tool":"legal_search","arguments":{"query":"qualifying residential site","collection":"nyc-zoning","limit":3},"result":{"keys":["nyc-zr:12-10","nyc-zr:114-02","nyc-zr:23-20"]}},
+    {"call":9,"tool":"legal_search","arguments":{"query":"security deposits","collection":"florida-statutes-2026","limit":3},"result":{"keys":["fl:stat/324.061","fl:stat/83.43","fl:stat/83.49"]}},
+    {"call":10,"tool":"legal_search","arguments":{"query":"contractor license","collection":"va-administrative-code","limit":4},"result":{"keys":["va-vac:18VAC15-21-140","va-vac:18VAC15-30-9998","va-vac:18VAC15-21-500","va-vac:18VAC15-21-9998"]}},
+    {"call":11,"tool":"legal_read","arguments":{"key_or_id":"portland:title-33/page-287","length":8000},"result":{"found":true,"key":"portland:title-33/page-287","offset":0,"returned_characters":2420,"next_offset":null}},
+    {"call":12,"tool":"legal_read","arguments":{"key_or_id":"portland:title-33/page-288","length":8000},"result":{"found":true,"key":"portland:title-33/page-288","offset":0,"returned_characters":3390,"next_offset":null}},
+    {"call":13,"tool":"legal_read","arguments":{"key_or_id":"portland:title-33/page-289","length":8000},"result":{"found":true,"key":"portland:title-33/page-289","offset":0,"returned_characters":3482,"next_offset":null}},
+    {"call":14,"tool":"legal_find","arguments":{"key_or_id":"nyc-zr:12-10","query":"qualifying residential site","limit":2},"result":{"key":"nyc-zr:12-10","text_characters":273324,"matches":[{"match_offset":174905,"read_offset":174755},{"match_offset":174978,"read_offset":174828}],"next_start":177680}},
+    {"call":15,"tool":"legal_read","arguments":{"key_or_id":"nyc-zr:114-02","length":3000},"result":{"found":true,"key":"nyc-zr:114-02","offset":0,"returned_characters":414,"next_offset":null}},
+    {"call":16,"tool":"legal_read","arguments":{"key_or_id":"95e14ed86dd4b14f86affdcbc10f62b0","offset":174905,"length":5000},"result":{"found":true,"key":"nyc-zr:12-10","offset":174905,"returned_characters":5000,"next_offset":179905}},
+    {"call":17,"tool":"legal_read","arguments":{"key_or_id":"Fla. Stat. § 83.49 (2026)","length":16000},"result":{"found":true,"key":"fl:stat/83.49","offset":0,"returned_characters":12730,"next_offset":null}},
+    {"call":18,"tool":"legal_read","arguments":{"key_or_id":"Fla. Stat. § 83.42","length":5000},"result":{"found":true,"key":"fl:stat/83.42","offset":0,"returned_characters":1055,"next_offset":null}},
+    {"call":19,"tool":"legal_search","arguments":{"query":"Class C","collection":"va-administrative-code","limit":3},"result":{"keys":["va-vac:18VAC50-22-40","va-vac:9VAC25-580-125","va-vac:2VAC5-425-10"]}},
+    {"call":20,"tool":"legal_search","arguments":{"query":"accessory dwelling unit","collection":"oregon-ors","limit":3},"result":{"keys":["ors:454.620","ors:215.495","ors:215.501"]}},
+    {"call":21,"tool":"legal_read","arguments":{"key_or_id":"18VAC50-22-40","length":7000},"result":{"found":true,"key":"va-vac:18VAC50-22-40","offset":0,"returned_characters":3182,"next_offset":null}},
+    {"call":22,"tool":"legal_read","arguments":{"key_or_id":"Fla. Stat. § 83.505 (2026)","length":6000},"result":{"found":true,"key":"fl:stat/83.505","offset":0,"returned_characters":3484,"next_offset":null}},
+    {"call":23,"tool":"legal_search","arguments":{"query":"accessory dwelling reasonable local","collection":"oregon-ors","limit":2},"result":{"keys":["ors:197A.425","ors:90.740"]}},
+    {"call":24,"tool":"legal_read","arguments":{"key_or_id":"42 U.S.C. § 3615","length":4000},"result":{"found":true,"key":"usc:/us/usc/t42/s3615","offset":0,"returned_characters":843,"next_offset":null}},
+    {"call":25,"tool":"legal_search","arguments":{"query":"fair housing exemptions","collection":"florida-statutes-2026","limit":2},"result":{"keys":["fl:chapter/760/_context","fl:stat/760.29"]}},
+    {"call":26,"tool":"legal_coverage","arguments":{"jurisdiction":"us-mi-ann-arbor"},"result":{"status":"unknown_jurisdiction","total":0,"returned":0,"next_offset":null}},
+    {"call":27,"tool":"legal_references","arguments":{"provision_id":"b5bb866aca9696134219a3cc0b7cf9fd","offset":5,"limit":30},"result":{"returned":10,"resolved":[],"next_offset":null}},
+    {"call":28,"tool":"legal_read","arguments":{"key_or_id":"ors:197A.425","length":5000},"result":{"found":true,"key":"ors:197A.425","offset":0,"returned_characters":1072,"next_offset":null}},
+    {"call":29,"tool":"legal_read","arguments":{"key_or_id":"portland:title-33/page-290","length":4500},"result":{"found":true,"key":"portland:title-33/page-290","offset":0,"returned_characters":2706,"next_offset":null}},
+    {"call":30,"tool":"legal_read","arguments":{"key_or_id":"nyc-zr:23-21","length":8000,"include_markup":true},"result":{"found":true,"key":"nyc-zr:23-21","offset":0,"returned_characters":766,"next_offset":null,"markup_returned_characters":8000,"markup_next_offset":8000}},
+    {"call":31,"tool":"legal_read","arguments":{"key_or_id":"18VAC50-22-61","length":4500},"result":{"found":true,"key":"va-vac:18VAC50-22-61","offset":0,"returned_characters":3741,"next_offset":null}},
+    {"call":32,"tool":"legal_read","arguments":{"key_or_id":"https://law.lis.virginia.gov/admincode/title18/agency50/chapter22/section61/","length":1000},"result":{"found":false,"reason":"No acquired matching provision at these cutoffs"}},
+    {"call":33,"tool":"legal_coverage","arguments":{"jurisdiction":"us-va"},"result":{"status":"ok","total":3,"returned":3,"next_offset":null}},
+    {"call":34,"tool":"legal_read","arguments":{"key_or_id":"Fla. Stat. § 760.29","length":11000},"result":{"found":true,"key":"fl:stat/760.29","offset":0,"returned_characters":8425,"next_offset":null}},
+    {"call":35,"tool":"legal_read","arguments":{"key_or_id":"42 U.S.C. § 3603","length":7000},"result":{"found":true,"key":"usc:/us/usc/t42/s3603","offset":0,"returned_characters":4505,"next_offset":null}},
+    {"call":36,"tool":"legal_sources_at","arguments":{"longitude":-83.743,"latitude":42.28,"limit":10},"result":{"status":"matches","matches":[{"layer":"COUNTY","name":"Washtenaw County","geoid":"26161","geometry_source":{"url":"https://www2.census.gov/geo/tiger/TIGER2025/COUNTY/tl_2025_us_county.zip","artifact_sha":"9c6e9d9076abce2670d1de255de3710c35ecca00a7005d88e012dec52d95f763","acquisition_id":10740,"vintage":"2025-01-01","published_on":"2025-09-23","available_at":"2026-09-07T18:50:23Z"},"legal_source_status":"not_crosswalked"},{"layer":"COUSUB","name":"Ann Arbor city","geoid":"2616103000","geometry_source":{"url":"https://www2.census.gov/geo/tiger/TIGER2025/COUSUB/tl_2025_26_cousub.zip","artifact_sha":"f5bcc25955b4c4ee9442a7e9d8f6f62fd7271a6352553f6d64f862861a1a06e8","acquisition_id":10813,"vintage":"2025-01-01","published_on":"2025-09-23","available_at":"2026-09-07T18:52:03Z"},"legal_source_status":"not_crosswalked"},{"layer":"PLACE","name":"Ann Arbor city","geoid":"2603000","geometry_source":{"url":"https://www2.census.gov/geo/tiger/TIGER2025/PLACE/tl_2025_26_place.zip","artifact_sha":"91cd708b8f9809a50ebed360fe7242969ba357a542481da81d9edc5821d35d3b","acquisition_id":10763,"vintage":"2025-01-01","published_on":"2025-09-23","available_at":"2026-09-07T18:50:58Z"},"legal_source_status":"not_crosswalked"},{"layer":"STATE","geoid":"26","geometry_source":{"url":"https://www2.census.gov/geo/tiger/TIGER2025/STATE/tl_2025_us_state.zip","artifact_sha":"59a220888a8d9be8117c4fcd38f542bd02d81abf0d198c78113595ad540dd957","acquisition_id":10736,"vintage":"2025-01-01","published_on":"2025-09-23","available_at":"2026-09-07T18:47:09Z"},"legal_source_status":"retained_collections"}],"next_offset":null}},
+    {"call":37,"tool":"legal_read","arguments":{"key_or_id":"nyc-zr:23-21","offset":8000,"length":14000,"include_markup":true},"result":{"found":true,"key":"nyc-zr:23-21","offset":8000,"returned_characters":0,"next_offset":null,"markup_returned_characters":1371,"markup_next_offset":null}},
+    {"call":38,"tool":"legal_references","arguments":{"provision_id":"95e14ed86dd4b14f86affdcbc10f62b0","offset":5,"limit":50},"result":{"returned":50,"resolved":["https://zoningresolution.planning.nyc.gov/article-i/chapter-6#16-02","https://zoningresolution.planning.nyc.gov/article-i/chapter-6#16-03","https://zoningresolution.planning.nyc.gov/article-ii/chapter-3#23-21","https://zoningresolution.planning.nyc.gov/article-ii/chapter-3#23-22","https://zoningresolution.planning.nyc.gov/article-ii/chapter-3#23-23","https://zoningresolution.planning.nyc.gov/article-ii/chapter-3#23-32","https://zoningresolution.planning.nyc.gov/article-ii/chapter-3#23-341","https://zoningresolution.planning.nyc.gov/article-ii/chapter-3#23-351","https://zoningresolution.planning.nyc.gov/article-ii/chapter-3#23-443","https://zoningresolution.planning.nyc.gov/article-ii/chapter-3#23-63","https://zoningresolution.planning.nyc.gov/article-ii/chapter-3#23-71","https://zoningresolution.planning.nyc.gov/article-ii/chapter-3#23-73","https://zoningresolution.planning.nyc.gov/article-ii/chapter-4#24-181","https://zoningresolution.planning.nyc.gov/article-ii/chapter-4#24-591","https://zoningresolution.planning.nyc.gov/article-ii/chapter-6#26-00","https://zoningresolution.planning.nyc.gov/article-ii/chapter-6#26-50","https://zoningresolution.planning.nyc.gov/article-ii/chapter-7#27-10","https://zoningresolution.planning.nyc.gov/article-ii/chapter-7#27-111","https://zoningresolution.planning.nyc.gov/article-ii/chapter-7#27-16","https://zoningresolution.planning.nyc.gov/article-iii/chapter-2#32-15","https://zoningresolution.planning.nyc.gov/article-iii/chapter-2#32-163","https://zoningresolution.planning.nyc.gov/article-iii/chapter-2#32-30","https://zoningresolution.planning.nyc.gov/article-iii/chapter-2#32-301","https://zoningresolution.planning.nyc.gov/article-iii/chapter-2#32-41","https://zoningresolution.planning.nyc.gov/article-iii/chapter-2#32-42","https://zoningresolution.planning.nyc.gov/article-iii/chapter-2#32-43","https://zoningresolution.planning.nyc.gov/article-iii/chapter-2#32-433","https://zoningresolution.planning.nyc.gov/article-iii/chapter-3#33-491","https://zoningresolution.planning.nyc.gov/article-iii/chapter-5#35-81","https://zoningresolution.planning.nyc.gov/article-iii/chapter-7#37-10","https://zoningresolution.planning.nyc.gov/article-iii/chapter-7#37-20","https://zoningresolution.planning.nyc.gov/article-iii/chapter-7#37-30","https://zoningresolution.planning.nyc.gov/article-iii/chapter-7#37-311","https://zoningresolution.planning.nyc.gov/article-iii/chapter-7#37-70","https://zoningresolution.planning.nyc.gov/article-iii/chapter-7#37-80","https://zoningresolution.planning.nyc.gov/article-iv/chapter-2#42-315","https://zoningresolution.planning.nyc.gov/article-iv/chapter-2#42-432","https://zoningresolution.planning.nyc.gov/article-iv/chapter-2#42-51","https://zoningresolution.planning.nyc.gov/article-iv/chapter-2#42-52","https://zoningresolution.planning.nyc.gov/article-iv/chapter-2#42-53","https://zoningresolution.planning.nyc.gov/article-iv/chapter-3#43-17","https://zoningresolution.planning.nyc.gov/article-v/chapter-2#52-32","https://zoningresolution.planning.nyc.gov/article-v/chapter-2#52-52","https://zoningresolution.planning.nyc.gov/article-v/chapter-2#52-72","https://zoningresolution.planning.nyc.gov/article-vi/chapter-1#61-30","https://zoningresolution.planning.nyc.gov/article-vi/chapter-1#61-41"],"next_offset":55}},
+    {"call":39,"tool":"legal_read","arguments":{"key_or_id":"42 U.S.C. § 3604","length":12000,"include_markup":true},"result":{"found":true,"key":"usc:/us/usc/t42/s3604","offset":0,"returned_characters":8629,"next_offset":null,"markup_returned_characters":12000,"markup_next_offset":12000}},
+    {"call":40,"tool":"legal_references","arguments":{"provision_id":"b5bb866aca9696134219a3cc0b7cf9fd","offset":5,"limit":30},"result":{"returned":10,"resolved":["https://law.lis.virginia.gov/admincode/title18/agency50/chapter22/section61/"],"next_offset":null}},
+    {"call":41,"tool":"legal_references","arguments":{"provision_id":"7924a909ab5636c2a0bb70219a0fb4a5","limit":10},"result":{"returned":5,"resolved":["/us/usc/t42/s3604","/us/usc/t42/s3604/c","/us/usc/t42/s3607"],"next_offset":null}},
+    {"call":42,"tool":"legal_read","arguments":{"key_or_id":"Fla. Stat. § 760.23","length":10000},"result":{"found":true,"key":"fl:stat/760.23","offset":0,"returned_characters":4949,"next_offset":null}},
+    {"call":43,"tool":"legal_read","arguments":{"key_or_id":"fl:stat/83.49","as_of":"2026-09-01","length":1000},"result":{"found":false,"reason":"No acquired matching provision at these cutoffs"}},
+    {"call":44,"tool":"legal_read","arguments":{"key_or_id":"nyc-zr:12-10","as_of":"2026-08-12","length":500},"result":{"found":false,"reason":"No acquired matching provision at these cutoffs"}},
+    {"call":45,"tool":"legal_read","arguments":{"key_or_id":"42 U.S.C. § 3615","observation_cutoff":"2026-09-06T23:25:49Z","length":500},"result":{"found":false,"reason":"No acquired matching provision at these cutoffs"}},
+    {"call":46,"tool":"legal_search","arguments":{"query":"Class C contractors","collection":"va-code","limit":2},"result":{"keys":["va-code:section:54.1-1100","va-code:section:54.1-1102"]}},
+    {"call":47,"tool":"legal_read","arguments":{"key_or_id":"portland:title-33/page-291","length":6000},"result":{"found":true,"key":"portland:title-33/page-291","offset":0,"returned_characters":1785,"next_offset":null}},
+    {"call":48,"tool":"legal_read","arguments":{"key_or_id":"nyc-zr:66-11","length":5000},"result":{"found":true,"key":"nyc-zr:66-11","offset":0,"returned_characters":5000,"next_offset":5000}},
+    {"call":49,"tool":"legal_find","arguments":{"key_or_id":"Fla. Stat. § 83.49","query":"(2)","limit":1},"result":{"key":"fl:stat/83.49","text_characters":12730,"matches":[{"match_offset":3002,"read_offset":2852}],"next_start":null}},
+    {"call":50,"tool":"legal_read","arguments":{"key_or_id":"18VAC50-22-61","include_markup":true,"length":24000},"result":{"found":true,"key":"va-vac:18VAC50-22-61","offset":0,"returned_characters":3741,"next_offset":null,"markup_returned_characters":7861,"markup_next_offset":null}},
+    {"call":51,"tool":"legal_read","arguments":{"key_or_id":"Va. Code § 54.1-1100","length":6500},"result":{"found":true,"key":"va-code:section:54.1-1100","offset":0,"returned_characters":3950,"next_offset":null}},
+    {"call":52,"tool":"legal_read","arguments":{"key_or_id":"Va. Code § 54.1-1101","length":14000},"result":{"found":true,"key":"va-code:section:54.1-1101","offset":0,"returned_characters":4824,"next_offset":null}},
+    {"call":53,"tool":"legal_read","arguments":{"key_or_id":"fl:stat/83.49","offset":3002,"length":2700},"result":{"found":true,"key":"fl:stat/83.49","offset":3002,"returned_characters":2700,"next_offset":5702}},
+    {"call":54,"tool":"legal_read","arguments":{"key_or_id":"nyc-zr:66-11","offset":5000,"length":1000},"result":{"found":true,"key":"nyc-zr:66-11","offset":5000,"returned_characters":367,"next_offset":null}},
+    {"call":55,"tool":"legal_versions","arguments":{"key":"fl:stat/83.49","limit":3},"result":{"versions":[{"id":"4d119dc2382d611e2ca9ee39a6dccc94","snapshot_date":null,"artifact_sha":"715efc548ed76821de6a6a8231662e98b4c7e611709e1507a7047b47cc0293fc"}]}},
+    {"call":56,"tool":"legal_versions","arguments":{"key":"nyc-zr:12-10","limit":3},"result":{"versions":[{"id":"95e14ed86dd4b14f86affdcbc10f62b0","snapshot_date":"2026-08-13","artifact_sha":"01afd8c3181ad0bd50f7840db3cb4cd67c98753de2ecb9f6db0c658fe5e4b2cf"},{"id":"a41ade1a762966ebb999fdb8b719011c","snapshot_date":"2026-08-13","artifact_sha":"01afd8c3181ad0bd50f7840db3cb4cd67c98753de2ecb9f6db0c658fe5e4b2cf"}]}},
+    {"call":57,"tool":"legal_references","arguments":{"provision_id":"b5bb866aca9696134219a3cc0b7cf9fd","offset":9,"limit":10},"result":{"returned":6,"resolved":["https://law.lis.virginia.gov/admincode/title18/agency50/chapter22/section61/","https://law.lis.virginia.gov/vacode/2.2-4019/","https://law.lis.virginia.gov/vacode/2.2-4020/","https://law.lis.virginia.gov/vacode/54.1-1100/","https://law.lis.virginia.gov/vacode/54.1-201/","https://law.lis.virginia.gov/vacode/54.1-204/"],"next_offset":null}},
+    {"call":58,"tool":"legal_references","arguments":{"provision_id":"b5bb866aca9696134219a3cc0b7cf9fd","offset":9,"limit":10,"as_of":"2026-09-07"},"result":{"returned":6,"resolved":["https://law.lis.virginia.gov/admincode/title18/agency50/chapter22/section61/"],"next_offset":null}},
+    {"call":59,"tool":"legal_references","arguments":{"provision_id":"7924a909ab5636c2a0bb70219a0fb4a5","limit":10,"as_of":"2026-07-11"},"result":{"returned":0,"resolved":[],"next_offset":null}},
+    {"call":60,"tool":"source_receipt","arguments":{"acquisition_id":151},"result":{"found":true,"sha256":"86ba1da866c9cc1acf56df185abfddff784c23b8fbd4601fbb1c0337abb0f354","status":200,"bytes":69297734,"observed_at":"2026-09-06T23:37:15Z"}},
+    {"call":61,"tool":"source_receipt","arguments":{"acquisition_id":10006},"result":{"found":true,"sha256":"715efc548ed76821de6a6a8231662e98b4c7e611709e1507a7047b47cc0293fc","status":200,"bytes":258900,"observed_at":"2026-09-07T08:07:24Z"}},
+    {"call":62,"tool":"source_receipt","arguments":{"acquisition_id":16036},"result":{"found":true,"sha256":"031018acbc6652ca20c7a4dc00d5480e3202451de193cbb7cf7e213a3d2335dc","status":200,"bytes":159044,"observed_at":"2026-09-07T23:20:53Z"}},
+    {"call":63,"tool":"source_receipt","arguments":{"acquisition_id":33},"result":{"found":true,"sha256":"55c8d19543c4a972a33e33532b592ac3984c83fdcb04de9f5a64ef1f8483d300","status":200,"bytes":108610077,"observed_at":"2026-09-06T23:25:50Z"}},
+    {"call":64,"tool":"legal_coverage","arguments":{"view":"collections","offset":33,"limit":3},"result":{"status":"ok","total":83,"returned":3,"next_offset":36}},
+    {"call":65,"tool":"legal_coverage","arguments":{"view":"collections","offset":53,"limit":3},"result":{"status":"ok","total":83,"returned":3,"next_offset":56}},
+    {"call":66,"tool":"legal_coverage","arguments":{"view":"collections","offset":74,"limit":2},"result":{"status":"ok","total":83,"returned":2,"next_offset":76}},
+    {"call":67,"tool":"zoning_at","arguments":{"longitude":-83.743,"latitude":42.28},"result":{"matches":0,"warning":"All intersecting acquired polygons, including boundaries. A point is not a parcel; GIS/text vintages may differ. District, overlay, plan, pending-map and agency-area fields retain their source meanings. This does not certify buildability, applicability, or absence of restrictions. Empty results are a coverage/result statement, not permission."}},
+    {"call":68,"tool":"legal_read","arguments":{"key_or_id":"nyc-zr:12-10","as_of":"2026-08-13","offset":174905,"length":300},"result":{"found":true,"key":"nyc-zr:12-10","offset":174905,"returned_characters":300,"next_offset":175205}}
+  ],
+  "verification": {
+    "focused_tests": {
+      "command": ".venv/bin/pytest -q tests/test_research_workflows.py tests/test_store_retrieval.py tests/test_washington_references.py tests/test_portland_code.py tests/test_virginia_rules.py tests/test_florida_reading.py tests/test_discovery.py",
+      "result": "57 passed in 0.60s"
+    },
+    "ruff": {
+      "command": ".venv/bin/ruff check src/psephos/retrieve.py tests/test_research_workflows.py",
+      "result": "All checks passed"
+    },
+    "mypy": {
+      "command": ".venv/bin/mypy src/psephos/retrieve.py",
+      "result": "Success: no issues found in 1 source file"
+    },
+    "report_check": "JSON parsed; six tasks and 69 sequential MCP calls/listings validated. A separate direct SQLite mode=ro/query_only check matched all 22 evidence IDs, citations, URLs, acquisition IDs and artifact hashes. This was report-integrity verification, not the research invocation surface.",
+    "note": "An earlier wider run hit two missing complete_virginia.py imports during concurrent coordinator reorganization; the current rerun above passes. Initial malformed test fixtures were corrected before final verification. Full repository suite not claimed."
+  },
+  "changed_paths": [
+    "src/psephos/retrieve.py",
+    "tests/test_research_workflows.py",
+    "docs/research-checks.json",
+    "docs/research-checks.md"
+  ]
+}

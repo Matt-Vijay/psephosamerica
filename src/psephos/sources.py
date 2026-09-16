@@ -5,7 +5,10 @@ from __future__ import annotations
 import re
 import sys
 import zipfile
+from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import datetime
+from functools import partial
 from pathlib import Path
 from typing import Any
 from urllib.parse import urljoin
@@ -13,6 +16,7 @@ from urllib.parse import urljoin
 from lxml import html
 
 from .acquire import Acquirer, AcquisitionError
+from .campaign import CampaignAcquirer
 from .parse import child_text, ecfr_units, uscode_units, xml_root
 from .retrieve import Reader, cutoff_date
 from .store import Store
@@ -197,6 +201,203 @@ def sync_ecfr(s: Store, a: Acquirer, limit: int | None, as_of: str | None) -> No
             print(f"ecfr: {item}: FAILED: {exc}", file=sys.stderr)
 
 
+@dataclass(frozen=True)
+class _Source:
+    sync: Callable[[Store, Acquirer, int | None, str | None], object]
+    collection_ids: tuple[str, ...]
+    limitations: str
+    historical_sync: bool = False
+    campaign: type[CampaignAcquirer] | None = None
+    receipt_prefixes: tuple[str, ...] = ()
+
+
+def _sources() -> dict[str, _Source]:
+    """The installed acquisition catalog; importing it performs no I/O."""
+    from .census import sync_census
+    from .collect_georgia import sync_georgia
+    from .collect_oregon import sync_oregon
+    from .collect_virginia import sync_virginia
+    from .collect_washington import sync_washington
+    from .dc import sync_dc
+    from .florida import sync_florida
+    from .geography import sync_nyc_geo, sync_portland_geo
+    from .municipal import sync_nyc, sync_portland, sync_portland_guides
+    from .nebraska import COLLECTIONS, NebraskaAcquirer, sync_nebraska
+    from .portland_charter import CharterAcquirer, sync_portland_charter
+    from .portland_code import sync_portland_code
+    from .texas import sync_texas
+    from .washington_rules import sync_washington_rules
+
+    return {
+        "census-geography": _Source(
+            sync_census,
+            ("census-geography-2025",),
+            "Fixed bounded 2025 geography; no limit, refresh or historical acquisition.",
+        ),
+        "uscode": _Source(
+            sync_uscode, ("uscode",), "Current OLRC release point; not blanket legal effectiveness."
+        ),
+        "ecfr": _Source(
+            sync_ecfr,
+            ("ecfr",),
+            "Versioner incorporation snapshots since 2017; not official legal editions or effective-date reconstruction.",
+            True,
+        ),
+        "dc": _Source(
+            sync_dc,
+            ("dc-code", "dc-laws"),
+            "Pinned Council XML revision selected by repository date; not inferred legal effectiveness.",
+            True,
+        ),
+        "texas": _Source(
+            sync_texas,
+            ("texas",),
+            "Current bulk compilation; precise snapshot/effective dates unknown.",
+        ),
+        "florida": _Source(
+            sync_florida,
+            ("florida-statutes-2026",),
+            "2026 publisher chapter inventory; no historical acquisition.",
+        ),
+        "nyc": _Source(
+            sync_nyc, ("nyc-zoning",), "Publisher zoning pages, not the entire municipal code."
+        ),
+        "portland": _Source(
+            sync_portland,
+            ("portland-zoning",),
+            "Reviewed zoning PDF edition; no partial or historical acquisition.",
+        ),
+        "portland-code": _Source(
+            sync_portland_code,
+            ("portland-city-code",),
+            "Clerk-listed code exports; no limit or refresh; Title 33 is a separate zoning collection.",
+        ),
+        "portland-charter": _Source(
+            sync_portland_charter,
+            ("portland-city-charter",),
+            "Council Clerk chapter inventory; current display, not inferred effectiveness. "
+            "128 MiB persistent allowance; existing stores require original campaign budget.",
+            campaign=CharterAcquirer,
+        ),
+        "portland-guides": _Source(
+            sync_portland_guides,
+            ("portland-zoning-guides",),
+            "Supporting guidance only; not additional code coverage.",
+        ),
+        "nyc-gis": _Source(
+            sync_nyc_geo,
+            ("nyc-zoning-gis",),
+            "Publisher GIS archive; no historical or partial acquisition.",
+        ),
+        "portland-gis": _Source(
+            sync_portland_geo,
+            ("portland-zoning-gis",),
+            "Live GIS membership; no historical or partial acquisition.",
+        ),
+        "washington-land-use": _Source(
+            sync_washington_rules,
+            ("wa-wac", "wa-rcw", "wa-wsr", "wa-rulemaking-notices"),
+            "Bounded SEPA/GMA source scope, not statewide administrative-law completeness.",
+        ),
+        "georgia": _Source(
+            sync_georgia,
+            ("ga-administrative-rules",),
+            "Native department PDFs; unverified image text stays explicit. Existing stores require original campaign evidence.",
+        ),
+        "virginia": _Source(
+            sync_virginia,
+            ("va-administrative-code",),
+            "Native live chapters and agency summaries; some external media unavailable. Existing stores require original campaign evidence.",
+        ),
+        "oregon": _Source(
+            sync_oregon,
+            ("oregon-ors",),
+            "Fixed 2025-edition public chapter inventory; later laws not consolidated. Existing stores require original campaign budget.",
+            campaign=CampaignAcquirer,
+            receipt_prefixes=("https://www.oregonlegislature.gov/",),
+        ),
+        "washington": _Source(
+            partial(sync_washington, titles=None),
+            ("wa-rcw",),
+            "All native live RCW chapters; no historical reconstruction. Existing stores require original campaign budget.",
+            campaign=CampaignAcquirer,
+            receipt_prefixes=(
+                "https://app.leg.wa.gov/",
+                "https://apps.leg.wa.gov/",
+                "https://leg.wa.gov/",
+                "https://wslwebservices.leg.wa.gov/",
+            ),
+        ),
+        "nebraska": _Source(
+            sync_nebraska,
+            COLLECTIONS,
+            "Native statutes, UCC, constitution and appendix; legal clocks unknown. Existing stores require original campaign budget.",
+            campaign=NebraskaAcquirer,
+        ),
+    }
+
+
+def available_sources() -> dict[str, Any]:
+    return {
+        "sources": [
+            {
+                "alias": alias,
+                "collection_ids": list(source.collection_ids),
+                "historical_sync": source.historical_sync,
+                "limitations": source.limitations,
+            }
+            for alias, source in _sources().items()
+        ],
+        "meaning": "Supported acquisition adapters, not acquired coverage.",
+    }
+
+
+def _sync_source(
+    name: str,
+    source: _Source,
+    store: Store,
+    outer: Acquirer,
+    limit: int | None,
+    as_of: str | None,
+) -> None:
+    if source.campaign is None:
+        source.sync(store, outer, limit, as_of)
+        return
+    if as_of is not None:
+        raise ValueError(f"{name} has no historical acquisition; use retained read cutoffs instead")
+    import fcntl
+
+    directory = store.root / "campaigns" / name
+    directory.mkdir(parents=True, exist_ok=True)
+    with (directory / "writer.lock").open("a") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        if not (directory / "budget.json").exists() and (
+            any(
+                store.db.execute("SELECT 1 FROM collections WHERE id=?", (cid,)).fetchone()
+                for cid in source.collection_ids
+            )
+            or any(
+                store.db.execute(
+                    "SELECT 1 FROM acquisitions WHERE url LIKE ? LIMIT 1", (prefix + "%",)
+                ).fetchone()
+                for prefix in source.receipt_prefixes
+            )
+        ):
+            raise AcquisitionError(
+                f"Restore the original {name} campaign budget at {directory / 'budget.json'} "
+                "before acquiring into this existing store; portable snapshots omit operator budgets."
+            )
+        campaign = source.campaign(store, directory)
+        campaign.refresh = outer.refresh
+        initial = campaign.downloaded
+        campaign.max_bytes = min(campaign.max_bytes, initial + outer.max_bytes - outer.downloaded)
+        try:
+            source.sync(store, campaign, limit, as_of)
+        finally:
+            outer.downloaded += campaign.downloaded - initial
+            campaign.close()
+
+
 def sync_collections(
     root: Path,
     collections: list[str],
@@ -205,33 +406,7 @@ def sync_collections(
     limit: int | None = None,
     as_of: str | None = None,
 ) -> dict[str, Any]:
-    from .census import sync_census
-    from .dc import sync_dc
-    from .florida import sync_florida
-    from .geography import sync_nyc_geo, sync_portland_geo
-    from .municipal import sync_nyc, sync_portland, sync_portland_guides
-    from .portland_code import sync_portland_code
-    from .texas import sync_texas
-    from .washington_rules import sync_washington_rules
-
-    adapters = {
-        "census-geography": (sync_census, ("census-geography-2025",)),
-        "uscode": (sync_uscode, ("uscode",)),
-        "ecfr": (sync_ecfr, ("ecfr",)),
-        "dc": (sync_dc, ("dc-code", "dc-laws")),
-        "texas": (sync_texas, ("texas",)),
-        "florida": (sync_florida, ("florida-statutes-2026",)),
-        "nyc": (sync_nyc, ("nyc-zoning",)),
-        "portland": (sync_portland, ("portland-zoning",)),
-        "portland-code": (sync_portland_code, ("portland-city-code",)),
-        "portland-guides": (sync_portland_guides, ("portland-zoning-guides",)),
-        "nyc-gis": (sync_nyc_geo, ("nyc-zoning-gis",)),
-        "portland-gis": (sync_portland_geo, ("portland-zoning-gis",)),
-        "washington-land-use": (
-            sync_washington_rules,
-            ("wa-wac", "wa-rcw", "wa-wsr", "wa-rulemaking-notices"),
-        ),
-    }
+    adapters = _sources()
     if any(name not in adapters for name in collections):
         raise ValueError("Supported collections: " + ", ".join(adapters))
     if limit is not None and limit < 1:
@@ -241,11 +416,11 @@ def sync_collections(
     acquirer = Acquirer(store, refresh=refresh)
     try:
         for collection in collections:
-            adapters[collection][0](store, acquirer, limit, as_of)
+            _sync_source(collection, adapters[collection], store, acquirer, limit, as_of)
         # Source aliases can emit several catalog collections. Summarize only those
         # exact IDs; the unfiltered discovery directory is a paginated UI response.
         selected = dict.fromkeys(
-            collection_id for name in collections for collection_id in adapters[name][1]
+            collection_id for name in collections for collection_id in adapters[name].collection_ids
         )
         reader = Reader(store)
         summaries = [reader.coverage(collection=collection_id) for collection_id in selected]

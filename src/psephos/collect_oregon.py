@@ -252,7 +252,8 @@ def sync_oregon(s: Store, a: Acquirer, limit: int | None = None, as_of: str | No
         if previous is None:
             s.inventory(COLLECTION, chapter, chapter_url(chapter), "pending")
     order = sorted(CHAPTERS, key=lambda c: (c not in PRIORITY, CHAPTERS.index(c)))
-    for chapter in order[:limit]:
+    attempted = 0
+    for chapter in order:
         url = chapter_url(chapter)
         if (
             not a.refresh
@@ -265,6 +266,9 @@ def sync_oregon(s: Store, a: Acquirer, limit: int | None = None, as_of: str | No
         ):
             # Accepted older projections remain intact; completing gaps is not reindexing.
             continue
+        if limit is not None and attempted >= limit:
+            break
+        attempted += 1
         try:
             raw = a.fetch(url, max_file_bytes=12 * 1024**2)
             title, units, metadata = chapter_units(s.artifact(raw.sha256), chapter, url)
@@ -296,47 +300,27 @@ def sync_oregon(s: Store, a: Acquirer, limit: int | None = None, as_of: str | No
             s.inventory(COLLECTION, chapter, url, "indexed")
             print(
                 f"oregon-ors {chapter}: {count} units ({'indexed' if new else 'unchanged'})",
+                file=sys.stderr,
                 flush=True,
             )
         except AcquisitionError as exc:
             s.inventory(COLLECTION, chapter, url, "failed", str(exc))
             # Do not advance to other chapter requests after publisher block or cap.
             print(f"Oregon stopped: {exc}", file=sys.stderr)
-            break
+            raise
         except ValueError as exc:
             s.inventory(COLLECTION, chapter, url, "failed", str(exc))
             print(f"Oregon {chapter}: parse failed: {exc}", file=sys.stderr)
 
 
 def main() -> None:
+    from .sources import sync_collections
+
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--data", type=Path, default=Path("data/collectors/oregon"))
     p.add_argument("--limit", type=int)
-    p.add_argument("--max-mib", type=int, default=150)
     args = p.parse_args()
-    s = Store(args.data)
-    already_accepted = s.db.execute(
-        "SELECT coalesce(sum(b.bytes),0) FROM acquisitions a JOIN artifacts b ON b.sha256=a.sha256 WHERE a.status BETWEEN 200 AND 299"
-    ).fetchone()[0]
-    a = Acquirer(s, delay=1, max_bytes=max(0, args.max_mib * 1024**2 - already_accepted))
-    try:
-        sync_oregon(s, a, args.limit)
-        print(
-            json.dumps(
-                {
-                    "downloaded_decoded_bytes_this_run": a.downloaded,
-                    "inventory": dict(
-                        s.db.execute(
-                            "SELECT status,count(*) FROM inventories WHERE collection_id=? GROUP BY status",
-                            (COLLECTION,),
-                        ).fetchall()
-                    ),
-                }
-            )
-        )
-    finally:
-        a.close()
-        s.close()
+    print(json.dumps(sync_collections(args.data, ["oregon"], limit=args.limit)))
 
 
 if __name__ == "__main__":
