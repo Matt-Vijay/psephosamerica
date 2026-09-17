@@ -117,6 +117,24 @@ purchase or administrative-rule acquisition was performed. The accepted Oregon
 tranche is ORS text, not that blocked administrative-rule source. California bulk
 Code/Constitution tables and a Washington RCW tranche were separately accepted.
 
+### South Carolina continuation
+
+The maintained `south-carolina-code` command follows the retained
+[publisher title inventory](https://www.scstatehouse.gov/code/statmast.php) to
+whole-chapter HTML exports. It preserves native sections, repeated identifiers,
+history, amendment notes, tables and chapter context. Untagged bodies and
+repeal/transfer notices remain explicit whole-chapter units, not invented sections.
+The retained inventory notice describes incorporation through the 2025 session;
+retrieval dates are separate, and precise snapshot/effective dates remain unknown.
+
+The original 200 MiB ledger and its exclusive collector lock are reused directly.
+The historical request list remains unchanged; new receipts are in the canonical
+store. Access denials and Retry-After stop collection without automatic retries.
+Neither the separately retained regulations and constitution nor later session
+laws are silently re-collected or consolidated. The publisher's copying notice,
+personal/noncommercial site notice and unofficial-online-text qualification remain
+in the source records; no broader redistribution permission is inferred.
+
 ### California reuse correction
 
 The retained GOV §10248.5 explicitly overrides §10248(g)'s proprietary reservation

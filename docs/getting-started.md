@@ -73,6 +73,15 @@ Use a returned document's `first_key` or a search result ID with
 chosen data directory; `data/` is ignored by Git. A current download does not
 reproduce a historical local collection or certify current/effective law.
 
+The current checkout additionally supports `sync south-carolina-code --limit 25`.
+It reuses accepted chapters and limits newly attempted chapter exports, not the
+title inventory. The 200 MiB lifetime allowance is shared with the original
+collector's `collectors/south-carolina/http-budget.json` and `collector.lock`
+when present; it is never copied into a second allowance. Other stores use
+`campaigns/south-carolina-code/budget.json`. An imported collection without its
+operator budget cannot silently begin another campaign. This command is not in
+the older v0.2.0 wheel and does not schedule automatic refresh.
+
 ## Connect an MCP client
 
 For clients using an `mcpServers` JSON configuration, add:

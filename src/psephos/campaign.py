@@ -32,6 +32,10 @@ class CampaignAcquirer(Acquirer):
     session ceiling supports metadata preflight without resetting the total cap.
     """
 
+    @classmethod
+    def budget_file(cls, store: Store, directory: Path) -> Path:
+        return directory / "budget.json"
+
     def __init__(
         self,
         store: Store,
@@ -43,7 +47,7 @@ class CampaignAcquirer(Acquirer):
         ceiling: int | None = None,
         delay: float = 2.1,
     ):
-        self.budget_path = directory / "budget.json"
+        self.budget_path = self.budget_file(store, directory)
         self.file_cap = file_cap
         self.budget = (
             json.loads(self.budget_path.read_bytes())

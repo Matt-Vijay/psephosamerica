@@ -265,6 +265,7 @@ def _sources() -> dict[str, _Source]:
     from .nebraska import COLLECTIONS, NebraskaAcquirer, sync_nebraska
     from .portland_charter import CharterAcquirer, sync_portland_charter
     from .portland_code import sync_portland_code
+    from .south_carolina import SouthCarolinaAcquirer, sync_south_carolina
     from .texas import sync_texas
     from .washington_rules import sync_washington_rules
 
@@ -369,6 +370,13 @@ def _sources() -> dict[str, _Source]:
                 "https://lawfilesext.leg.wa.gov/",
             ),
         ),
+        "south-carolina-code": _Source(
+            sync_south_carolina,
+            ("sc-code",),
+            "Unannotated statutory chapter exports, not later session-law consolidation. Original 200 MiB lifetime allowance; regulations and constitution are separate retained families.",
+            campaign=SouthCarolinaAcquirer,
+            receipt_prefixes=("https://www.scstatehouse.gov/", "https://scstatehouse.gov/"),
+        ),
         "nebraska": _Source(
             sync_nebraska,
             COLLECTIONS,
@@ -412,7 +420,8 @@ def _sync_source(
     directory.mkdir(parents=True, exist_ok=True)
     with (directory / "writer.lock").open("a") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        if not (directory / "budget.json").exists() and (
+        budget = source.campaign.budget_file(store, directory)
+        if not budget.exists() and (
             any(
                 store.db.execute("SELECT 1 FROM collections WHERE id=?", (cid,)).fetchone()
                 for cid in source.collection_ids
@@ -425,7 +434,7 @@ def _sync_source(
             )
         ):
             raise AcquisitionError(
-                f"Restore the original {name} campaign budget at {directory / 'budget.json'} "
+                f"Restore the original {name} campaign budget at {budget} "
                 "before acquiring into this existing store; portable snapshots omit operator budgets."
             )
         campaign = source.campaign(store, directory)

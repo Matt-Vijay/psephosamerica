@@ -36,7 +36,15 @@ def test_cli_reindex_respects_active_writer(store, monkeypatch, capsys):
 def test_source_catalog_and_imported_store_budget_boundary(store, monkeypatch):
     catalog = sources.available_sources()
     entries = {row["alias"]: row for row in catalog["sources"]}
-    assert {"georgia", "virginia", "oregon", "washington", "nebraska"} <= entries.keys()
+    assert {
+        "georgia",
+        "virginia",
+        "oregon",
+        "washington",
+        "nebraska",
+        "south-carolina-code",
+    } <= entries.keys()
+    assert entries["south-carolina-code"]["collection_ids"] == ["sc-code"]
     assert entries["nebraska"]["collection_ids"] == [
         "ne-revised-statutes",
         "ne-uniform-commercial-code",

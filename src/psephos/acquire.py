@@ -84,6 +84,7 @@ def robots_lines(data: bytes) -> list[str]:
 
 
 class Acquirer:
+    automatic_retries = True
     resume_after: str | None = None
 
     def resume_window(self) -> int | None:
@@ -259,6 +260,10 @@ class Acquirer:
                         for k, v in response.headers.items()
                         if k in SAFE_HEADERS and not k.startswith("psephos_")
                     }
+                    if not self.automatic_retries and "retry-after" in response.headers:
+                        raise AcquisitionError(
+                            "Publisher requested Retry-After; resume only after review"
+                        )
                     if suffix_bytes:
                         response_headers["psephos_request_range"] = f"bytes=-{suffix_bytes}"
                     if status in (301, 302, 303, 307, 308):
@@ -279,7 +284,11 @@ class Acquirer:
                             url, current, observed, status, response_headers, cached.sha256, None
                         )
                         return cached
-                    if status in (429, 500, 502, 503, 504) and attempt < 4:
+                    if (
+                        self.automatic_retries
+                        and status in (429, 500, 502, 503, 504)
+                        and attempt < 4
+                    ):
                         self._record(
                             url, current, observed, status, response_headers, None, "retry"
                         )
