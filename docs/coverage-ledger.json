@@ -374,6 +374,7 @@
             "us-nc",
             "us-ne",
             "us-nj",
+            "us-ok",
             "us-or",
             "us-pa",
             "us-sc",
@@ -384,8 +385,8 @@
             "us-wv",
             "us-wy"
           ],
-          "people": 151136438,
-          "percent_of_us": 44.2198
+          "people": 155259726,
+          "percent_of_us": 45.4262
         },
         "verified_complete_current_layer": {
           "jurisdiction_ids": [],
@@ -629,10 +630,10 @@
       "note":"State lead acquisition blocked; no accepted legal corpus.","evidence":["docs/collection-wave.json#/blocked_not_published/us-oh"]},
     {"jurisdiction_id":"us-oh","family":"regulations","status":"absent","collection_ids":[],"layer_complete":false,
       "note":"No accepted regulatory body; no separate family-wide access finding asserted.","evidence":["docs/collection-wave.json#/blocked_not_published/us-oh"]},
-    {"jurisdiction_id":"us-ok","family":"statutes","status":"partial","collection_ids":["ok-senate-scoped-code"],"layer_complete":false,
-      "inventory":{"unit":"publisher title/constitution entries","expected":127,"retained":6,"excluded":121},"scope":"Constitution and Titles 1-5; 121 other inventory entries outside scope","edition":"Older retained PDFs of unknown legal currency; creation metadata/upload folders are not edition or effect dates","evidence":["data/collectors/leads/publish/acceptance-south-ok-20260907-01.json#/completeness_review"]},
+    {"jurisdiction_id":"us-ok","family":"statutes","status":"complete_publisher_edition","collection_ids":["ok-senate-scoped-code"],"layer_complete":false,"reviewed_on":"2026-09-17",
+      "inventory":{"unit":"native Senate-linked PDF entries","expected":127,"retained":127,"excluded":0,"unique_pdf_artifacts":126,"title_labeled_exports":89,"constitution_article_companions":37,"whole_constitution":1,"page_records":25587},"scope":"Closed retained seven-page catalog, not a coherent current-law edition. Constitution companions overlap the full constitution; Title 85 has two URLs with identical bytes. Catalog 74E is printed Title 74 Appendix I Ethics Commission Rules, not a statutory title.","edition":"Older PDF editions with mixed observation dates and unknown legal currency; creation/upload timestamps are not incorporation/effect dates","fidelity_exclusions":"121 added PDFs / 24408 page records replayed exactly, including 1572 image-appearance markers; 11 real MCP calls passed. Original six versions / 1179 records / 18 receipts unchanged. Pages include contents and notices; table/map geometry and legal currency not certified. Later amendments, separate rules and uncodified session laws are not consolidated.","evidence":["docs/oklahoma-pdf-catalog-20260917.json","data/collectors/leads/publish/acceptance-south-ok-20260907-01.json#/completeness_review"]},
     {"jurisdiction_id":"us-ok","family":"regulations","status":"absent","collection_ids":[],"layer_complete":false,
-      "evidence":["data/collectors/leads/publish/acceptance-south-ok-20260907-01.json#/completeness_review"]},
+      "scope":"No separate administrative-rules collection; the Senate Title 74 ethics appendix is retained only within the statutory PDF catalog, not statewide regulatory coverage.","evidence":["docs/oklahoma-pdf-catalog-20260917.json","data/collectors/leads/publish/acceptance-south-ok-20260907-01.json#/completeness_review"]},
     {"jurisdiction_id":"us-or","family":"statutes","status":"complete_publisher_edition","collection_ids":["oregon-ors"],"layer_complete":false,
       "inventory":{"unit":"observed chapter HTML files","expected":689,"retained":689,"excluded":0,"pending":0,"byte_cap_failed":0},"edition":"2025 ORS; excludes 2025 special-session and 2026 regular-session changes","fidelity_exclusions":"All 92 former gaps completed, including ORS707. Existing 597 versions and 65234 provision IDs preserved. New chapter projections preserve native full text; embedded media are not independently transcribed. Fixed native-UI inventory needs refresh for later editions; later amendments not consolidated.","evidence":["docs/oregon-completion-verification.json","data/collectors/leads/publish/acceptance-west-or-20260907-01.json#/completeness_review","docs/sources.md#later-state-collection"],"reproduce":"python scripts/complete_oregon.py --data data --out docs/oregon-completion-verification.json (retained store; 64MiB cumulative completion cap)"},
     {"jurisdiction_id":"us-or","family":"regulations","status":"blocked","collection_ids":[],"layer_complete":false,
@@ -709,6 +710,7 @@
       "inventory":{"unit":"ArcGIS layer 3 OBJECTIDs","expected":15703,"retained":15703,"excluded":0},"edition":"Observed live layer; precise snapshot unknown","fidelity_exclusions":"Membership closure is not transactional attribute snapshot isolation; invalid source geometry remains warned. Zoning/plan/overlay/unincorporated fields retain distinct meanings.","evidence":["docs/integrity.json#/coverage/collections","docs/sources.md#municipal-text-and-geography","artifact:0e4bb219713af7c992ec6459ac10debf5159e6791826fd0fc282c48d5f57ab46"]}
   ],
   "completion_queue": [
+    {"collection":"ok-senate-scoped-code","remaining":"0 of 127 retained publisher-linked PDFs","assessment":"121 added PDFs / 24408 page records exactly replayed; 11 real MCP calls passed. Original six versions / 1179 records preserved. Two Title 85 URLs have identical bytes; article companions overlap the whole constitution, so entries/pages are not distinct-law counts. Printed Title 74 Appendix I identity is preserved despite catalog label 74E. Original 200 MiB allowance has 122633274 charged bytes, including the earlier 16777216-byte uncertain reservation. Closed older catalog, not complete current law or automatic refresh.","evidence":"docs/oklahoma-pdf-catalog-20260917.json"},
     {"collection":"portland-city-charter","remaining":"0 Clerk-listed chapters","assessment":"All 15 chapters canonically published: 297 sections, 50 article contexts, 29 chapter/change contexts. Exact native/print replay and network-forbidden resume passed. No additional acquisition authorized.","evidence":"data/collectors/portland-charter/publish/portland-charter-publication-20260916-01.json"},
     {"collection":"oregon-ors","remaining":"0 listed chapter files","assessment":"Completed the clearest bounded maintained-adapter gap: 92 files, 20090622 bytes. Adds 4273586 residents to closed-edition reach, not complete current-law coverage.","evidence":"docs/oregon-completion-verification.json"},
     {"collection":"wa-rcw","remaining":"1,403 pending chapter exports; one budget-deferred export as of September 17","assessment":"956 additional exports exactly verified. Original 250 MiB campaign allowance retained, not reset: 262096013 bytes charged, 47987 remain, below one chunk reservation. Await explicit additional authorization before more network acquisition. Partial family does not increase closed-inventory population reach.","evidence":"docs/washington-rcw-continuation-20260917.json; data/campaigns/washington/budget.json"},

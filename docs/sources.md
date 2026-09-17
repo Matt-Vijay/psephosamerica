@@ -229,6 +229,36 @@ returned 403 without fetching a body. Retained denials prevent retries. The adap
 has retained-source and offline-fixture validation, not successful live statewide
 acquisition. No TLS bypass, alternate-host acquisition or new coverage is claimed.
 
+### Oklahoma continuation
+
+`oklahoma-statutes` follows the [Senate catalog](https://oksenate.gov/search-statutes-constitution)
+and its actual pagination/PDF links. The retained seven-page catalog has 127
+entries: 89 title-labeled exports, 37 constitution article companions and the
+whole constitution. No paths are guessed and companion PDFs are not silently
+assumed equivalent. The two Title 85 exports have identical observed bytes but
+separate URLs/receipts; raw bytes are deduplicated by hash.
+
+Each new PDF must have a matching printed identity and source body beyond
+contents lines. Article 28-A begins directly with its own section number. The
+catalog's 74E is explicitly mapped to its printed **Title 74, Appendix I, Ethics
+Commission Rules** heading, not presented as a separate statutory title. Page
+text, escaped markup, image-appearance notices and any encoded URI annotations
+are retained; tables, maps and figures are not certified visual transcriptions.
+
+The original 200 MiB ledger preserves both decoded spending and the earlier
+16 MiB uncertain charge, with 1.1-second pacing, a 16 MiB response cap and a
+105 GiB disk floor. The original collector's literal robots-rule interpretation
+is retained: `/search?` does not prohibit `/search-statutes-constitution`, while
+actual `/search?query` and `/search/` paths remain prohibited. Rules are not
+removed or rewritten to permit a request; access denials remain enforced.
+
+[Exact replay and MCP verification](oklahoma-pdf-catalog-20260917.json) establishes
+retained catalog closure, not all/current Oklahoma law. Original PDFs have older
+creation/upload metadata; neither these nor observation times assign incorporation
+or legal-effect dates. Later amendments, separate rules collections and uncodified
+session laws are not reconciled. This command is not scheduled for automatic refresh,
+and no blanket right to redistribute the source corpus is asserted.
+
 ### California reuse correction
 
 The retained GOV §10248.5 explicitly overrides §10248(g)'s proprietary reservation

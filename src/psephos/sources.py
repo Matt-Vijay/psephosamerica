@@ -267,6 +267,7 @@ def _sources() -> dict[str, _Source]:
     from .municipal import sync_nyc, sync_portland, sync_portland_guides
     from .nebraska import COLLECTIONS, NebraskaAcquirer, sync_nebraska
     from .new_york import NewYorkAcquirer, sync_new_york
+    from .oklahoma import OklahomaAcquirer, sync_oklahoma
     from .portland_charter import CharterAcquirer, sync_portland_charter
     from .portland_code import sync_portland_code
     from .south_carolina import SouthCarolinaAcquirer, sync_south_carolina
@@ -405,6 +406,13 @@ def _sources() -> dict[str, _Source]:
             "Original selected Senate whole-law PDF candidates, not a statewide inventory. Prior API/index denials remain excluded. Shares the original 180 MiB allowance and 1 MiB reserve.",
             campaign=NewYorkAcquirer,
             receipt_prefixes=("https://legislation.nysenate.gov/", "https://www.nysenate.gov/"),
+        ),
+        "oklahoma-statutes": _Source(
+            sync_oklahoma,
+            ("ok-senate-scoped-code",),
+            "Senate-linked PDF editions of unknown legal currency, not current law. Original 200 MiB lifetime allowance includes earlier uncertain reservations; no fresh allowance on resume.",
+            campaign=OklahomaAcquirer,
+            receipt_prefixes=("https://oksenate.gov/",),
         ),
         "south-carolina-code": _Source(
             sync_south_carolina,

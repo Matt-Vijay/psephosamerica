@@ -17,7 +17,7 @@ model, a hosted service, or a nationwide current-law guarantee.
   working corpus is local, not bundled into the software or public download.
 - The released wheel's `psephos sources` lists 19 acquisition commands; the
   current checkout adds `south-carolina-code`, `minnesota-statutes`,
-  `idaho-statutes`, `new-york-laws` and `illinois-statutes`, totaling 24.
+  `idaho-statutes`, `new-york-laws`, `illinois-statutes` and `oklahoma-statutes`, totaling 25.
   Georgia, Virginia, Oregon, Washington, Nebraska and Portland Charter now have
   installed entrypoints; historical collector directories are not the public interface.
 - `export` / `import` transfer explicitly selected collections. Import verifies
@@ -120,6 +120,24 @@ TLS verification was never disabled. The retained denial remains enforced, the
 38,099,825-byte spending counter is unchanged, and statewide live validation is
 not claimed. The combined offline code gate passed **246 tests**, with one skip
 and one intentional deselection; Ruff and strict mypy passed across 35 modules.
+
+The [Oklahoma verification](oklahoma-pdf-catalog-20260917.json) closes the retained
+**127-link Senate PDF catalog**, adding **121 documents / 24,408 page records**.
+All added projections replay exactly, including 1,572 image-appearance markers;
+all six original versions / 1,179 records / 18 receipts remain unchanged. Eleven
+real MCP calls verify source-heading navigation, receipts, corrected ethics-appendix
+identity and date exclusions. The code gate passed 251 tests with one skip and
+one intentional deselection; Ruff and strict mypy passed across 36 modules.
+
+The catalog includes 89 title-labeled exports, 37 constitution article companions
+and one whole constitution. The companions overlap the full constitution; two
+Title 85 URLs have identical bytes, leaving 126 unique PDFs. Catalog label 74E
+is printed Title 74, Appendix I, Ethics Commission Rules, not a separate statutory
+title. All 25,587 retained records are pages, including contents and notices, not
+unique laws. Older file metadata and mixed observations do not establish a current
+or uniform legal edition. Later amendments and separate administrative rules are
+not consolidated. The original 200 MiB ledger is at 122,633,274 charged bytes,
+including an earlier 16 MiB uncertain reservation; no allowance was reset.
 
 [Six research checks](research-checks.md) used 68 actual MCP calls on retained
 Portland, NYC, Florida, Virginia and federal sources, plus an unsupported Ann

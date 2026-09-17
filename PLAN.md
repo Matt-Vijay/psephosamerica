@@ -3,8 +3,9 @@
 The broader project is not complete. Release readiness below is a finished
 milestone, not the stopping condition for the legal-information-library goal.
 
-Current work: New York's original selected candidate pass is reconciled, but no
-statewide inventory is established. Continue through the evidence-backed queue in
+Current work: Oklahoma's retained 127-PDF Senate catalog is closed; this is not
+complete current Oklahoma law. New York's selected candidate pass is reconciled,
+but no statewide inventory is established. Continue through the evidence-backed queue in
 `docs/coverage-ledger.json`. Washington and Minnesota have exhausted their original
 download allowances; no additional allowance is assumed. Illinois remains held
 after TLS failure and a diagnostic access denial.
@@ -83,6 +84,15 @@ after TLS failure and a diagnostic access denial.
   body was requested. No new law was acquired, no TLS bypass was used and the
   original 38,099,825-byte counter is unchanged. See
   `docs/illinois-statutes-preflight-20260917.json`.
+- [x] Close Oklahoma's retained 127-link Senate PDF catalog: add 121 PDFs and
+  exactly replay 24,408 new page records, preserving all six original versions /
+  1,179 records / 18 receipts. Eleven real MCP calls verify source-heading
+  navigation, the Title 74 ethics appendix, duplicate Title 85 exports and clocks.
+  There are 126 unique PDF artifacts: the two Title 85 URLs have identical bytes;
+  37 constitution article companions overlap the whole constitution. These are
+  not distinct-law counts or a coherent/current legal edition. Original 200 MiB
+  allowance remains at 122,633,274 charged bytes, including the preserved earlier
+  16 MiB uncertain reservation. See `docs/oklahoma-pdf-catalog-20260917.json`.
 
 ## Completed release milestone
 

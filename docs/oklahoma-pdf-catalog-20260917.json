@@ -1,0 +1,191 @@
+{
+  "status": "PASS",
+  "recorded_at": "2026-09-17T22:00:36Z",
+  "retained_publisher_catalog_closed": true,
+  "current_law_complete": false,
+  "inventory": {
+    "pages": 7,
+    "pdf_links": 127,
+    "title_labeled_exports": 89,
+    "article_companions": 37,
+    "whole_constitution": 1,
+    "receipts": [
+      {
+        "url": "https://oksenate.gov/search-statutes-constitution",
+        "acquisition_id": 5584,
+        "sha256": "f96c7177f0815dd20b78bfea00ee2890b6026c6df1496de89d3beed140bf3d46"
+      },
+      {
+        "url": "https://oksenate.gov/search-statutes-constitution?page=1",
+        "acquisition_id": 5586,
+        "sha256": "10642e8142191fe3535b2dc1639e3bf702ccbf39e3aa24bbc8daccc0793269e7"
+      },
+      {
+        "url": "https://oksenate.gov/search-statutes-constitution?page=2",
+        "acquisition_id": 5587,
+        "sha256": "cfa1a247fc5dd01297d24239a5cef37caef12e23b9ee40e709bafb730b2a78ea"
+      },
+      {
+        "url": "https://oksenate.gov/search-statutes-constitution?page=3",
+        "acquisition_id": 5588,
+        "sha256": "590b1bfc8c8287ca584d29fd23489f94ef49414fa7ff9304e6dd01f529bd5eb9"
+      },
+      {
+        "url": "https://oksenate.gov/search-statutes-constitution?page=4",
+        "acquisition_id": 5589,
+        "sha256": "dfbd100585fa9d89c84476aa7801953bc169f6c85454bd9d748b68e04d08eddf"
+      },
+      {
+        "url": "https://oksenate.gov/search-statutes-constitution?page=5",
+        "acquisition_id": 5590,
+        "sha256": "d7289e296c7740341a3c5314e7aa659f18d800b010f7a7e75b81f839a7d54e23"
+      },
+      {
+        "url": "https://oksenate.gov/search-statutes-constitution?page=6",
+        "acquisition_id": 5591,
+        "sha256": "a37f5624d20ad24e4b2c2be914081e25cb39185aef846448310b6d5349b2daed"
+      }
+    ]
+  },
+  "historical_preservation": {
+    "versions": 6,
+    "records": 1179,
+    "receipts": 18,
+    "receipt_id_remapping": "Original import remapped receipt IDs, including nested inventory_receipt; source fields and current canonical rows preserved."
+  },
+  "projection_replay": {
+    "added_documents": 121,
+    "added_pages": 24408,
+    "added_image_appearances": 1572,
+    "added_publisher_links": 0
+  },
+  "retained_page_records": 25587,
+  "unique_pdf_artifacts": 126,
+  "bytes_rehashed": 104858243,
+  "catalog_manifest_sha256": "04e90b41c8eb2c1ccfe46e75eca41d2d707292b5481a785755de13c3f75f3e77",
+  "parallel_title_85": {
+    "document_ids": [
+      "ok-senate:title-85/os85_0",
+      "ok-senate:title-85/os85"
+    ],
+    "identical_observed_sha256": "35a20ab7645022500bbcb45fc4815c618c2ae2bff0d99811a901ce16f44760cf",
+    "note": "Distinct publisher URLs retained, observed bytes identical; not two distinct laws. Raw bytes are deduplicated by hash."
+  },
+  "source_identity_repairs": [
+    "Article 28-A begins with SECTION XXVIII-A-1, not an article heading; exact article/section prefix verified.",
+    "Catalog 74E is printed TITLE 74, APPENDIX I, ETHICS COMMISSION RULES; citations and document title use the printed identity.",
+    "Four whitespace-normalized inventory keys created during this pass were archived and removed; original native keys retained, no source text deleted."
+  ],
+  "budget": {
+    "cap_bytes": 209715200,
+    "charged_bytes": 122633274,
+    "decoded_bytes": 105856058,
+    "original_charged_bytes": 23152311,
+    "prior_uncertain_charge_preserved": 16777216,
+    "downloaded_this_pass": 99480963
+  },
+  "limits": "Closure of retained Senate-linked PDFs only, not complete or current Oklahoma law. Selected original PDFs have older creation/upload metadata; no legal incorporation/effect date inferred. Constitution article companions overlap the whole constitution; Title 85 has duplicate bytes. Pages include contents and notices, not counts of distinct legal provisions. Tables/figures are not visually certified. Separate regulations, session laws and later amendments are not acquired or consolidated. No blanket corpus redistribution license asserted.",
+  "navigation": {
+    "source_heading": "11-43-101",
+    "key": "ok:title-11:page:447",
+    "artifact_sha256": "20bc045092b4dbcfe6a2eb70d1edf45c89fadcf56c2994303d8e7f7c166f570a",
+    "scope": "Locates retained source heading; no current-effect or applicability conclusion."
+  },
+  "mcp": [
+    {
+      "tool": "legal_coverage",
+      "arguments": {
+        "collection": "ok-senate-scoped-code"
+      },
+      "response_sha256": "f79f101c96cf0175db5fe4898d99b43dbf943ed8b715ea0f954af662e691f571"
+    },
+    {
+      "tool": "legal_coverage",
+      "arguments": {
+        "collection": "ok-senate-scoped-code",
+        "view": "inventory",
+        "status": "failed"
+      },
+      "response_sha256": "0066b77f77c0f775ef13f6845fe6397e95859049be3d154a4d283231819496fe"
+    },
+    {
+      "tool": "legal_search",
+      "arguments": {
+        "query": "11-43-101",
+        "document": "ok-senate:title-11",
+        "limit": 10
+      },
+      "response_sha256": "fb61ceb2cfcbc5d9ef6e4b7565a1ab0761322d6f8c4fd80162da5576ca0f5df5"
+    },
+    {
+      "tool": "legal_read",
+      "arguments": {
+        "key_or_id": "83523f0e0c70e36bebf3471546c18398",
+        "length": 10000
+      },
+      "response_sha256": "77d91ee8ce44f5815390b9e2adfa261ad89939552b6dd3e9233b7e88f1235424"
+    },
+    {
+      "tool": "legal_read",
+      "arguments": {
+        "key_or_id": "2b57cf064c893032ca9cb1f3f240d69b",
+        "length": 10000
+      },
+      "response_sha256": "cc0ededcff96dc91715b6ec69f3abb8504e3abae7cf8867da7b6f7903bc4c496"
+    },
+    {
+      "tool": "source_receipt",
+      "arguments": {
+        "acquisition_id": 22838
+      },
+      "response_sha256": "f79b156af5b63a13f300e8f97ca8aa9ef3d09c5d169daf8a3a320818615cf4ef"
+    },
+    {
+      "tool": "legal_read",
+      "arguments": {
+        "key_or_id": "ok:title-74E:page:1",
+        "length": 300
+      },
+      "response_sha256": "1b56dfd951a17ad1d095aa714ddfbb67b9717bd48da2d8571c028894ebc217eb"
+    },
+    {
+      "tool": "legal_read",
+      "arguments": {
+        "key_or_id": "ok:title-85/os85:page:1",
+        "length": 100
+      },
+      "response_sha256": "92df3f1930d11d51d8c99802f286bc08bd2791dcb81631956898a0e228994d84"
+    },
+    {
+      "tool": "legal_read",
+      "arguments": {
+        "key_or_id": "ok:title-85/os85_0:page:1",
+        "length": 100
+      },
+      "response_sha256": "978c33e49d05ca48bc797dab1d2e162b6028f7d0f533de01f37bf783cbfbbfc1"
+    },
+    {
+      "tool": "legal_read",
+      "arguments": {
+        "key_or_id": "2b57cf064c893032ca9cb1f3f240d69b",
+        "as_of": "2026-09-17"
+      },
+      "response_sha256": "2fcf3c26e9a44c7a7722222ed917599bf65735eb0e0c0c0392548ff84f7edc3c"
+    },
+    {
+      "tool": "legal_read",
+      "arguments": {
+        "key_or_id": "2b57cf064c893032ca9cb1f3f240d69b",
+        "observation_cutoff": "2026-09-17T00:00:00Z"
+      },
+      "response_sha256": "2fcf3c26e9a44c7a7722222ed917599bf65735eb0e0c0c0392548ff84f7edc3c"
+    }
+  ],
+  "runtime_sha256": {
+    "src/psephos/oklahoma.py": "b61c064710b43364b0a4c41a81c050b61a56cf5dedf9be224d418494e6464049",
+    "src/psephos/campaign.py": "8a2ac5af350e32954edcec7d16c97b1214344f6c58b15da2ae80ee9f6c5cd809",
+    "src/psephos/retrieve.py": "1d72d1ef85fba8dd6f5c9512e20aca48ad5b4c471611367844762f30b56e71f6",
+    "src/psephos/server.py": "2a9cfc63d40efacf790edb0224a03f4ab70cafec010aa4b7a306655f1e7588cf",
+    "scripts/verify_oklahoma.py": "b0bed0fe05126b82de5fe852c9c1272bdc0d331e2348d4d1d31c61bc83d22a9f"
+  }
+}
