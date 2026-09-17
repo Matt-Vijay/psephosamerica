@@ -1,6 +1,6 @@
 # Current status
 
-September 16, 2026. Psephos is a local legal-source library and read-only MCP
+September 17, 2026. Psephos is a local legal-source library and read-only MCP
 server. It retrieves retained evidence for an LLM; it is not a legal reasoning
 model, a hosted service, or a nationwide current-law guarantee.
 
@@ -55,11 +55,18 @@ catalog, original objects and collector evidence; it is not an off-site backup.
 The post-release refresh gate passed **198 tests**, with the same skip and
 deselection; Ruff and strict mypy passed. Live checks completed U.S. Code
 release 119-103, D.C.'s two collections and the two selected Portland guides.
-eCFR resumed through title 44 without redownloading completed titles; six titles
-remain in this cycle after its bounded passes. No complete eCFR check is claimed.
-The macOS timer registered, but Python startup was denied Documents access.
-It was uninstalled and refresh paused pending operator-approved folder access;
-this machine does not yet have a working unattended schedule.
+On September 17, the macOS timer completed the eCFR September 15 snapshot:
+**49 active titles indexed, one reserved title, 245,166 mixed retrieval records**.
+The final pass reused completed title bodies, downloaded the remaining 11, and
+finished at 06:21:51 UTC. Each active title has a successful acquisition receipt,
+a retained source file matching its recorded size and a nonempty indexed version.
+
+The unattended schedule is now installed and enabled, with a verified background
+run exiting successfully. The fix was operator-approved Documents access for the
+timer's actual Homebrew Python executable; no Full Disk Access was granted.
+It wakes hourly, checks due sources weekly, and retains the 512 MiB per-pass and
+8 GiB per-month allowances. All four scheduled sources have completed checks;
+this does not certify legal effectiveness or freshness of unscheduled sources.
 
 ## Remaining boundaries
 

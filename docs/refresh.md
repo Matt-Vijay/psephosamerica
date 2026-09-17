@@ -66,6 +66,11 @@ uninstall the timer until the operator approves the appropriate Files and Folder
 permission. Do not bypass that denial by switching runtimes or silently moving
 the store. Full Disk Access is not a prerequisite of this design.
 
+Match the permission to the timer's resolved interpreter: `Python.app` and a
+Homebrew `python3.12` executable can have separate entries. Granting one does
+not necessarily authorize the other. Recheck this after upgrading Python;
+the executable's path may change even if the virtual environment's path does not.
+
 The timer runs a supervisor that kills its worker after **30 minutes**, including
 time inside parsers. Linux operators can schedule this same bounded entrypoint
 with cron/systemd; no timer is installed there automatically:
