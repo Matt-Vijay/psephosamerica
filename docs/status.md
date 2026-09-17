@@ -16,8 +16,8 @@ model, a hosted service, or a nationwide current-law guarantee.
   mixed retrieval records, with original source bytes and dates. The larger
   working corpus is local, not bundled into the software or public download.
 - The released wheel's `psephos sources` lists 19 acquisition commands; the
-  current checkout adds `south-carolina-code`, `minnesota-statutes` and
-  `idaho-statutes`, totaling 22.
+  current checkout adds `south-carolina-code`, `minnesota-statutes`,
+  `idaho-statutes`, `new-york-laws` and `illinois-statutes`, totaling 24.
   Georgia, Virginia, Oregon, Washington, Nebraska and Portland Charter now have
   installed entrypoints; historical collector directories are not the public interface.
 - `export` / `import` transfer explicitly selected collections. Import verifies
@@ -95,6 +95,31 @@ hit a connection reset; no body or alternate access is claimed. The shared
 65,536-byte reservation; 96,674,001 usable bytes remain after the original 1 MiB
 reserve. This is partial page-level coverage, not complete current law, verified
 table reconstruction or additional closed-inventory population reach.
+
+The [New York continuation](new-york-laws-continuation-20260917.json) adds
+**28 whole-law PDFs / 7,270 indexed pages**, reaching 77 selected volumes and
+51,934 page records. All added projections replay exactly; the original 49
+versions / 44,664 records and 59 receipts are unchanged. Fifteen real MCP calls
+verify retrieval, corrected labels, receipts and date exclusions. Eight text-empty
+pages remain in the raw PDFs, not certified visually blank.
+
+Four candidate titles were corrected against the PDFs: REL is Rural Electric
+Cooperative, CAN Cannabis, PBG Public Housing and PBL Public Lands. The erroneous
+330-page PBG projection created during this continuation was archived and withdrawn;
+its replacement preserves every source-text and markup byte. Eight unsupported
+legacy alias assertions now remain unverified candidates, not accepted equivalences.
+Five selected IDs returned 404. There is still no authoritative statewide inventory,
+regulations collection or complete-current-law claim. The original 180 MiB ledger
+has 70,642,447 bytes charged; the API/index denials were not retried.
+
+The [Illinois preflight](illinois-statutes-preflight-20260917.json) adds no legal
+bodies. Its maintained adapter replays all 12 retained acts / 1,297 units, preserving
+13 original versions including the constitution. Live acquisition stopped at TLS
+issuer validation; a system-trust diagnostic HEAD returned 403, without a body.
+TLS verification was never disabled. The retained denial remains enforced, the
+38,099,825-byte spending counter is unchanged, and statewide live validation is
+not claimed. The combined offline code gate passed **246 tests**, with one skip
+and one intentional deselection; Ruff and strict mypy passed across 35 modules.
 
 [Six research checks](research-checks.md) used 68 actual MCP calls on retained
 Portland, NYC, Florida, Virginia and federal sources, plus an unsupported Ann

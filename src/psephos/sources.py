@@ -262,9 +262,11 @@ def _sources() -> dict[str, _Source]:
     from .florida import sync_florida
     from .geography import sync_nyc_geo, sync_portland_geo
     from .idaho import IdahoAcquirer, sync_idaho
+    from .illinois import IllinoisAcquirer, sync_illinois
     from .minnesota import MinnesotaAcquirer, sync_minnesota
     from .municipal import sync_nyc, sync_portland, sync_portland_guides
     from .nebraska import COLLECTIONS, NebraskaAcquirer, sync_nebraska
+    from .new_york import NewYorkAcquirer, sync_new_york
     from .portland_charter import CharterAcquirer, sync_portland_charter
     from .portland_code import sync_portland_code
     from .south_carolina import SouthCarolinaAcquirer, sync_south_carolina
@@ -385,6 +387,24 @@ def _sources() -> dict[str, _Source]:
             "Publisher statute HTML, not authenticated PDFs, session-law consolidation or rules. Original 200 MiB lifetime allowance is shared with the earlier Minnesota campaign.",
             campaign=MinnesotaAcquirer,
             receipt_prefixes=("https://www.revisor.mn.gov/",),
+        ),
+        "illinois-statutes": _Source(
+            sync_illinois,
+            ("il-statutes",),
+            "Source-linked whole acts from the unofficial drafting compilation; future-effective text may replace operative text. Original 200 MiB lifetime allowance and 10.1-second pacing remain shared with the earlier Illinois campaign.",
+            campaign=IllinoisAcquirer,
+            receipt_prefixes=(
+                "https://ilga.gov/",
+                "https://www.ilga.gov/",
+                "https://lrb.ilga.gov/",
+            ),
+        ),
+        "new-york-laws": _Source(
+            sync_new_york,
+            ("ny-state-laws",),
+            "Original selected Senate whole-law PDF candidates, not a statewide inventory. Prior API/index denials remain excluded. Shares the original 180 MiB allowance and 1 MiB reserve.",
+            campaign=NewYorkAcquirer,
+            receipt_prefixes=("https://legislation.nysenate.gov/", "https://www.nysenate.gov/"),
         ),
         "south-carolina-code": _Source(
             sync_south_carolina,

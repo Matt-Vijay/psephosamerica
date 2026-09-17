@@ -1,0 +1,60 @@
+{
+  "status": "HELD_NO_NEW_LAW",
+  "recorded_at": "2026-09-17T21:37:47Z",
+  "historical_preservation": {
+    "receipts": 35,
+    "versions": 13,
+    "records": 1457
+  },
+  "parser_replay": {
+    "acts": 12,
+    "units": 1297,
+    "fields": "key, text, markup, citation, heading, unit_kind, URL; prior records and references unchanged"
+  },
+  "preflight": {
+    "recorded_at": "2026-09-17T21:10:30Z",
+    "original_budget_sha256": "80967db8fedabefd5125f0f5d3d04577cced8f497dc728dfe9584a92265d585c",
+    "original_charged_bytes": 38099825,
+    "cap_bytes": 209715200,
+    "minimum_delay_seconds": 10.1,
+    "original_receipts_matched": 35,
+    "original_versions_unchanged": 13,
+    "old_act_replay": {
+      "documents": 12,
+      "units": 1297
+    },
+    "scope": "Exact publisher-linked whole acts; no constitution or regulations changes; no new allowance",
+    "status": "STOPPED",
+    "error": "Cannot verify robots policy: https://ilga.gov: https://ilga.gov/robots.txt: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1010)",
+    "charged_after": 38099825,
+    "downloaded_this_preflight": 0
+  },
+  "diagnostic_receipts": [
+    {
+      "id": 22758,
+      "url": "https://ilga.gov/robots.txt",
+      "final_url": "https://ilga.gov/robots.txt",
+      "observed_at": "2026-09-17T21:10:31Z",
+      "status": 0,
+      "sha256": null,
+      "headers": "{\"psephos_downloaded_bytes\":\"0\"}",
+      "error": "[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1010)"
+    },
+    {
+      "id": 22759,
+      "url": "https://ilga.gov/robots.txt",
+      "final_url": "https://ilga.gov/robots.txt",
+      "observed_at": "2026-09-17T21:11:36Z",
+      "status": 403,
+      "sha256": null,
+      "headers": "{\"content-length\":\"3988\",\"content-type\":\"text/html\",\"date\":\"Thu, 17 Sep 2026 21:10:56 GMT\",\"psephos_downloaded_bytes\":\"0\",\"psephos_request_method\":\"HEAD\",\"psephos_transport\":\"curl with default system trust; TLS verification enabled\"}",
+      "error": "System-trust diagnostic HEAD returned HTTP 403; body not requested. Prior maintained GET failed TLS issuer validation. Do not infer GET authorization."
+    }
+  ],
+  "runtime_sha256": {
+    "src/psephos/illinois.py": "671addd0c1fc8e9a574ded3c9ebaf39692b5a18008b2a7ad11a7ec6d733da4d6",
+    "src/psephos/campaign.py": "8a2ac5af350e32954edcec7d16c97b1214344f6c58b15da2ae80ee9f6c5cd809",
+    "tests/test_illinois.py": "86a5c04c66bbac7103d715c1979229cae01f779c1881a7b5be4938287e00141e"
+  },
+  "limits": "No new Illinois bodies or population reach. Maintained adapter has offline and retained-source validation, not a successful live statewide run. TLS verification remained enabled. Diagnostic HEAD 403 is not a GET response or authorization. Retained denial prevents retries; no alternate host/bypass. Original 200 MiB allowance and 38,099,825-byte spending counter preserved. Chapter 10 only; constitution unchanged, regulations unacquired."
+}

@@ -3,9 +3,11 @@
 The broader project is not complete. Release readiness below is a finished
 milestone, not the stopping condition for the legal-information-library goal.
 
-Current work: South Carolina's retained inventory is closed; continue
-through the evidence-backed queue in `docs/coverage-ledger.json`. Washington's
-original download allowance is exhausted; no additional allowance is assumed.
+Current work: New York's original selected candidate pass is reconciled, but no
+statewide inventory is established. Continue through the evidence-backed queue in
+`docs/coverage-ledger.json`. Washington and Minnesota have exhausted their original
+download allowances; no additional allowance is assumed. Illinois remains held
+after TLS failure and a diagnostic access denial.
 
 - [x] Reconcile the 559 original Washington receipts with the canonical store.
   Restore the original 250 MiB lifetime cap with 95,764,815 bytes already charged
@@ -62,6 +64,25 @@ original download allowance is exhausted; no additional allowance is assumed.
   reserve. See `docs/idaho-statutes-inventory-20260917.json`. Neither pending
   transfers nor defective exports establish inventory closure or new population
   reach. Next useful work can proceed on other reviewed source families meanwhile.
+- [x] Add 28 selected New York PDF volumes / 7,270 pages; exactly replay all new
+  projections and preserve all 49 original versions / 44,664 records / 59 receipts.
+  Verify explicit volume identities and fifteen real MCP calls. Correct four
+  candidate title mappings and withdraw eight unsupported legacy alias assertions.
+  Archive and replace this continuation's mislabeled PBG projection without changing
+  its source text, original PDF or receipt. See
+  `docs/new-york-laws-continuation-20260917.json`.
+- [ ] Establish New York's remaining source-native inventory. The selected list
+  now has 77 acquired volumes and five 404s; eight earlier candidates remain
+  unverified, not aliases. Do not infer statewide closure or probe guessed IDs.
+  The original 180 MiB ledger has 70,642,447 bytes charged and a 1 MiB reserve.
+  Authenticated API and denied index remain unrequested.
+- [ ] Resume Illinois only after publisher/runtime access review. The maintained
+  adapter and four offline fixtures are ready; 12 original acts / 1,297 units
+  replay exactly and all 13 original versions remain unchanged. Fresh robots GET
+  failed TLS validation; diagnostic HEAD with system trust returned 403 and no
+  body was requested. No new law was acquired, no TLS bypass was used and the
+  original 38,099,825-byte counter is unchanged. See
+  `docs/illinois-statutes-preflight-20260917.json`.
 
 ## Completed release milestone
 

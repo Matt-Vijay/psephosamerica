@@ -1,0 +1,591 @@
+{
+  "status": "PASS",
+  "recorded_at": "2026-09-17T21:34:43Z",
+  "historical_preservation": {
+    "versions": 49,
+    "records": 44664,
+    "receipts": 59
+  },
+  "retained_volumes": 77,
+  "indexed_pages": 51934,
+  "text_empty_pages_not_indexed": 8,
+  "inventory_statuses": {
+    "ingested": 77,
+    "source_unavailable": 5,
+    "unverified_candidate": 8
+  },
+  "statewide_inventory_complete": false,
+  "selected_candidates": 82,
+  "projection_replay": {
+    "added_volumes": 28,
+    "added_pages": 7270,
+    "volumes": [
+      {
+        "law_id": "ABC",
+        "title": "Alcoholic Beverage Control",
+        "artifact_sha256": "a9007faa50077c19e5bba3a2a1d03ecc32aa66287f74da4c73f2d34e52fb3cc4",
+        "acquisition_id": 22761,
+        "pages": 607,
+        "identity": {
+          "basis": "standalone opening title",
+          "page": 1,
+          "text": "ALCOHOLIC BEVERAGE CONTROL LAW"
+        }
+      },
+      {
+        "law_id": "ABP",
+        "title": "Abandoned Property",
+        "artifact_sha256": "8d4d34e4c0bbea0c2c5b02b69d2223d607493d3002370836ec0fc389e8139695",
+        "acquisition_id": 22762,
+        "pages": 108,
+        "identity": {
+          "basis": "standalone opening title",
+          "page": 1,
+          "text": "ABANDONED PROPERTY LAW"
+        }
+      },
+      {
+        "law_id": "AGM",
+        "title": "Agriculture and Markets",
+        "artifact_sha256": "c99c24d0bf2c0245a03b33b6be195d52a61c88ba5f4a95d65edce8a1c56d2002",
+        "acquisition_id": 22763,
+        "pages": 798,
+        "identity": {
+          "basis": "standalone opening title",
+          "page": 1,
+          "text": "AGRICULTURE AND MARKETS LAW"
+        }
+      },
+      {
+        "law_id": "CAN",
+        "title": "Cannabis",
+        "artifact_sha256": "d1af7d205dab70a5baafe1458874e579efdd25d5d86da30defd4b7872bd8d340",
+        "acquisition_id": 22779,
+        "pages": 167,
+        "identity": {
+          "basis": "standalone opening title",
+          "page": 1,
+          "text": "CANNABIS LAW"
+        }
+      },
+      {
+        "law_id": "CCO",
+        "title": "Cooperative Corporations",
+        "artifact_sha256": "4120d757b6177852ab43ecbeafc153bd3e9e129dc5e3af32e4e49ff1816b487b",
+        "acquisition_id": 22778,
+        "pages": 37,
+        "identity": {
+          "basis": "standalone opening title",
+          "page": 1,
+          "text": "COOPERATIVE CORPORATIONS LAW"
+        }
+      },
+      {
+        "law_id": "COM",
+        "title": "Economic Development",
+        "artifact_sha256": "545c9059ed70bc192359573ab53972b67232cf034422896094a56836d894b1a9",
+        "acquisition_id": 22764,
+        "pages": 284,
+        "identity": {
+          "basis": "standalone opening title",
+          "page": 1,
+          "text": "ECONOMIC DEVELOPMENT LAW"
+        }
+      },
+      {
+        "law_id": "EDP",
+        "title": "Eminent Domain Procedure",
+        "artifact_sha256": "5496251e27c6a51faab486a7ec6ab1d41320bdaf865d37f5527e07e29231e73b",
+        "acquisition_id": 22765,
+        "pages": 37,
+        "identity": {
+          "basis": "standalone opening title",
+          "page": 1,
+          "text": "EMINENT DOMAIN PROCEDURE LAW"
+        }
+      },
+      {
+        "law_id": "ENG",
+        "title": "Energy",
+        "artifact_sha256": "0f4c1ec704f5f00a62b7226474de2966636126cc2cc3cba807407606b16e7f1c",
+        "acquisition_id": 22766,
+        "pages": 110,
+        "identity": {
+          "basis": "standalone opening title",
+          "page": 1,
+          "text": "ENERGY LAW"
+        }
+      },
+      {
+        "law_id": "GCT",
+        "title": "General City",
+        "artifact_sha256": "dffc3d291f2b08392efddff8ef52205d4f289697cdb15b4386d04b04cc7d85d8",
+        "acquisition_id": 22792,
+        "pages": 315,
+        "identity": {
+          "basis": "standalone opening title",
+          "page": 1,
+          "text": "GENERAL CITY LAW"
+        }
+      },
+      {
+        "law_id": "IND",
+        "title": "Indian",
+        "artifact_sha256": "400e33695d1b3c6b68db3be24d2baaee57a621d7b8b61125863f985153b7ec81",
+        "acquisition_id": 22767,
+        "pages": 54,
+        "identity": {
+          "basis": "standalone opening title",
+          "page": 1,
+          "text": "INDIAN LAW"
+        }
+      },
+      {
+        "law_id": "MHY",
+        "title": "Mental Hygiene",
+        "artifact_sha256": "9cb52625796dafef72f57a175fd0af9a08eb90fa1b2d1766c69761a31fba29e5",
+        "acquisition_id": 22782,
+        "pages": 818,
+        "identity": {
+          "basis": "standalone opening title",
+          "page": 1,
+          "text": "mental hygiene law"
+        }
+      },
+      {
+        "law_id": "MIL",
+        "title": "Military",
+        "artifact_sha256": "848a6f6fedf28a254370b07b2fa351de5de3e56104e49039f5adc6466af2a94a",
+        "acquisition_id": 22768,
+        "pages": 243,
+        "identity": {
+          "basis": "standalone opening title",
+          "page": 1,
+          "text": "MILITARY LAW."
+        }
+      },
+      {
+        "law_id": "NAV",
+        "title": "Navigation",
+        "artifact_sha256": "21d08bf5c7e5128457d2d118c25283aef44be20bc0cf1a3e94ecce896f721dd8",
+        "acquisition_id": 22769,
+        "pages": 260,
+        "identity": {
+          "basis": "standalone opening title",
+          "page": 1,
+          "text": "NAVIGATION LAW"
+        }
+      },
+      {
+        "law_id": "PAR",
+        "title": "Parks, Recreation and Historic Preservation",
+        "artifact_sha256": "999d3cc8628eacffaff3cfb872ef4ab9c2aebe714812065e13b92b3ab718e7da",
+        "acquisition_id": 22770,
+        "pages": 198,
+        "identity": {
+          "basis": "standalone opening title",
+          "page": 1,
+          "text": "PARKS, RECREATION AND HISTORIC PRESERVATION LAW"
+        }
+      },
+      {
+        "law_id": "PBG",
+        "title": "Public Housing",
+        "artifact_sha256": "934aca824055d4907574a3013eedd471c441f9b5c2a004174cb72dee68ad09c3",
+        "acquisition_id": 22783,
+        "pages": 330,
+        "identity": {
+          "basis": "standalone opening title",
+          "page": 1,
+          "text": "THE PUBLIC HOUSING LAW"
+        }
+      },
+      {
+        "law_id": "PBL",
+        "title": "Public Lands",
+        "artifact_sha256": "b2209a905d3c28502a5dfdca94ddb53bb9ac29cc3d87e143802c52072c6f19f2",
+        "acquisition_id": 22785,
+        "pages": 79,
+        "identity": {
+          "basis": "standalone opening title",
+          "page": 1,
+          "text": "PUBLIC LANDS LAW"
+        }
+      },
+      {
+        "law_id": "PML",
+        "title": "Racing, Pari-Mutuel Wagering and Breeding",
+        "artifact_sha256": "3ea66c418c65daad2b7a809ee2a78a2922fdb4719a2d0ac21c84a7247093a508",
+        "acquisition_id": 22771,
+        "pages": 578,
+        "identity": {
+          "basis": "standalone opening title",
+          "page": 1,
+          "text": "RACING, PARI-MUTUEL WAGERING AND BREEDING LAW"
+        }
+      },
+      {
+        "law_id": "PVH",
+        "title": "Private Housing Finance",
+        "artifact_sha256": "f1f41d7acb5c287dfe51c56a932cccc4696c766e99999a861e4eb8c2b7c0b0a4",
+        "acquisition_id": 22784,
+        "pages": 702,
+        "identity": {
+          "basis": "statutory self-title",
+          "page": 3,
+          "text": "This chapter shall be known and may be cited and referred to as the \"private housing finance law."
+        }
+      },
+      {
+        "law_id": "REL",
+        "title": "Rural Electric Cooperative",
+        "artifact_sha256": "893a429dde8e7cdf8125578ca7888e5e38c0c7a0c8c4b50e3d8a9b8240bd2428",
+        "acquisition_id": 22772,
+        "pages": 37,
+        "identity": {
+          "basis": "standalone opening title",
+          "page": 1,
+          "text": "RURAL ELECTRIC COOPERATIVE LAW"
+        }
+      },
+      {
+        "law_id": "RRD",
+        "title": "Railroad",
+        "artifact_sha256": "99b69c291986932785cc2ab1b51bf492d88069287f9a2e606a0c9db9d28167ff",
+        "acquisition_id": 22786,
+        "pages": 178,
+        "identity": {
+          "basis": "standalone opening title",
+          "page": 1,
+          "text": "RAILROAD LAW"
+        }
+      },
+      {
+        "law_id": "SAP",
+        "title": "State Administrative Procedure",
+        "artifact_sha256": "83f88deac77d0cb4d627a367c384fe90721db7c51de8b97f2151cfd47db8f4b2",
+        "acquisition_id": 22788,
+        "pages": 62,
+        "identity": {
+          "basis": "standalone opening title",
+          "page": 1,
+          "text": "STATE ADMINISTRATIVE PROCEDURE ACT"
+        }
+      },
+      {
+        "law_id": "SLG",
+        "title": "Statute of Local Governments",
+        "artifact_sha256": "107f70612b414088b0e2ff0e2d6d36930a1838c350b4fb4e6840c0b3342bd9fd",
+        "acquisition_id": 22775,
+        "pages": 6,
+        "identity": {
+          "basis": "standalone opening title",
+          "page": 1,
+          "text": "STATUTE OF LOCAL GOVERNMENTS"
+        }
+      },
+      {
+        "law_id": "STF",
+        "title": "State Finance",
+        "artifact_sha256": "548d08c1fbf553051de1f7adfcff0d0537c260fe02b22d6ce1b62a50de457193",
+        "acquisition_id": 22774,
+        "pages": 976,
+        "identity": {
+          "basis": "standalone opening title",
+          "page": 1,
+          "text": "STATE FINANCE LAW"
+        }
+      },
+      {
+        "law_id": "SWC",
+        "title": "Soil and Water Conservation Districts",
+        "artifact_sha256": "3808670df7c2579180d25120b6803bf0b6dc8ce615fb062274e68b062bb8195c",
+        "acquisition_id": 22776,
+        "pages": 30,
+        "identity": {
+          "basis": "standalone opening title",
+          "page": 1,
+          "text": "SOIL AND WATER CONSERVATION DISTRICTS LAW"
+        }
+      },
+      {
+        "law_id": "TCP",
+        "title": "Transportation Corporations",
+        "artifact_sha256": "6b2e81f7ee8f1e1636bbe4806e9d13c6dd091a02459124412adb234729aef1ba",
+        "acquisition_id": 22777,
+        "pages": 45,
+        "identity": {
+          "basis": "statutory self-title",
+          "page": 1,
+          "text": "This chapter shall be known as the \"Transportation Corporations Law."
+        }
+      },
+      {
+        "law_id": "VAW",
+        "title": "Volunteer Ambulance Workers' Benefit",
+        "artifact_sha256": "f12a67ceaec5323df75af5709a7457f1e27f30bd48e3834ab4769e60cda827b5",
+        "acquisition_id": 22791,
+        "pages": 57,
+        "identity": {
+          "basis": "standalone opening title",
+          "page": 1,
+          "text": "VOLUNTEER AMBULANCE WORKERS' BENEFIT LAW"
+        }
+      },
+      {
+        "law_id": "VET",
+        "title": "Veterans' Services",
+        "artifact_sha256": "e42d466b10ca7f5eceaf3bd7c0c9071963c81818b678d7603cfd5a718c1305ce",
+        "acquisition_id": 22789,
+        "pages": 82,
+        "identity": {
+          "basis": "standalone opening title",
+          "page": 1,
+          "text": "VETERANS' SERVICES"
+        }
+      },
+      {
+        "law_id": "VOL",
+        "title": "Volunteer Firefighters' Benefit",
+        "artifact_sha256": "a309741d1c82b1f2f0d6ae9a9250c2244a1e16798b3e626bf7214b027f90e7bc",
+        "acquisition_id": 22790,
+        "pages": 72,
+        "identity": {
+          "basis": "standalone opening title",
+          "page": 1,
+          "text": "VOLUNTEER FIREFIGHTERS' BENEFIT LAW"
+        }
+      }
+    ]
+  },
+  "identity_checks": 77,
+  "artifacts_rehashed": 77,
+  "bytes_rehashed": 70561557,
+  "corrections": {
+    "title_corrections": {
+      "REL": [
+        "Religious Corporations",
+        "Rural Electric Cooperative"
+      ],
+      "CAN": [
+        "Canal",
+        "Cannabis"
+      ],
+      "PBG": [
+        "Public Buildings",
+        "Public Housing"
+      ],
+      "PBL": [
+        "Public Housing",
+        "Public Lands"
+      ]
+    },
+    "withdrawn_unpublished_projection": "1a29f0fd1e11335e6054858623b22ad0",
+    "replacement": "d7d18e66c2d28b0a34bf55d2f387b4f6",
+    "raw_artifact_preserved": "934aca824055d4907574a3013eedd471c441f9b5c2a004174cb72dee68ad09c3",
+    "acquisition_preserved": 22783,
+    "withdrawn_projection_archive_sha256": "1c8d8d7be2c3863e942afab27a7b0bb43a84bf5c628dd45a98a6697f556e6b60",
+    "prior_alias_assertions": [
+      {
+        "collection_id": "ny-state-laws",
+        "item": "CIV",
+        "url": "https://legislation.nysenate.gov/pdf/laws/CIV?full=true",
+        "status": "superseded",
+        "error": "Unverified candidate identifier corrected to CVS; this row is not an additional volume",
+        "checked_at": "2026-09-07T00:57:26Z"
+      },
+      {
+        "collection_id": "ny-state-laws",
+        "item": "CVH",
+        "url": "https://legislation.nysenate.gov/pdf/laws/CVH?full=true",
+        "status": "superseded",
+        "error": "Unverified candidate identifier corrected to CCO; this row is not an additional volume",
+        "checked_at": "2026-09-07T00:57:26Z"
+      },
+      {
+        "collection_id": "ny-state-laws",
+        "item": "ECL",
+        "url": "https://legislation.nysenate.gov/pdf/laws/ECL?full=true",
+        "status": "superseded",
+        "error": "Unverified candidate identifier corrected to EDP; this row is not an additional volume",
+        "checked_at": "2026-09-07T00:57:26Z"
+      },
+      {
+        "collection_id": "ny-state-laws",
+        "item": "GEN",
+        "url": "https://legislation.nysenate.gov/pdf/laws/GEN?full=true",
+        "status": "superseded",
+        "error": "Unverified candidate identifier corrected to GCN; this row is not an additional volume",
+        "checked_at": "2026-09-07T00:57:26Z"
+      },
+      {
+        "collection_id": "ny-state-laws",
+        "item": "PBT",
+        "url": "https://legislation.nysenate.gov/pdf/laws/PBT?full=true",
+        "status": "superseded",
+        "error": "Unverified candidate identifier corrected to PBA; this row is not an additional volume",
+        "checked_at": "2026-09-07T00:57:26Z"
+      },
+      {
+        "collection_id": "ny-state-laws",
+        "item": "RCO",
+        "url": "https://legislation.nysenate.gov/pdf/laws/RCO?full=true",
+        "status": "superseded",
+        "error": "Unverified candidate identifier corrected to RRD; this row is not an additional volume",
+        "checked_at": "2026-09-07T00:57:26Z"
+      },
+      {
+        "collection_id": "ny-state-laws",
+        "item": "SCC",
+        "url": "https://legislation.nysenate.gov/pdf/laws/SCC?full=true",
+        "status": "superseded",
+        "error": "Unverified candidate identifier corrected to SAP; this row is not an additional volume",
+        "checked_at": "2026-09-07T00:57:26Z"
+      },
+      {
+        "collection_id": "ny-state-laws",
+        "item": "STT",
+        "url": "https://legislation.nysenate.gov/pdf/laws/STT?full=true",
+        "status": "superseded",
+        "error": "Unverified candidate identifier corrected to SLG; this row is not an additional volume",
+        "checked_at": "2026-09-07T00:57:26Z"
+      }
+    ]
+  },
+  "budget": {
+    "cap_bytes": 188743680,
+    "charged_bytes": 70642447,
+    "original_charged_bytes": 60637692,
+    "reserve_bytes": 1048576
+  },
+  "limits": "Selected volumes, not a statewide inventory. PDF pages are not legal sections. Empty text pages remain in the raw PDFs, with no OCR or visual/table certification. Incorporation and legal-effective dates unknown; regulations, local laws and later session-law consolidation excluded. Prior API 401 and index 403 were not retried. No raw-corpus redistribution permission asserted.",
+  "mcp": [
+    {
+      "tool": "legal_coverage",
+      "arguments": {
+        "collection": "ny-state-laws"
+      },
+      "response_sha256": "a3ed7ddae9f482fb00ccf6bc5adb29592243932a3e687bd95e1054ff5a299d8b"
+    },
+    {
+      "tool": "legal_coverage",
+      "arguments": {
+        "view": "inventory",
+        "collection": "ny-state-laws",
+        "status": "source_unavailable"
+      },
+      "response_sha256": "2343a50d43aa0a62461e0ff73a97ba05dd19e65079ed9ce84177d26412027c82"
+    },
+    {
+      "tool": "legal_coverage",
+      "arguments": {
+        "view": "inventory",
+        "collection": "ny-state-laws",
+        "status": "unverified_candidate"
+      },
+      "response_sha256": "a1910687942b5a7e6160d0fd00179e2570af2b3d29ddaeab8122b7523d8a9a73"
+    },
+    {
+      "tool": "legal_search",
+      "arguments": {
+        "document": "ny:PBG",
+        "query": "Public Housing",
+        "limit": 2
+      },
+      "response_sha256": "24040d2369c7a183d14083159d8b60ac2223685b479e4c231be38b6e821624c0"
+    },
+    {
+      "tool": "legal_read",
+      "arguments": {
+        "key_or_id": "d51088701692e7a9988f59ca1a5c83ec",
+        "length": 1000
+      },
+      "response_sha256": "e100a03486b6277cf8049a6c9a1dc08c9c09e9e1264fea3993b8000feffcf556"
+    },
+    {
+      "tool": "source_receipt",
+      "arguments": {
+        "acquisition_id": 22783
+      },
+      "response_sha256": "68d862f323ba95670d5d2af3b3de6d4293191b20794301afbca8a1cd831bb0bc"
+    },
+    {
+      "tool": "legal_search",
+      "arguments": {
+        "document": "ny:PBL",
+        "query": "Public Lands",
+        "limit": 2
+      },
+      "response_sha256": "24c52ddeb4bd476f84cb2a163f63bb73d3dad749190c3cbbd9c869fbb85eb324"
+    },
+    {
+      "tool": "legal_read",
+      "arguments": {
+        "key_or_id": "e2ae759f221fe1113f78fa71321308e6",
+        "length": 1000
+      },
+      "response_sha256": "a3fab84a2eeb1b9bbe76dbb36d50f6d17249e17bbb30e81ad4172d56f96ea960"
+    },
+    {
+      "tool": "source_receipt",
+      "arguments": {
+        "acquisition_id": 22785
+      },
+      "response_sha256": "a421ee88d6da4d6a89ded0bdb2920e1e812d568cd997306187656b0411b99855"
+    },
+    {
+      "tool": "legal_search",
+      "arguments": {
+        "document": "ny:CAN",
+        "query": "Cannabis",
+        "limit": 2
+      },
+      "response_sha256": "ad319f9b07b527265755f8515a94a927dc5ee4f3a4348d27e04e53c6ee7ed16e"
+    },
+    {
+      "tool": "legal_read",
+      "arguments": {
+        "key_or_id": "d6ca45c7ca0fea88c0d55b1b78396eaa",
+        "length": 1000
+      },
+      "response_sha256": "bede12ec6ed7e3b75f06c74d6b6a130a6dd614432d516b1bc32a95c2fda1234e"
+    },
+    {
+      "tool": "source_receipt",
+      "arguments": {
+        "acquisition_id": 22779
+      },
+      "response_sha256": "4456df6c8d1d1282005b8ca7e26e12a17d3370c611b3ab18ed70f1efa93385a3"
+    },
+    {
+      "tool": "legal_read",
+      "arguments": {
+        "key_or_id": "f7a4eae49a988f38f14b1669b24278b8"
+      },
+      "response_sha256": "2fcf3c26e9a44c7a7722222ed917599bf65735eb0e0c0c0392548ff84f7edc3c"
+    },
+    {
+      "tool": "legal_read",
+      "arguments": {
+        "key_or_id": "ny:PBG:page:1",
+        "as_of": "2026-09-17"
+      },
+      "response_sha256": "2fcf3c26e9a44c7a7722222ed917599bf65735eb0e0c0c0392548ff84f7edc3c"
+    },
+    {
+      "tool": "legal_read",
+      "arguments": {
+        "key_or_id": "ny:PBG:page:1",
+        "observation_cutoff": "2026-09-17T00:00:00Z"
+      },
+      "response_sha256": "2fcf3c26e9a44c7a7722222ed917599bf65735eb0e0c0c0392548ff84f7edc3c"
+    }
+  ],
+  "runtime_sha256": {
+    "src/psephos/new_york.py": "b6493afb36758c8036340da70e955a3982c871e659e2bb194c8dc3273680a2fe",
+    "src/psephos/campaign.py": "8a2ac5af350e32954edcec7d16c97b1214344f6c58b15da2ae80ee9f6c5cd809",
+    "src/psephos/retrieve.py": "1d72d1ef85fba8dd6f5c9512e20aca48ad5b4c471611367844762f30b56e71f6",
+    "src/psephos/server.py": "2a9cfc63d40efacf790edb0224a03f4ab70cafec010aa4b7a306655f1e7588cf",
+    "scripts/verify_new_york.py": "5337811addd3a5fa06aa54f71fe1c5ff370704a9aed3d0fcc32301c06725de8c"
+  }
+}

@@ -192,6 +192,43 @@ dates. Page text is unverified layout extraction, not a complete section-level
 or table-geometry representation. Constitution, regulations and later session
 laws are outside this command; no redistribution permission is inferred.
 
+### New York continuation
+
+`new-york-laws` uses the already-reviewed public Senate whole-law PDF contract,
+not its authenticated JSON API or previously denied index. It reuses the original
+180 MiB ledger, 1 MiB reserve and 1.1-second minimum pacing. Selected candidate IDs
+are not an authoritative statewide inventory; 404s remain source gaps and ordinary
+resumes do not retry them. Denials and transport failures stop acquisition.
+
+Every new PDF must contain substantive text and an explicit title heading or
+statutory self-naming clause matching its label. Scattered occurrences of words
+from a title do not establish identity. PDF-backed corrections are REL (Rural
+Electric Cooperative), CAN (Cannabis), PBG (Public Housing) and PBL (Public Lands).
+Earlier unverified alias guesses are withdrawn, not silently treated as equivalent
+laws. The [verification receipt](new-york-laws-continuation-20260917.json) records
+the corrections, raw-source preservation and MCP behavior.
+
+Units remain physical PDF pages, including contents and headings where present,
+not statutory sections. Text-empty pages remain in the raw PDF and are explicitly
+accounted for; no OCR, visual/table fidelity or blanket legal date is asserted.
+Regulations, local law, later session-law consolidation and redistribution rights
+are outside this selected-source command.
+
+### Illinois continuation
+
+`illinois-statutes` follows native chapter/act links and each actual **View Entire
+Act** link. It reconciles chapter and act identifiers, retains alternate/future
+text, notes, tables and linked-media descriptors, and rejects lost source text.
+The publisher's unofficial drafting-database and future-effective-text warnings
+remain visible. Repeal labels are inventory metadata, not acquired historical law.
+
+The original 200 MiB allowance, 10.1-second pacing and 100 GiB disk floor remain
+in force. The [preflight](illinois-statutes-preflight-20260917.json) stopped at a
+TLS issuer-validation failure; a separate diagnostic HEAD with normal system trust
+returned 403 without fetching a body. Retained denials prevent retries. The adapter
+has retained-source and offline-fixture validation, not successful live statewide
+acquisition. No TLS bypass, alternate-host acquisition or new coverage is claimed.
+
 ### California reuse correction
 
 The retained GOV §10248.5 explicitly overrides §10248(g)'s proprietary reservation
