@@ -11,8 +11,15 @@ source evidence stay in the linked documents.
   actual MCP calls; retain concrete evidence and unresolved source limits.
 - [x] Run focused regressions and one integrated offline gate; build and exercise
   the new wheel outside the checkout without downloading the corpus again.
-- [ ] Publish the current software release, verify its artifacts and CI, and
+- [x] Publish the current software release, verify its artifacts and CI, and
   leave the repository clean with accurate installation and operational docs.
+
+Published [v0.2.0](https://github.com/Matt-Vijay/psephosamerica/releases/tag/v0.2.0)
+from `7ac027b`; [release CI passed](https://github.com/Matt-Vijay/psephosamerica/actions/runs/35195141531).
+The public wheel returned HTTP 200 and its GitHub SHA-256 matched the tested local
+artifact. The upgraded macOS timer exited 0 with unchanged spending when no source
+was due. This release-completion goal is finished; source expansion remains a
+separate, explicitly scoped project, not hidden unfinished nationwide coverage.
 
 Completion requires the checks above, not new architecture or a collection
 fleet. Expand unattended sources only after their exact inventory, original
