@@ -1,7 +1,8 @@
 # Getting started
 
 Psephos runs against a local evidence store. A checkout contains software and
-source metadata, not the raw legal corpus. The [v0.1.0 release](https://github.com/Matt-Vijay/psephosamerica/releases/tag/v0.1.0)
+source metadata, not the raw legal corpus. [v0.2.0](https://github.com/Matt-Vijay/psephosamerica/releases/tag/v0.2.0)
+is the current software release; the unchanged [v0.1.0 data bundle](https://github.com/Matt-Vijay/psephosamerica/releases/tag/v0.1.0)
 provides a U.S. Code starter. There is no hosted MCP endpoint.
 
 ## Install
@@ -14,6 +15,14 @@ cd psephosamerica
 python3.12 -m venv .venv
 .venv/bin/python -m pip install -c requirements.lock .
 .venv/bin/psephos --help
+```
+
+For the tested release instead of the moving checkout, install its wheel in the
+same environment:
+
+```sh
+.venv/bin/python -m pip install -c requirements.lock \
+  https://github.com/Matt-Vijay/psephosamerica/releases/download/v0.2.0/psephos_legal-0.2.0-py3-none-any.whl
 ```
 
 The constraints retain an exercised Python 3.12 dependency resolution, not a
@@ -125,7 +134,11 @@ A second copy on the same disk protects against accidental edits, not disk loss.
 [Automatic refresh](refresh.md) can schedule the current U.S. Code, eCFR, D.C.
 and the reviewed Portland guidance pages, with bounded downloads and visible
 failure/overdue status. Other retained collections remain explicitly unscheduled.
-This feature is in the current checkout, not the original v0.1.0 wheel.
+This feature requires v0.2.0 or later, not the original v0.1.0 wheel.
+
+`legal_versions` and `psephos versions KEY --offset N --limit N` page through
+retained history; follow `next_offset` instead of assuming the first page is all
+history. `psephos audit` exits nonzero when its integrity report fails.
 
 - **Fresh acquisition:** `psephos sources` lists the maintained source commands
   and their scope. Having an adapter does not mean a complete state is available.

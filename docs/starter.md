@@ -39,7 +39,12 @@ included here. See [data notices](data-notices.md); Psephos is not an official
 publisher. No model provider, API key or network acquisition is required to read
 the imported starter locally. A connected model service has its own data policy.
 
-Verification used a clean Python 3.12 environment outside the checkout: installed
+The original v0.1.0 verification used a clean Python 3.12 environment outside the checkout: installed
 wheel, full starter import, all nine MCP tools discovered, and eight actual stdio
 calls covering search, reading, references, versions, source scope and date
 exclusion. This is an installation and retrieval check, not a legal accuracy score.
+
+On September 17, the v0.2.0 wheel was installed into that isolated environment
+and exercised all nine tools through 11 actual stdio calls against this unchanged
+import. The bundle was not downloaded or imported again; its original import
+verification remains the dated evidence above.

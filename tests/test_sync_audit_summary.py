@@ -1,14 +1,36 @@
 """Operational summaries must not reuse an unscoped discovery-directory page."""
 
 import json
+import sys
 
 import pytest
 from conftest import retain
 
-from psephos import dc, geography, municipal, sources, texas
+from psephos import cli, dc, geography, municipal, sources, texas
 from psephos.audit import audit
 from psephos.retrieve import Reader
-from psephos.store import Provision, Store
+from psephos.store import Provision, Store, writer_lock
+
+
+def test_cli_audit_failure_has_nonzero_exit_and_keeps_report(store, monkeypatch, capsys):
+    source = retain(store, b"fixture bytes")
+    monkeypatch.setattr(sys, "argv", ["psephos", "--data", str(store.root), "audit"])
+    cli.main()
+    assert json.loads(capsys.readouterr().out)["status"] == "PASS"
+    store.object_path(source.sha256).write_bytes(b"corrupted")
+    with pytest.raises(SystemExit) as failed:
+        cli.main()
+    assert failed.value.code == 1
+    assert json.loads(capsys.readouterr().out)["status"] == "FAIL"
+
+
+def test_cli_reindex_respects_active_writer(store, monkeypatch, capsys):
+    monkeypatch.setattr(sys, "argv", ["psephos", "--data", str(store.root), "reindex", "nyc"])
+    monkeypatch.setattr(municipal, "reindex_nyc", lambda *_: pytest.fail("Concurrent reindex"))
+    with writer_lock(store.root), pytest.raises(SystemExit) as failed:
+        cli.main()
+    assert failed.value.code == 1
+    assert "Another Psephos writer" in capsys.readouterr().err
 
 
 def test_source_catalog_and_imported_store_budget_boundary(store, monkeypatch):

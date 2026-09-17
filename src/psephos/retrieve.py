@@ -66,6 +66,10 @@ def _georgia_page_summary(result: dict[str, Any]) -> None:
     metadata["publisher_outlines_count"] = len(on_page)
     metadata["publisher_outlines"] = on_page[:20]
     metadata["publisher_outlines_omitted"] = max(0, len(on_page) - 20)
+    _georgia_version_summary(version)
+
+
+def _georgia_version_summary(version: dict[str, Any]) -> None:
     omitted = {}
     for key in (
         "publisher_outlines",
@@ -78,8 +82,8 @@ def _georgia_page_summary(result: dict[str, Any]) -> None:
             omitted[key] = len(version.pop(key))
     version["omitted_list_counts"] = omitted
     version["projection"] = (
-        "Department-wide lists omitted from this page response; counts shown above. "
-        "Page metadata retains up to 20 bookmarks starting on this physical page and "
+        "Department-wide lists omitted from this response; counts shown above. "
+        "legal_read page metadata retains up to 20 bookmarks starting on that physical page and "
         "the last preceding bookmark (navigation context, not inferred legal scope). "
         "Read neighbors by immutable id, legal_references for page links, and "
         "source_receipt(acquisition_id) for the exact original PDF/hash. Its complete "
@@ -964,22 +968,27 @@ class Reader:
             "warning": "Source links/citations are not inferred precedence or proof of enactment.",
         }
 
-    def versions(self, key: str, *, limit: int = 30) -> dict[str, Any]:
-        if not 1 <= limit <= 100:
-            raise ValueError("limit must be 1..100")
+    def versions(self, key: str, *, offset: int = 0, limit: int = 30) -> dict[str, Any]:
+        if offset < 0 or not 1 <= limit <= 100:
+            raise ValueError("offset must be nonnegative; limit must be 1..100")
         rows = self.db.execute(
             "SELECT p.id,p.key,p.citation,v.id AS version_id,v.snapshot_date,v.snapshot_basis,"
             "v.published_on,v.effective_on,v.amended_on,v.repealed_on,v.available_at AS observed_at,"
-            "v.artifact_sha,a.url AS artifact_url,v.member,v.metadata FROM provisions p "
+            "v.artifact_sha,a.url AS artifact_url,v.member,v.parser,v.metadata FROM provisions p "
             "JOIN versions v ON v.id=p.version_id JOIN acquisitions a ON a.id=v.acquisition_id "
-            "WHERE p.key=? ORDER BY v.snapshot_date DESC,v.available_at DESC,v.rowid DESC LIMIT ?",
-            (key, limit),
+            "WHERE p.key=? ORDER BY v.snapshot_date DESC,v.available_at DESC,v.rowid DESC,p.id "
+            "LIMIT ? OFFSET ?",
+            (key, limit + 1, offset),
         ).fetchall()
-        result = [dict(r) for r in rows]
+        result = [dict(r) for r in rows[:limit]]
         for row in result:
             row["metadata"] = _display_metadata(row["metadata"], row["key"])
+            if row["parser"].startswith("ga-department-pdf-pages/"):
+                _georgia_version_summary(row["metadata"])
         return {
             "versions": result,
+            "offset": offset,
+            "next_offset": offset + limit if len(rows) > limit else None,
             "temporal_semantics": TEMPORAL_LIMIT,
             "coverage_warning": "Only acquired snapshots; not a complete legislative history.",
         }

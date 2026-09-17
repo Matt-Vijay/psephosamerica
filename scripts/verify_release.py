@@ -1,4 +1,4 @@
-"""Small offline smoke check for an installed package and the public U.S. Code bundle."""
+"""Offline MCP smoke check for an installed package and a U.S. Code-containing store."""
 
 from __future__ import annotations
 
@@ -8,6 +8,7 @@ import json
 import platform
 import sys
 import time
+from importlib.metadata import version
 from pathlib import Path
 
 from mcp import ClientSession, StdioServerParameters
@@ -53,6 +54,8 @@ async def verify(data: Path) -> dict:
         assert matches["matches"]
         provision = await call("legal_read", key_or_id="42 USC 3604")
         assert provision["found"] and "reasonable accommodations" in provision["text"]
+        receipt = await call("source_receipt", acquisition_id=provision["acquisition_id"])
+        assert receipt["found"] and receipt["sha256"] == provision["artifact_sha"]
         found = await call(
             "legal_find", key_or_id=provision["id"], query="reasonable accommodations"
         )
@@ -63,13 +66,21 @@ async def verify(data: Path) -> dict:
         assert not dated["found"]
         absent = await call("legal_coverage", jurisdiction="us-mi-ann-arbor")
         assert absent["total"] == 0 and absent["status"] != "ok"
-        versions = await call("legal_versions", key=provision["key"])
-        assert versions
+        versions = await call("legal_versions", key=provision["key"], limit=1)
+        assert versions["versions"][0]["id"] == provision["id"]
+        if versions["next_offset"] is not None:
+            older = await call(
+                "legal_versions", key=provision["key"], limit=1, offset=versions["next_offset"]
+            )
+            assert older["versions"] and older["versions"][0]["id"] != provision["id"]
+        location = {"longitude": -122.6784, "latitude": 45.5206}
+        geography = await call("legal_sources_at", **location)
+        zoning = await call("zoning_at", **location)
+        for result in (geography, zoning):
+            assert result["warning"] and result["point"] == {**location, "crs": "EPSG:4326"}
+        assert {item["tool"] for item in calls} == set(names)
     store = Store(data, readonly=True)
     try:
-        snapshot = store.db.execute(
-            "SELECT snapshot_date,snapshot_basis FROM versions LIMIT 1"
-        ).fetchone()
         counts = {
             table: store.db.execute(f"SELECT count(*) FROM {table}").fetchone()[0]
             for table in ("documents", "versions", "provisions", "artifacts")
@@ -80,13 +91,18 @@ async def verify(data: Path) -> dict:
         "verified_at": utc_now(),
         "status": "PASS",
         "python": platform.python_version(),
+        "package_version": version("psephos-legal"),
         "package_path": str(Path(psephos.__file__).resolve()),
         "tools": names,
         "counts": counts,
-        "snapshot_date": snapshot[0],
-        "snapshot_basis": snapshot[1],
+        "read_source": {
+            key: provision[key]
+            for key in ("id", "key", "url", "artifact_sha", "snapshot_date", "snapshot_basis")
+        },
+        "geography_matches": len(geography["matches"]),
+        "zoning_matches": len(zoning["matches"]),
         "calls": calls,
-        "meaning": "Installed-package and imported-source MCP smoke check, not legal-answer accuracy or nationwide coverage.",
+        "meaning": "MCP smoke check against the named package and store. Empty geography is valid for a federal-only store, not evidence of absent restrictions. Not legal-answer accuracy or nationwide coverage.",
     }
 
 

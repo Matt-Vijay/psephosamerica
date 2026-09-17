@@ -6,6 +6,9 @@ model, a hosted service, or a nationwide current-law guarantee.
 
 ## Usable release
 
+- [v0.2.0](https://github.com/Matt-Vijay/psephosamerica/releases/tag/v0.2.0) packages
+  automatic refresh, paginated retained history and the operational fixes below.
+  The original v0.1.0 federal data bundle remains compatible and unchanged.
 - [Install and connect an MCP client](getting-started.md). The wheel runs outside
   the checkout. Nine tools cover source discovery, search, reading, text finding,
   references, versions and geographic lookup.
@@ -68,6 +71,26 @@ It wakes hourly, checks due sources weekly, and retains the 512 MiB per-pass and
 8 GiB per-month allowances. All four scheduled sources have completed checks;
 this does not certify legal effectiveness or freshness of unscheduled sources.
 
+The **v0.2.0 gate passed 201 tests**, with one skip and one intentional deselection,
+plus Ruff and strict mypy across 30 modules. All 30 modules matched the wheel.
+Installed outside the checkout, the wheel exercised all nine MCP tools with 11
+calls against the retained starter and 12 against the working corpus, including
+source receipts, version pagination and geographic discovery. The working-store
+Portland probe returned three Census entities and one retained zoning polygon;
+the federal-only starter correctly returned no geometry.
+
+The September 17 integrity audit rehashed **15,795 artifacts / 6,939,024,826 bytes**
+and passed SQLite, foreign-key, source-provenance, key and spatial-index membership
+checks. The working catalog has 26,036 retained versions and 2,060,152 mixed
+retrieval records across all versions, versus 1,494,554 latest projected records.
+These are storage measures, not counts of unique laws or a coverage percentage.
+Detailed local receipts are retained under `data/verification/20260917-v0.2.0/`.
+
+This release also makes failed CLI audits exit nonzero, serializes offline
+reindexing with other public writers, and reduces one measured Georgia version
+listing from 1,893,863 bytes to 8,218 bytes by omitting repeated bulk lists from
+the response only. The original metadata, files and immutable IDs remain intact.
+
 ## Remaining boundaries
 
 - Many states and nearly all municipalities lack complete retained families.
@@ -79,6 +102,8 @@ this does not certify legal effectiveness or freshness of unscheduled sources.
   histories are not solved by text extraction.
 - Zoning polygons and Census identities do not determine parcel applicability
   or permission to build. Invalid geometry is reported, not silently repaired.
+  The September 17 audit found 51 invalid publisher polygons among 99,787 latest
+  geometry features; these are warned about and excluded from point conclusions.
 - [Automatic refresh](refresh.md) now supports four reviewed source commands,
   with local scheduling, persistent allowances and failure/overdue reporting.
   Other sources remain manual or fixed-edition. Portable snapshots do not

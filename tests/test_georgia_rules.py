@@ -153,6 +153,9 @@ def test_page_read_bounds_department_outline_without_mutating_versions(store):
     assert [r["key"] for r in result["neighbors"]] == ["page-40", "page-42"]
     assert result["artifact_sha"] == receipt.sha256 and result["effective_on"] is None
     assert not Reader(store).read("page-41", as_of="2026-08-20")["found"]
+    history = Reader(store).versions("page-41")
+    assert len(json.dumps(history).encode()) < 10000
+    assert history["versions"][0]["metadata"] == result["version_metadata"]
     assert (
         store.db.execute("SELECT metadata FROM versions WHERE id=?", (version,)).fetchone()[0]
         == original

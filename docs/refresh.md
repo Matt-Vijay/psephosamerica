@@ -1,6 +1,6 @@
 # Automatic source refresh
 
-Available in the current checkout, after v0.1.0. This is a local Python worker,
+Available starting in v0.2.0. This is a local Python worker,
 not an LLM job or hosted service. Reading via MCP never starts acquisition.
 
 ## Configure and run
@@ -118,7 +118,8 @@ retryable, interrupted and unscheduled sources. A successful publisher check is
 coverage, or a promise that all law is current. Unscheduled sources are explicitly
 labelled, not assumed fresh.
 
-The refresh worker and public `sync` commands share a nonblocking writer lock.
+The refresh worker, public `sync` commands and offline `reindex` share a
+nonblocking writer lock.
 Before backups, replay, imports or legacy maintenance scripts, let the current
 worker finish, then pause the timer. Those scripts are not all covered by this
 lock. Portable exports omit private refresh state and download allowances.

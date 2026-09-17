@@ -11,7 +11,7 @@ import zipfile
 from pathlib import Path
 
 from .retrieve import Reader
-from .store import Store
+from .store import Store, writer_lock
 
 
 def main() -> None:
@@ -102,6 +102,8 @@ def main() -> None:
         command.add_argument("--observed-before")
     versions = commands.add_parser("versions", help="List acquired source versions")
     versions.add_argument("key")
+    versions.add_argument("--offset", type=int, default=0)
+    versions.add_argument("--limit", type=int, default=30)
     receipt = commands.add_parser("receipt", help="Inspect a retained source acquisition")
     receipt.add_argument("acquisition_id", type=int)
     geo = commands.add_parser(
@@ -176,11 +178,12 @@ def main() -> None:
         elif args.command == "reindex":
             from .municipal import reindex_nyc
 
-            store = Store(args.data)
-            try:
-                result = reindex_nyc(store)
-            finally:
-                store.close()
+            with writer_lock(args.data):
+                store = Store(args.data)
+                try:
+                    result = reindex_nyc(store)
+                finally:
+                    store.close()
         else:
             store = Store(args.data, readonly=True)
             try:
@@ -252,10 +255,12 @@ def main() -> None:
                 elif args.command == "receipt":
                     result = reader.receipt(args.acquisition_id)
                 else:
-                    result = reader.versions(args.key)
+                    result = reader.versions(args.key, offset=args.offset, limit=args.limit)
             finally:
                 store.close()
         print(json.dumps(result, ensure_ascii=False, indent=2))
+        if args.command == "audit" and result["status"] != "PASS":
+            raise SystemExit(1)
         if args.command == "refresh" and args.refresh_command == "run" and result.get("enabled"):
             if result.get("worker_error") or any(
                 entry.get("status")

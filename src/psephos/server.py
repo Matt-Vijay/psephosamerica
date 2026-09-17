@@ -144,10 +144,13 @@ def create_server(root: Path) -> FastMCP:
             )
 
     @server.tool()
-    def legal_versions(key: str, limit: int = 30) -> dict[str, Any]:
-        """List acquired versions of a stable source key, not a fabricated complete history."""
+    def legal_versions(key: str, limit: int = 30, offset: int = 0) -> dict[str, Any]:
+        """List acquired versions of a stable source key; follow next_offset for older pages.
+
+        This is retained snapshot history, not a complete history of legal changes.
+        """
         with reader() as r:
-            return r.versions(key, limit=limit)
+            return r.versions(key, offset=offset, limit=limit)
 
     @server.tool()
     def legal_references(

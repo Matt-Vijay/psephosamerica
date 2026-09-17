@@ -56,6 +56,29 @@ def test_unknown_snapshot_is_not_invented(store):
     assert not Reader(store).read("key", as_of="2099-01-01")["found"]
 
 
+def test_version_history_pages_preserve_order_and_immutable_reads(store):
+    for day in (None, "2025-01-01", "2025-02-01", "2025-03-01"):
+        ingest(store, "Source snapshot " + str(day), day=day)
+    reader = Reader(store)
+    first = reader.versions("key", limit=2)
+    second = reader.versions("key", offset=first["next_offset"], limit=2)
+    combined = first["versions"] + second["versions"]
+    assert [v["snapshot_date"] for v in combined] == [
+        "2025-03-01",
+        "2025-02-01",
+        "2025-01-01",
+        None,
+    ]
+    assert second["offset"] == 2 and second["next_offset"] is None
+    assert len({v["id"] for v in combined}) == 4
+    for version in combined:
+        assert reader.read(version["id"])["snapshot_date"] == version["snapshot_date"]
+    assert not reader.versions("key", offset=4)["versions"]
+    assert reader.versions("missing")["next_offset"] is None
+    with pytest.raises(ValueError, match="offset"):
+        reader.versions("key", offset=-1)
+
+
 def test_receipt_projects_safe_headers_without_rewriting_imported_evidence(store):
     source = retain(store, b"retained source")
     safe = {
