@@ -47,6 +47,17 @@ def verify(data):
                 assert entry is not None
                 if pdf:
                     assert entry["url"] == pdf
+                    if entry["status"] == "source_unavailable":
+                        receipt = s.db.execute(
+                            "SELECT * FROM acquisitions WHERE url=? ORDER BY id DESC LIMIT 1",
+                            (pdf,),
+                        ).fetchone()
+                        assert receipt and receipt["status"] in (404, 410)
+                        assert "retry-after" not in json.loads(receipt["headers"])
+                        assert (
+                            entry["error"]
+                            == f"Publisher HTTP {receipt['status']}; receipt {receipt['id']}"
+                        )
                     expected[item] = dict(entry)
                 elif re.search(r"\[(?:REPEALED|RESERVED)\]", label):
                     assert (
@@ -212,6 +223,17 @@ async def mcp(data, report, sample):
             coverage["collections"][0]["documents"]
             == report["inventory"]["chapter_statuses"]["indexed"]
         )
+        missing = report["inventory"]["chapter_statuses"].get("source_unavailable", 0)
+        if missing:
+            gaps = await call(
+                "legal_coverage",
+                view="inventory",
+                collection=COLLECTION,
+                status="source_unavailable",
+            )
+            assert gaps["total"] == missing and all(
+                row["status"] == "source_unavailable" for row in gaps["inventory"]
+            )
         read = await call("legal_read", key_or_id=sample["key"], length=1500)
         assert read["text"] == sample["text"] and read["artifact_sha"] == sample["sha256"]
         receipt = await call("source_receipt", acquisition_id=read["acquisition_id"])

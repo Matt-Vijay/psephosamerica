@@ -49,14 +49,19 @@ original download allowance is exhausted; no additional allowance is assumed.
   or increase the allowance without authorization.
 - [ ] Finish Idaho's remaining linked chapter PDFs with the maintained
   `idaho-statutes` command. All 74 title inventories are expanded: 1,471 PDF links,
-  279 nonexport notices and one chapter lacking a listed PDF. The verified first
-  batch adds 49 PDFs / 212 pages, bringing retention to 128 PDFs; all original 79
-  versions / 610 records remain unchanged. Five real MCP calls passed. There are
-  1,342 pending exports; T5CH10 is a rejected DRAFT placeholder, and T15CH15 has no
-  listed PDF. The shared 200 MiB ledger has 15,516,405 bytes charged and
-  193,150,219 usable bytes left after the original 1 MiB reserve. Do not treat
-  notices, missing exports or projected pages as new laws. See
-  `docs/idaho-statutes-continuation-20260917.json`.
+  279 nonexport notices and one chapter lacking a listed PDF. Retention is now
+  1,444 PDFs across 59 closed title inventories. All 1,365 added projections /
+  11,647 pages / 23,662 links replay exactly; 15 real MCP calls passed. All original
+  79 versions / 610 records remain unchanged. Remaining: 15 draft placeholders,
+  six chapter-number mismatches, one 404, one transport failure, four pending PDFs
+  and T15CH15 without a listed PDF. T72CH13 timed out then reset; the exact native
+  T15CH15 HTML link also reset. Stop repeated network attempts for now; resume only
+  after transport review, then reconcile actual HTML evidence for source gaps.
+  The original 200 MiB ledger has 111,992,623 bytes charged (including a 65,536-byte
+  uncertain interrupted transfer), and 96,674,001 usable bytes after its 1 MiB
+  reserve. See `docs/idaho-statutes-inventory-20260917.json`. Neither pending
+  transfers nor defective exports establish inventory closure or new population
+  reach. Next useful work can proceed on other reviewed source families meanwhile.
 
 ## Completed release milestone
 

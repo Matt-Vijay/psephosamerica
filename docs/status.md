@@ -78,17 +78,23 @@ complete current-law collection, and new PDF companions were not downloaded.
 The maintained-adapter CI gate passed 220 tests with one skip and one intentional
 deselection, plus Ruff and strict mypy across 32 modules.
 
-The [Idaho continuation](idaho-statutes-continuation-20260917.json) expands all
-74 title inventories: **1,471 PDF links**, 279 repeal/reservation notices and
-one chapter without a listed PDF. The first batch adds **49 PDFs / 212 pages**,
-bringing retention to 128 PDFs with 1,342 pending. Exact replay verified all new
-pages and 280 publisher links; five real MCP calls passed. All 79 original PDFs /
-610 records and references remain unchanged. A linked T5CH10 PDF is a DRAFT
-placeholder and remains rejected, while T15CH15 lacks a listed PDF. Two short
-source pages were visually checked and recovered from cache; no extra download
-or blanket relaxation of text checks was needed. The original 200 MiB allowance
-and 1 MiB reserve remain shared, with 15,516,405 bytes charged. This is partial
-page-level coverage, not complete current law or verified table reconstruction.
+The [Idaho inventory verification](idaho-statutes-inventory-20260917.json) now
+retains **1,444 of 1,471 linked chapter PDFs**, with 59 of 74 title inventories
+closed. All **1,365 added PDFs / 11,647 pages / 23,662 publisher links** replay
+exactly; 15 real MCP calls passed, including document-scoped search, source
+heading inspection and visible missing-export records. All 79 original PDFs /
+610 records and references remain unchanged. Short-page repairs preserve narrow
+history-note labels and visually checked repeal notices. Poppler is required;
+an observed pypdf fallback reversed reading order.
+
+Remaining PDF gaps are 15 draft placeholders, six chapter-number mismatches, one
+404, one failed transfer and four pending files. The 279 native nonexport notices
+remain separate, and T15CH15 still has no listed PDF. Its actual HTML link also
+hit a connection reset; no body or alternate access is claimed. The shared
+200 MiB ledger has 111,992,623 bytes charged, including an interrupted transfer's
+65,536-byte reservation; 96,674,001 usable bytes remain after the original 1 MiB
+reserve. This is partial page-level coverage, not complete current law, verified
+table reconstruction or additional closed-inventory population reach.
 
 [Six research checks](research-checks.md) used 68 actual MCP calls on retained
 Portland, NYC, Florida, Virginia and federal sources, plus an unsupported Ann

@@ -170,11 +170,21 @@ reserve and 100 GiB disk threshold remain in force. Completed bodies are reused;
 retries, new allowance or scheduled refresh is implied. Unreadable PDF pages fail
 acceptance and remain visible for source-media review.
 
+An observed 404/410 export stays `source_unavailable`, with its receipt, while
+independent chapter exports can continue. Ordinary resumes do not request that
+missing URL again; an explicit refresh can reconsider it. Access denials,
+rate limits, Retry-After responses and transport errors still stop acquisition.
+Missing exports never close a title inventory.
+
 Short history-only pages can match a narrow full-page statutory-history syntax
 after an optional physical-page number. With no embedded image, those pages are
 labelled `short_history_note_pattern_unverified`, not visually certified. This
 does not accept arbitrary short text, missing brackets, blank pages or draft
 placeholders. Earlier hash-specific visual-review labels remain unchanged.
+Native bracketed chapter labels, such as `CHAPTER 21 [22]`, retain their wording
+and use the publisher-linked bracketed identity; unrelated chapter mismatches
+remain rejected. New projections require Poppler's `pdftotext`: pypdf's layout
+fallback reversed line order on an inspected publisher PDF and is not accepted.
 
 The publisher identifies Lexis printed copies as the official Code. The retained
 2026 legislative-session notice does not establish exact snapshot or effective

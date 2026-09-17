@@ -73,6 +73,7 @@ def test_html_error_is_not_accepted_as_pdf(store):
 def test_short_history_note_requires_the_entire_native_note_not_arbitrary_short_text():
     note = "29\n[18-8011, added 1998, ch. 152, sec. 4, p. 527.]"
     assert idaho.short_history_note(note, 29)
+    assert idaho.short_history_note(note.replace("sec.", "Sec."), 29)
     assert idaho.short_history_note(
         "3\n[7-805, added 1998, ch. 411, sec. 3, p. 1290; am. 2000, ch. 469, sec.\n17, p. 1467.]", 3
     )
@@ -178,7 +179,19 @@ def test_pdf_reference_navigates_only_to_retained_chapter_not_an_unverified_sect
     assert not reader.references(identifier, as_of="2026-09-17")["references"]
 
 
-def test_pdf_link_evidence_is_repeatable_and_omits_runtime_object_ids(store, monkeypatch):
+@pytest.mark.parametrize(
+    "heading,extraction,error",
+    [
+        ("CHAPTER 2", "Poppler layout text", None),
+        ("CHAPTER 1 [2]", "Poppler layout text", None),
+        ("CHAPTER 1\nParent chapter\nCHAPTER 2", "Poppler layout text", None),
+        ("CHAPTER 1 [3]", "Poppler layout text", "identity missing"),
+        ("CHAPTER 2", "pypdf layout text", "requires Poppler"),
+    ],
+)
+def test_pdf_link_evidence_is_repeatable_and_omits_runtime_object_ids(
+    store, monkeypatch, heading, extraction, error
+):
     writer = PdfWriter()
     page = writer.add_blank_page(width=612, height=792)
     page[NameObject("/Annots")] = ArrayObject(
@@ -204,12 +217,20 @@ def test_pdf_link_evidence_is_repeatable_and_omits_runtime_object_ids(store, mon
         "p",
         "fixture",
         "TITLE 1",
-        "TITLE 1 CHAPTER 2 source text",
+        f"TITLE 1\n{heading}\nsource text",
         "",
         idaho.INDEX,
-        metadata={"pdf_page": 1, "text_quality": "layout_text_unverified"},
+        metadata={
+            "pdf_page": 1,
+            "text_quality": "layout_text_unverified",
+            "extraction": extraction,
+        },
     )
     monkeypatch.setattr(idaho, "pdf_units", lambda *args: iter([unit]))
+    if error:
+        with pytest.raises(ValueError, match=error):
+            idaho.chapter_units(store, receipt, "1", "2", idaho.INDEX)
+        return
     a = idaho.chapter_units(store, receipt, "1", "2", idaho.INDEX)
     b = idaho.chapter_units(store, receipt, "1", "2", idaho.INDEX)
     assert a == b
@@ -221,7 +242,20 @@ def test_pdf_link_evidence_is_repeatable_and_omits_runtime_object_ids(store, mon
     }
 
 
-def test_sync_resume_skips_completed_bodies_and_retains_nonexport_notice(store, monkeypatch):
+@pytest.mark.parametrize(
+    "missing_status,headers",
+    [
+        (None, {}),
+        (404, {}),
+        (410, {}),
+        (403, {}),
+        (429, {}),
+        (404, {"retry-after": "5"}),
+    ],
+)
+def test_sync_resume_skips_completed_bodies_and_retains_nonexport_notice(
+    store, monkeypatch, missing_status, headers
+):
     title_url = idaho.INDEX + "Title2/"
     data = {
         idaho.BASE + "/robots.txt": b"User-agent: *\nAllow: /\n",
@@ -229,7 +263,10 @@ def test_sync_resume_skips_completed_bodies_and_retains_nonexport_notice(store, 
         idaho.TERMS: b"LEXIS published official copies",
         idaho.CURRENCY: b"current through the 2026 Legislative Session",
         title_url: table(
-            row("1", title="2"), row("2", title="2"), row("3", title="2", notice=True)
+            row("1", title="2"),
+            *([row("4", title="2")] if missing_status else []),
+            row("2", title="2"),
+            row("3", title="2", notice=True),
         ),
     }
     for number in ("1", "2"):
@@ -240,6 +277,8 @@ def test_sync_resume_skips_completed_bodies_and_retains_nonexport_notice(store, 
 
     def respond(request):
         requests.append(str(request.url))
+        if str(request.url).endswith("T2CH4.pdf"):
+            return httpx.Response(missing_status, headers=headers)
         return httpx.Response(200, content=data[str(request.url)])
 
     monkeypatch.setattr(
@@ -258,6 +297,7 @@ def test_sync_resume_skips_completed_bodies_and_retains_nonexport_notice(store, 
         ],
     )
     a = Acquirer(store, delay=0)
+    a.automatic_retries = False
     a.client.close()
     a.client = httpx.Client(transport=httpx.MockTransport(respond))
     a._pause = lambda *args, **kwargs: None
@@ -267,17 +307,31 @@ def test_sync_resume_skips_completed_bodies_and_retains_nonexport_notice(store, 
             store.db.execute("SELECT status FROM inventories WHERE item='title:2'").fetchone()[0]
             == "partial"
         )
-        assert idaho.sync_idaho(store, a, 1, None)["accepted_this_run"] == 1
-        assert (
-            store.db.execute("SELECT status FROM inventories WHERE item='title:2'").fetchone()[0]
-            == "indexed"
-        )
+        if missing_status in (403, 429) or headers:
+            with pytest.raises(AcquisitionError):
+                idaho.sync_idaho(store, a, None, None)
+            assert not any(url.endswith("T2CH2.pdf") for url in requests)
+            assert (
+                store.db.execute("SELECT status FROM inventories WHERE item='T2CH4'").fetchone()[0]
+                == "failed"
+            )
+            return
+        assert idaho.sync_idaho(store, a, None, None)["accepted_this_run"] == 1
+        assert store.db.execute("SELECT status FROM inventories WHERE item='title:2'").fetchone()[
+            0
+        ] == ("partial" if missing_status else "indexed")
         assert (
             store.db.execute("SELECT status FROM inventories WHERE item='T2CH3'").fetchone()[0]
             == "nonexport_notice"
         )
         assert idaho.sync_idaho(store, a, None, None)["attempted"] == 0
-        assert len(requests) == len(data)
+        assert len(requests) == len(data) + int(bool(missing_status))
+        if missing_status:
+            missing = store.db.execute(
+                "SELECT status,error FROM inventories WHERE item='T2CH4'"
+            ).fetchone()
+            assert missing["status"] == "source_unavailable"
+            assert f"HTTP {missing_status}" in missing["error"]
         assert store.db.execute("SELECT count(*) FROM versions").fetchone()[0] == 2
     finally:
         a.close()

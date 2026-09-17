@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import re
 import shutil
 import sys
@@ -142,6 +143,7 @@ def short_history_note(text: str, page: int) -> bool:
         re.fullmatch(
             r"\[\d+(?:-\d+[A-Z]?)+, (?:added|am\.) " + filing + r"(?:; am\. " + filing + r")*\.\]",
             normalized,
+            re.I,
         )
         is not None
     )
@@ -179,13 +181,38 @@ def chapter_units(
             "021132a258f0aa6f11eaaf73d0987de89d079eff6a8bd6cca2748fb72b6bfda3",
             4,
         ): "short_history_note_visually_verified",
+        (
+            "fcf1477406bed62ff32fc7fbdb167cd008de168ad591d60dcc5efc048c76e8c3",
+            2,
+        ): "short_repeal_notice_visually_verified",
+        (
+            "1f372dfe41db10daba4e74e881c58c26cb3da593dc7449031a7e9faddd063073",
+            5,
+        ): "short_history_note_visually_verified",
+        (
+            "66f54410d6344da5f328fcfc1d7fcb651518298d158584d17931f20523e99318",
+            4,
+        ): "short_history_note_visually_verified",
+        (
+            "71059b32dd663fed5feb456e9267e1fe7fe1002e7faf1b81312239a83898ee11",
+            3,
+        ): "short_repeal_notice_visually_verified",
     }
+    chapter_headings = re.findall(
+        r"(?m)^\s*CHAPTER\s+(\d+[A-Z]?)(?:\s+\[(\d+[A-Z]?)\])?\s*$",
+        units[0].text if units else "",
+        re.I,
+    )
     if (
         not units
         or not re.search(rf"TITLE\s+{re.escape(title)}\b", units[0].text, re.I)
-        or not re.search(rf"CHAPTER\s+{re.escape(chapter)}\b", units[0].text, re.I)
+        or chapter not in {bracketed or number for number, bracketed in chapter_headings}
     ):
         raise ValueError("PDF title/chapter identity missing")
+    if any(unit.metadata.get("extraction") == "pypdf layout text" for unit in units):
+        raise ValueError(
+            "Idaho PDF projection requires Poppler pdftotext; fallback reading order is unreliable"
+        )
     result = []
     for page, unit in zip(reader.pages, units, strict=True):
         quality = unit.metadata["text_quality"]
@@ -306,6 +333,24 @@ def sync_idaho(s: Store, a: Acquirer, limit: int | None, as_of: str | None) -> d
             ).fetchone()
         ):
             continue
+        previous = s.db.execute(
+            "SELECT id,status,headers FROM acquisitions WHERE url=? ORDER BY id DESC LIMIT 1",
+            (url,),
+        ).fetchone()
+        if (
+            not a.refresh
+            and previous
+            and previous["status"] in (404, 410)
+            and "retry-after" not in json.loads(previous["headers"])
+        ):
+            s.inventory(
+                COLLECTION,
+                item,
+                url,
+                "source_unavailable",
+                f"Publisher HTTP {previous['status']}; receipt {previous['id']}",
+            )
+            continue
         if limit is not None and attempted >= limit:
             break
         attempted += 1
@@ -336,6 +381,26 @@ def sync_idaho(s: Store, a: Acquirer, limit: int | None, as_of: str | None) -> d
             accepted += 1
             print(f"Idaho {item}: {len(units)} pages", file=sys.stderr, flush=True)
         except (ValueError, AcquisitionError) as exc:
+            receipt_status = s.db.execute(
+                "SELECT id,status,headers FROM acquisitions WHERE url=? ORDER BY id DESC LIMIT 1",
+                (url,),
+            ).fetchone()
+            if (
+                isinstance(exc, AcquisitionError)
+                and receipt_status
+                and receipt_status["status"] in (404, 410)
+                and (not previous or receipt_status["id"] != previous["id"])
+                and "retry-after" not in json.loads(receipt_status["headers"])
+            ):
+                s.inventory(
+                    COLLECTION,
+                    item,
+                    url,
+                    "source_unavailable",
+                    f"Publisher HTTP {receipt_status['status']}; receipt {receipt_status['id']}",
+                )
+                print(f"Idaho {item}: {exc}", file=sys.stderr, flush=True)
+                continue
             s.inventory(COLLECTION, item, url, "failed", str(exc))
             print(f"Idaho {item}: {exc}", file=sys.stderr, flush=True)
             if isinstance(exc, AcquisitionError):
