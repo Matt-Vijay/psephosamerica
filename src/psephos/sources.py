@@ -261,6 +261,7 @@ def _sources() -> dict[str, _Source]:
     from .dc import sync_dc
     from .florida import sync_florida
     from .geography import sync_nyc_geo, sync_portland_geo
+    from .idaho import IdahoAcquirer, sync_idaho
     from .minnesota import MinnesotaAcquirer, sync_minnesota
     from .municipal import sync_nyc, sync_portland, sync_portland_guides
     from .nebraska import COLLECTIONS, NebraskaAcquirer, sync_nebraska
@@ -370,6 +371,13 @@ def _sources() -> dict[str, _Source]:
                 "https://wslwebservices.leg.wa.gov/",
                 "https://lawfilesext.leg.wa.gov/",
             ),
+        ),
+        "idaho-statutes": _Source(
+            sync_idaho,
+            ("id-statutes",),
+            "Publisher chapter PDFs indexed by page, not the printed official Code. Original 200 MiB lifetime allowance and 1 MiB reserve are shared with the earlier Idaho campaign.",
+            campaign=IdahoAcquirer,
+            receipt_prefixes=("https://legislature.idaho.gov/", "https://adminrules.idaho.gov/"),
         ),
         "minnesota-statutes": _Source(
             sync_minnesota,

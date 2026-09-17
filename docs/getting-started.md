@@ -90,6 +90,14 @@ Use the maintained command, not retired collector scripts. This collects publish
 HTML, records new PDF links without downloading/authenticating them, and preserves
 previous PDF companions. Rules, session laws and automatic refresh are separate.
 
+`sync idaho-statutes --limit 25` expands the native title inventories and attempts
+25 new chapter PDF bodies, reusing completed exports. It shares the original
+`collectors/idaho/bytes.json` ledger when present; otherwise it uses
+`campaigns/idaho-statutes/budget.json`. The 200 MiB lifetime cap retains the
+original 1 MiB safety reserve and 100 GiB free-disk threshold. Retired collector
+scripts must not run concurrently. This checkout-only command preserves PDFs
+with page-level text, not independently verified section or table reconstruction.
+
 ## Connect an MCP client
 
 For clients using an `mcpServers` JSON configuration, add:

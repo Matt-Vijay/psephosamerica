@@ -16,7 +16,8 @@ model, a hosted service, or a nationwide current-law guarantee.
   mixed retrieval records, with original source bytes and dates. The larger
   working corpus is local, not bundled into the software or public download.
 - The released wheel's `psephos sources` lists 19 acquisition commands; the
-  current checkout adds `south-carolina-code` and `minnesota-statutes`, totaling 21.
+  current checkout adds `south-carolina-code`, `minnesota-statutes` and
+  `idaho-statutes`, totaling 22.
   Georgia, Virginia, Oregon, Washington, Nebraska and Portland Charter now have
   installed entrypoints; historical collector directories are not the public interface.
 - `export` / `import` transfer explicitly selected collections. Import verifies
@@ -76,6 +77,18 @@ chapter remain visible. These HTML projections are not authenticated PDFs or a
 complete current-law collection, and new PDF companions were not downloaded.
 The maintained-adapter CI gate passed 220 tests with one skip and one intentional
 deselection, plus Ruff and strict mypy across 32 modules.
+
+The [Idaho continuation](idaho-statutes-continuation-20260917.json) expands all
+74 title inventories: **1,471 PDF links**, 279 repeal/reservation notices and
+one chapter without a listed PDF. The first batch adds **49 PDFs / 212 pages**,
+bringing retention to 128 PDFs with 1,342 pending. Exact replay verified all new
+pages and 280 publisher links; five real MCP calls passed. All 79 original PDFs /
+610 records and references remain unchanged. A linked T5CH10 PDF is a DRAFT
+placeholder and remains rejected, while T15CH15 lacks a listed PDF. Two short
+source pages were visually checked and recovered from cache; no extra download
+or blanket relaxation of text checks was needed. The original 200 MiB allowance
+and 1 MiB reserve remain shared, with 15,516,405 bytes charged. This is partial
+page-level coverage, not complete current law or verified table reconstruction.
 
 [Six research checks](research-checks.md) used 68 actual MCP calls on retained
 Portland, NYC, Florida, Virginia and federal sources, plus an unsupported Ann

@@ -46,8 +46,17 @@ original download allowance is exhausted; no additional allowance is assumed.
   All original 50 versions / 3,358 records and references remain unchanged.
   See `docs/minnesota-statutes-continuation-20260917.json`. The next declared body
   exceeds the 81,685 bytes remaining in the original 200 MiB ledger; do not reset
-  or increase the allowance without authorization. Idaho is still a candidate;
-  no new Idaho requests have been made in this continuation.
+  or increase the allowance without authorization.
+- [ ] Finish Idaho's remaining linked chapter PDFs with the maintained
+  `idaho-statutes` command. All 74 title inventories are expanded: 1,471 PDF links,
+  279 nonexport notices and one chapter lacking a listed PDF. The verified first
+  batch adds 49 PDFs / 212 pages, bringing retention to 128 PDFs; all original 79
+  versions / 610 records remain unchanged. Five real MCP calls passed. There are
+  1,342 pending exports; T5CH10 is a rejected DRAFT placeholder, and T15CH15 has no
+  listed PDF. The shared 200 MiB ledger has 15,516,405 bytes charged and
+  193,150,219 usable bytes left after the original 1 MiB reserve. Do not treat
+  notices, missing exports or projected pages as new laws. See
+  `docs/idaho-statutes-continuation-20260917.json`.
 
 ## Completed release milestone
 

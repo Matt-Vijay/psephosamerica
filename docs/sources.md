@@ -156,6 +156,26 @@ undated section links resolve only to matching retained Minnesota section IDs an
 URLs. Dated/subdivision-specific URLs remain unresolved rather than being silently
 redirected to current whole sections. Rules and constitution are unchanged.
 
+### Idaho continuation
+
+`idaho-statutes` expands all native title rows into exact linked chapter PDFs or
+explicit nonexport repeal/reservation notices. It preserves the original 79
+chapter versions without reindexing. New projections retain each physical page,
+source PDF and publisher URI annotations; annotation evidence uses stable page,
+rectangle and URI fields instead of runtime object representations.
+
+The original `collectors/idaho/bytes.json` counter, 200 MiB cap, 1 MiB safety
+reserve and 100 GiB disk threshold remain in force. Completed bodies are reused;
+`--limit` applies to newly attempted bodies, not inventory requests. No automatic
+retries, new allowance or scheduled refresh is implied. Unreadable PDF pages fail
+acceptance and remain visible for source-media review.
+
+The publisher identifies Lexis printed copies as the official Code. The retained
+2026 legislative-session notice does not establish exact snapshot or effective
+dates. Page text is unverified layout extraction, not a complete section-level
+or table-geometry representation. Constitution, regulations and later session
+laws are outside this command; no redistribution permission is inferred.
+
 ### California reuse correction
 
 The retained GOV §10248.5 explicitly overrides §10248(g)'s proprietary reservation
