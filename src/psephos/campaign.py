@@ -32,6 +32,8 @@ class CampaignAcquirer(Acquirer):
     session ceiling supports metadata preflight without resetting the total cap.
     """
 
+    consumed_field = "consumed_bytes"
+
     @classmethod
     def budget_file(cls, store: Store, directory: Path) -> Path:
         return directory / "budget.json"
@@ -52,12 +54,12 @@ class CampaignAcquirer(Acquirer):
         self.budget = (
             json.loads(self.budget_path.read_bytes())
             if self.budget_path.exists()
-            else {"consumed_bytes": initial_bytes, "last_request_unix": 0.0, "cap_bytes": cap}
+            else {self.consumed_field: initial_bytes, "last_request_unix": 0.0, "cap_bytes": cap}
         )
         if self.budget["cap_bytes"] != cap:
             raise AcquisitionError("Campaign cap differs from the retained budget")
         abandoned = self.budget.pop("reserved_bytes", 0)
-        self.budget["consumed_bytes"] += abandoned
+        self.budget[self.consumed_field] += abandoned
         self.budget["uncertain_reserved_bytes"] = (
             self.budget.get("uncertain_reserved_bytes", 0) + abandoned
         )
@@ -72,17 +74,17 @@ class CampaignAcquirer(Acquirer):
 
     @property
     def downloaded(self) -> int:
-        return int(self.budget["consumed_bytes"])
+        return int(self.budget[self.consumed_field])
 
     @downloaded.setter
     def downloaded(self, value: int) -> None:
         if not self._initializing:
-            self.budget["consumed_bytes"] = value
+            self.budget[self.consumed_field] = value
             self.budget["reserved_bytes"] = 0
             save(self.budget_path, self.budget)
 
     def _pause(self, url: str, delay: float | None = None) -> None:
-        elapsed = max(0.0, time.time() - self.budget["last_request_unix"])
+        elapsed = max(0.0, time.time() - self.budget.get("last_request_unix", 0.0))
         self.last_request[urlsplit(url).netloc] = time.monotonic() - elapsed
         super()._pause(url, delay)
         self.budget["last_request_unix"] = time.time()

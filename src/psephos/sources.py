@@ -261,6 +261,7 @@ def _sources() -> dict[str, _Source]:
     from .dc import sync_dc
     from .florida import sync_florida
     from .geography import sync_nyc_geo, sync_portland_geo
+    from .minnesota import MinnesotaAcquirer, sync_minnesota
     from .municipal import sync_nyc, sync_portland, sync_portland_guides
     from .nebraska import COLLECTIONS, NebraskaAcquirer, sync_nebraska
     from .portland_charter import CharterAcquirer, sync_portland_charter
@@ -369,6 +370,13 @@ def _sources() -> dict[str, _Source]:
                 "https://wslwebservices.leg.wa.gov/",
                 "https://lawfilesext.leg.wa.gov/",
             ),
+        ),
+        "minnesota-statutes": _Source(
+            sync_minnesota,
+            ("mn-statutes",),
+            "Publisher statute HTML, not authenticated PDFs, session-law consolidation or rules. Original 200 MiB lifetime allowance is shared with the earlier Minnesota campaign.",
+            campaign=MinnesotaAcquirer,
+            receipt_prefixes=("https://www.revisor.mn.gov/",),
         ),
         "south-carolina-code": _Source(
             sync_south_carolina,

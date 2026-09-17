@@ -140,6 +140,22 @@ laws are silently re-collected or consolidated. The publisher's copying notice,
 personal/noncommercial site notice and unofficial-online-text qualification remain
 in the source records; no broader redistribution permission is inferred.
 
+### Minnesota continuation
+
+`minnesota-statutes` follows the retained 105-part inventory to 1,133 whole-chapter
+HTML exports. It preserves native section/disposition IDs, table structure,
+history, notes and repeated occurrences, and checks each body's publisher edition
+label against the master. Original PDF companions stay retained; new PDF links are
+explicitly unacquired. The publisher designates authenticated PDFs and printed
+volumes as official records, not these HTML projections; no signature verification
+or comprehensive current-law claim is made.
+
+The original 200 MiB allowance uses its existing `decoded_bytes` counter directly.
+No automatic retries or new allowance is granted by a resume/import. Current,
+undated section links resolve only to matching retained Minnesota section IDs and
+URLs. Dated/subdivision-specific URLs remain unresolved rather than being silently
+redirected to current whole sections. Rules and constitution are unchanged.
+
 ### California reuse correction
 
 The retained GOV §10248.5 explicitly overrides §10248(g)'s proprietary reservation

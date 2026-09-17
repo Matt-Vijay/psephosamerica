@@ -82,6 +82,14 @@ when present; it is never copied into a second allowance. Other stores use
 operator budget cannot silently begin another campaign. This command is not in
 the older v0.2.0 wheel and does not schedule automatic refresh.
 
+The checkout also supports `sync minnesota-statutes --limit 25`. This expands the
+publisher's whole chapter inventory and limits newly attempted bodies. It reuses
+`collectors/mn/budget.json` when present, including the original `decoded_bytes`
+spending; otherwise the same 200 MiB cap uses `campaigns/minnesota-statutes/`.
+Use the maintained command, not retired collector scripts. This collects publisher
+HTML, records new PDF links without downloading/authenticating them, and preserves
+previous PDF companions. Rules, session laws and automatic refresh are separate.
+
 ## Connect an MCP client
 
 For clients using an `mcpServers` JSON configuration, add:

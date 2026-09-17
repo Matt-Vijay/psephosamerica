@@ -794,6 +794,21 @@ class Reader:
                 expected_collection = "va-code"
             else:
                 virginia_code = None
+            minnesota = re.fullmatch(
+                r"https://www\.revisor\.mn\.gov/statutes/cite/([0-9]+[A-Z]?)\."
+                r"([0-9]+[A-Z]?(?:[.-][0-9]+[A-Z]?)*)/?",
+                ref["target"],
+            )
+            if minnesota and ref["relation"] == "publisher_link":
+                chapter, section = minnesota.groups()
+                native_id = f"stat.{chapter}.{section}"
+                target = f"mn:statutes/{chapter}/{native_id}"
+                expected_url = (
+                    f"https://www.revisor.mn.gov/statutes/cite/{chapter}/full#{native_id}"
+                )
+                expected_collection = "mn-statutes"
+            else:
+                minnesota = None
             portland_link = re.fullmatch(
                 r"https://www\.portland\.gov/code/(\d+)(?:/[a-zA-Z0-9-]+)*", target
             )
@@ -898,6 +913,16 @@ class Reader:
             ]
             filing_candidates_saturated = expected_collection == "wa-wsr" and len(targets) == 3
             usc_candidates_saturated = usc_descendant is not None and len(targets) == 3
+            if minnesota:
+                targets = [
+                    candidate
+                    for candidate in targets
+                    if self.db.execute(
+                        "SELECT json_extract(metadata,'$.native_id') FROM provisions WHERE id=?",
+                        (candidate["id"],),
+                    ).fetchone()[0]
+                    == f"stat.{minnesota[1]}.{minnesota[2]}"
+                ]
             if usc_descendant:
                 verified = []
                 for candidate in targets:
@@ -933,6 +958,7 @@ class Reader:
                     portland_citation,
                     virginia,
                     virginia_code,
+                    minnesota,
                     usc_descendant,
                 )
             ):
@@ -957,6 +983,8 @@ class Reader:
             ref["resolution_basis"] = (
                 "exact_retained_uslm_identifier_in_enclosing_section"
                 if usc_descendant
+                else "exact_retained_minnesota_section_identity_and_url"
+                if minnesota
                 else "exact_acquired_filing_key_and_retained_publisher_url"
                 if expected_collection == "wa-wsr"
                 else "exact_acquired_publisher_url"

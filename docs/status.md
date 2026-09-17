@@ -16,7 +16,7 @@ model, a hosted service, or a nationwide current-law guarantee.
   mixed retrieval records, with original source bytes and dates. The larger
   working corpus is local, not bundled into the software or public download.
 - The released wheel's `psephos sources` lists 19 acquisition commands; the
-  current checkout adds `south-carolina-code` as the twentieth maintained command.
+  current checkout adds `south-carolina-code` and `minnesota-statutes`, totaling 21.
   Georgia, Virginia, Oregon, Washington, Nebraska and Portland Charter now have
   installed entrypoints; historical collector directories are not the public interface.
 - `export` / `import` transfer explicitly selected collections. Import verifies

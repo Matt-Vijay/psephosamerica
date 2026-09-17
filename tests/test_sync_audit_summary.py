@@ -43,8 +43,10 @@ def test_source_catalog_and_imported_store_budget_boundary(store, monkeypatch):
         "washington",
         "nebraska",
         "south-carolina-code",
+        "minnesota-statutes",
     } <= entries.keys()
     assert entries["south-carolina-code"]["collection_ids"] == ["sc-code"]
+    assert entries["minnesota-statutes"]["collection_ids"] == ["mn-statutes"]
     assert entries["nebraska"]["collection_ids"] == [
         "ne-revised-statutes",
         "ne-uniform-commercial-code",
