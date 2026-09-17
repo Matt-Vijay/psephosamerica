@@ -2,6 +2,7 @@
 
 from dataclasses import replace
 
+import pytest
 from conftest import retain
 
 from psephos.retrieve import Reader
@@ -152,18 +153,27 @@ def test_wa_links_reject_lookalikes_escapes_and_ambiguous_query_parameters(store
     assert all(not row["acquired_targets"] for row in rows)
 
 
-def test_wac_full_chapter_fragment_requires_matching_native_chapter(store):
-    canonical = "https://app.leg.wa.gov/WAC/default.aspx?cite=197-11-330"
-    target = add_target(store, "wa-wac:197-11-330", canonical)
-    native = "https://app.leg.wa.gov/WAC/default.aspx?cite=197-11&full=true#197-11-330"
+@pytest.mark.parametrize(
+    "family,chapter,other,citation",
+    [
+        ("WAC", "197-11", "197-10", "197-11-330"),
+        ("RCW", "36.70A", "36.70", "36.70A.040"),
+    ],
+)
+def test_wa_full_chapter_fragment_requires_matching_native_chapter(
+    store, family, chapter, other, citation
+):
+    canonical = f"https://app.leg.wa.gov/{family}/default.aspx?cite={citation}"
+    target = add_target(store, f"wa-{family.lower()}:{citation}", canonical)
+    native = f"https://app.leg.wa.gov/{family}/default.aspx?cite={chapter}&full=true#{citation}"
     targets = [
         native,
-        native.replace("cite=197-11&", "cite=197-10&"),
+        native.replace(f"cite={chapter}&", f"cite={other}&"),
         native.replace("&full=true", ""),
         native.replace("&full=true", "&full=false"),
         native.replace("&full=true", "&full=true&pdf=true"),
-        native.replace("cite=197-11&full=true", "full=true&cite=197-11"),
-        native.replace("#197-11-330", "#197-11-330%20"),
+        native.replace(f"cite={chapter}&full=true", f"full=true&cite={chapter}"),
+        native.replace(f"#{citation}", f"#{citation}%20"),
         native.replace("app.leg.wa.gov", "example.test"),
     ]
     source = add_source(store, targets)

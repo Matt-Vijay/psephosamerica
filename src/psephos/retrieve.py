@@ -127,7 +127,7 @@ def _washington_reference(target: str) -> tuple[str, str, str] | None:
 
     RCW source markup uses HTTP links while acquired section records use HTTPS.
     Only the publisher's exact endpoint and single cite/Cite parameter support
-    that mapping. WAC full-chapter links additionally retain same-chapter native
+    that mapping. RCW/WAC full-chapter links additionally retain same-chapter native
     section fragments. Retained WSR table links have a cross-checkable filing
     year/issue/identifier path. Other parameters, escapes, fragments and
     title/chapter links are not silently rewritten into section citations.
@@ -148,19 +148,20 @@ def _washington_reference(target: str) -> tuple[str, str, str] | None:
             "wa-wsr",
         )
     fragment = re.fullmatch(
-        r"https?://app\.leg\.wa\.gov/(?:WAC|wac)/default\.aspx\?[Cc]ite="
-        r"([0-9]+[A-Z]?-[0-9]+[A-Z]?)&full=true#([0-9]+[A-Z]?(?:-[0-9]+[A-Z]?){2})",
+        r"https?://app\.leg\.wa\.gov/(RCW|WAC|wac)/default\.aspx\?[Cc]ite="
+        r"([^&?#]+)&full=true#([^&?#]+)",
         target,
     )
     if fragment is not None:
-        chapter, citation = fragment.groups()
-        if citation.rsplit("-", 1)[0] != chapter:
-            return None
-        return (
-            "wa-wac:" + citation,
-            "https://app.leg.wa.gov/WAC/default.aspx?cite=" + citation,
-            "wa-wac",
+        family, chapter, citation = fragment.groups()
+        # Reuse the strict section validator below; this URL has no fragment.
+        section = _washington_reference(
+            f"https://app.leg.wa.gov/{family}/default.aspx?cite={citation}"
         )
+        separator = "." if family == "RCW" else "-"
+        if section is None or citation.rsplit(separator, 1)[0] != chapter:
+            return None
+        return section
     match = re.fullmatch(
         r"https?://app\.leg\.wa\.gov/(RCW|WAC|wac)/default\.aspx\?[Cc]ite=([^&?#]+)", target
     )

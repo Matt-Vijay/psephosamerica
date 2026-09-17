@@ -297,6 +297,13 @@ async def verify_mcp(data: Path, *, rcw: bool = False) -> dict[str, Any]:
             assert statute["found"] and "supreme court" in statute["text"].lower()
             receipt = await call("source_receipt", acquisition_id=statute["acquisition_id"])
             assert receipt["sha256"] == statute["artifact_sha"]
+            contents = await call("legal_read", key_or_id="wa-rcw:2.04/contents-notes", length=500)
+            refs = await call("legal_references", provision_id=contents["id"], limit=100)
+            assert any(
+                r["target"].endswith("&full=true#2.04.010")
+                and any(t["id"] == statute["id"] for t in r["acquired_targets"])
+                for r in refs["references"]
+            )
             assert not (
                 await call(
                     "legal_read", key_or_id=statute["id"], observation_cutoff="2026-09-17T00:00:00Z"

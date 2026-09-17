@@ -20,6 +20,12 @@ def test_centered_subchapter_heading_is_retained_but_not_invented_as_section():
     assert units[1].key == "wa-rcw:47.26/heading/47.26.4999999"
     assert units[1].metadata["not_a_numbered_section"]
     assert units[1].text == "UNNUMBERED CHAPTER HEADING"
+    multiline = raw.replace(
+        b"</div></span>", b'</div><div style="text-align:center;">Second heading line</div></span>'
+    )
+    assert chapter_units(multiline, "47.26", "https://app.leg.wa.gov/")[1].text == (
+        "UNNUMBERED CHAPTER HEADING\nSecond heading line"
+    )
     with pytest.raises(ValueError, match="do not match"):
         chapter_units(
             raw.replace(b"UNNUMBERED CHAPTER HEADING", b"<p>Unlisted law body</p>"),
@@ -109,6 +115,25 @@ def test_washington_digest_not_legal_text_and_inventory_scope():
     assert unit.unit_kind == "redistricting_plan"
     assert unit.key == "wa-rcw:29A.76C"
     assert "Census Tract 100" in unit.text
+
+
+@pytest.mark.parametrize(
+    "chapter,body",
+    [
+        ("14.30", "<div>PDF</div><h3>See chapter 81.96 RCW</h3>"),
+        (
+            "18.09",
+            '<h3>Notes:</h3><div>See chapter <a href="?cite=2.44">2.44</a> RCW, attorneys-at-law.</div>',
+        ),
+    ],
+)
+def test_retained_pointer_only_chapters_are_not_counted_as_sections(chapter, body):
+    raw = f'<div id="contentWrapper">{body}</div>'.encode()
+    units = chapter_units(raw, chapter, "https://app.leg.wa.gov/RCW/default.aspx")
+    assert len(units) == 1 and units[0].unit_kind == "chapter_notes"
+    assert units[0].metadata["publisher_note_only_chapter"]
+    with pytest.raises(ValueError, match="refusing digest-only"):
+        chapter_units(raw.replace(b"RCW", b"other material"), chapter, "https://app.leg.wa.gov/")
 
 
 def test_washington_cli_limited_resume_skips_accepted_chapter_preserving_ids(

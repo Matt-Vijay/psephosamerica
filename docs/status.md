@@ -32,12 +32,20 @@ and 1,523,925 mixed retrieval records**. This continuation adds Nebraska's
 prior corpus. These additions total 28,018 retrieval records; they are not
 28,018 new laws. The public starter remains the smaller federal-only dataset.
 
-The [coverage ledger](coverage-ledger.json) is that release's source-by-source
-accounting. It separates completed publisher inventories, partial bodies,
+The [coverage ledger](coverage-ledger.json) is dated source-by-source
+accounting, with later family updates explicitly marked. It separates completed publisher inventories, partial bodies,
 blocked sources and absent families. A completed inventory can be an older or
 narrowed edition; population living in those jurisdictions is not comprehensive
 legal coverage. Counts of sections, PDF pages, context records and versions must
 not be presented as interchangeable counts of laws.
+
+The later September 17 [Washington continuation](washington-rcw-completion-20260917.json)
+adds **602 chapter exports**, bringing RCW to **1,027 / 2,785** retained inventory
+entries, with 1,758 pending and zero failures. Exact replay verified 9,980 new
+section occurrences, 602 chapter notes and nine subchapter headings; eight actual
+MCP calls verified reading, source receipts, date exclusions and contents links.
+The original 424 versions / 8,764 records are unchanged. Unknown legal clocks,
+pointer-only chapters and remaining gaps stay explicit; population reach is unchanged.
 
 [Six research checks](research-checks.md) used 68 actual MCP calls on retained
 Portland, NYC, Florida, Virginia and federal sources, plus an unsupported Ann
@@ -81,7 +89,7 @@ the federal-only starter correctly returned no geometry.
 
 The September 17 integrity audit rehashed **15,795 artifacts / 6,939,024,826 bytes**
 and passed SQLite, foreign-key, source-provenance, key and spatial-index membership
-checks. The working catalog has 26,036 retained versions and 2,060,152 mixed
+checks. That audit, before the RCW continuation above, measured 26,036 retained versions and 2,060,152 mixed
 retrieval records across all versions, versus 1,494,554 latest projected records.
 These are storage measures, not counts of unique laws or a coverage percentage.
 Detailed local receipts are retained under `data/verification/20260917-v0.2.0/`.

@@ -87,32 +87,36 @@ def chapter_units(data: bytes, chapter: str, url: str) -> list[Provision]:
     root = page(data)
     units = root.xpath('//*[@id="ContentPlaceHolder1_dlSectionContent"]/span[a[@name]]')
     if not units:
-        if chapter == "36.42":
-            contents = root.xpath('//*[@id="contentWrapper"]')
-            if len(contents) == 1 and "County and city sales and use taxes:" in readable(
-                contents[0]
-            ):
-                node = contents[0]
-                return [
-                    Provision(
-                        key="wa-rcw:36.42/contents-notes",
-                        citation="RCW Chapter 36.42 contents and notes",
-                        heading="Retail sales and use taxes — publisher cross-reference chapter",
-                        text=readable(node),
-                        markup=markup(node),
-                        url=url,
-                        unit_kind="chapter_notes",
-                        parent_key="wa-rcw:36.42",
-                        metadata={
-                            "source_identifier": chapter,
-                            "publisher_note_only_chapter": True,
-                        },
-                        references=source_links(node, url),
-                    )
-                ]
+        contents = root.xpath('//*[@id="contentWrapper"]')
+        pointer_only = {
+            "14.30": "PDF\nSee chapter 81.96 RCW",
+            "18.09": "Notes:\nSee chapter 2.44 RCW, attorneys-at-law.",
+        }
+        text = readable(contents[0]) if len(contents) == 1 else ""
+        if text == pointer_only.get(chapter) or (
+            chapter == "36.42" and "County and city sales and use taxes:" in text
+        ):
+            node = contents[0]
+            return [
+                Provision(
+                    key=f"wa-rcw:{chapter}/contents-notes",
+                    citation=f"RCW Chapter {chapter} contents and notes",
+                    heading=(
+                        "Retail sales and use taxes — publisher cross-reference chapter"
+                        if chapter == "36.42"
+                        else "Publisher cross-reference chapter"
+                    ),
+                    text=text,
+                    markup=markup(node),
+                    url=url,
+                    unit_kind="chapter_notes",
+                    parent_key=f"wa-rcw:{chapter}",
+                    metadata={"source_identifier": chapter, "publisher_note_only_chapter": True},
+                    references=source_links(node, url),
+                )
+            ]
         # The publisher embeds redistricting plans as unnumbered chapter material,
         # not section containers. Keep their legal descriptions as one native unit.
-        contents = root.xpath('//*[@id="contentWrapper"]')
         if chapter in {"29A.76C", "44.07F"} and len(contents) == 1:
             node = contents[0]
             text = readable(node)
@@ -154,11 +158,14 @@ def chapter_units(data: bytes, chapter: str, url: str) -> list[Provision]:
         if (
             "#" + cite not in listed
             and totals[cite] == 1
-            and len(blocks) == 1
-            and "text-align:center" in re.sub(r"\s+", "", blocks[0].get("style", "")).lower()
-            and not blocks[0].xpath(".//h3|.//a|.//p|.//table|.//img|.//ul|.//ol")
-            and readable(node) == readable(blocks[0])
-            and readable(blocks[0])
+            and blocks
+            and all(
+                "text-align:center" in re.sub(r"\s+", "", block.get("style", "")).lower()
+                and not block.xpath(".//h3|.//a|.//p|.//table|.//img|.//ul|.//ol")
+                and readable(block)
+                for block in blocks
+            )
+            and readable(node) == "\n".join(readable(block) for block in blocks)
         ):
             headings.add(cite)
     if {"#" + c for c in anchors if c not in headings} != listed:

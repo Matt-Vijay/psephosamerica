@@ -13,12 +13,21 @@ through the evidence-backed queue in `docs/coverage-ledger.json`.
   without inventing a numbered statutory section. Separate the actual contents
   column from cross-references in headings: 85.05.510 is a cited reference, not a
   missing inventory body. Genuine missing section entries still fail closed.
-- [ ] Acquire remaining RCW chapter bodies in bounded, resumable tranches using
-  the original allowance. Starting inventory: 425 indexed, 2 failed, 2,358 pending.
-- [ ] Independently replay new projections, exercise actual MCP reads, and update
-  the coverage ledger with exact completed/pending/failed inventories and clocks.
+- [x] Add 602 accepted RCW chapter exports: 600 newly downloaded and two recovered
+  from earlier retained failures. Reconcile heading citations, multiline article
+  headings and two pointer-only chapters without inventing statutory sections.
+- [x] Exactly replay the 602 new projections (9,980 section occurrences, 602
+  chapter notes, nine subchapter headings), verify eight real MCP calls including
+  contents-to-section navigation, and preserve all 424 earlier versions / 8,764
+  provision records. See `docs/washington-rcw-completion-20260917.json`.
+- [ ] Acquire remaining RCW chapters within the original allowance: 1,027 of
+  2,785 accepted, 1,758 pending, zero failures. 27 retained title inventories are
+  closed. 197,848,188 of 262,144,000 bytes charged; 64,295,812 bytes remain.
 - [ ] Continue the remaining state/local source queue; don't relabel another
   release, partial tranche or source restriction as nationwide completion.
+  South Carolina's retained inventory has 986 pending chapters and its original
+  200 MiB ledger has 137,595,792 bytes remaining. Review continuation and canonical
+  publication before using that allowance; no new SC requests have been sent.
 
 ## Completed release milestone
 
