@@ -170,6 +170,12 @@ reserve and 100 GiB disk threshold remain in force. Completed bodies are reused;
 retries, new allowance or scheduled refresh is implied. Unreadable PDF pages fail
 acceptance and remain visible for source-media review.
 
+Short history-only pages can match a narrow full-page statutory-history syntax
+after an optional physical-page number. With no embedded image, those pages are
+labelled `short_history_note_pattern_unverified`, not visually certified. This
+does not accept arbitrary short text, missing brackets, blank pages or draft
+placeholders. Earlier hash-specific visual-review labels remain unchanged.
+
 The publisher identifies Lexis printed copies as the official Code. The retained
 2026 legislative-session notice does not establish exact snapshot or effective
 dates. Page text is unverified layout extraction, not a complete section-level

@@ -56,6 +56,42 @@ def test_unknown_snapshot_is_not_invented(store):
     assert not Reader(store).read("key", as_of="2099-01-01")["found"]
 
 
+def test_document_search_is_exact_and_preserves_temporal_scope(store):
+    ingest(store, "older definition", day="2025-01-01")
+    ingest(store, "newer definition", day="2025-02-01", observed="2026-02-01T00:00:00Z")
+    source = retain(store, b"other definition")
+    store.ingest(
+        collection="test",
+        document="other",
+        title="Other",
+        url=source.url,
+        acquisition=source.id,
+        snapshot_basis="Unknown",
+        parser="fixture",
+        provisions=[Provision("other", "Other", "Other", "other definition", "", source.url)],
+    )
+    reader = Reader(store)
+    assert len(reader.search("definition")["matches"]) == 2
+    selected = reader.search("definition", document="document")["matches"]
+    assert len(selected) == 1 and selected[0]["document"] == "document"
+    assert "newer" in selected[0]["excerpt"]
+    assert not reader.search("definition", document="missing")["matches"]
+    assert not reader.search("definition", document="document", collection="missing")["matches"]
+    assert not reader.search("definition", document="document", jurisdiction="missing")["matches"]
+    assert (
+        "older"
+        in reader.search("definition", document="document", as_of="2025-01-15")["matches"][0][
+            "excerpt"
+        ]
+    )
+    assert not reader.search("definition", document="other", as_of="2099-01-01")["matches"]
+    assert not reader.search(
+        "definition", document="document", observation_cutoff="2025-01-01T00:00:00Z"
+    )["matches"]
+    with pytest.raises(ValueError, match="document"):
+        reader.search("definition", document=" ")
+
+
 def test_version_history_pages_preserve_order_and_immutable_reads(store):
     for day in (None, "2025-01-01", "2025-02-01", "2025-03-01"):
         ingest(store, "Source snapshot " + str(day), day=day)

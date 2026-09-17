@@ -133,6 +133,20 @@ def inventory(data: bytes, title: str | None = None) -> list[tuple[str, str, str
     return result
 
 
+def short_history_note(text: str, page: int) -> bool:
+    normalized = " ".join(text.split())
+    if normalized.startswith(str(page) + " "):
+        normalized = normalized[len(str(page)) + 1 :]
+    filing = r"\d{4}, ch\. \d+, sec\. \d+, p\. \d+"
+    return (
+        re.fullmatch(
+            r"\[\d+(?:-\d+[A-Z]?)+, (?:added|am\.) " + filing + r"(?:; am\. " + filing + r")*\.\]",
+            normalized,
+        )
+        is not None
+    )
+
+
 def chapter_units(
     s: Store, receipt: Receipt, title: str, chapter: str, url: str
 ) -> list[Provision]:
@@ -176,10 +190,17 @@ def chapter_units(
     for page, unit in zip(reader.pages, units, strict=True):
         quality = unit.metadata["text_quality"]
         quality = checked_short_pages.get((receipt.sha256, unit.metadata["pdf_page"]), quality)
+        if (
+            quality == "image_or_extraction_warning"
+            and not page.images
+            and short_history_note(unit.text, unit.metadata["pdf_page"])
+        ):
+            quality = "short_history_note_pattern_unverified"
         if quality not in {
             "layout_text_unverified",
             "short_history_note_visually_verified",
             "short_repeal_notice_visually_verified",
+            "short_history_note_pattern_unverified",
         }:
             raise ValueError(f"PDF page {unit.metadata['pdf_page']} needs source-media review")
         refs = []

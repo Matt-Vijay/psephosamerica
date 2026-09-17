@@ -9,7 +9,8 @@ from pypdf.generic import ArrayObject, DictionaryObject, NameObject, NumberObjec
 
 from psephos import idaho
 from psephos.acquire import Acquirer, AcquisitionError
-from psephos.store import Provision
+from psephos.retrieve import Reader
+from psephos.store import Provision, Reference
 
 
 def row(number, *, title=None, notice=False):
@@ -67,6 +68,114 @@ def test_original_budget_reserve_and_host_are_preserved(store, tmp_path):
 def test_html_error_is_not_accepted_as_pdf(store):
     with pytest.raises(ValueError, match="Expected publisher PDF"):
         idaho.chapter_units(store, retain(store, b"<html>Error</html>"), "1", "1", idaho.BASE)
+
+
+def test_short_history_note_requires_the_entire_native_note_not_arbitrary_short_text():
+    note = "29\n[18-8011, added 1998, ch. 152, sec. 4, p. 527.]"
+    assert idaho.short_history_note(note, 29)
+    assert idaho.short_history_note(
+        "3\n[7-805, added 1998, ch. 411, sec. 3, p. 1290; am. 2000, ch. 469, sec.\n17, p. 1467.]", 3
+    )
+    for invalid in (
+        "DRAFT",
+        "29",
+        "",
+        "PLEADINGS -- [REPEALED]",
+        note[:-1],
+        note + " omitted body",
+        "FIGURE " + note,
+    ):
+        assert not idaho.short_history_note(invalid, 29)
+
+
+def test_pdf_reference_navigates_only_to_retained_chapter_not_an_unverified_section(store):
+    store.collection(
+        "id-statutes",
+        ("us-id", "Idaho", "state", "us"),
+        name="Idaho",
+        authority="Fixture",
+        kind="statutes",
+        homepage=idaho.INDEX,
+        source_status="Fixture",
+        access="Fixture",
+    )
+    pdf = idaho.BASE + "/wp-content/uploads/statutesrules/idstat/Title1/T1CH2.pdf"
+    target = idaho.INDEX + "Title1/T1CH2/SECT1-201"
+    other_targets = [
+        target + "?edition=2025",
+        target + "#subsection",
+        target.replace("Title1", "Title2"),
+        target.replace(idaho.BASE, "https://example.test"),
+    ]
+    source = retain(store, b"Source link", observed="2026-01-01T00:00:00Z")
+    store.ingest(
+        collection="test",
+        document="links",
+        title="Links",
+        url=source.url,
+        acquisition=source.id,
+        parser="fixture",
+        snapshot_basis="Unknown",
+        provisions=[
+            Provision(
+                "links",
+                "Links",
+                "Links",
+                "Links",
+                "",
+                source.url,
+                references=[
+                    Reference(t, "publisher_pdf_link", t, "Source annotation")
+                    for t in [target, *other_targets]
+                ],
+            )
+        ],
+    )
+    receipt = retain(store, b"Target chapter", observed="2026-02-01T00:00:00Z")
+    with store.db:
+        store.db.execute(
+            "UPDATE acquisitions SET url=?,final_url=? WHERE id=?", (pdf, pdf, receipt.id)
+        )
+    key = "id-statutes:title-1/chapter-2/page-1"
+    store.ingest(
+        collection="id-statutes",
+        document="id-statutes:T1CH2",
+        title="Title 1 Chapter 2",
+        url=pdf,
+        acquisition=receipt.id,
+        parser="fixture",
+        snapshot_basis="Unknown",
+        provisions=[
+            Provision(
+                key,
+                "PDF page 1",
+                "TITLE 1",
+                "1-201. Fixture section text.",
+                "",
+                pdf + "#page=1",
+                unit_kind="pdf_page",
+            )
+        ],
+    )
+    reader = Reader(store)
+    identifier = reader.read("links")["id"]
+    refs = {r["target"]: r for r in reader.references(identifier)["references"]}
+    assert refs[target]["resolution_status"] == "chapter_retained_section_location_unverified"
+    assert refs[target]["acquired_targets"] == []
+    assert refs[target]["navigation"] == {
+        "collection": "id-statutes",
+        "document": "id-statutes:T1CH2",
+        "search_query": "1-201",
+        "first_key": key,
+        "scope": "enclosing_chapter_only",
+    }
+    assert all("navigation" not in refs[t] for t in other_targets)
+    before = reader.references(identifier, observation_cutoff="2026-01-15T00:00:00Z")["references"]
+    assert (
+        next(r for r in before if r["target"] == target)["resolution_status"]
+        == "not_acquired_at_cutoffs"
+    )
+    assert not reader.references(identifier, as_of="2026-09-17")["references"]
 
 
 def test_pdf_link_evidence_is_repeatable_and_omits_runtime_object_ids(store, monkeypatch):

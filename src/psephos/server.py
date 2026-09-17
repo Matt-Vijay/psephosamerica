@@ -72,6 +72,7 @@ def create_server(root: Path) -> FastMCP:
         query: str,
         collection: str | None = None,
         jurisdiction: str | None = None,
+        document: str | None = None,
         as_of: str | None = None,
         observation_cutoff: str | None = None,
         limit: int = 10,
@@ -79,6 +80,7 @@ def create_server(root: Path) -> FastMCP:
         """Lexical all-word search. as_of=YYYY-MM-DD selects publisher snapshots, not legal effect.
 
         Jurisdiction filtering is exact, not an inferred hierarchy of applicable law.
+        document limits search to one exact document ID from discovery or reference navigation.
         observation_cutoff is a timezone-qualified timestamp. Returned keys support legal_read.
         """
         with reader() as r:
@@ -86,6 +88,7 @@ def create_server(root: Path) -> FastMCP:
                 query,
                 collection=collection,
                 jurisdiction=jurisdiction,
+                document=document,
                 as_of=as_of,
                 observation_cutoff=observation_cutoff,
                 limit=limit,

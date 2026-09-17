@@ -93,6 +93,7 @@ def verify(data):
         ).fetchall()
         assert rows
         pages = images = references = 0
+        qualities = Counter()
         artifacts, sample = {}, None
         for row in rows:
             receipt = s.db.execute(
@@ -125,6 +126,7 @@ def verify(data):
             pages += len(units)
             images += sum(p.metadata["embedded_images"] for p in units)
             references += sum(len(p.references) for p in units)
+            qualities.update(p.metadata["text_quality"] for p in units)
             artifacts[row["artifact_sha"]] = len(body)
             if sample is None:
                 sample = {
@@ -150,6 +152,7 @@ def verify(data):
                 "pdf_pages": pages,
                 "embedded_image_appearances": images,
                 "publisher_links": references,
+                "text_qualities": dict(qualities),
             },
             "objects_rehashed": len(artifacts),
             "bytes_rehashed": sum(artifacts.values()),
@@ -219,6 +222,51 @@ async def mcp(data, report, sample):
                 "legal_read", key_or_id=read["id"], observation_cutoff="2026-09-17T00:00:00Z"
             )
         )["found"]
+        source = await call(
+            "legal_read", key_or_id="id-statutes:title-6/chapter-3/page-9", length=500
+        )
+        refs = await call("legal_references", provision_id=source["id"], limit=100)
+        edge = next(r for r in refs["references"] if r["target"].endswith("/SECT6-310"))
+        assert edge["resolution_status"] == "chapter_retained_section_location_unverified"
+        assert edge["acquired_targets"] == []
+        navigation = edge["navigation"]
+        found = await call(
+            "legal_search",
+            query=navigation["search_query"],
+            document=navigation["document"],
+            limit=10,
+        )
+        assert found["matches"] and all(
+            m["document"] == navigation["document"] for m in found["matches"]
+        )
+        heading = None
+        inspected = 0
+        for candidate in found["matches"]:
+            page = await call("legal_read", key_or_id=candidate["id"], length=10000)
+            inspected += 1
+            match = re.search(r"(?m)^\s*6-310\.\s", page["text"])
+            if match:
+                heading = {
+                    "id": page["id"],
+                    "key": page["key"],
+                    "native_heading_offset": match.start(),
+                }
+                break
+        assert heading, "A cross-reference mention is not the requested source heading"
+        report["navigation_check"] = {
+            "navigation": navigation,
+            "heading": heading,
+            "pages_inspected": inspected,
+            "limit": "Chapter-level navigation only. Lexical hits include cross-references; inspect the source heading and following pages.",
+        }
+        assert not (await call("legal_search", query="6-310", document="missing-document"))[
+            "matches"
+        ]
+        assert not (
+            await call(
+                "legal_search", query="6-310", document=navigation["document"], as_of="2026-09-17"
+            )
+        )["matches"]
     return calls
 
 
@@ -235,6 +283,8 @@ def main():
             "src/psephos/idaho.py",
             "src/psephos/municipal.py",
             "src/psephos/campaign.py",
+            "src/psephos/retrieve.py",
+            "src/psephos/server.py",
             "scripts/verify_idaho.py",
         )
     }

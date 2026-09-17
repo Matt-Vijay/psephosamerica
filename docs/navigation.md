@@ -90,6 +90,26 @@ The overlay guide notes a historic-resource overlay not displayed on maps. Empty
 GIS results therefore cannot certify absence of restrictions. Code, guide and GIS
 vintages remain independent; explicit date cutoffs exclude undated guides/GIS.
 
+## Idaho: cited section in a retained chapter PDF
+
+The current checkout accepts `legal_search(document="EXACT_DOCUMENT_ID", ...)`
+and CLI `search --document`. The document filter combines with collection,
+jurisdiction and date restrictions; an unknown or mismatched scope never falls
+back to the national corpus. Search results include their document IDs.
+
+Native Idaho PDF links can identify a retained enclosing chapter. Their status
+is `chapter_retained_section_location_unverified`, with no `acquired_targets`:
+the tool has not established an exact section-to-page map. Use the returned
+`navigation.document` and `navigation.search_query` in `legal_search`.
+
+For example, the retained Title 6, Chapter 3, page 9 links to 6-310. Searching
+`6-310` within `id-statutes:T6CH3` returns both cross-references and its actual
+heading on physical page 4. Read candidates and look for the source heading;
+the highest-ranked lexical hit is not necessarily the section itself. Follow
+neighboring pages for continuations and inspect the original PDF for tables.
+This workflow is exercised by `scripts/verify_idaho.py`; it does not establish
+current legal effect. These additions are not in the older v0.2.0 wheel.
+
 ## CLI equivalents
 
 ```sh
@@ -99,6 +119,7 @@ psephos find 'nyc-zr:12-10' 'qualifying residential site' --limit 1
 psephos read ID --offset OFFSET --length 3000
 psephos find 'portland:guide/overlay-zones' 'd – Design Overlay Zone'
 psephos search '33.420' --collection portland-zoning --limit 3
+psephos search '6-310' --document id-statutes:T6CH3 --limit 10
 ```
 
 No task asks the server to fetch an arbitrary URL, execute SQL, infer legal

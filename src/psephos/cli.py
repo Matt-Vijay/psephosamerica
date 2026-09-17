@@ -83,6 +83,7 @@ def main() -> None:
     search.add_argument("query")
     search.add_argument("--collection")
     search.add_argument("--jurisdiction")
+    search.add_argument("--document", help="Exact retained document ID")
     search.add_argument("--limit", type=int, default=10)
     read = commands.add_parser("read", help="Read a source key or a search result ID")
     read.add_argument("key")
@@ -206,6 +207,7 @@ def main() -> None:
                         args.query,
                         collection=args.collection,
                         jurisdiction=args.jurisdiction,
+                        document=args.document,
                         as_of=args.as_of,
                         observation_cutoff=args.observed_before,
                         limit=args.limit,

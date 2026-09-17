@@ -93,10 +93,18 @@ def _georgia_version_summary(version: dict[str, Any]) -> None:
 
 
 def eligible(
-    as_of: str | None, observed: str | None, *, exact: bool = False, target_key: str | None = None
+    as_of: str | None,
+    observed: str | None,
+    *,
+    exact: bool = False,
+    target_key: str | None = None,
+    document: str | None = None,
 ) -> tuple[str, list[Any]]:
     day, clock = cutoff_date(as_of), cutoff_observation(observed)
     clauses, params = [], []
+    if document is not None:
+        clauses.append("v.document_id=?")
+        params.append(document)
     if target_key is not None:
         # Resolve a citation by ranking only documents that ever contained its key,
         # not every national version once for each link in a long filing.
@@ -417,13 +425,18 @@ class Reader:
         *,
         collection: str | None = None,
         jurisdiction: str | None = None,
+        document: str | None = None,
         as_of: str | None = None,
         observation_cutoff: str | None = None,
         limit: int = 10,
     ) -> dict[str, Any]:
         if not 1 <= limit <= 30 or len(query) > 500:
             raise ValueError("limit must be 1..30 and query at most 500 characters")
-        for name, value in (("collection", collection), ("jurisdiction", jurisdiction)):
+        for name, value in (
+            ("collection", collection),
+            ("jurisdiction", jurisdiction),
+            ("document", document),
+        ):
             if value is not None and (not value.strip() or len(value) > 200):
                 raise ValueError(f"{name} must be a nonempty exact identifier, or omitted")
         terms = re.findall(r"[\w]+", query, re.UNICODE)
@@ -432,7 +445,7 @@ class Reader:
                 "Use 1..30 words or citation components; FTS operators are not required"
             )
         literal_query = " AND ".join('"' + term + '"' for term in terms)
-        sql, params = eligible(as_of, observation_cutoff)
+        sql, params = eligible(as_of, observation_cutoff, document=document)
         where = ["provision_search MATCH ?"]
         params.append(literal_query)
         if collection:
@@ -443,7 +456,7 @@ class Reader:
             params.append(jurisdiction)
         rows = self.db.execute(
             sql + "SELECT p.id,p.key,p.citation,p.heading,p.unit_kind,p.url,c.id AS collection,"
-            "c.jurisdiction_id,c.source_status,v.snapshot_date,v.snapshot_basis,v.observed_at,"
+            "d.id AS document,c.jurisdiction_id,c.source_status,v.snapshot_date,v.snapshot_basis,v.observed_at,"
             "v.published_on,v.effective_on,v.amended_on,v.artifact_sha,p.text AS _text,p.metadata AS _metadata,"
             "snippet(provision_search,2,'[',']',' … ',48) AS excerpt "
             "FROM provision_search JOIN provisions p ON p.rowid=provision_search.rowid "
@@ -482,6 +495,7 @@ class Reader:
         return {
             "matches": matches,
             "query_mode": "lexical_all_terms_phrase_ranked",
+            "document": document,
             "ranking_warning": "Textual relevance, not legal precedence or universal applicability. Read scoped modifications too.",
             "as_of": as_of,
             "observation_cutoff": observation_cutoff,
@@ -761,6 +775,44 @@ class Reader:
             )
             expected_url = None
             expected_collection = None
+            idaho = re.fullmatch(
+                r"https://legislature\.idaho\.gov/statutesrules/idstat/Title([0-9]+)/"
+                r"T\1CH([0-9]+[A-Z]?)(?:SCH([0-9]+[A-Z]?))?/SECT(\1-[0-9A-Z.-]+)/?",
+                ref["target"],
+            )
+            if idaho and ref["relation"] == "publisher_pdf_link":
+                title, chapter, subchapter, section = idaho.groups()
+                document = f"id-statutes:T{title}CH{subchapter or chapter}"
+                pdf = (
+                    f"https://legislature.idaho.gov/wp-content/uploads/statutesrules/idstat/Title{title}/"
+                    f"T{title}CH{chapter}" + (f"SCH{subchapter}" if subchapter else "") + ".pdf"
+                )
+                prefix, params = eligible(as_of, observation_cutoff, document=document)
+                page = self.db.execute(
+                    prefix + "SELECT p.key FROM provisions p JOIN chosen v ON v.id=p.version_id "
+                    "JOIN documents d ON d.id=v.document_id JOIN acquisitions a ON a.id=v.acquisition_id "
+                    "WHERE d.collection_id='id-statutes' AND d.url=? AND a.url=d.url "
+                    "AND a.status=200 AND a.error IS NULL AND a.sha256=v.artifact_sha "
+                    "AND p.unit_kind='pdf_page' ORDER BY p.ordinal LIMIT 1",
+                    (*params, pdf),
+                ).fetchone()
+                ref.update(
+                    acquired_targets=[],
+                    publisher_citation_family="id-statutes",
+                    resolution_status="chapter_retained_section_location_unverified"
+                    if page
+                    else "not_acquired_at_cutoffs",
+                    resolution_basis="Native chapter identity and retained publisher PDF; no verified section-to-page mapping",
+                )
+                if page:
+                    ref["navigation"] = {
+                        "collection": "id-statutes",
+                        "document": document,
+                        "search_query": section,
+                        "first_key": page[0],
+                        "scope": "enclosing_chapter_only",
+                    }
+                continue
             usc_descendant = (
                 re.fullmatch(
                     r"(/us/usc/t[0-9]+/s[0-9][A-Za-z0-9–-]*)(?:/[A-Za-z0-9]+)+",
