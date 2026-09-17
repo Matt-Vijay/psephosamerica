@@ -1,0 +1,1618 @@
+{
+  "status": "PASS",
+  "historical_preservation": {
+    "status": "PASS",
+    "original_store": "data/collectors/mn/store",
+    "original_receipts_matched": 121,
+    "unchanged_versions": 50,
+    "unchanged_provisions": 3358,
+    "method": "Read-only snapshots; exact version/provision fields after receipt-ID remapping; every original legal-reference field compared by provision ID. Separate original rules and constitution included."
+  },
+  "campaign_accounting": {
+    "original_shared_ledger": "data/collectors/mn/budget.json",
+    "cap_bytes": 209715200,
+    "original_charged_bytes": 47548998,
+    "final_charged_bytes": 209633515,
+    "remaining_bytes": 81685,
+    "stop": "Chapter 446A declared body exceeds remaining allowance; body unread. No additional allowance assumed.",
+    "post_stop_reconciliation": "PASS: maintained sync with zero body attempts and HTTP transport forbidden; zero additional bytes.",
+    "closed_subject_parts": 79,
+    "partial_subject_parts": 26
+  },
+  "recorded_at": "2026-09-17T19:55:25Z",
+  "edition_label": "2025 Minnesota Statutes",
+  "inventory": {
+    "parts": 105,
+    "chapters": 1133,
+    "statuses": {
+      "indexed": 901,
+      "failed": 1,
+      "pending": 231
+    }
+  },
+  "retained_html_inventory_closed": false,
+  "inventory_objects": [
+    "0026ad089ab41fc6839fe0aaa967b441af4f4b02afd49e4793db971886897dc5",
+    "0052797708bb463bd4eaefc159384094fca6e4a0856251a86f54e2b1dda1d314",
+    "0364fa0220ec406aa2c111f5c5e134fe2c6d455e9a556630f39a91cbf6a93b54",
+    "03bf3def8b5f783412d40b83e8fc68d4afe250db454e0ffecfa14ba454ed6a2c",
+    "0cedc797792bfde2d451e962a6c71af9f663f141f1bd9262f1db342907633f5b",
+    "0e57c51bf30485ecf4c5dc099026cdda868ededc81db7286299b4b1f9fa81d36",
+    "0ecf6ff45c376a01d8db02f50f8ca0ebc1b921267d74405639472ef5026f2468",
+    "10c82972b00681ad75a4b8169feccc988a8b1f762bf11b644f2d219d852619ec",
+    "13338b06e44317e3580661efaca014404a8b48db9318001795b047bfd7833cb4",
+    "159a1adc8b9b3bfb526b1fa3bfb34b254298bb64c4d1df9a3f8b82e360269c49",
+    "1c6566288716ca13695a3093c7e1a175d793f6bb48825402964a1cde0e2dc0a0",
+    "1dd7db67da6dbeebf7c22b6d7f44a6ad6abc212d437d516fbcb9a3879adb65d8",
+    "22d8262a33ca2897faa5ca0ada4c3cee5375258df27b19562d4570bd870002b1",
+    "232792981e55be0ee82aaaeffbb6c4b0211c22b82a02895e19dcdd1a0bd6953a",
+    "272056287b82e0d226b7d515cb02e60eeef4cd84ca2c48f328d928663d279ae0",
+    "2851071ede0e099211020ceda6e3349fb7a91139bba3bca6a422e0b6dbef0124",
+    "292b7ea2b2e944b556e1bdd9001f893ab661481e34180bf3c4e104008adb9781",
+    "320d447ee405c5e78c9826123036b55a3865b0212d15492b3ad00761b9a0a033",
+    "365ec1138949949b3225d96d2a5d03321864dfc53c6ed055b48b91caf7f7ede3",
+    "36cd32b6042cf926bdd185c32a976c61f992e9e44604b5381e7c12848edba7f0",
+    "3b4b381d68363be357e649485857ffb555b017a6385c9ffcf4b0a7e76bec62fc",
+    "3b97fdf473fe66bd2bd2b913bfc41a0b18542daf6111ae22dd4f8cf69c02fc47",
+    "3bbc2a8376a7896d512c6da8dc651fad9cb7a9425b536f70f68a0d62e5db6a35",
+    "3f11d2f6594ea2c40ca28ab8ce939b524ca477460620275a3e11d0bd95267ac7",
+    "41f5a4845498f9a0001aa7618be41ce3610ebe9cfad272092d207a26f0b90244",
+    "448e1c87e273d31320e4786fb654c5a9b751d5fd4115694c9d32be43443d9fc5",
+    "46715d619637aed21e425ea9b4f3b439ba4c35d40b773d2e341a9de9be0c2575",
+    "47e027c9d736a229d5c0f33114b84272a87b4aa5e1ede89dedeab310879a6ce2",
+    "4a18f5fc56151696f2d17a8dda1b2e20642721810f0b3f5f4f41dd40b4d1cf83",
+    "4b1f4675bc39f106787bc9567f0f1f41e10a3d6cd23816ee5629f1153bc0814e",
+    "4c7001395fb85601c511aaf6c604eee808c3973afa2a8cd9e86a92398d316bd8",
+    "52d12643e163fc61f5ef9d2f4baceb2c44fcd1f279d916040067d29f26e3b918",
+    "53ee172ced31c55bf7fb2fdf1a2ecbf35178429222e53d734b1e89a5ebff6311",
+    "54e33af96771833bc1c2c0280dad5bef46c964959f2b72f109ca9131db240b0a",
+    "56b9456e4c963eccc6fbc6bafaa3293bbaee5a566ca6e4d8146afe0834ed85b8",
+    "56c67f14fa9f4a6f53038d660769a442c4eebf2ee75b0ec119c40561ed53cbdf",
+    "59dfacb356baf851c1979f2ca65e941cd7d60f091cb1daa256abd21d1879ec20",
+    "5fd720f43cce40dcc46f29f9c9617efc32d705e2eb5e292f6ef744db212b9187",
+    "653c1d49a0d595c26a0bbfa8eed4bb11a89f50f6aff13acdde5100138f9b7342",
+    "65a2fc172007e2b088b595f5fed4d538fa569cab23a6d2a1563e4f5cf22462fa",
+    "66b8a71ca19fa3387cf48c96888b6a0b5b36629afe1a961fac8b2b69f098c8f8",
+    "6d65af3aafb38278fc30b5451b3584776e9ea4a2b4f84a13c90f7a3529e7b323",
+    "71c597afd1b387407e80599691a70074f569a489eb1a02e15d663fc12ea8545b",
+    "763c202204c678128682e53e18c7fe4f5bb2fa24930d9f9c871d34c014af15f1",
+    "76ee9d9bd8a4b755d3a7ca987906074204f23315b2c0520be00435fea950e176",
+    "78ec80a9a799dcb48180e943d56a0c8f084d0483beac2b45fa984c0f4e0dc775",
+    "79559a704501837fe4d4767ee5061f9756e5db9c0db19c2a018ba3f26864c087",
+    "7b42927a3b676d613ad5e0f54febf20b102cb136f8e0d1a8ba21d81f70ec9c6b",
+    "85edd371ed3727189f9293a73dfab7f843ceb065698dee6c6489e3a266cc4892",
+    "897254c6d6973e89c01cd4019576bfd87fd64c196d578e76c11f474fd0500b2e",
+    "8bc3a9a5ac5e40c81d2d69942c4a31d5a3b746cc37296ac7bb4c055c2fe40cac",
+    "8ca3c69a8bc71a9746d2d245abcae2d641b3d775dc595dfb22213a2145364213",
+    "8f514ac64c8b6747f171a89a29f359e0382648cd1de672ac30fc93798b9f7f07",
+    "900acd9ebe0f2a7a2cd0c959f3292283e4b88aa02031a05eb6a7c5ca9ac64a45",
+    "9076b845e47bbbe5986bfe460126bb96afee4327266c46531b6806d2233648c6",
+    "94ca5762d6973fea416a33662acbe0714511acd967a4e4ee4df5c06dafd58884",
+    "95d9ea10bc8ae628ff3a387d295b90d9b2ad94a15c1b50826b1e1d8e9124fe2f",
+    "96fd0b8d7adb0208478b7372d5d2ad80292745210c67496ff165388bfab37f57",
+    "9763ec332c092f43e8599591f2e91262b9c8ab2e23de332a011dd6c4ac3dd20f",
+    "98cdefe919f5621b2da195ad27160efac2110a80d55ae9f37f954ecec3660775",
+    "9917e6b37a8669ff4830d505dc708452755b85144c38e173c1ecf456df035986",
+    "a198d7ccdf3b4d46c11b36d5c1c349cedb1774d9998d7b641d973e750c424fe4",
+    "a27e8e7a3c7971773137b59cb8f0b9767aa8faa566850eae17d0dd9b8dc73bdb",
+    "a2e0ec4883754d0c7c034e2fc449dce303155076fce04cd0a4a0f63cede46a5d",
+    "a374108bd761e010bc13ebbe7dc998c6835c1e07ed2ec775d36b2782e6108eaa",
+    "a6ebb740ae238925b48d738d55a280b6f61b5e4ee52ec439842e60f9f4691e31",
+    "a8ddf453fa61d76b7e4b18233c8d145156b235edd35d9f537a2772db701a2c16",
+    "abf00f50d64f290fff61b36545dea1f02d01682b0ab891ca4958760c6992aeab",
+    "ac86bd7136b07995f48508fabc898e47662b7292698c71200040a792aad34e0c",
+    "b4256e686648174565816f7bb6b8819c8f9299e2f4cd6605495bc57f3421a2c0",
+    "b7e3ab9120e8be7e888e51c383e163ad02ae365162245543e0ed7f1117324e4a",
+    "b904ff2c5bec2fdf7d476922f7d5a64a5b0ff6f8c2ceed1328f2ddcab8249a58",
+    "b90f8bbebfa803865b94ba568490a4d92d5a11f0aabbc0e3f28d007e5d6e8e10",
+    "bb2364e012b4c8157cc6a00b16aba4b2c40df35d7471bff05d3290b948fc4bbb",
+    "bc4297300425fee15e3be848900d57589f714e31c703567737f1c48cfe3a14e2",
+    "bcdd741e8dff1bf7327f6cd69f07525fd66ce65b885fedcef8244837b9dddc13",
+    "be14c21488a552c5ad163831f07568c0d3fa6d7ac1bcef68b5325f72c345d8e9",
+    "c105d456665ab00b6c1c552cf917dbfeb67799946ff1b9a1edb47efe23321588",
+    "c1e7657b62ff83663a9429984911f6f870211fd603964ab855488054e9ec6512",
+    "c698cb48121dcb0bc6ed5f7f4cefa3b833ca30717e73b12dbded458b2b2fa4a8",
+    "d018dd5b62800a0b4d3a85cb727783169d9ec838d764226f5e2bf7ed23a22de8",
+    "d1d2c097255c147d870a6ccf0cc736d21db7ab5fe4e3d1ed78cf847ba7799178",
+    "d29f8bf3d83e5badef4d23e822662e5b924606c9e966a44d0096b145adfee497",
+    "d308755f33cd4ad3de683b340f76bd10e2ff2ce9cc474c0174c4e37640602181",
+    "d57069b67391cf73e00f023d7e70a67d693735d3c806e5764172dbb1f503bc14",
+    "d87fb5b626b6e459f6e75dd06b9b3f10963b5e492d96fb019820b4c96aa444d3",
+    "d9bab65e3326b8df6660d3d04ef4a5eb0e609d7ebab4df07560689d633471af3",
+    "dca5e8a489b7bf21b28af10ed3b703e00179cc0d0646b47c97eac8e67ad7d639",
+    "dd3d56141326c569b3baba11385773e61db1c1adb7005fd33f215c1adf7536d4",
+    "df7418eb3f3cf25c10844daf6627496bdffa442ea96dab558e43e004fe7c0a3e",
+    "dfabf23e55e2d921c4dd13abd40fde2f21f472957a41e6024574bfbc9e115a0d",
+    "e02e4cf3f637431022cb845382a53ca19ebd49a02ac03019fe1897fc7bae8f49",
+    "e26b29e7f078d49fd7964e09580decf2d94ad17c4861a604048a2ebf410ff7a3",
+    "e3a819dc08701fd6f3536f66c48b3facb3c96721cacc29f53bc32f7ab890e2c2",
+    "e5ea36099c68b819bdce01416e335f7d72c36db4b302751e7b8ae30cf978e527",
+    "e6b7f1f805deec8c74ae86aefdcdbd8a09d999fc81507699952b885d78a34b7a",
+    "efb4795d6a71235d2bb9bad5aab58f97c2596cdd22467483ecd510495cfcc477",
+    "f1b928be8bfaa3c84fa80a59f7f57609846ae508c6309a86de3288d171b7f488",
+    "f1c39b8bf33a66a5679981ef53b01fe31f90c0c809d310190c1b3d54c6bb9a1d",
+    "f432effbb1bcb4d595675e5cd51090d007314b2084e993121bcb08fb34ee92da",
+    "f593f8e9c993c57963981e1425e5a53b3dd7143c157c9261fa3859e6faa3bf2e",
+    "f6a0778e36edbaa275ccf7aec348cf7d4e6fedcd4193b58fc91abe5cbe1ac016",
+    "f7c0e3d1ad5c52ecb0279da2153b0bd8a40864bf53b3afe984fbd3d15df5b299",
+    "f7c25f44ede16fda03c67ebd2da7d01c02a50f4348864ea532bf0ffd0ee9d6a1",
+    "fae2f3b8972b5efaca17a7e43da99ce2dc092e6e986cc1187b5d6ec47fcffdf1",
+    "fb76d20aa4dbc26e0aac351455aa15360e0f58b2aa49e6e6c7bf99caa46a48a5"
+  ],
+  "projection_replay": {
+    "documents": 859,
+    "unit_kinds": {
+      "scope_notes": 859,
+      "disposition": 21284,
+      "section": 21106
+    }
+  },
+  "full_legal_container_text": "PASS: all non-catalog text reconstructed in order; chapter tables, history, notes and native occurrences retained",
+  "objects_rehashed": 859,
+  "bytes_rehashed": 156439188,
+  "manifest_sha256": "232b5c9cf388563e047a8d52e8085a806fa1e01e519d27362b7b61b35660e347",
+  "navigation": {
+    "source": "48665c56a709f1015286fa87ac915210",
+    "target_url": "https://www.revisor.mn.gov/statutes/cite/103A.43",
+    "destination": "mn:statutes/103A/stat.103A.43"
+  },
+  "remaining": [
+    {
+      "item": "chapter:446A",
+      "url": "https://www.revisor.mn.gov/statutes/cite/446A/full",
+      "status": "failed",
+      "error": "https://www.revisor.mn.gov/statutes/cite/446A/full: Declared source exceeds campaign/file cap; body unread"
+    },
+    {
+      "item": "chapter:447",
+      "url": "https://www.revisor.mn.gov/statutes/cite/447/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:448",
+      "url": "https://www.revisor.mn.gov/statutes/cite/448/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:449",
+      "url": "https://www.revisor.mn.gov/statutes/cite/449/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:450",
+      "url": "https://www.revisor.mn.gov/statutes/cite/450/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:451",
+      "url": "https://www.revisor.mn.gov/statutes/cite/451/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:452",
+      "url": "https://www.revisor.mn.gov/statutes/cite/452/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:453",
+      "url": "https://www.revisor.mn.gov/statutes/cite/453/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:453A",
+      "url": "https://www.revisor.mn.gov/statutes/cite/453A/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:454",
+      "url": "https://www.revisor.mn.gov/statutes/cite/454/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:455",
+      "url": "https://www.revisor.mn.gov/statutes/cite/455/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:456",
+      "url": "https://www.revisor.mn.gov/statutes/cite/456/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:457",
+      "url": "https://www.revisor.mn.gov/statutes/cite/457/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:457A",
+      "url": "https://www.revisor.mn.gov/statutes/cite/457A/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:458",
+      "url": "https://www.revisor.mn.gov/statutes/cite/458/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:458A",
+      "url": "https://www.revisor.mn.gov/statutes/cite/458A/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:458B",
+      "url": "https://www.revisor.mn.gov/statutes/cite/458B/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:458C",
+      "url": "https://www.revisor.mn.gov/statutes/cite/458C/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:458D",
+      "url": "https://www.revisor.mn.gov/statutes/cite/458D/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:459",
+      "url": "https://www.revisor.mn.gov/statutes/cite/459/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:460",
+      "url": "https://www.revisor.mn.gov/statutes/cite/460/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:461",
+      "url": "https://www.revisor.mn.gov/statutes/cite/461/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:462",
+      "url": "https://www.revisor.mn.gov/statutes/cite/462/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:462A",
+      "url": "https://www.revisor.mn.gov/statutes/cite/462A/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:462B",
+      "url": "https://www.revisor.mn.gov/statutes/cite/462B/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:462C",
+      "url": "https://www.revisor.mn.gov/statutes/cite/462C/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:462D",
+      "url": "https://www.revisor.mn.gov/statutes/cite/462D/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:463",
+      "url": "https://www.revisor.mn.gov/statutes/cite/463/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:465",
+      "url": "https://www.revisor.mn.gov/statutes/cite/465/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:466",
+      "url": "https://www.revisor.mn.gov/statutes/cite/466/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:466A",
+      "url": "https://www.revisor.mn.gov/statutes/cite/466A/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:469",
+      "url": "https://www.revisor.mn.gov/statutes/cite/469/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:470",
+      "url": "https://www.revisor.mn.gov/statutes/cite/470/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:471",
+      "url": "https://www.revisor.mn.gov/statutes/cite/471/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:471A",
+      "url": "https://www.revisor.mn.gov/statutes/cite/471A/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:472",
+      "url": "https://www.revisor.mn.gov/statutes/cite/472/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:472A",
+      "url": "https://www.revisor.mn.gov/statutes/cite/472A/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:472B",
+      "url": "https://www.revisor.mn.gov/statutes/cite/472B/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:473",
+      "url": "https://www.revisor.mn.gov/statutes/cite/473/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:473A",
+      "url": "https://www.revisor.mn.gov/statutes/cite/473A/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:473B",
+      "url": "https://www.revisor.mn.gov/statutes/cite/473B/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:473C",
+      "url": "https://www.revisor.mn.gov/statutes/cite/473C/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:473D",
+      "url": "https://www.revisor.mn.gov/statutes/cite/473D/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:473E",
+      "url": "https://www.revisor.mn.gov/statutes/cite/473E/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:473F",
+      "url": "https://www.revisor.mn.gov/statutes/cite/473F/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:473G",
+      "url": "https://www.revisor.mn.gov/statutes/cite/473G/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:473H",
+      "url": "https://www.revisor.mn.gov/statutes/cite/473H/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:473I",
+      "url": "https://www.revisor.mn.gov/statutes/cite/473I/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:473J",
+      "url": "https://www.revisor.mn.gov/statutes/cite/473J/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:474",
+      "url": "https://www.revisor.mn.gov/statutes/cite/474/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:474A",
+      "url": "https://www.revisor.mn.gov/statutes/cite/474A/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:475",
+      "url": "https://www.revisor.mn.gov/statutes/cite/475/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:475A",
+      "url": "https://www.revisor.mn.gov/statutes/cite/475A/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:476",
+      "url": "https://www.revisor.mn.gov/statutes/cite/476/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:477",
+      "url": "https://www.revisor.mn.gov/statutes/cite/477/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:477A",
+      "url": "https://www.revisor.mn.gov/statutes/cite/477A/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:477B",
+      "url": "https://www.revisor.mn.gov/statutes/cite/477B/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:477C",
+      "url": "https://www.revisor.mn.gov/statutes/cite/477C/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:480",
+      "url": "https://www.revisor.mn.gov/statutes/cite/480/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:480A",
+      "url": "https://www.revisor.mn.gov/statutes/cite/480A/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:480B",
+      "url": "https://www.revisor.mn.gov/statutes/cite/480B/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:481",
+      "url": "https://www.revisor.mn.gov/statutes/cite/481/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:482",
+      "url": "https://www.revisor.mn.gov/statutes/cite/482/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:483",
+      "url": "https://www.revisor.mn.gov/statutes/cite/483/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:484",
+      "url": "https://www.revisor.mn.gov/statutes/cite/484/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:485",
+      "url": "https://www.revisor.mn.gov/statutes/cite/485/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:486",
+      "url": "https://www.revisor.mn.gov/statutes/cite/486/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:487",
+      "url": "https://www.revisor.mn.gov/statutes/cite/487/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:488",
+      "url": "https://www.revisor.mn.gov/statutes/cite/488/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:488A",
+      "url": "https://www.revisor.mn.gov/statutes/cite/488A/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:489",
+      "url": "https://www.revisor.mn.gov/statutes/cite/489/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:490",
+      "url": "https://www.revisor.mn.gov/statutes/cite/490/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:490A",
+      "url": "https://www.revisor.mn.gov/statutes/cite/490A/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:491",
+      "url": "https://www.revisor.mn.gov/statutes/cite/491/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:491A",
+      "url": "https://www.revisor.mn.gov/statutes/cite/491A/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:492",
+      "url": "https://www.revisor.mn.gov/statutes/cite/492/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:493",
+      "url": "https://www.revisor.mn.gov/statutes/cite/493/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:494",
+      "url": "https://www.revisor.mn.gov/statutes/cite/494/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:500",
+      "url": "https://www.revisor.mn.gov/statutes/cite/500/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:501",
+      "url": "https://www.revisor.mn.gov/statutes/cite/501/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:501A",
+      "url": "https://www.revisor.mn.gov/statutes/cite/501A/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:501B",
+      "url": "https://www.revisor.mn.gov/statutes/cite/501B/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:501C",
+      "url": "https://www.revisor.mn.gov/statutes/cite/501C/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:502",
+      "url": "https://www.revisor.mn.gov/statutes/cite/502/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:503",
+      "url": "https://www.revisor.mn.gov/statutes/cite/503/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:504",
+      "url": "https://www.revisor.mn.gov/statutes/cite/504/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:504A",
+      "url": "https://www.revisor.mn.gov/statutes/cite/504A/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:504B",
+      "url": "https://www.revisor.mn.gov/statutes/cite/504B/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:505",
+      "url": "https://www.revisor.mn.gov/statutes/cite/505/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:507",
+      "url": "https://www.revisor.mn.gov/statutes/cite/507/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:508",
+      "url": "https://www.revisor.mn.gov/statutes/cite/508/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:508A",
+      "url": "https://www.revisor.mn.gov/statutes/cite/508A/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:509",
+      "url": "https://www.revisor.mn.gov/statutes/cite/509/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:510",
+      "url": "https://www.revisor.mn.gov/statutes/cite/510/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:511",
+      "url": "https://www.revisor.mn.gov/statutes/cite/511/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:512",
+      "url": "https://www.revisor.mn.gov/statutes/cite/512/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:513",
+      "url": "https://www.revisor.mn.gov/statutes/cite/513/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:514",
+      "url": "https://www.revisor.mn.gov/statutes/cite/514/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:515",
+      "url": "https://www.revisor.mn.gov/statutes/cite/515/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:515A",
+      "url": "https://www.revisor.mn.gov/statutes/cite/515A/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:515B",
+      "url": "https://www.revisor.mn.gov/statutes/cite/515B/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:517",
+      "url": "https://www.revisor.mn.gov/statutes/cite/517/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:518",
+      "url": "https://www.revisor.mn.gov/statutes/cite/518/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:518A",
+      "url": "https://www.revisor.mn.gov/statutes/cite/518A/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:518B",
+      "url": "https://www.revisor.mn.gov/statutes/cite/518B/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:518C",
+      "url": "https://www.revisor.mn.gov/statutes/cite/518C/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:518D",
+      "url": "https://www.revisor.mn.gov/statutes/cite/518D/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:518E",
+      "url": "https://www.revisor.mn.gov/statutes/cite/518E/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:518F",
+      "url": "https://www.revisor.mn.gov/statutes/cite/518F/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:519",
+      "url": "https://www.revisor.mn.gov/statutes/cite/519/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:519A",
+      "url": "https://www.revisor.mn.gov/statutes/cite/519A/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:520",
+      "url": "https://www.revisor.mn.gov/statutes/cite/520/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:521",
+      "url": "https://www.revisor.mn.gov/statutes/cite/521/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:521A",
+      "url": "https://www.revisor.mn.gov/statutes/cite/521A/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:522",
+      "url": "https://www.revisor.mn.gov/statutes/cite/522/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:523",
+      "url": "https://www.revisor.mn.gov/statutes/cite/523/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:524",
+      "url": "https://www.revisor.mn.gov/statutes/cite/524/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:525",
+      "url": "https://www.revisor.mn.gov/statutes/cite/525/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:525A",
+      "url": "https://www.revisor.mn.gov/statutes/cite/525A/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:526",
+      "url": "https://www.revisor.mn.gov/statutes/cite/526/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:527",
+      "url": "https://www.revisor.mn.gov/statutes/cite/527/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:528",
+      "url": "https://www.revisor.mn.gov/statutes/cite/528/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:529",
+      "url": "https://www.revisor.mn.gov/statutes/cite/529/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:530",
+      "url": "https://www.revisor.mn.gov/statutes/cite/530/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:531",
+      "url": "https://www.revisor.mn.gov/statutes/cite/531/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:532",
+      "url": "https://www.revisor.mn.gov/statutes/cite/532/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:540",
+      "url": "https://www.revisor.mn.gov/statutes/cite/540/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:541",
+      "url": "https://www.revisor.mn.gov/statutes/cite/541/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:542",
+      "url": "https://www.revisor.mn.gov/statutes/cite/542/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:543",
+      "url": "https://www.revisor.mn.gov/statutes/cite/543/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:544",
+      "url": "https://www.revisor.mn.gov/statutes/cite/544/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:545",
+      "url": "https://www.revisor.mn.gov/statutes/cite/545/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:546",
+      "url": "https://www.revisor.mn.gov/statutes/cite/546/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:547",
+      "url": "https://www.revisor.mn.gov/statutes/cite/547/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:548",
+      "url": "https://www.revisor.mn.gov/statutes/cite/548/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:549",
+      "url": "https://www.revisor.mn.gov/statutes/cite/549/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:550",
+      "url": "https://www.revisor.mn.gov/statutes/cite/550/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:551",
+      "url": "https://www.revisor.mn.gov/statutes/cite/551/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:552",
+      "url": "https://www.revisor.mn.gov/statutes/cite/552/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:553",
+      "url": "https://www.revisor.mn.gov/statutes/cite/553/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:554",
+      "url": "https://www.revisor.mn.gov/statutes/cite/554/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:555",
+      "url": "https://www.revisor.mn.gov/statutes/cite/555/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:556",
+      "url": "https://www.revisor.mn.gov/statutes/cite/556/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:557",
+      "url": "https://www.revisor.mn.gov/statutes/cite/557/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:558",
+      "url": "https://www.revisor.mn.gov/statutes/cite/558/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:558A",
+      "url": "https://www.revisor.mn.gov/statutes/cite/558A/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:559",
+      "url": "https://www.revisor.mn.gov/statutes/cite/559/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:559A",
+      "url": "https://www.revisor.mn.gov/statutes/cite/559A/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:560",
+      "url": "https://www.revisor.mn.gov/statutes/cite/560/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:561",
+      "url": "https://www.revisor.mn.gov/statutes/cite/561/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:562",
+      "url": "https://www.revisor.mn.gov/statutes/cite/562/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:563",
+      "url": "https://www.revisor.mn.gov/statutes/cite/563/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:565",
+      "url": "https://www.revisor.mn.gov/statutes/cite/565/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:566",
+      "url": "https://www.revisor.mn.gov/statutes/cite/566/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:570",
+      "url": "https://www.revisor.mn.gov/statutes/cite/570/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:571",
+      "url": "https://www.revisor.mn.gov/statutes/cite/571/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:572",
+      "url": "https://www.revisor.mn.gov/statutes/cite/572/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:572A",
+      "url": "https://www.revisor.mn.gov/statutes/cite/572A/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:572B",
+      "url": "https://www.revisor.mn.gov/statutes/cite/572B/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:573",
+      "url": "https://www.revisor.mn.gov/statutes/cite/573/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:574",
+      "url": "https://www.revisor.mn.gov/statutes/cite/574/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:575",
+      "url": "https://www.revisor.mn.gov/statutes/cite/575/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:576",
+      "url": "https://www.revisor.mn.gov/statutes/cite/576/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:577",
+      "url": "https://www.revisor.mn.gov/statutes/cite/577/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:578",
+      "url": "https://www.revisor.mn.gov/statutes/cite/578/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:579",
+      "url": "https://www.revisor.mn.gov/statutes/cite/579/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:580",
+      "url": "https://www.revisor.mn.gov/statutes/cite/580/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:581",
+      "url": "https://www.revisor.mn.gov/statutes/cite/581/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:582",
+      "url": "https://www.revisor.mn.gov/statutes/cite/582/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:583",
+      "url": "https://www.revisor.mn.gov/statutes/cite/583/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:585",
+      "url": "https://www.revisor.mn.gov/statutes/cite/585/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:586",
+      "url": "https://www.revisor.mn.gov/statutes/cite/586/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:587",
+      "url": "https://www.revisor.mn.gov/statutes/cite/587/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:588",
+      "url": "https://www.revisor.mn.gov/statutes/cite/588/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:589",
+      "url": "https://www.revisor.mn.gov/statutes/cite/589/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:590",
+      "url": "https://www.revisor.mn.gov/statutes/cite/590/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:593",
+      "url": "https://www.revisor.mn.gov/statutes/cite/593/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:595",
+      "url": "https://www.revisor.mn.gov/statutes/cite/595/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:596",
+      "url": "https://www.revisor.mn.gov/statutes/cite/596/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:597",
+      "url": "https://www.revisor.mn.gov/statutes/cite/597/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:598",
+      "url": "https://www.revisor.mn.gov/statutes/cite/598/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:599",
+      "url": "https://www.revisor.mn.gov/statutes/cite/599/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:600",
+      "url": "https://www.revisor.mn.gov/statutes/cite/600/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:601",
+      "url": "https://www.revisor.mn.gov/statutes/cite/601/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:602",
+      "url": "https://www.revisor.mn.gov/statutes/cite/602/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:603",
+      "url": "https://www.revisor.mn.gov/statutes/cite/603/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:604",
+      "url": "https://www.revisor.mn.gov/statutes/cite/604/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:604A",
+      "url": "https://www.revisor.mn.gov/statutes/cite/604A/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:604B",
+      "url": "https://www.revisor.mn.gov/statutes/cite/604B/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:605",
+      "url": "https://www.revisor.mn.gov/statutes/cite/605/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:606",
+      "url": "https://www.revisor.mn.gov/statutes/cite/606/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:607",
+      "url": "https://www.revisor.mn.gov/statutes/cite/607/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:609",
+      "url": "https://www.revisor.mn.gov/statutes/cite/609/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:609A",
+      "url": "https://www.revisor.mn.gov/statutes/cite/609A/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:609B",
+      "url": "https://www.revisor.mn.gov/statutes/cite/609B/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:610",
+      "url": "https://www.revisor.mn.gov/statutes/cite/610/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:611",
+      "url": "https://www.revisor.mn.gov/statutes/cite/611/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:611A",
+      "url": "https://www.revisor.mn.gov/statutes/cite/611A/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:612",
+      "url": "https://www.revisor.mn.gov/statutes/cite/612/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:613",
+      "url": "https://www.revisor.mn.gov/statutes/cite/613/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:614",
+      "url": "https://www.revisor.mn.gov/statutes/cite/614/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:615",
+      "url": "https://www.revisor.mn.gov/statutes/cite/615/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:616",
+      "url": "https://www.revisor.mn.gov/statutes/cite/616/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:617",
+      "url": "https://www.revisor.mn.gov/statutes/cite/617/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:618",
+      "url": "https://www.revisor.mn.gov/statutes/cite/618/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:619",
+      "url": "https://www.revisor.mn.gov/statutes/cite/619/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:620",
+      "url": "https://www.revisor.mn.gov/statutes/cite/620/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:621",
+      "url": "https://www.revisor.mn.gov/statutes/cite/621/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:622",
+      "url": "https://www.revisor.mn.gov/statutes/cite/622/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:623",
+      "url": "https://www.revisor.mn.gov/statutes/cite/623/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:624",
+      "url": "https://www.revisor.mn.gov/statutes/cite/624/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:625",
+      "url": "https://www.revisor.mn.gov/statutes/cite/625/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:626",
+      "url": "https://www.revisor.mn.gov/statutes/cite/626/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:626A",
+      "url": "https://www.revisor.mn.gov/statutes/cite/626A/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:627",
+      "url": "https://www.revisor.mn.gov/statutes/cite/627/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:628",
+      "url": "https://www.revisor.mn.gov/statutes/cite/628/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:629",
+      "url": "https://www.revisor.mn.gov/statutes/cite/629/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:630",
+      "url": "https://www.revisor.mn.gov/statutes/cite/630/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:631",
+      "url": "https://www.revisor.mn.gov/statutes/cite/631/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:632",
+      "url": "https://www.revisor.mn.gov/statutes/cite/632/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:633",
+      "url": "https://www.revisor.mn.gov/statutes/cite/633/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:634",
+      "url": "https://www.revisor.mn.gov/statutes/cite/634/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:636",
+      "url": "https://www.revisor.mn.gov/statutes/cite/636/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:637",
+      "url": "https://www.revisor.mn.gov/statutes/cite/637/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:638",
+      "url": "https://www.revisor.mn.gov/statutes/cite/638/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:640",
+      "url": "https://www.revisor.mn.gov/statutes/cite/640/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:641",
+      "url": "https://www.revisor.mn.gov/statutes/cite/641/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:642",
+      "url": "https://www.revisor.mn.gov/statutes/cite/642/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:643",
+      "url": "https://www.revisor.mn.gov/statutes/cite/643/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:645",
+      "url": "https://www.revisor.mn.gov/statutes/cite/645/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:646",
+      "url": "https://www.revisor.mn.gov/statutes/cite/646/full",
+      "status": "pending",
+      "error": null
+    },
+    {
+      "item": "chapter:648",
+      "url": "https://www.revisor.mn.gov/statutes/cite/648/full",
+      "status": "pending",
+      "error": null
+    }
+  ],
+  "limits": "Publisher HTML inventory only, not authenticated PDF completeness or complete current law. New PDFs linked, not acquired or authenticated. Original PDF companions unchanged. Mixed observation dates; precise snapshot/effect unknown. Dated/subdivision-specific hyperlinks are not silently mapped to current whole sections. Separate rules, session, local/special laws and external incorporated material remain outside this family.",
+  "coverage_documents_at_mcp_probe": 901,
+  "mcp": [
+    {
+      "tool": "legal_coverage",
+      "arguments": {
+        "collection": "mn-statutes"
+      },
+      "response_sha256": "3d0121a48fdcbcaae6df7933c5cc10cd0aa91f4a7c8d3abb6b4b7fe8efb4af09"
+    },
+    {
+      "tool": "legal_read",
+      "arguments": {
+        "key_or_id": "mn:statutes/103A/stat.103A.001",
+        "length": 1500
+      },
+      "response_sha256": "2fc37dda3ea930f34868e8aa9ded5c5668b1628c2ac438500056f9ad3e19a2ca"
+    },
+    {
+      "tool": "source_receipt",
+      "arguments": {
+        "acquisition_id": 20633
+      },
+      "response_sha256": "bb70657b0909051b4b4a75e5f26edc31de63d5d43f6c27aafdf5b0b819238f4e"
+    },
+    {
+      "tool": "legal_read",
+      "arguments": {
+        "key_or_id": "25d394eb3116b38e102be4e7111d4cac",
+        "as_of": "2026-09-17"
+      },
+      "response_sha256": "2fcf3c26e9a44c7a7722222ed917599bf65735eb0e0c0c0392548ff84f7edc3c"
+    },
+    {
+      "tool": "legal_read",
+      "arguments": {
+        "key_or_id": "25d394eb3116b38e102be4e7111d4cac",
+        "observation_cutoff": "2026-09-17T00:00:00Z"
+      },
+      "response_sha256": "2fcf3c26e9a44c7a7722222ed917599bf65735eb0e0c0c0392548ff84f7edc3c"
+    },
+    {
+      "tool": "legal_references",
+      "arguments": {
+        "provision_id": "48665c56a709f1015286fa87ac915210",
+        "limit": 100
+      },
+      "response_sha256": "0a71637e1896b365b9984b5b8169b2bfcf82ba2bf792980637dc8c984ea84711"
+    },
+    {
+      "tool": "legal_read",
+      "arguments": {
+        "key_or_id": "b28abd5405e7d5b083da95a34bd9fc14",
+        "length": 500
+      },
+      "response_sha256": "d2a343d7ac96efcbd6fa352969d2aaf771bdbbc85498b03d08d567f537c82a4c"
+    }
+  ],
+  "runtime_sha256": {
+    "src/psephos/minnesota.py": "3905af191c32849b7d9f72da276af9ffe95b89e816f9ef30162b48036d8839bf",
+    "src/psephos/campaign.py": "8a2ac5af350e32954edcec7d16c97b1214344f6c58b15da2ae80ee9f6c5cd809",
+    "src/psephos/retrieve.py": "d66407f8730e645ee114475bf8059d689505e57b1d026a1ac526cbe8ea082dfd",
+    "scripts/verify_minnesota.py": "10a79e0ba37b750038d280d12fa74013c7ad860f8a0876de9ff04b2791539ccd",
+    "scripts/verify_washington.py": "7e42bfe3257ee2c716ccf994a6db5b9d7bfb88fb1f022faf29a2a2a7048993f0"
+  }
+}

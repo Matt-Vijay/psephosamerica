@@ -40,12 +40,13 @@ original download allowance is exhausted; no additional allowance is assumed.
   downloaded zero bytes. No scheduled refresh or current-law guarantee is implied.
 - [ ] Continue the remaining state/local source queue; don't relabel another
   release, partial tranche or source restriction as nationwide completion.
-  Minnesota's maintained HTML collector has expanded all 105 part inventories to
-  1,133 chapter exports and is acquiring remaining bodies under the original
-  200 MiB ledger. All 42 original statute parsers replay identically; the first
-  25 added chapters reconstruct full source text. Six real MCP calls verified
-  source reading, receipts, section-link navigation and date exclusions. Final
-  inventory/projection accounting remains required. Idaho is still a candidate;
+  Minnesota now retains 901/1,133 chapter exports across 79 closed subject parts
+  out of 105. All 859 added projections reconstruct full source text; seven real
+  MCP calls verify reading, receipts, section-link navigation and date exclusions.
+  All original 50 versions / 3,358 records and references remain unchanged.
+  See `docs/minnesota-statutes-continuation-20260917.json`. The next declared body
+  exceeds the 81,685 bytes remaining in the original 200 MiB ledger; do not reset
+  or increase the allowance without authorization. Idaho is still a candidate;
   no new Idaho requests have been made in this continuation.
 
 ## Completed release milestone

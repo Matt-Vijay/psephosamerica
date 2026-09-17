@@ -64,6 +64,19 @@ with the historical collector: 135,697,707 bytes charged, including prior work.
 The retained 2025-session notice and mixed observation dates do not establish
 complete current law; this command is not on the automatic-refresh schedule.
 
+The [Minnesota continuation](minnesota-statutes-continuation-20260917.json)
+adds **859 chapters**, reaching **901 / 1,133** publisher HTML exports and
+79 closed subject parts out of 105. Exact replay and full-text reconstruction
+verified 21,106 section records, 21,284 disposition records and 859 contexts;
+seven actual MCP calls passed, including retained section-to-section navigation.
+All 50 original Minnesota versions / 3,358 records and references are unchanged.
+The original 200 MiB ledger reached 209,633,515 bytes; the next declared body
+exceeds the remaining 81,685. The 231 pending chapters and one budget-deferred
+chapter remain visible. These HTML projections are not authenticated PDFs or a
+complete current-law collection, and new PDF companions were not downloaded.
+The maintained-adapter CI gate passed 220 tests with one skip and one intentional
+deselection, plus Ruff and strict mypy across 32 modules.
+
 [Six research checks](research-checks.md) used 68 actual MCP calls on retained
 Portland, NYC, Florida, Virginia and federal sources, plus an unsupported Ann
 Arbor question. They found and fixed Virginia URL navigation and verified federal
