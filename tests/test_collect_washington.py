@@ -121,6 +121,7 @@ def test_washington_digest_not_legal_text_and_inventory_scope():
     "chapter,body",
     [
         ("14.30", "<div>PDF</div><h3>See chapter 81.96 RCW</h3>"),
+        ("32.28", "<div>PDF</div><h3>See chapter 30A.43 RCW</h3>"),
         (
             "18.09",
             '<h3>Notes:</h3><div>See chapter <a href="?cite=2.44">2.44</a> RCW, attorneys-at-law.</div>',

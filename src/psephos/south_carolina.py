@@ -92,49 +92,68 @@ def content(data: bytes) -> etree._Element:
     return nodes[0]  # type: ignore[no-any-return]
 
 
-def chapter_units(data: bytes, url: str, title: int, chapter: str) -> list[Provision]:
+def chapter_units(
+    data: bytes, url: str, title: int, chapter: str, inventory_label: str | None = None
+) -> list[Provision]:
     node = content(data)
     heads = [readable(child) for child in node if child.tag == "div"]
     native_chapter = chapter.lstrip("0").upper()
+    reserved = native_chapter.endswith("R") and inventory_label == (
+        f"CHAPTER {native_chapter[:-1]} - RESERVED"
+    )
+    if reserved:
+        native_chapter = native_chapter[:-1]
+    article = (inventory_label or "").startswith(f"ARTICLE {native_chapter} - ")
+    division = "ARTICLE" if article else "CHAPTER"
     if (
         not any(re.match(rf"^Title {title}\b", h) for h in heads)
-        or f"CHAPTER {native_chapter}" not in heads
+        or f"{division} {native_chapter}" not in heads
     ):
         raise ValueError("Publisher title/chapter identity mismatch")
     groups: list[tuple[str, str, str, etree._Element]] = []
     current = etree.Element("div")
     current.text = node.text
     key = f"sc-code:t{title}c{chapter}:context"
-    heading, kind = f"Title {title}, Chapter {chapter} context", "scope_context"
+    scope_heading = (
+        f"Title {title}, Article {native_chapter}"
+        if article
+        else f"Title {title}, Chapter {chapter}"
+    )
+    heading, kind = f"{scope_heading} context", "scope_context"
     for child in node:
         match = re.match(
             r"^SECTION\s+(\d+[A-Z]?-\d+[A-Z]?-\d+(?:\.\d+)?[A-Z]?)\.",
             " ".join(readable(child).split()),
         )
         if match and child.tag in ("span", "b", "strong"):
-            if not match[1].startswith(f"{title}-{native_chapter}-"):
-                raise ValueError("Native section outside requested chapter")
             if readable(current).strip():
                 groups.append((key, heading, kind, current))
             current = etree.Element("div")
             key, heading, kind = "sc-code:" + match[1], (child.tail or "").strip(), "section"
+            if not match[1].startswith(f"{title}-{native_chapter}-"):
+                # Preserve publisher mistakes without creating a false canonical citation.
+                key = f"sc-code:t{title}c{chapter}:source-section:{match[1]}"
+                kind = "source_anomaly"
         current.append(deepcopy(child))
     if readable(current).strip():
         groups.append((key, heading, kind, current))
     if not any(g[2] == "section" for g in groups):
         text = readable(node)
+        reserved_notice = reserved and len(heads) == 2 and text == "\n".join(heads)
         untagged_section = re.search(
             rf"(?m)^SECTION {title}-{re.escape(native_chapter)}-\d+(?:\.\d+)?[A-Z]?\.", text
         )
-        if not untagged_section and not re.search(
-            r"\b(?:repealed|transferred|reserved|omitted)\b", text, re.I
+        if (
+            not reserved_notice
+            and not untagged_section
+            and not re.search(r"\b(?:repealed|transferred|reserved|omitted)\b", text, re.I)
         ):
             raise ValueError("No native sections or explicit chapter disposition")
         groups = [
             (
                 f"sc-code:t{title}c{chapter}:chapter",
-                f"Title {title}, Chapter {chapter}",
-                "chapter",
+                scope_heading,
+                "inventory_notice" if reserved_notice else "chapter",
                 deepcopy(node),
             )
         ]
@@ -147,12 +166,14 @@ def chapter_units(data: bytes, url: str, title: int, chapter: str) -> list[Provi
         result.append(
             Provision(
                 key=key + suffix,
-                citation="S.C. Code \u00a7 " + key.split(":")[1] if kind == "section" else heading,
+                citation="S.C. Code \u00a7 " + key.rsplit(":", 1)[-1]
+                if kind in ("section", "source_anomaly")
+                else heading,
                 heading=heading,
                 text=readable(part),
                 markup=markup(part),
                 url=url,
-                parent_key=f"sc-code:title:{title}:chapter:{chapter}",
+                parent_key=f"sc-code:title:{title}:{division.lower()}:{chapter}",
                 unit_kind=kind,
                 metadata={
                     "title": title,
@@ -162,6 +183,23 @@ def chapter_units(data: bytes, url: str, title: int, chapter: str) -> list[Provi
                     "media": media_links(part, url),
                     "context_scope": "Whole source chapter markup retained in immutable receipt; source headings and adjacent notes preserved in source order.",
                     "source_snapshot_date": None,
+                    **({"native_division": "article"} if article else {}),
+                    **(
+                        {
+                            "citation_warning": "Publisher section number falls outside this chapter; retained verbatim, not a canonical section identity."
+                        }
+                        if kind == "source_anomaly"
+                        else {}
+                    ),
+                    **(
+                        {
+                            "publisher_inventory_label": inventory_label,
+                            "inventory_source_url": BASE + f"/code/title{title}.php",
+                            "inventory_notice_only": True,
+                        }
+                        if kind == "inventory_notice"
+                        else {}
+                    ),
                 },
                 references=source_links(part, url),
             )
@@ -191,6 +229,7 @@ def sync_south_carolina(
         inventory_acquisition=index.id,
         publisher_currency_statement=currency[0],
         not_legal_effect_clock=True,
+        scope="Chapter and article exports enumerated by the retained title inventories. Consult inventory statuses for missing bodies; reserved notices are not statutes. Later acts and complete legal currency are not established.",
     )
     s.collection(
         COLLECTION,
@@ -211,8 +250,10 @@ def sync_south_carolina(
     if not titles:
         raise ValueError("No publisher title inventory")
     chapters: dict[str, tuple[str, int, str, str]] = {}
+    title_receipts = {}
     for title, url in titles.items():
         receipt = a.fetch(url)
+        title_receipts[title] = receipt.id
         parent = content(s.artifact(receipt.sha256))
         count = 0
         for link in parent.xpath(".//a[@href]"):
@@ -251,7 +292,7 @@ def sync_south_carolina(
         attempted += 1
         try:
             receipt = a.fetch(url)
-            units = chapter_units(s.artifact(receipt.sha256), url, title, chapter)
+            units = chapter_units(s.artifact(receipt.sha256), url, title, chapter, label)
             s.ingest(
                 collection=COLLECTION,
                 document=document,
@@ -265,6 +306,7 @@ def sync_south_carolina(
                 provisions=units,
                 metadata={
                     "inventory_receipt": index.id,
+                    "chapter_inventory_acquisition": title_receipts[title],
                     "legal_effect_date": "unknown; source-specific history retained without normalizing to one date",
                     "acquisition_clock": receipt.observed_at,
                 },

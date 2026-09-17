@@ -124,6 +124,11 @@ The maintained `south-carolina-code` command follows the retained
 whole-chapter HTML exports. It preserves native sections, repeated identifiers,
 history, amendment notes, tables and chapter context. Untagged bodies and
 repeal/transfer notices remain explicit whole-chapter units, not invented sections.
+Probate Code articles keep their native hierarchy. Heading-only exports require
+a matching RESERVED label in the retained title inventory and remain inventory
+notices. A publisher section number outside its enclosing chapter is retained
+verbatim with a warning and source-local key, never silently repaired or assigned
+the conflicting canonical section identity.
 The retained inventory notice describes incorporation through the 2025 session;
 retrieval dates are separate, and precise snapshot/effective dates remain unknown.
 

@@ -1,0 +1,123 @@
+{
+  "exact_parser_truth": {
+    "documents": 956,
+    "unit_kinds": {
+      "section": 16715,
+      "chapter_notes": 956,
+      "subchapter_heading": 22
+    }
+  },
+  "retained_source_bytes": 166667813,
+  "retained_source_objects": 956,
+  "chapter_inventory": {
+    "failed": 1,
+    "ingested": 1381,
+    "pending": 1403
+  },
+  "source_manifest_sha256": "7b4504de1c001f98cd13170f3545524b7073e894fecd5df0c4212dc2f31847d8",
+  "observation_range": [
+    "2026-09-07T00:50:58Z",
+    "2026-09-17T17:54:39Z"
+  ],
+  "clocks": "Retrieval observations only; no inferred snapshot or legal effectiveness dates",
+  "failures": [
+    {
+      "item": "chapter:33.46",
+      "url": "https://app.leg.wa.gov/RCW/default.aspx?cite=33.46&full=true",
+      "error": "https://app.leg.wa.gov/RCW/default.aspx?cite=33.46&full=true: Hard lifetime cap before next response chunk"
+    }
+  ],
+  "scope": "Maintained text-3 RCW projections; earlier text-2 and land-use evidence unchanged. Chapter inventory is not current or comprehensive law coverage.",
+  "mcp": {
+    "calls": [
+      {
+        "tool": "legal_coverage",
+        "arguments": {
+          "collection": "wa-rcw"
+        },
+        "seconds": 0.023965,
+        "bytes": 2433,
+        "sha256": "ecf7d291865f6013ea957e0f6173fff349a76ecf8e4f571afa5f723a7de90b1f"
+      },
+      {
+        "tool": "legal_search",
+        "arguments": {
+          "query": "supreme court",
+          "collection": "wa-rcw",
+          "limit": 3
+        },
+        "seconds": 1.806072,
+        "bytes": 3737,
+        "sha256": "73e803d911195913a2808616febf7aabf236cca4d827ee5e4fefa9c008a310eb"
+      },
+      {
+        "tool": "legal_read",
+        "arguments": {
+          "key_or_id": "wa-rcw:2.04.010",
+          "length": 1500
+        },
+        "seconds": 0.32026,
+        "bytes": 5522,
+        "sha256": "bfb2e8245c04daa43174ff3ed288e268a4c5cbe5dd5a01840c2e8a4af9efbf29"
+      },
+      {
+        "tool": "source_receipt",
+        "arguments": {
+          "acquisition_id": 18394
+        },
+        "seconds": 0.001926,
+        "bytes": 864,
+        "sha256": "43d9671bed86d41472e06b712e430ab77bc9e6ba343402ff9f30d050d2c0569f"
+      },
+      {
+        "tool": "legal_read",
+        "arguments": {
+          "key_or_id": "wa-rcw:2.04/contents-notes",
+          "length": 500
+        },
+        "seconds": 0.271767,
+        "bytes": 4752,
+        "sha256": "ad8d35d2ce8d721471e658939ebd70e4ed4a1b3aa345b76d8240edf13c87d48c"
+      },
+      {
+        "tool": "legal_references",
+        "arguments": {
+          "provision_id": "c78ee7d5b8fa42241cb9261c7f6924d0",
+          "limit": 100
+        },
+        "seconds": 0.055288,
+        "bytes": 34089,
+        "sha256": "7794e6c9ba309921d37003ec273c7e19e93ff2cef9231dd42d702db2f0a6808a"
+      },
+      {
+        "tool": "legal_read",
+        "arguments": {
+          "key_or_id": "71fbca2c4d3b1ed1d70ab610818a3362",
+          "observation_cutoff": "2026-09-17T00:00:00Z"
+        },
+        "seconds": 0.213795,
+        "bytes": 347,
+        "sha256": "f20ede3e45978b6320a285e5dddb5ec16068ca380b61f14e1ae7f5f2e4e30801"
+      },
+      {
+        "tool": "legal_read",
+        "arguments": {
+          "key_or_id": "71fbca2c4d3b1ed1d70ab610818a3362",
+          "as_of": "2026-09-17"
+        },
+        "seconds": 0.092548,
+        "bytes": 347,
+        "sha256": "f20ede3e45978b6320a285e5dddb5ec16068ca380b61f14e1ae7f5f2e4e30801"
+      }
+    ],
+    "seconds": 3.056549
+  },
+  "status": "PASS",
+  "recorded_at": "2026-09-17T18:10:59Z",
+  "runtime_sha256": {
+    "src/psephos/washington_rules.py": "1548d76f72aaaf9a42b271a4053eaaa8af8fd031d4e9fb5de7b2ebcacb731acc",
+    "src/psephos/collect_washington.py": "3c82cb579caa8f539813239b9d40b42effa61940d5eb27762d8d7dd62e69e9e1",
+    "src/psephos/retrieve.py": "5ba0ccafc59b605af2fc6c98e726c05433edd2ef615021dd708c89135b81fb9a",
+    "scripts/verify_washington.py": "7e42bfe3257ee2c716ccf994a6db5b9d7bfb88fb1f022faf29a2a2a7048993f0"
+  }
+}

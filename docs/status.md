@@ -15,7 +15,8 @@ model, a hosted service, or a nationwide current-law guarantee.
 - [Download the U.S. Code starter](starter.md): 284 MiB, 58 documents and 63,475
   mixed retrieval records, with original source bytes and dates. The larger
   working corpus is local, not bundled into the software or public download.
-- `psephos sources` lists 19 maintained acquisition commands and their limits.
+- The released wheel's `psephos sources` lists 19 acquisition commands; the
+  current checkout adds `south-carolina-code` as the twentieth maintained command.
   Georgia, Virginia, Oregon, Washington, Nebraska and Portland Charter now have
   installed entrypoints; historical collector directories are not the public interface.
 - `export` / `import` transfer explicitly selected collections. Import verifies
@@ -39,13 +40,29 @@ narrowed edition; population living in those jurisdictions is not comprehensive
 legal coverage. Counts of sections, PDF pages, context records and versions must
 not be presented as interchangeable counts of laws.
 
-The later September 17 [Washington continuation](washington-rcw-completion-20260917.json)
-adds **602 chapter exports**, bringing RCW to **1,027 / 2,785** retained inventory
-entries, with 1,758 pending and zero failures. Exact replay verified 9,980 new
-section occurrences, 602 chapter notes and nine subchapter headings; eight actual
-MCP calls verified reading, source receipts, date exclusions and contents links.
-The original 424 versions / 8,764 records are unchanged. Unknown legal clocks,
-pointer-only chapters and remaining gaps stay explicit; population reach is unchanged.
+The September 17 [Washington continuation](washington-rcw-continuation-20260917.json)
+adds **956 chapter exports** across two passes, bringing RCW to **1,381 / 2,785**
+retained inventory entries, with 1,403 pending and one budget-deferred export.
+Exact replay verified 16,715 section occurrences, 956 chapter notes and 22
+subchapter headings; eight actual MCP calls verified reading, source receipts,
+date exclusions and contents links. The original 424 versions / 8,764 records
+are unchanged. The original 250 MiB download allowance is exhausted at the next
+chunk reservation; more network acquisition requires an explicit allowance
+increase. The [earlier 602-export checkpoint](washington-rcw-completion-20260917.json)
+remains dated evidence. Unknown legal clocks, pointer-only chapters and remaining
+gaps stay explicit; population reach is unchanged by this partial family.
+
+The [South Carolina continuation](south-carolina-code-completion-20260917.json)
+closes the retained **1,308-export / 63-title** inventory, adding 986 exports with
+23,631 section occurrences, 974 contexts, ten whole-chapter units, two reserved
+inventory notices and one publisher numbering anomaly. Full-text reconstruction,
+exact field/reference replay and nine real MCP calls passed. The source's wrong
+section number is retained under a chapter-specific key, not silently corrected;
+the two empty RESERVED exports are not counted as statutes. All 448 earlier SC
+versions / 16,343 records are unchanged. The original 200 MiB ledger remains shared
+with the historical collector: 135,697,707 bytes charged, including prior work.
+The retained 2025-session notice and mixed observation dates do not establish
+complete current law; this command is not on the automatic-refresh schedule.
 
 [Six research checks](research-checks.md) used 68 actual MCP calls on retained
 Portland, NYC, Florida, Virginia and federal sources, plus an unsupported Ann

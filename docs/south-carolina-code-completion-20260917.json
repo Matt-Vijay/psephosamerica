@@ -1,0 +1,229 @@
+{
+  "status": "PASS",
+  "recorded_at": "2026-09-17T19:25:03Z",
+  "inventory": {
+    "titles": 63,
+    "chapters": 1308,
+    "statuses": {
+      "ingested": 1308
+    }
+  },
+  "retained_inventory_closed": true,
+  "native_inventory_objects": [
+    "0038f8d62d113457f8ab509d157ad71a043c23a9aadb45ac800aa5663fe95547",
+    "0506d6e750360bdb928c9b86992ca319f60abcb5db3336db83000690bb70e7f8",
+    "054b9f97010d29403db3deb31142b5714781328a71c3c6a1a128fe43bc51b102",
+    "0bee6a4ebe178556a19c5105be6ffca66bd6933b4895c6e3c3e09fc115e86664",
+    "0e13b2abb2a5d13e736d64092f9910a75be673b9a88b3981bf7fc4a2738a9a7a",
+    "136f63179dc7913ca2ba62518440ca3a632e81af3326b3a14bb3ff278298201e",
+    "1b64dd86f8437cee1f19df62fa6a4caf9b3e6e98335a9f40b63ac9b2ffd7f5c0",
+    "1de8d60b0d5e692ec552a1f962ecfabb22ccd1d3528d06eed8a8cf13bdb74ce1",
+    "21171ac415f273b2bb614803289ef09c44bb6f1d09320587ab9bcc9788cf26f0",
+    "21a02d372707bebcb8ed7ccd5a505a7226d80e861b2684d1634a239135d747c7",
+    "290ce9883f430cda419dab0f1758638a2041e09cb7733a44ffd5ba589a0f1224",
+    "2bc875b95f8f3485c1e482881ad4053da4c57cf821974a5d8834bbf953bdf1b1",
+    "3249d923b1a94549f2d48230d6fb006798dab34e20e07074752a2bf80c0f8a61",
+    "32f82ab43e4c6e8b215f3cca71ecbd89064e704d5d111e4415aa58180a4b3f43",
+    "34adf79b228334566d1faf8d109700011eab654ec55418bf600313a7c4fee880",
+    "3c50ac7a74731b19e260177e0abc50f7fbbfb82c810a44425a14f5d8477c3e07",
+    "3ebeddfb6f1144f8321276fb8f5ae08076de8834921696cdb0c9420680dae414",
+    "424c0a9a7fc229883ef6857b8afcb73a81462fd007fba3d7664a46001a423c13",
+    "43783266012ce44ba2637298acfc542788840fc578031d5f0545360a60013a03",
+    "486806c36ab0e8037932c05712fcbaac36b0ce0ca647ab3b9c8501b75b1814a3",
+    "49f174cca902073591f2f1e16ed0fbd4336d5228d877fa800980793f5f053946",
+    "4a22a76cb24fa47d6bb9598f7d669a5d507a6684f31f21ed3992f5c3d83e8862",
+    "4e218a8ec44b645ade6a02adb61fb37d3a13da5e7ad8c0fe636b6657abf0622e",
+    "52e7a8fe37f9c9b8a3557c1dba87aa083937316338d959668a7df81e04f46c13",
+    "56dd65e716b5cd1d3d7777f830dddbff4ed97fb06dfd6285ff9925a8addcb816",
+    "593d8c8e513f1631c4e0f3c88d29c015a4030543104382db1021ca96987110a5",
+    "5b2383ca071a306a926acb87c6daac7603d8dad6d0337582cb64c512e4b06bd7",
+    "5dae80da155d657f98933aeff480741aa1b8ba299cce1362c80626f7282856e1",
+    "5e1c97347d7dcff9cc3aa7598c0411014a2ebf4d829d12493b9f0cc7e91db391",
+    "638d25fd9880cdf607ba2cf8f60986ce645a05c2a16e5f1749f1d1859d313bab",
+    "70aad71688efe78a298d6027e420943239fd2b7e28d3691fd60867c395dd6000",
+    "70ac442c03a038b88c8e1975924a6162926cfe1faa1fb3dec2d102d24d3ade22",
+    "747e124c535a7fe5823cf5f0cdcba958aa036af78f41fa6791d9130f9789dace",
+    "7b0b9358bf205c114dc6ffdfef261d56c6029d9b7caea04f4066aaebc04b576f",
+    "7c2faf3ec7da66b131711132997f18cad8977615986747a81285415f5a906c3d",
+    "7d7eef009b2b5831be9996b5abbfcba23a59bf13befc6580530fb344190ebab8",
+    "7eb30fe9f77022182e11a75dba183af2cead613b936aebf146379efda3ecb0ea",
+    "839c6ba4c0a348bc6a3fa0dcb250aba3f02146f005198fca95761699007ae2e3",
+    "88118e75a0c1ddfa4a6074d3fe7ad00d1baf520678313840a043bb52f33e6956",
+    "8889ceeaed87b9d33e178b6a4849682eef208ca5227b09c1ea7a995b66fd6863",
+    "8971515edc323af38b3d9a9b751984103f44b9ee2d4c6cf8cb31cb5c84546671",
+    "8a208c82394e62fdbb31ba1b6e9dff6b27c8cb141e83436d7d34fe527a28e991",
+    "960e38a2a528168542829ff14c82b5c05fd89c10d0b37b8b8fd4162d05a4b572",
+    "97e3e016993fac1b0b07041fbbe1622843ecdc3fd7f9cfd1c2c803e2d90490e9",
+    "9a652975f26119c4dbad735a9dbf75ad70afcd5421dc6e350e73fff5dab99c37",
+    "9a8c3ea2f7d8ea6e9558a26dcdaa03ef7a68ec51747be209a6252f6b92e003c7",
+    "9e794979e9776e76f60a200ad385452477a64effe49d83dbc24816dd52e95bd1",
+    "a07ece0199999d5a3624a8850a802792cf5c8dd0a56405839b92b9f1371698d3",
+    "a9633f70d25f5f52f6ea9714c30a717987d622b8434de0838df0db31d61c8bda",
+    "b4c76a4892dd7f7fadf2682b28a5da932bbfe6c4d6ad97d849b26c116ad9a724",
+    "b6bb1d03e5ba2bc1538c1b9915eab5c428be22e5b90e50f43a63b9ac20a84a2a",
+    "b9a7a4831e43838c35e2588e65473788d1748f55d02ab44438c4daaaa1717aa5",
+    "bd5a28097b135690378cdd227989a9decead01042488c85ba9f98f0736fed31e",
+    "bdcb49c9daddc57936f38da7b5a3181d9d94b84e2828549afd1f0635f74ec95c",
+    "c4c6a57b5854964ee33c4f58e452a3fd70c131566273f59b3fe256366ce45717",
+    "d4676e9772e38897c148accf3f4fd0562fa47a42eff9bba18673b0e2d3602678",
+    "dd84e708684fea6b7cd208e65e7fbb5d717b13cbcc8b29220972ca30d31e9a78",
+    "de591169f051e836229970fe07f39b626e769457d8066fbbc7a7d99b365f5f2b",
+    "e1ca644df04292bd8507c528656bcdd8993f63151a649461b91c6417b5dfbe76",
+    "e738105de9b54a68cf27bb0017c89788c8d89e7f30fc6792975180a3fbc429d4",
+    "ecc6bbd4a541c1861b752dbad395fe060794c425f9392bbaf51d39db4c056322",
+    "ed33aa5734497910cbbaf928dc549c20fadd122e1183e88ea87f0189ffe7ee16",
+    "ef6da181188ccf0e004ab18a3e5fa512c30ebce415bb1153858579600f89740c",
+    "f2c9dbb93adc50ac2d711ffbbac235b67971e4286b6efe26e76aefa2a2f765dd"
+  ],
+  "exact_projection_replay": {
+    "documents": 986,
+    "unit_kinds": {
+      "scope_context": 974,
+      "section": 23631,
+      "chapter": 10,
+      "source_anomaly": 1,
+      "inventory_notice": 2
+    }
+  },
+  "whole_chapter_text_reconstruction": "PASS: normalized source text equals all projected text in source order",
+  "exceptional_units": [
+    {
+      "key": "sc-code:t38c090:source-section:30-90-185",
+      "unit_kind": "source_anomaly",
+      "metadata": {
+        "title": 38,
+        "chapter": "090",
+        "source_anchors": [],
+        "tables": 0,
+        "media": [],
+        "context_scope": "Whole source chapter markup retained in immutable receipt; source headings and adjacent notes preserved in source order.",
+        "source_snapshot_date": null,
+        "citation_warning": "Publisher section number falls outside this chapter; retained verbatim, not a canonical section identity."
+      }
+    },
+    {
+      "key": "sc-code:t40c021R:chapter",
+      "unit_kind": "inventory_notice",
+      "metadata": {
+        "title": 40,
+        "chapter": "021R",
+        "source_anchors": [
+          "contentsection"
+        ],
+        "tables": 0,
+        "media": [],
+        "context_scope": "Whole source chapter markup retained in immutable receipt; source headings and adjacent notes preserved in source order.",
+        "source_snapshot_date": null,
+        "publisher_inventory_label": "CHAPTER 21 - RESERVED",
+        "inventory_source_url": "https://www.scstatehouse.gov/code/title40.php",
+        "inventory_notice_only": true
+      }
+    },
+    {
+      "key": "sc-code:t40c073R:chapter",
+      "unit_kind": "inventory_notice",
+      "metadata": {
+        "title": 40,
+        "chapter": "073R",
+        "source_anchors": [
+          "contentsection"
+        ],
+        "tables": 0,
+        "media": [],
+        "context_scope": "Whole source chapter markup retained in immutable receipt; source headings and adjacent notes preserved in source order.",
+        "source_snapshot_date": null,
+        "publisher_inventory_label": "CHAPTER 73 - RESERVED",
+        "inventory_source_url": "https://www.scstatehouse.gov/code/title40.php",
+        "inventory_notice_only": true
+      }
+    }
+  ],
+  "source_objects_rehashed": 986,
+  "source_bytes_rehashed": 63578299,
+  "source_manifest_sha256": "5f183bf61daff62cc2e0d9f021c577dbf3b397027b94a6e5402b6814a48d3b6d",
+  "observed_range": [
+    "2026-09-17T17:55:03Z",
+    "2026-09-17T19:23:44Z"
+  ],
+  "remaining": [],
+  "limitations": "Retained publisher inventory, not a complete current legal layer. Mixed observation dates; no inferred publication or legal-effect dates. Later acts, local law, incorporated external standards and media transcription are excluded. Whole-chapter units remain explicit where native section markup is absent.",
+  "mcp": [
+    {
+      "tool": "legal_coverage",
+      "arguments": {
+        "collection": "sc-code"
+      },
+      "response_sha256": "1d4d51a63d4d2e9d852a3093bf9c78ba522531825391b083ceaf77fc2815c5f4"
+    },
+    {
+      "tool": "legal_read",
+      "arguments": {
+        "key_or_id": "sc-code:16-1-10",
+        "length": 1500
+      },
+      "response_sha256": "c96bf3b73c76150c13f5ecdbb8dca63904f9efa3bc2e79ad7654731c378c048f"
+    },
+    {
+      "tool": "source_receipt",
+      "arguments": {
+        "acquisition_id": 19354
+      },
+      "response_sha256": "650cb056bf97f1795b7b6a9b1ca759ca9b720d32c24a6a4c58ece68de113b22e"
+    },
+    {
+      "tool": "legal_references",
+      "arguments": {
+        "provision_id": "82dab61947adc9ebfa04373a08f5846b",
+        "limit": 10
+      },
+      "response_sha256": "7da75ae59143c7d4d411272e330ae37bf5f16890542b73c2c598214785d3e84d"
+    },
+    {
+      "tool": "legal_read",
+      "arguments": {
+        "key_or_id": "82dab61947adc9ebfa04373a08f5846b",
+        "as_of": "2026-09-17"
+      },
+      "response_sha256": "2fcf3c26e9a44c7a7722222ed917599bf65735eb0e0c0c0392548ff84f7edc3c"
+    },
+    {
+      "tool": "legal_read",
+      "arguments": {
+        "key_or_id": "82dab61947adc9ebfa04373a08f5846b",
+        "observation_cutoff": "2026-09-17T00:00:00Z"
+      },
+      "response_sha256": "2fcf3c26e9a44c7a7722222ed917599bf65735eb0e0c0c0392548ff84f7edc3c"
+    },
+    {
+      "tool": "legal_read",
+      "arguments": {
+        "key_or_id": "sc-code:t38c090:source-section:30-90-185",
+        "length": 1500
+      },
+      "response_sha256": "c5177a79aad9196fc15edbe783688ccedd97744081fbd704deaa386a8cb41164"
+    },
+    {
+      "tool": "legal_read",
+      "arguments": {
+        "key_or_id": "sc-code:t40c021R:chapter",
+        "length": 1500
+      },
+      "response_sha256": "a5d696438638840e1f51bc3bb1959f512784eb2be1d78e4c4903df34374a0256"
+    },
+    {
+      "tool": "legal_read",
+      "arguments": {
+        "key_or_id": "sc-code:t40c073R:chapter",
+        "length": 1500
+      },
+      "response_sha256": "51ca8451a26e58e961dcedb9fc790ff041520a54876aab1a5c7e3df76f10bc26"
+    }
+  ],
+  "runtime_sha256": {
+    "src/psephos/south_carolina.py": "1821f3d3e2125226ad67b6544f0acd1b121e750d6fc876a3d53b3fa2fe5c329d",
+    "src/psephos/acquire.py": "0acf294b8fe041ee7e2442e010ed6e5986d8bc23017892dbe1a6647c8e3dc219",
+    "src/psephos/campaign.py": "82ce91df591bd992e78f97c68b75b134e3722dfa8956430c12bd6ba16e227405",
+    "src/psephos/retrieve.py": "5ba0ccafc59b605af2fc6c98e726c05433edd2ef615021dd708c89135b81fb9a",
+    "scripts/verify_south_carolina.py": "1851a7b8ebd69d93fbee85b12659b4f937c73035e7ef7273a3781e24e0d4d2d4"
+  }
+}

@@ -3,8 +3,9 @@
 The broader project is not complete. Release readiness below is a finished
 milestone, not the stopping condition for the legal-information-library goal.
 
-Current work: close the recorded Washington RCW inventory gaps, then continue
-through the evidence-backed queue in `docs/coverage-ledger.json`.
+Current work: South Carolina's retained inventory is closed; continue
+through the evidence-backed queue in `docs/coverage-ledger.json`. Washington's
+original download allowance is exhausted; no additional allowance is assumed.
 
 - [x] Reconcile the 559 original Washington receipts with the canonical store.
   Restore the original 250 MiB lifetime cap with 95,764,815 bytes already charged
@@ -20,14 +21,28 @@ through the evidence-backed queue in `docs/coverage-ledger.json`.
   chapter notes, nine subchapter headings), verify eight real MCP calls including
   contents-to-section navigation, and preserve all 424 earlier versions / 8,764
   provision records. See `docs/washington-rcw-completion-20260917.json`.
-- [ ] Acquire remaining RCW chapters within the original allowance: 1,027 of
-  2,785 accepted, 1,758 pending, zero failures. 27 retained title inventories are
-  closed. 197,848,188 of 262,144,000 bytes charged; 64,295,812 bytes remain.
+- [x] Add another 354 RCW exports within the original allowance, including two
+  pointer-only notices recovered from cache. Exactly replay all 956 maintained
+  projections and eight real MCP calls; see
+  `docs/washington-rcw-continuation-20260917.json`.
+- [ ] Close the remaining RCW inventory: 1,381 of 2,785 accepted, 1,403 pending,
+  one budget-deferred export; 44 retained title inventories closed. The original
+  250 MiB allowance has 262,096,013 bytes charged and 47,987 bytes remaining,
+  below one response-chunk reservation. Await an explicit allowance increase;
+  do not reset spending or start another campaign to bypass this limit.
+- [x] Close South Carolina's retained 1,308-export inventory across 63 titles:
+  986 added exports, 23,631 section occurrences, 974 contexts, ten whole chapters,
+  two reserved inventory notices and one verbatim source-number anomaly. Full
+  text/field/reference replay and nine real MCP calls passed. All 448 earlier SC
+  versions / 16,343 records remain unchanged. See
+  `docs/south-carolina-code-completion-20260917.json`.
+  The shared original 200 MiB ledger is at 135,697,707 bytes; cache-only repairs
+  downloaded zero bytes. No scheduled refresh or current-law guarantee is implied.
 - [ ] Continue the remaining state/local source queue; don't relabel another
   release, partial tranche or source restriction as nationwide completion.
-  South Carolina's retained inventory has 986 pending chapters and its original
-  200 MiB ledger has 137,595,792 bytes remaining. Review continuation and canonical
-  publication before using that allowance; no new SC requests have been sent.
+  Compare Minnesota's 94 remaining statute parts and Idaho's unexpanded titles
+  next, against original receipts, native inventories and remaining allowances.
+  No new requests to either publisher have been made in this continuation.
 
 ## Completed release milestone
 

@@ -35,8 +35,41 @@ def test_native_sections_keep_history_tables_context_and_repeat_occurrences():
     assert units[1].metadata["tables"] == 1
     with pytest.raises(ValueError, match="identity mismatch"):
         chapter_units(raw, BASE, 2, "001")
-    with pytest.raises(ValueError, match="outside requested"):
+    with pytest.raises(ValueError, match="No native sections"):
         chapter_units(raw.replace(b"SECTION 1-1-10.", b"SECTION 2-1-10."), BASE, 1, "001")
+
+
+def test_wrong_native_citation_is_preserved_without_a_false_canonical_key():
+    raw = chapter(1, "<span>SECTION 1-1-10.</span> Body.<span>SECTION 2-1-20.</span> Reserved.")
+    units = chapter_units(raw, BASE, 1, "001")
+    assert units[-1].key == "sc-code:t1c001:source-section:2-1-20"
+    assert units[-1].unit_kind == "source_anomaly"
+    assert units[-1].citation == "S.C. Code \u00a7 2-1-20"
+    assert units[-1].text == "SECTION 2-1-20. Reserved."
+    assert "citation_warning" in units[-1].metadata
+
+
+def test_empty_reserved_export_requires_matching_native_inventory_label():
+    raw = chapter(21, "")
+    units = chapter_units(raw, BASE, 1, "021R", "CHAPTER 21 - RESERVED")
+    assert len(units) == 1 and units[0].unit_kind == "inventory_notice"
+    assert units[0].metadata["inventory_notice_only"]
+    assert units[0].metadata["publisher_inventory_label"] == "CHAPTER 21 - RESERVED"
+    for label in (None, "CHAPTER 73 - RESERVED", "CHAPTER 21 - Missing body"):
+        with pytest.raises(ValueError, match="identity mismatch"):
+            chapter_units(raw, BASE, 1, "021R", label)
+    with pytest.raises(ValueError, match="No native sections"):
+        chapter_units(chapter(21, "<p>Unavailable.</p>"), BASE, 1, "021R", "CHAPTER 21 - RESERVED")
+
+
+def test_article_export_matches_inventory_and_keeps_native_hierarchy():
+    raw = chapter(1, "<span>SECTION 1-1-10.</span> Body.").replace(b"CHAPTER 1", b"ARTICLE 1")
+    units = chapter_units(raw, BASE, 1, "001", "ARTICLE 1 - GENERAL PROVISIONS")
+    assert units[0].heading == "Title 1, Article 1 context"
+    assert units[1].parent_key == "sc-code:title:1:article:001"
+    assert units[1].metadata["native_division"] == "article"
+    with pytest.raises(ValueError, match="identity mismatch"):
+        chapter_units(raw, BASE, 1, "001", "ARTICLE 2 - GENERAL PROVISIONS")
 
 
 def test_untagged_native_body_and_disposition_remain_whole_chapters():

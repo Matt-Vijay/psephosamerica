@@ -88,12 +88,11 @@ def chapter_units(data: bytes, chapter: str, url: str) -> list[Provision]:
     units = root.xpath('//*[@id="ContentPlaceHolder1_dlSectionContent"]/span[a[@name]]')
     if not units:
         contents = root.xpath('//*[@id="contentWrapper"]')
-        pointer_only = {
-            "14.30": "PDF\nSee chapter 81.96 RCW",
-            "18.09": "Notes:\nSee chapter 2.44 RCW, attorneys-at-law.",
-        }
         text = readable(contents[0]) if len(contents) == 1 else ""
-        if text == pointer_only.get(chapter) or (
+        pointer_only = re.fullmatch(r"PDF\nSee chapter \d+[A-Z]?\.\d+[A-Z]? RCW", text) or (
+            chapter == "18.09" and text == "Notes:\nSee chapter 2.44 RCW, attorneys-at-law."
+        )
+        if pointer_only or (
             chapter == "36.42" and "County and city sales and use taxes:" in text
         ):
             node = contents[0]

@@ -43,11 +43,15 @@ def verify(data: Path) -> tuple[dict, dict]:
         }
         assert titles
         expected = {}
+        labels = {}
         for title in sorted(titles):
-            for href in retained(title).xpath(".//a/@href"):
+            for link in retained(title).xpath(".//a[@href]"):
+                href = link.get("href")
                 match = re.fullmatch(r"/code/t(\d+)c(\d+[a-z]?)\.php", href, re.I)
                 if match:
-                    expected[f"t{int(match[1])}c{match[2]}"] = urljoin(BASE, href)
+                    item = f"t{int(match[1])}c{match[2]}"
+                    expected[item] = urljoin(BASE, href)
+                    labels[item] = readable(link.xpath("ancestor::tr[1]/td[1]")[0])
         inventory = {
             r["item"]: dict(r)
             for r in s.db.execute(
@@ -56,6 +60,15 @@ def verify(data: Path) -> tuple[dict, dict]:
         }
         assert expected and expected.keys() == inventory.keys()
         assert all(inventory[item]["url"] == url for item, url in expected.items())
+        retained_documents = {
+            r[0]
+            for r in s.db.execute(
+                "SELECT DISTINCT v.document_id FROM versions v JOIN documents d ON d.id=v.document_id WHERE d.collection_id='sc-code'"
+            )
+        }
+        assert retained_documents == {
+            f"sc-code:{item}" for item, entry in inventory.items() if entry["status"] == "ingested"
+        }
         rows = s.db.execute(
             "SELECT v.*,d.url FROM versions v JOIN documents d ON d.id=v.document_id "
             "WHERE d.collection_id='sc-code' AND v.parser='sc-native-1/text-3' ORDER BY d.id"
@@ -63,12 +76,13 @@ def verify(data: Path) -> tuple[dict, dict]:
         assert rows, "No maintained SC projections"
         kinds, objects, manifest = Counter(), {}, []
         sample = None
+        exceptional_units = []
         for row in rows:
             match = re.fullmatch(r"sc-code:t(\d+)c(\d+[a-z]?)", row["document_id"], re.I)
             assert match
             title, chapter = int(match[1]), match[2]
             raw = s.artifact(row["artifact_sha"])
-            units = chapter_units(raw, row["url"], title, chapter)
+            units = chapter_units(raw, row["url"], title, chapter, labels[f"t{title}c{chapter}"])
             assert " ".join(readable(content(raw)).split()) == " ".join(
                 " ".join(p.text for p in units).split()
             ), row["document_id"]
@@ -94,6 +108,17 @@ def verify(data: Path) -> tuple[dict, dict]:
                     )
                 }, unit.key
                 kinds[unit.unit_kind] += 1
+                if unit.unit_kind in ("source_anomaly", "inventory_notice"):
+                    exceptional_units.append(
+                        {"key": unit.key, "unit_kind": unit.unit_kind, "metadata": unit.metadata}
+                    )
+                if unit.unit_kind == "inventory_notice":
+                    native_inventory = s.db.execute(
+                        "SELECT * FROM acquisitions WHERE id=?",
+                        (json.loads(row["metadata"])["chapter_inventory_acquisition"],),
+                    ).fetchone()
+                    assert native_inventory["url"] == unit.metadata["inventory_source_url"]
+                    assert native_inventory["sha256"] in inventory_artifacts
                 if sample is None and unit.unit_kind == "section":
                     sample = {
                         "key": unit.key,
@@ -146,6 +171,7 @@ def verify(data: Path) -> tuple[dict, dict]:
             "native_inventory_objects": sorted(inventory_artifacts),
             "exact_projection_replay": {"documents": len(rows), "unit_kinds": dict(kinds)},
             "whole_chapter_text_reconstruction": "PASS: normalized source text equals all projected text in source order",
+            "exceptional_units": exceptional_units,
             "source_objects_rehashed": len(objects),
             "source_bytes_rehashed": sum(objects.values()),
             "source_manifest_sha256": hashlib.sha256(json_text(manifest).encode()).hexdigest(),
@@ -160,7 +186,7 @@ def verify(data: Path) -> tuple[dict, dict]:
         s.close()
 
 
-async def mcp(data: Path, sample: dict) -> list[dict]:
+async def mcp(data: Path, sample: dict, exceptional_units: list[dict]) -> list[dict]:
     calls = []
     params = StdioServerParameters(
         command=sys.executable, args=["-m", "psephos.cli", "--data", str(data.resolve()), "serve"]
@@ -195,6 +221,12 @@ async def mcp(data: Path, sample: dict) -> list[dict]:
                 "legal_read", key_or_id=read["id"], observation_cutoff="2026-09-17T00:00:00Z"
             )
         )["found"]
+        for unit in exceptional_units:
+            result = await call("legal_read", key_or_id=unit["key"], length=1500)
+            assert result["unit_kind"] == unit["unit_kind"]
+            assert result["metadata"] == {
+                key: value for key, value in unit["metadata"].items() if key != "media"
+            }
     return calls
 
 
@@ -204,12 +236,13 @@ def main():
     parser.add_argument("--out", type=Path, required=True)
     args = parser.parse_args()
     report, sample = verify(args.data)
-    report["mcp"] = asyncio.run(mcp(args.data, sample))
+    report["mcp"] = asyncio.run(mcp(args.data, sample, report["exceptional_units"]))
     repo = Path(__file__).resolve().parents[1]
     report["runtime_sha256"] = {
         name: hashlib.sha256((repo / name).read_bytes()).hexdigest()
         for name in (
             "src/psephos/south_carolina.py",
+            "src/psephos/acquire.py",
             "src/psephos/campaign.py",
             "src/psephos/retrieve.py",
             "scripts/verify_south_carolina.py",
