@@ -257,7 +257,7 @@ def _sources() -> dict[str, _Source]:
     from .collect_georgia import sync_georgia
     from .collect_oregon import sync_oregon
     from .collect_virginia import sync_virginia
-    from .collect_washington import sync_washington
+    from .collect_washington import WashingtonAcquirer, sync_washington
     from .dc import sync_dc
     from .florida import sync_florida
     from .geography import sync_nyc_geo, sync_portland_geo
@@ -359,13 +359,14 @@ def _sources() -> dict[str, _Source]:
         "washington": _Source(
             partial(sync_washington, titles=None),
             ("wa-rcw",),
-            "All native live RCW chapters; no historical reconstruction. Existing stores require original campaign budget.",
-            campaign=CampaignAcquirer,
+            "All native live RCW chapters; no historical reconstruction. 250 MiB persistent allowance; existing stores require original campaign budget.",
+            campaign=WashingtonAcquirer,
             receipt_prefixes=(
                 "https://app.leg.wa.gov/",
                 "https://apps.leg.wa.gov/",
                 "https://leg.wa.gov/",
                 "https://wslwebservices.leg.wa.gov/",
+                "https://lawfilesext.leg.wa.gov/",
             ),
         ),
         "nebraska": _Source(

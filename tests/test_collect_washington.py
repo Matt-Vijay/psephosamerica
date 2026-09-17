@@ -6,8 +6,72 @@ import pytest
 from psephos.collect_washington import chapter_units, inventory_links
 
 
+def test_centered_subchapter_heading_is_retained_but_not_invented_as_section():
+    raw = b"""<div id="contentWrapper"><table><tr><td>HTML</td>
+    <td><a href="#47.26.010">47.26.010</a></td><td>Section</td></tr></table></div>
+    <span id="ContentPlaceHolder1_dlSectionContent">
+      <span><a name="47.26.010"/><div><h3>RCW 47.26.010</h3></div>
+        <div><h3>Native section</h3></div><p>Exact source wording.</p></span>
+      <span><br/><hr/><a name="47.26.4999999"/>
+        <div style="text-align: center;">UNNUMBERED CHAPTER HEADING</div></span>
+    </span>"""
+    units = chapter_units(raw, "47.26", "https://app.leg.wa.gov/RCW/?cite=47.26&full=true")
+    assert [p.unit_kind for p in units] == ["section", "subchapter_heading", "chapter_notes"]
+    assert units[1].key == "wa-rcw:47.26/heading/47.26.4999999"
+    assert units[1].metadata["not_a_numbered_section"]
+    assert units[1].text == "UNNUMBERED CHAPTER HEADING"
+    with pytest.raises(ValueError, match="do not match"):
+        chapter_units(
+            raw.replace(b"UNNUMBERED CHAPTER HEADING", b"<p>Unlisted law body</p>"),
+            "47.26",
+            "https://app.leg.wa.gov/",
+        )
+    with pytest.raises(ValueError, match="do not match"):
+        chapter_units(
+            raw.replace(
+                b"</table>",
+                b'<tr><td>HTML</td><td><a href="#47.26.020">47.26.020</a></td><td>Missing</td></tr></table>',
+                1,
+            ),
+            "47.26",
+            "https://app.leg.wa.gov/",
+        )
+
+
+def test_toc_heading_citations_are_not_inventory_and_absent_toc_is_rejected():
+    raw = b"""<div id="contentWrapper"><table><tr><td>HTML</td>
+    <td><a href="#85.05.550">85.05.550</a></td>
+    <td>Application of <a href="#85.05.510">85.05.510</a>.</td></tr></table></div>
+    <span id="ContentPlaceHolder1_dlSectionContent"><span><a name="85.05.550"/>
+    <div><h3>RCW 85.05.550</h3></div><div>Exact body.</div></span></span>"""
+    units = chapter_units(raw, "85.05", "https://app.leg.wa.gov/RCW/")
+    assert [u.key for u in units] == ["wa-rcw:85.05.550", "wa-rcw:85.05/contents-notes"]
+    assert "85.05.510" in units[-1].text
+    with pytest.raises(ValueError, match="No publisher chapter contents"):
+        chapter_units(
+            raw.replace(b'id="contentWrapper"', b'id="changed"'), "85.05", "https://app.leg.wa.gov/"
+        )
+
+
+def test_washington_campaign_preserves_original_cap_and_retained_denials(store, tmp_path):
+    from psephos.acquire import AcquisitionError
+    from psephos.collect_washington import WashingtonAcquirer
+
+    a = WashingtonAcquirer(store, tmp_path)
+    try:
+        assert a.budget["cap_bytes"] == 250 * 1024**2
+        url = "https://app.leg.wa.gov/RCW/default.aspx?cite=85.05&full=true"
+        a._record(url, url, "2026-09-17T00:00:00Z", 403, {}, None, "Forbidden")
+        with pytest.raises(AcquisitionError, match="Retained access denial"):
+            a.fetch(url)
+        with pytest.raises(AcquisitionError, match="reviewed publisher"):
+            a.fetch("https://example.test/source")
+    finally:
+        a.close()
+
+
 def test_washington_native_cites_notes_tables_media_and_utf8():
-    raw = """<div id="contentWrapper"><a href="#29A.04.010">29A.04.010</a><div>Chapter notes</div></div>
+    raw = """<div id="contentWrapper"><table><tr><td>HTML</td><td><a href="#29A.04.010">29A.04.010</a></td><td>Heading</td></tr></table><div>Chapter notes</div></div>
     <span id="ContentPlaceHolder1_dlSectionContent"><span><a name="29A.04.010"></a>
     <div><h3><a class="hidden-print">PDF</a>RCW 29A.04.010</h3></div>
     <div><h3>Election—Definition. (Effective January 1, 2027.)</h3></div>
@@ -66,7 +130,7 @@ def test_washington_cli_limited_resume_skips_accepted_chapter_preserving_ids(
 
     def chapter(cite):
         return (
-            f'<div id="contentWrapper"><a href="#{cite}.010">Contents</a></div>'
+            f'<div id="contentWrapper"><table><tr><td>HTML</td><td><a href="#{cite}.010">{cite}.010</a></td><td>Contents</td></tr></table></div>'
             '<span id="ContentPlaceHolder1_dlSectionContent"><span>'
             f'<a name="{cite}.010"></a><div><h3>RCW {cite}.010</h3></div>'
             "<div><h3>Native heading</h3></div><p>Exact source law.</p></span></span>"

@@ -1,4 +1,26 @@
-# Release completion
+# Active source completion
+
+The broader project is not complete. Release readiness below is a finished
+milestone, not the stopping condition for the legal-information-library goal.
+
+Current work: close the recorded Washington RCW inventory gaps, then continue
+through the evidence-backed queue in `docs/coverage-ledger.json`.
+
+- [x] Reconcile the 559 original Washington receipts with the canonical store.
+  Restore the original 250 MiB lifetime cap with 95,764,815 bytes already charged
+  across 598 retained Washington receipts, including later source work.
+- [x] Preserve the publisher's synthetic centered subchapter heading in 47.26
+  without inventing a numbered statutory section. Separate the actual contents
+  column from cross-references in headings: 85.05.510 is a cited reference, not a
+  missing inventory body. Genuine missing section entries still fail closed.
+- [ ] Acquire remaining RCW chapter bodies in bounded, resumable tranches using
+  the original allowance. Starting inventory: 425 indexed, 2 failed, 2,358 pending.
+- [ ] Independently replay new projections, exercise actual MCP reads, and update
+  the coverage ledger with exact completed/pending/failed inventories and clocks.
+- [ ] Continue the remaining state/local source queue; don't relabel another
+  release, partial tranche or source restriction as nationwide completion.
+
+## Completed release milestone
 
 September 17 goal: finish the usable local legal-source product, not claim all
 U.S. law has been collected. The active checklist is below; dated release and
@@ -18,8 +40,8 @@ Published [v0.2.0](https://github.com/Matt-Vijay/psephosamerica/releases/tag/v0.
 from `7ac027b`; [release CI passed](https://github.com/Matt-Vijay/psephosamerica/actions/runs/35195141531).
 The public wheel returned HTTP 200 and its GitHub SHA-256 matched the tested local
 artifact. The upgraded macOS timer exited 0 with unchanged spending when no source
-was due. This release-completion goal is finished; source expansion remains a
-separate, explicitly scoped project, not hidden unfinished nationwide coverage.
+was due. This release milestone is finished. The active source-completion goal
+above remains open.
 
 Completion requires the checks above, not new architecture or a collection
 fleet. Expand unattended sources only after their exact inventory, original
@@ -43,8 +65,8 @@ canonically published. This source/release continuation is complete. A local
 full-data backup and installed-package checks preserve a recoverable checkpoint.
 Source receipts remain under `data/nebraska-publication-20260916` and
 `data/collectors/portland-charter`. Massachusetts/Nevada remain blocked by their
-runtime permission checks. Do not restart the historical fleet or open another
-source campaign without a new assignment.
+runtime permission checks. Do not restart the historical fleet, reset source
+allowances or retry denied access to inflate coverage.
 
 [Refresh operations](docs/refresh.md) cover the first four reviewed source
 commands. The macOS timer now has a verified successful run and is enabled.

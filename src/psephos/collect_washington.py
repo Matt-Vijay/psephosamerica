@@ -11,12 +11,14 @@ import sys
 from collections import Counter
 from copy import deepcopy
 from datetime import date
+from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlsplit
 
 from lxml import etree, html
 
-from .acquire import Acquirer, AcquisitionError
+from .acquire import Acquirer, AcquisitionError, Receipt
+from .campaign import CampaignAcquirer
 from .parse import markup, media_links, readable, source_links
 from .store import Provision, Store
 
@@ -27,6 +29,33 @@ DISCLAIMER = "https://leg.wa.gov/disclaimer/"
 COLLECTION = "wa-rcw"
 DEFAULT_TITLES = ("1", "29A", "29B", "34", "35", "35A", "36", "42", "44")
 CITE = re.compile(r"\d+[A-Z]?(?:\.\d+[A-Z]?){0,2}")
+
+
+class WashingtonAcquirer(CampaignAcquirer):
+    """Continue the original 250 MiB source allowance, never reset it on resume."""
+
+    def __init__(self, store: Store, directory: Path):
+        super().__init__(store, directory, cap=250 * 1024**2, delay=2.1)
+
+    def fetch(self, url: str, **options: Any) -> Receipt:
+        if urlsplit(url).hostname not in {
+            "app.leg.wa.gov",
+            "apps.leg.wa.gov",
+            "leg.wa.gov",
+            "wslwebservices.leg.wa.gov",
+            "lawfilesext.leg.wa.gov",
+        }:
+            raise AcquisitionError("Washington campaign only accepts reviewed publisher hosts")
+        previous = self.store.db.execute(
+            "SELECT status,error FROM acquisitions WHERE url=? OR final_url=? ORDER BY id DESC LIMIT 1",
+            (url, url),
+        ).fetchone()
+        if previous and (
+            previous[0] in (401, 403, 407, 451)
+            or (previous[0] == 0 and re.match(r"^(401|403|407|451)\b", previous[1] or ""))
+        ):
+            raise AcquisitionError("Retained access denial; review publisher/runtime permissions")
+        return super().fetch(url, **options)
 
 
 def page(data: bytes) -> etree._Element:
@@ -112,17 +141,50 @@ def chapter_units(data: bytes, chapter: str, url: str) -> list[Provision]:
     anchors = [n.xpath("./a[@name]")[0].get("name") for n in units]
     if any(not CITE.fullmatch(c or "") or not c.startswith(chapter + ".") for c in anchors):
         raise ValueError("Section anchor outside requested chapter")
-    listed = set(root.xpath('//*[@id="contentWrapper"]//a[starts-with(@href,"#")]/@href'))
-    if listed and {"#" + c for c in anchors} != listed:
-        raise ValueError("Full chapter sections do not match publisher chapter contents")
+    # The third cell contains headings with citations, not inventory entries.
+    listed = set(
+        root.xpath('//*[@id="contentWrapper"]/table/tr/td[2]/a[starts-with(@href,"#")]/@href')
+    )
+    if not listed:
+        raise ValueError("No publisher chapter contents to reconcile with section bodies")
     totals = Counter(anchors)
+    headings = set()
+    for node, cite in zip(units, anchors, strict=True):
+        blocks = node.xpath("./div")
+        if (
+            "#" + cite not in listed
+            and totals[cite] == 1
+            and len(blocks) == 1
+            and "text-align:center" in re.sub(r"\s+", "", blocks[0].get("style", "")).lower()
+            and not blocks[0].xpath(".//h3|.//a|.//p|.//table|.//img|.//ul|.//ol")
+            and readable(node) == readable(blocks[0])
+            and readable(blocks[0])
+        ):
+            headings.add(cite)
+    if {"#" + c for c in anchors if c not in headings} != listed:
+        raise ValueError("Full chapter sections do not match publisher chapter contents")
     seen: Counter[str] = Counter()
     result = []
     for node, cite in zip(units, anchors, strict=True):
         seen[cite] += 1
         suffix = "/occurrence/" + str(seen[cite]) if totals[cite] > 1 else ""
-        headings = node.xpath("./div/h3")
-        heading = readable(headings[1]) if len(headings) > 1 else ""
+        if cite in headings:
+            result.append(
+                Provision(
+                    key=f"wa-rcw:{chapter}/heading/{cite}" + suffix,
+                    citation=f"RCW Chapter {chapter} subchapter heading",
+                    heading=readable(node),
+                    text=readable(node),
+                    markup=markup(node),
+                    url=url + "#" + cite,
+                    parent_key="wa-rcw:" + chapter,
+                    unit_kind="subchapter_heading",
+                    metadata={"source_anchor": cite, "not_a_numbered_section": True},
+                )
+            )
+            continue
+        labels = node.xpath("./div/h3")
+        heading = readable(labels[1]) if len(labels) > 1 else ""
         clean = deepcopy(node)
         for control in clean.xpath('.//a[contains(@class,"hidden-print")]'):
             control.drop_tree()

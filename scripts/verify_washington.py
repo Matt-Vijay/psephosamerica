@@ -21,6 +21,121 @@ from psephos.store import Store, json_text, utc_now
 from psephos.washington_rules import filing_unit, sync_washington_rules, wac_chapter
 
 
+def compare_units(s: Store, version: str, units: list[Any]) -> None:
+    actual = s.db.execute(
+        "SELECT * FROM provisions WHERE version_id=? ORDER BY ordinal", (version,)
+    ).fetchall()
+    assert len(actual) == len(units)
+    for saved, unit in zip(actual, units, strict=True):
+        for name in (
+            "key",
+            "citation",
+            "heading",
+            "text",
+            "markup",
+            "url",
+            "parent_key",
+            "unit_kind",
+        ):
+            assert saved[name] == getattr(unit, name), (unit.key, name)
+        assert saved["metadata"] == json_text(unit.metadata), unit.key
+        refs: dict[tuple[str, str, str], str] = {}
+        for ref in unit.references:
+            refs.setdefault((ref.target, ref.relation, ref.label), ref.evidence)
+        assert refs == {
+            tuple(r[:3]): r[3]
+            for r in s.db.execute(
+                "SELECT target,relation,label,evidence FROM legal_references WHERE provision_id=?",
+                (saved["id"],),
+            )
+        }, unit.key
+
+
+def verify_rcw(data: Path) -> dict[str, Any]:
+    """Check maintained RCW projections without relabeling older text-2 versions."""
+    s = Store(data, readonly=True)
+    try:
+        s.db.execute("BEGIN")
+        rows = s.db.execute(
+            "SELECT v.*,d.url,a.observed_at,a.sha256 FROM versions v "
+            "JOIN documents d ON d.id=v.document_id "
+            "JOIN acquisitions a ON a.id=v.acquisition_id "
+            "WHERE d.collection_id='wa-rcw' AND v.parser='washington-full-chapter-html-v1/text-3' "
+            "ORDER BY v.document_id"
+        ).fetchall()
+        assert rows, "No maintained RCW projections"
+        artifacts: dict[str, int] = {}
+        kinds: dict[str, int] = {}
+        for row in rows:
+            metadata = json.loads(row["metadata"])
+            raw = s.artifact(row["artifact_sha"])
+            assert row["artifact_sha"] == row["sha256"]
+            assert all(
+                row[k] is None
+                for k in (
+                    "snapshot_date",
+                    "published_on",
+                    "effective_on",
+                    "amended_on",
+                    "repealed_on",
+                )
+            )
+            units = chapter_units(raw, metadata["chapter"], row["url"])
+            compare_units(s, row["id"], units)
+            assert metadata["section_count"] == sum(p.unit_kind == "section" for p in units)
+            inventory = s.db.execute(
+                "SELECT status FROM inventories WHERE collection_id='wa-rcw' AND item=?",
+                ("chapter:" + metadata["chapter"],),
+            ).fetchone()
+            assert inventory and inventory[0] == "ingested"
+            artifacts[row["artifact_sha"]] = len(raw)
+            for unit in units:
+                kinds[unit.unit_kind] = kinds.get(unit.unit_kind, 0) + 1
+        inventory = dict(
+            s.db.execute(
+                "SELECT status,count(*) FROM inventories WHERE collection_id='wa-rcw' "
+                "AND item LIKE 'chapter:%' GROUP BY status"
+            )
+        )
+        return {
+            "exact_parser_truth": {"documents": len(rows), "unit_kinds": kinds},
+            "retained_source_bytes": sum(artifacts.values()),
+            "retained_source_objects": len(artifacts),
+            "chapter_inventory": inventory,
+            "source_manifest_sha256": hashlib.sha256(
+                json_text(
+                    [
+                        {
+                            k: r[k]
+                            for k in (
+                                "document_id",
+                                "id",
+                                "artifact_sha",
+                                "acquisition_id",
+                                "observed_at",
+                            )
+                        }
+                        for r in rows
+                    ]
+                ).encode()
+            ).hexdigest(),
+            "observation_range": [
+                min(r["observed_at"] for r in rows),
+                max(r["observed_at"] for r in rows),
+            ],
+            "clocks": "Retrieval observations only; no inferred snapshot or legal effectiveness dates",
+            "failures": [
+                dict(r)
+                for r in s.db.execute(
+                    "SELECT item,url,error FROM inventories WHERE collection_id='wa-rcw' AND status='failed'"
+                )
+            ],
+            "scope": "Maintained text-3 RCW projections; earlier text-2 and land-use evidence unchanged. Chapter inventory is not current or comprehensive law coverage.",
+        }
+    finally:
+        s.close()
+
+
 def verify_store(data: Path, *, resume: bool) -> dict[str, Any]:
     s = Store(data, readonly=not resume)
     run = json.loads((data / "washington-land-use/acquisition-run.json").read_bytes())
@@ -91,33 +206,7 @@ def verify_store(data: Path, *, resume: bool) -> dict[str, Any]:
                 units = [filing_unit(raw, row["document_id"].split(":")[1], row["url"])]
             else:
                 continue
-            actual = s.db.execute(
-                "SELECT * FROM provisions WHERE version_id=? ORDER BY ordinal", (row["id"],)
-            ).fetchall()
-            assert len(actual) == len(units)
-            for saved, unit in zip(actual, units, strict=True):
-                for name in (
-                    "key",
-                    "citation",
-                    "heading",
-                    "text",
-                    "markup",
-                    "url",
-                    "parent_key",
-                    "unit_kind",
-                ):
-                    assert saved[name] == getattr(unit, name), (unit.key, name)
-                assert saved["metadata"] == json_text(unit.metadata)
-                refs: dict[tuple[str, str, str], str] = {}
-                for ref in unit.references:
-                    refs.setdefault((ref.target, ref.relation, ref.label), ref.evidence)
-                assert refs == {
-                    tuple(r[:3]): r[3]
-                    for r in s.db.execute(
-                        "SELECT target,relation,label,evidence FROM legal_references WHERE provision_id=?",
-                        (saved["id"],),
-                    )
-                }, unit.key
+            compare_units(s, row["id"], units)
             tested_documents += 1
             tested_units += len(units)
         report["exact_parser_truth"] = {
@@ -172,7 +261,7 @@ def verify_store(data: Path, *, resume: bool) -> dict[str, Any]:
     return report
 
 
-async def verify_mcp(data: Path) -> dict[str, Any]:
+async def verify_mcp(data: Path, *, rcw: bool = False) -> dict[str, Any]:
     calls = []
     params = StdioServerParameters(
         command=sys.executable, args=["-m", "psephos.cli", "--data", str(data.resolve()), "serve"]
@@ -197,6 +286,26 @@ async def verify_mcp(data: Path) -> dict[str, Any]:
                 }
             )
             return result
+
+        if rcw:
+            coverage = await call("legal_coverage", collection="wa-rcw")
+            assert [c["id"] for c in coverage["collections"]] == ["wa-rcw"]
+            found = await call("legal_search", query="supreme court", collection="wa-rcw", limit=3)
+            assert found["matches"]
+            # This chapter was absent before the completion run, not an old smoke fixture.
+            statute = await call("legal_read", key_or_id="wa-rcw:2.04.010", length=1500)
+            assert statute["found"] and "supreme court" in statute["text"].lower()
+            receipt = await call("source_receipt", acquisition_id=statute["acquisition_id"])
+            assert receipt["sha256"] == statute["artifact_sha"]
+            assert not (
+                await call(
+                    "legal_read", key_or_id=statute["id"], observation_cutoff="2026-09-17T00:00:00Z"
+                )
+            )["found"]
+            assert not (await call("legal_read", key_or_id=statute["id"], as_of="2026-09-17"))[
+                "found"
+            ]
+            return {"calls": calls, "seconds": round(time.monotonic() - start, 6)}
 
         coverage = await call("legal_coverage", jurisdiction="us-wa")
         assert {c["id"] for c in coverage["collections"]} >= {
@@ -298,19 +407,31 @@ def main() -> None:
     parser.add_argument("--data", type=Path, default=Path("data"))
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument(
+        "--rcw-completion",
+        action="store_true",
+        help="Verify maintained RCW chapters, not the earlier land-use tranche",
+    )
+    parser.add_argument(
         "--check-resume",
         action="store_true",
         help="Run one cache-only writer; transport refuses every network request",
     )
     args = parser.parse_args()
-    report = verify_store(args.data, resume=args.check_resume)
-    report["mcp"] = asyncio.run(verify_mcp(args.data))
+    if args.rcw_completion and args.check_resume:
+        parser.error("--check-resume only applies to the bounded land-use tranche")
+    report = (
+        verify_rcw(args.data)
+        if args.rcw_completion
+        else verify_store(args.data, resume=args.check_resume)
+    )
+    report["mcp"] = asyncio.run(verify_mcp(args.data, rcw=args.rcw_completion))
     report.update(status="PASS", recorded_at=utc_now())
     root = Path(__file__).resolve().parents[1]
     report["runtime_sha256"] = {
         name: hashlib.sha256((root / name).read_bytes()).hexdigest()
         for name in (
             "src/psephos/washington_rules.py",
+            "src/psephos/collect_washington.py",
             "src/psephos/retrieve.py",
             "scripts/verify_washington.py",
         )
