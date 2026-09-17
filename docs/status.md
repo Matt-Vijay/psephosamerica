@@ -17,7 +17,8 @@ model, a hosted service, or a nationwide current-law guarantee.
   working corpus is local, not bundled into the software or public download.
 - The released wheel's `psephos sources` lists 19 acquisition commands; the
   current checkout adds `south-carolina-code`, `minnesota-statutes`,
-  `idaho-statutes`, `new-york-laws`, `illinois-statutes` and `oklahoma-statutes`, totaling 25.
+  `idaho-statutes`, `new-york-laws`, `illinois-statutes`, `oklahoma-statutes` and
+  `new-hampshire-statutes`, totaling 26.
   Georgia, Virginia, Oregon, Washington, Nebraska and Portland Charter now have
   installed entrypoints; historical collector directories are not the public interface.
 - `export` / `import` transfer explicitly selected collections. Import verifies
@@ -138,6 +139,22 @@ unique laws. Older file metadata and mixed observations do not establish a curre
 or uniform legal edition. Later amendments and separate administrative rules are
 not consolidated. The original 200 MiB ledger is at 122,633,274 charged bytes,
 including an earlier 16 MiB uncertain reservation; no allowance was reset.
+
+The [New Hampshire continuation](new-hampshire-statutes-continuation-20260917.json)
+adds **185 chapter exports and one whole-title repeal notice / 3,673 records**.
+Title I's 134 chapters and Title III's 51 chapters are closed. Combined with the
+three previously retained titles, there are 218 chapter exports and the separate
+Title IV repeal notice. That notice contains stale hidden template metadata about
+Chapter 196; only its actual visible title/body is indexed, not a fictitious chapter.
+The notice repair used retained bytes with network disabled.
+
+All 219 documents replay exactly; the original 33 versions / 828 records / 42
+receipts remain unchanged. Nine real MCP calls verify agency-AI definitions,
+municipal powers, zoning exceptions, the repeal notice, receipts and date
+exclusions. Ruff, strict mypy across 37 modules and 256 tests passed, with one skip
+and one intentional deselection. The original 180 MiB budget is at 5,319,941 bytes;
+new recorded request starts are at least 11 seconds apart. **61 titles remain
+unexpanded**, with no statewide chapter denominator or population-closure increase.
 
 [Six research checks](research-checks.md) used 68 actual MCP calls on retained
 Portland, NYC, Florida, Virginia and federal sources, plus an unsupported Ann

@@ -266,6 +266,7 @@ def _sources() -> dict[str, _Source]:
     from .minnesota import MinnesotaAcquirer, sync_minnesota
     from .municipal import sync_nyc, sync_portland, sync_portland_guides
     from .nebraska import COLLECTIONS, NebraskaAcquirer, sync_nebraska
+    from .new_hampshire import NewHampshireAcquirer, sync_new_hampshire
     from .new_york import NewYorkAcquirer, sync_new_york
     from .oklahoma import OklahomaAcquirer, sync_oklahoma
     from .portland_charter import CharterAcquirer, sync_portland_charter
@@ -406,6 +407,13 @@ def _sources() -> dict[str, _Source]:
             "Original selected Senate whole-law PDF candidates, not a statewide inventory. Prior API/index denials remain excluded. Shares the original 180 MiB allowance and 1 MiB reserve.",
             campaign=NewYorkAcquirer,
             receipt_prefixes=("https://legislation.nysenate.gov/", "https://www.nysenate.gov/"),
+        ),
+        "new-hampshire-statutes": _Source(
+            sync_new_hampshire,
+            ("nh-rsa",),
+            "Informational RSA chapter exports; unknown exact legal currency. Original 180 MiB lifetime allowance and 11-second publisher pacing persist across resumptions.",
+            campaign=NewHampshireAcquirer,
+            receipt_prefixes=("https://gc.nh.gov/",),
         ),
         "oklahoma-statutes": _Source(
             sync_oklahoma,

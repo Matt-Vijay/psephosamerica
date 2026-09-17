@@ -1,0 +1,185 @@
+{
+  "status": "PASS",
+  "recorded_at": "2026-09-17T22:55:12Z",
+  "current_law_complete": false,
+  "inventory": {
+    "titles": 67,
+    "title_statuses": {
+      "complete": 5,
+      "source_repeal_notice": 1,
+      "pending": 61
+    },
+    "expanded_titles": [
+      {
+        "title": "I",
+        "chapters": 134,
+        "statuses": {
+          "acquired": 134
+        },
+        "receipt": 22916,
+        "artifact_sha256": "b1f811a918eb08cd0c7bd28b05250b42848bc3b51a30eeaef5960fca026881bf"
+      },
+      {
+        "title": "II",
+        "chapters": 14,
+        "statuses": {
+          "acquired": 14
+        },
+        "receipt": 3929,
+        "artifact_sha256": "0d1eb7b8960c798fdcc4765055883cc2b305f615b373fdda5d347528149f6fcd"
+      },
+      {
+        "title": "III",
+        "chapters": 51,
+        "statuses": {
+          "acquired": 51
+        },
+        "receipt": 23051,
+        "artifact_sha256": "5cb3475ba9e749fbcca0b2111ee097da910431f59383d1390e6e9d0f7a0571d3"
+      },
+      {
+        "title": "IV",
+        "chapters": 0,
+        "status": "source_repeal_notice",
+        "receipt": 23103,
+        "artifact_sha256": "d2beafc153bf2e3ee4298c5dd428b2a7f8a9cbe49185cded43e9b8e674a7a047"
+      },
+      {
+        "title": "XVII",
+        "chapters": 11,
+        "statuses": {
+          "acquired": 11
+        },
+        "receipt": 3927,
+        "artifact_sha256": "b3918c2380ab746c7c651bded5ef85ed3b89fc416955068f82204ffdfb480c8d"
+      },
+      {
+        "title": "LXIV",
+        "chapters": 8,
+        "statuses": {
+          "acquired": 8
+        },
+        "receipt": 3926,
+        "artifact_sha256": "51eeb14550d059398833a4531ca1638a10a58bed3703ff862fd6b77fe79cbd43"
+      }
+    ],
+    "known_chapters": 218,
+    "chapter_statuses": {
+      "acquired": 218
+    },
+    "statewide_chapter_denominator": null
+  },
+  "historical_preservation": {
+    "versions": 33,
+    "records": 828,
+    "receipts": 42
+  },
+  "projection_replay": {
+    "all_documents": 219,
+    "all_chapters": 218,
+    "title_notices": 1,
+    "all_records": 4501,
+    "new_chapters": 185,
+    "new_records": 3673,
+    "new_section_occurrences": 3014,
+    "new_tables": 1,
+    "new_media_locators": 0
+  },
+  "raw_artifacts": {
+    "objects": 219,
+    "bytes_rehashed": 5225155
+  },
+  "manifest_sha256": "bac60073595f18318395c02a86129450ee95e7e3a654714cce3608690b861bb3",
+  "budget": {
+    "cap_bytes": 188743680,
+    "newly_decoded_bytes": 5319941,
+    "other_http_bytes": 0,
+    "uncertain_reserved_bytes": 0,
+    "last_request_unix": 1789685329.275795,
+    "reserved_bytes": 0,
+    "downloaded_this_pass": 4296296
+  },
+  "new_request_spacing_minimum_seconds": 11.0,
+  "limits": "Only enumerated retained chapter exports, not complete/current statewide law. Counts include scope headings, repeals and prospective variants. The publisher month/session statement is not an exact snapshot or effect date. Unknown legal clocks remain unknown. Media locators and tables are preserved, not certified visual transcriptions. No blanket source-corpus redistribution license asserted.",
+  "mcp": [
+    {
+      "tool": "legal_coverage",
+      "arguments": {
+        "collection": "nh-rsa"
+      },
+      "response_sha256": "3912925166db360ffa914a168e1c0ea86e4447c5a18da27f4ebedd2230054d15"
+    },
+    {
+      "tool": "legal_search",
+      "arguments": {
+        "query": "artificial intelligence",
+        "document": "nh-rsa:chapter-5-D",
+        "limit": 5
+      },
+      "response_sha256": "99cabc61a1e5b82bae5e911721c2060e60309483c87287b049c51d166837264b"
+    },
+    {
+      "tool": "legal_read",
+      "arguments": {
+        "key_or_id": "nh-rsa:5-D:1",
+        "length": 10000,
+        "include_markup": true
+      },
+      "response_sha256": "8663e9fa98c1007605718a5b7a5cfe34c212da13b136791d1ff9f4045c2404a0"
+    },
+    {
+      "tool": "source_receipt",
+      "arguments": {
+        "acquisition_id": 22939
+      },
+      "response_sha256": "da6e014d5f618efcb8e1ba72a1254855beae4cb177749208b5992f89ccfed5f8"
+    },
+    {
+      "tool": "legal_read",
+      "arguments": {
+        "key_or_id": "nh-rsa:31:39",
+        "length": 10000
+      },
+      "response_sha256": "73969e6efc489fb973595ee3305e8ffec02db22cd20e0b115d6004ab03489982"
+    },
+    {
+      "tool": "legal_read",
+      "arguments": {
+        "key_or_id": "nh-rsa:672:14",
+        "length": 10000
+      },
+      "response_sha256": "ebd8d660d68c402bb614fc9da156ec4ba3150ab963c558d37c8e13f2320992b8"
+    },
+    {
+      "tool": "legal_read",
+      "arguments": {
+        "key_or_id": "nh-rsa:title-IV/_notice",
+        "length": 10000
+      },
+      "response_sha256": "963bb2d7a16a417aedfe82da358cda63e0dfd140a93f221355d65151ec4c10bf"
+    },
+    {
+      "tool": "legal_read",
+      "arguments": {
+        "key_or_id": "7c8f771384c88f072cc3639bff5e282a",
+        "as_of": "2026-09-17"
+      },
+      "response_sha256": "2fcf3c26e9a44c7a7722222ed917599bf65735eb0e0c0c0392548ff84f7edc3c"
+    },
+    {
+      "tool": "legal_read",
+      "arguments": {
+        "key_or_id": "7c8f771384c88f072cc3639bff5e282a",
+        "observation_cutoff": "2026-09-17T00:00:00Z"
+      },
+      "response_sha256": "2fcf3c26e9a44c7a7722222ed917599bf65735eb0e0c0c0392548ff84f7edc3c"
+    }
+  ],
+  "runtime_sha256": {
+    "src/psephos/new_hampshire.py": "8e3fb66308a479663eabdbe95933c217a9a797e2b4ba59a2ccf171714349b26b",
+    "src/psephos/campaign.py": "8a2ac5af350e32954edcec7d16c97b1214344f6c58b15da2ae80ee9f6c5cd809",
+    "src/psephos/retrieve.py": "1d72d1ef85fba8dd6f5c9512e20aca48ad5b4c471611367844762f30b56e71f6",
+    "src/psephos/server.py": "2a9cfc63d40efacf790edb0224a03f4ab70cafec010aa4b7a306655f1e7588cf",
+    "scripts/verify_new_hampshire.py": "272725f97eeeaa2266bc2a5b1fc68824e894742743874269d39b90664ed05fe2"
+  }
+}

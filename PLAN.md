@@ -3,9 +3,11 @@
 The broader project is not complete. Release readiness below is a finished
 milestone, not the stopping condition for the legal-information-library goal.
 
-Current work: Oklahoma's retained 127-PDF Senate catalog is closed; this is not
-complete current Oklahoma law. New York's selected candidate pass is reconciled,
-but no statewide inventory is established. Continue through the evidence-backed queue in
+Current work: New Hampshire's Titles I and III are now closed, and Title IV's
+native repeal notice is retained. Five chapter-title inventories are closed;
+61 other titles remain unexpanded. Resume at Title V without refetching retained
+chapters. Oklahoma's 127-PDF catalog is closed, not complete current law.
+Continue through the evidence-backed queue in
 `docs/coverage-ledger.json`. Washington and Minnesota have exhausted their original
 download allowances; no additional allowance is assumed. Illinois remains held
 after TLS failure and a diagnostic access denial.
@@ -93,6 +95,15 @@ after TLS failure and a diagnostic access denial.
   not distinct-law counts or a coherent/current legal edition. Original 200 MiB
   allowance remains at 122,633,274 charged bytes, including the preserved earlier
   16 MiB uncertain reservation. See `docs/oklahoma-pdf-catalog-20260917.json`.
+
+- [x] Add 185 New Hampshire chapter exports and one whole-title repeal notice:
+  3,673 new records exactly replayed, including native exceptions/history and one
+  table. All original 33 versions / 828 records / 42 receipts remain unchanged.
+  Nine real MCP calls passed for agency AI definitions, municipal powers, the
+  existing zoning exception, repeal notice, provenance and unknown-date exclusions.
+  Original 180 MiB allowance is at 5,319,941 bytes; new recorded request starts
+  stayed at least 11 seconds apart. No statewide closure or new closed-inventory
+  population reach is claimed. See `docs/new-hampshire-statutes-continuation-20260917.json`.
 
 ## Completed release milestone
 

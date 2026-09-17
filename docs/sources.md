@@ -229,6 +229,32 @@ returned 403 without fetching a body. Retained denials prevent retries. The adap
 has retained-source and offline-fixture validation, not successful live statewide
 acquisition. No TLS bypass, alternate-host acquisition or new coverage is claimed.
 
+### New Hampshire continuation
+
+`new-hampshire-statutes` expands the General Court's native title and chapter
+inventories. Whole-chapter `-mrg.htm` exports follow the publisher route retained
+in the chapter 672 index; each requested chapter must match its printed heading.
+Unrecognized inventory labels/links fail closed. `--limit` counts new chapter or
+whole-title-notice attempts on an ordinary resume, not already-retained documents.
+Title IV's native entire-title repeal notice is indexed separately from chapters;
+stale hidden template metadata is not used to invent a statutory identifier.
+
+The maintained parser preserves the existing 33 chapter projections exactly.
+Native section boundaries retain exceptions, histories, tables, source-media
+locators and parallel section occurrences. Repeal/reservation notices remain
+visible; document and section-occurrence counts are not counts of operative laws.
+The publisher labels the online RSA informational and directs readers to the
+bound edition. Its December 2025 / 2025-session currency statement is retained
+verbatim, not converted into an exact snapshot or effective date.
+
+The original 180 MiB ledger is reused, with a 5 MB response limit and safety stop,
+100 GiB disk floor, durable chunk reservations and at least 11.1 seconds between
+requests. Robots and access denials remain enforced; no automatic retries or
+scheduled refresh are added. Ordinary resumption reuses verified local responses;
+it does not certify that they represent today's law. The coverage ledger separates
+closed titles from unexpanded titles and partial chapter inventories. No statewide
+chapter denominator is claimed until all title inventories are inspected.
+
 ### Oklahoma continuation
 
 `oklahoma-statutes` follows the [Senate catalog](https://oksenate.gov/search-statutes-constitution)
