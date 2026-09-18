@@ -1,4 +1,5 @@
 import gzip
+import json
 import socket
 from datetime import UTC, datetime, timedelta
 from email.utils import format_datetime
@@ -85,6 +86,27 @@ def test_decoded_hash_caps_and_cached_role_independence(store):
         with pytest.raises(AcquisitionError, match="cap"):
             a.fetch("https://example.test/other", check_robots=False, max_file_bytes=10)
         assert a.downloaded > len(raw)
+    finally:
+        a.close()
+
+
+def test_transport_failure_labels_its_request_clock_without_accepting_an_artifact(store):
+    def fail(request):
+        raise httpx.ConnectTimeout("TLS handshake timed out", request=request)
+
+    a = client(store, fail)
+    try:
+        with pytest.raises(AcquisitionError, match="TLS handshake timed out"):
+            a.fetch("https://example.test/source", check_robots=False)
+        row = store.db.execute("SELECT * FROM acquisitions").fetchone()
+        headers = json.loads(row["headers"])
+        assert row["status"] == 0 and row["sha256"] is None
+        assert headers["psephos_request_started_at"] == row["observed_at"]
+        assert (
+            headers["psephos_observed_at_basis"]
+            == "request start; no accepted complete acquisition"
+        )
+        assert headers["psephos_downloaded_bytes"] == "0" and a.downloaded == 0
     finally:
         a.close()
 

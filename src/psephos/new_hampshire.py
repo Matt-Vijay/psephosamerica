@@ -64,7 +64,7 @@ def inventory(data: bytes, title: str | None = None) -> list[tuple[str, str, str
     pattern = (
         r"/rsa/html/NHTOC/NHTOC-([IVXLCDM]+(?:-A)?)\.htm"
         if title is None
-        else r"/rsa/html/NHTOC/NHTOC-" + re.escape(title) + r"-(\d+[A-Z]?(?:-[A-Z])?)\.htm"
+        else r"/rsa/html/NHTOC/NHTOC-" + re.escape(title) + r"-(\d+[A-Z]?(?:-[A-Z]+)?)\.htm"
     )
     items = []
     for node in root.xpath("//a[@href]"):

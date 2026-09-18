@@ -40,6 +40,10 @@ def test_chapter_partition_preserves_history_tables_variants_and_identity():
 def test_native_inventory_rejects_foreign_hosts_and_wrong_labels():
     source = b'<a href="NHTOC/NHTOC-XIX-A.htm">TITLE XIX-A: FORESTRY</a>'
     assert nh.inventory(source)[0][0] == "XIX-A"
+    assert (
+        nh.inventory(b'<a href="NHTOC-X-126-AA.htm">CHAPTER 126-AA: HEALTH CARE</a>', "X")[0][0]
+        == "126-AA"
+    )
     with pytest.raises(ValueError, match="differs"):
         nh.inventory(source.replace(b"TITLE XIX-A:", b"TITLE XIX:"))
     with pytest.raises(ValueError, match="Unexpected"):

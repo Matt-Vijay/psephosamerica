@@ -358,6 +358,10 @@ class Acquirer:
                     )
                     return Receipt(receipt_id, url, sha, observed, size)
             except (httpx.HTTPError, OSError, AcquisitionError) as exc:
+                response_headers.setdefault("psephos_request_started_at", observed)
+                response_headers["psephos_observed_at_basis"] = (
+                    "request start; no accepted complete acquisition"
+                )
                 response_headers["psephos_downloaded_bytes"] = str(size)
                 self._record(url, current, observed, status, response_headers, None, str(exc))
                 raise AcquisitionError(f"{url}: {exc}") from exc
